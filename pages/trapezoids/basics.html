@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Трапеция | Геометрия 7-9</title>
+    <link rel="stylesheet" href="../../css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/jsxgraph@1.4.6/distrib/jsxgraphcore.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph@1.4.6/distrib/jsxgraph.css">
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">
+            <a href="../../index.html">📐 Геометрия 7-9</a>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-parent active"><a href="#">Трапеции</a></li>
+            <li class="nav-child active"><a href="basics.html">Основные понятия</a></li>
+        </ul>
+    </nav>
+
+    <div class="content">
+        <header>
+            <h1>Трапеция: основные понятия и свойства</h1>
+        </header>
+
+        <main>
+            <section>
+                <h2>Определение</h2>
+                <div class="definition">
+                    <strong>Трапеция</strong> — это четырёхугольник, у которого две стороны параллельны, а две другие не параллельны.
+                    Параллельные стороны называются <strong>основаниями</strong> трапеции, а непараллельные — <strong>боковыми сторонами</strong>.
+                </div>
+
+                <p>Обозначение: трапеция ABCD, где AD и BC — основания (AD ∥ BC), AB и CD — боковые стороны.</p>
+
+                <div class="property">
+                    <strong>Средняя линия трапеции</strong> — отрезок, соединяющий середины боковых сторон.
+                    <p>Средняя линия параллельна основаниям и равна их полусумме:</p>
+                    <p>\[m = \frac{a + b}{2}\]</p>
+                </div>
+            </section>
+
+            <section>
+                <h2>Интерактивная трапеция</h2>
+                <p>Используйте бегунки для изменения длин оснований и высоты. Перемещайте вершины мышью.</p>
+
+                <div id="jxgbox" class="jxgbox"></div>
+
+                <div class="controls">
+                    <div class="control-group">
+                        <label class="control-label">Нижнее основание (a): <span id="value-a" class="control-value">6</span></label>
+                        <input type="range" id="slider-a" class="slider" min="4" max="10" step="0.5" value="6">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Верхнее основание (b): <span id="value-b" class="control-value">3</span></label>
+                        <input type="range" id="slider-b" class="slider" min="2" max="8" step="0.5" value="3">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Высота (h): <span id="value-h" class="control-value">4</span></label>
+                        <input type="range" id="slider-h" class="slider" min="2" max="6" step="0.5" value="4">
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <h3>Параметры трапеции:</h3>
+                    <p><strong>Нижнее основание (a):</strong> <span id="base-a">6</span></p>
+                    <p><strong>Верхнее основание (b):</strong> <span id="base-b">3</span></p>
+                    <p><strong>Высота (h):</strong> <span id="height">4</span></p>
+                    <p><strong>Средняя линия (m):</strong> <span id="midline">4.5</span></p>
+                    <p><strong>Площадь (S):</strong> <span id="area">18</span></p>
+                    <p><strong>Периметр (P):</strong> <span id="perimeter">0</span></p>
+                    <p id="formula-display">\[S = \frac{(a + b) \cdot h}{2}\]</p>
+                </div>
+            </section>
+
+            <section>
+                <h2>Виды трапеций</h2>
+
+                <div class="property">
+                    <strong>Прямоугольная трапеция</strong> — трапеция, у которой одна боковая сторона перпендикулярна основаниям (один из углов равен 90°).
+                </div>
+
+                <div class="property">
+                    <strong>Равнобедренная (равнобокая) трапеция</strong> — трапеция, у которой боковые стороны равны.
+                    <p>Свойства равнобедренной трапеции:</p>
+                    <ul>
+                        <li>Углы при каждом основании равны</li>
+                        <li>Диагонали равны</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section>
+                <h2>Формулы</h2>
+
+                <div class="theorem">
+                    <strong>Площадь трапеции:</strong>
+                    <p>\[S = \frac{(a + b) \cdot h}{2}\]</p>
+                    где a и b — основания, h — высота
+                </div>
+
+                <div class="theorem">
+                    <strong>Площадь через среднюю линию:</strong>
+                    <p>\[S = m \cdot h\]</p>
+                    где m — средняя линия, h — высота
+                </div>
+
+                <div class="theorem">
+                    <strong>Средняя линия трапеции:</strong>
+                    <p>\[m = \frac{a + b}{2}\]</p>
+                </div>
+            </section>
+
+            <section class="examples">
+                <h2>Примеры заданий</h2>
+
+                <div class="example">
+                    <h3>Пример 1</h3>
+                    <p><strong>Задача:</strong> Основания трапеции равны 8 см и 4 см, высота 5 см. Найдите площадь трапеции.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Используем формулу площади трапеции:</p>
+                        <p>\[S = \frac{(a + b) \cdot h}{2}\]</p>
+                        <p>\[S = \frac{(8 + 4) \cdot 5}{2} = \frac{12 \cdot 5}{2} = \frac{60}{2} = 30 \text{ см}^2\]</p>
+                        <p><strong>Ответ:</strong> 30 см²</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Пример 2</h3>
+                    <p><strong>Задача:</strong> Средняя линия трапеции равна 7 см, высота 4 см. Найдите площадь трапеции.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Используем формулу площади через среднюю линию:</p>
+                        <p>\[S = m \cdot h\]</p>
+                        <p>\[S = 7 \cdot 4 = 28 \text{ см}^2\]</p>
+                        <p><strong>Ответ:</strong> 28 см²</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Пример 3</h3>
+                    <p><strong>Задача:</strong> Основания трапеции равны 10 см и 6 см. Найдите длину средней линии.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Средняя линия равна полусумме оснований:</p>
+                        <p>\[m = \frac{a + b}{2}\]</p>
+                        <p>\[m = \frac{10 + 6}{2} = \frac{16}{2} = 8 \text{ см}\]</p>
+                        <p><strong>Ответ:</strong> 8 см</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Пример 4</h3>
+                    <p><strong>Задача:</strong> Площадь трапеции 45 см², высота 5 см, одно из оснований 12 см. Найдите второе основание.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Из формулы площади:</p>
+                        <p>\[S = \frac{(a + b) \cdot h}{2}\]</p>
+                        <p>\[45 = \frac{(12 + b) \cdot 5}{2}\]</p>
+                        <p>\[90 = (12 + b) \cdot 5\]</p>
+                        <p>\[18 = 12 + b\]</p>
+                        <p>\[b = 6 \text{ см}\]</p>
+                        <p><strong>Ответ:</strong> 6 см</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="../../js/common.js"></script>
+    <script>
+        // Создаем доску JSXGraph
+        const board = JXG.JSX.initBoard('jxgbox', {
+            boundingbox: [-1, 7, 11, -1],
+            axis: true,
+            showNavigation: false,
+            showCopyright: false
+        });
+
+        // Начальные значения
+        let baseA = 6;  // нижнее основание
+        let baseB = 3;  // верхнее основание
+        let height = 4;
+
+        // Создаем точки трапеции (ABCD, где AD - нижнее основание, BC - верхнее)
+        const A = board.create('point', [0, 0], {
+            name: 'A',
+            size: 4,
+            fillColor: '#e74c3c',
+            strokeColor: '#c0392b',
+            fixed: true
+        });
+
+        const D = board.create('point', [() => baseA, 0], {
+            name: 'D',
+            size: 4,
+            fillColor: '#e74c3c',
+            strokeColor: '#c0392b'
+        });
+
+        const B = board.create('point', [1, () => height], {
+            name: 'B',
+            size: 4,
+            fillColor: '#3498db',
+            strokeColor: '#2980b9'
+        });
+
+        const C = board.create('point', [() => 1 + baseB, () => height], {
+            name: 'C',
+            size: 4,
+            fillColor: '#3498db',
+            strokeColor: '#2980b9'
+        });
+
+        // Создаем стороны трапеции
+        const trapezoid = board.create('polygon', [A, B, C, D], {
+            fillColor: '#3498db',
+            fillOpacity: 0.2,
+            borders: {
+                strokeColor: '#2c3e50',
+                strokeWidth: 2
+            }
+        });
+
+        // Средняя линия
+        const M = board.create('point', [
+            () => (A.X() + B.X()) / 2,
+            () => (A.Y() + B.Y()) / 2
+        ], {
+            name: 'M',
+            size: 3,
+            fillColor: '#9b59b6',
+            visible: true
+        });
+
+        const N = board.create('point', [
+            () => (D.X() + C.X()) / 2,
+            () => (D.Y() + C.Y()) / 2
+        ], {
+            name: 'N',
+            size: 3,
+            fillColor: '#9b59b6',
+            visible: true
+        });
+
+        const midline = board.create('segment', [M, N], {
+            strokeColor: '#9b59b6',
+            strokeWidth: 2,
+            dash: 2
+        });
+
+        // Высота (перпендикуляр)
+        const H = board.create('point', [1, 0], {
+            name: 'H',
+            size: 3,
+            fillColor: '#e67e22',
+            visible: true
+        });
+
+        const heightLine = board.create('segment', [B, H], {
+            strokeColor: '#e67e22',
+            strokeWidth: 2,
+            dash: 1
+        });
+
+        // Функция обновления значений
+        function updateValues() {
+            const a = baseA;
+            const b = baseB;
+            const h = height;
+
+            // Средняя линия
+            const m = (a + b) / 2;
+
+            // Площадь
+            const area = (a + b) * h / 2;
+
+            // Боковые стороны
+            const sideAB = Math.sqrt(Math.pow(B.X() - A.X(), 2) + Math.pow(B.Y() - A.Y(), 2));
+            const sideCD = Math.sqrt(Math.pow(C.X() - D.X(), 2) + Math.pow(C.Y() - D.Y(), 2));
+
+            // Периметр
+            const perimeter = a + b + sideAB + sideCD;
+
+            // Обновляем отображение
+            document.getElementById('value-a').textContent = a.toFixed(1);
+            document.getElementById('value-b').textContent = b.toFixed(1);
+            document.getElementById('value-h').textContent = h.toFixed(1);
+
+            document.getElementById('base-a').textContent = a.toFixed(2);
+            document.getElementById('base-b').textContent = b.toFixed(2);
+            document.getElementById('height').textContent = h.toFixed(2);
+            document.getElementById('midline').textContent = m.toFixed(2);
+            document.getElementById('area').textContent = area.toFixed(2);
+            document.getElementById('perimeter').textContent = perimeter.toFixed(2);
+
+            // Обновляем формулу
+            document.getElementById('formula-display').innerHTML =
+                `\\[S = \\frac{(${a.toFixed(1)} + ${b.toFixed(1)}) \\cdot ${h.toFixed(1)}}{2} = ${area.toFixed(2)}\\]`;
+
+            // Перерисовываем MathJax
+            if (typeof MathJax !== 'undefined') {
+                MathJax.typesetPromise();
+            }
+        }
+
+        // Обработчики бегунков
+        document.getElementById('slider-a').addEventListener('input', function() {
+            baseA = parseFloat(this.value);
+            board.update();
+            updateValues();
+        });
+
+        document.getElementById('slider-b').addEventListener('input', function() {
+            baseB = parseFloat(this.value);
+            board.update();
+            updateValues();
+        });
+
+        document.getElementById('slider-h').addEventListener('input', function() {
+            height = parseFloat(this.value);
+            board.update();
+            updateValues();
+        });
+
+        // Обновляем при перемещении точек
+        B.on('drag', function() {
+            height = B.Y();
+            document.getElementById('slider-h').value = height;
+            updateValues();
+        });
+
+        D.on('drag', function() {
+            baseA = D.X();
+            document.getElementById('slider-a').value = baseA;
+            updateValues();
+        });
+
+        C.on('drag', function() {
+            baseB = C.X() - B.X();
+            document.getElementById('slider-b').value = baseB;
+            updateValues();
+        });
+
+        // Начальное обновление
+        updateValues();
+    </script>
+</body>
+</html>

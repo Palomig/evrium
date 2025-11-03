@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Основы треугольников | Геометрия 7-9</title>
+    <link rel="stylesheet" href="../../css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/jsxgraph@1.4.6/distrib/jsxgraphcore.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph@1.4.6/distrib/jsxgraph.css">
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">
+            <a href="../../index.html">📐 Геометрия 7-9</a>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-parent active"><a href="#">Треугольники</a></li>
+            <li class="nav-child active"><a href="basics.html">Основные понятия</a></li>
+            <li class="nav-child"><a href="pythagoras.html">Теорема Пифагора</a></li>
+        </ul>
+    </nav>
+
+    <div class="content">
+        <header>
+            <h1>Треугольники: Основные понятия и виды</h1>
+        </header>
+
+        <main>
+            <section>
+                <h2>Определение треугольника</h2>
+                <div class="definition">
+                    <strong>Треугольник</strong> — это геометрическая фигура, состоящая из трёх точек (вершин), не лежащих на одной прямой, и трёх отрезков (сторон), попарно соединяющих эти точки.
+                </div>
+                <p>Обозначение: △ABC, где A, B, C — вершины, а AB, BC, AC — стороны треугольника.</p>
+            </section>
+
+            <section>
+                <h2>Интерактивный треугольник</h2>
+                <p>Перемещайте вершины треугольника мышью или используйте бегунки для изменения координат. Наблюдайте, как изменяются стороны, углы, периметр и площадь.</p>
+
+                <div id="jxgbox" class="jxgbox"></div>
+
+                <div class="controls">
+                    <div class="control-group">
+                        <label class="control-label">Координата B по X: <span id="value-bx" class="control-value">4</span></label>
+                        <input type="range" id="slider-bx" class="slider" min="1" max="8" step="0.5" value="4">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Координата C по X: <span id="value-cx" class="control-value">2</span></label>
+                        <input type="range" id="slider-cx" class="slider" min="0" max="5" step="0.5" value="2">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Координата C по Y: <span id="value-cy" class="control-value">5</span></label>
+                        <input type="range" id="slider-cy" class="slider" min="2" max="7" step="0.5" value="5">
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <h3>Параметры треугольника:</h3>
+                    <p><strong>Стороны:</strong></p>
+                    <ul>
+                        <li>AB (c) = <span id="side-c">0</span></li>
+                        <li>BC (a) = <span id="side-a">0</span></li>
+                        <li>AC (b) = <span id="side-b">0</span></li>
+                    </ul>
+                    <p><strong>Углы:</strong></p>
+                    <ul>
+                        <li>∠A = <span id="angle-a">0</span>°</li>
+                        <li>∠B = <span id="angle-b">0</span>°</li>
+                        <li>∠C = <span id="angle-c">0</span>°</li>
+                        <li>Сумма углов = <span id="angle-sum">0</span>° (должно быть 180°)</li>
+                    </ul>
+                    <p><strong>Периметр:</strong> P = <span id="perimeter">0</span></p>
+                    <p><strong>Площадь:</strong> S = <span id="area">0</span></p>
+                    <p><strong>Тип треугольника:</strong> <span id="triangle-type">—</span></p>
+                </div>
+            </section>
+
+            <section>
+                <h2>Виды треугольников</h2>
+
+                <h3>По сторонам:</h3>
+                <div class="property">
+                    <strong>Разносторонний треугольник</strong> — все стороны имеют разную длину.
+                </div>
+                <div class="property">
+                    <strong>Равнобедренный треугольник</strong> — две стороны равны (боковые стороны), третья называется основанием.
+                </div>
+                <div class="property">
+                    <strong>Равносторонний треугольник</strong> — все три стороны равны. Все углы равны 60°.
+                </div>
+
+                <h3>По углам:</h3>
+                <div class="property">
+                    <strong>Остроугольный треугольник</strong> — все три угла острые (меньше 90°).
+                </div>
+                <div class="property">
+                    <strong>Прямоугольный треугольник</strong> — один угол равен 90°. Стороны, образующие прямой угол, называются катетами, третья сторона — гипотенузой.
+                </div>
+                <div class="property">
+                    <strong>Тупоугольный треугольник</strong> — один угол тупой (больше 90°).
+                </div>
+            </section>
+
+            <section>
+                <h2>Основные свойства треугольника</h2>
+                <div class="theorem">
+                    <strong>Теорема о сумме углов треугольника:</strong><br>
+                    Сумма всех углов треугольника равна 180°.
+                    <p>\[\alpha + \beta + \gamma = 180°\]</p>
+                </div>
+
+                <div class="property">
+                    <strong>Неравенство треугольника:</strong><br>
+                    Каждая сторона треугольника меньше суммы двух других сторон.
+                    <p>\[a < b + c, \quad b < a + c, \quad c < a + b\]</p>
+                </div>
+
+                <div class="property">
+                    <strong>Периметр треугольника:</strong>
+                    <p>\[P = a + b + c\]</p>
+                </div>
+
+                <div class="property">
+                    <strong>Площадь треугольника (формула Герона):</strong>
+                    <p>\[S = \sqrt{p(p-a)(p-b)(p-c)}\]</p>
+                    где \(p = \frac{a+b+c}{2}\) — полупериметр
+                </div>
+            </section>
+
+            <section class="examples">
+                <h2>Примеры заданий</h2>
+
+                <div class="example">
+                    <h3>Пример 1</h3>
+                    <p><strong>Задача:</strong> В треугольнике два угла равны 45° и 60°. Найдите третий угол.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>По теореме о сумме углов треугольника:</p>
+                        <p>\[\alpha + \beta + \gamma = 180°\]</p>
+                        <p>\[45° + 60° + \gamma = 180°\]</p>
+                        <p>\[\gamma = 180° - 45° - 60° = 75°\]</p>
+                        <p><strong>Ответ:</strong> 75°</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Пример 2</h3>
+                    <p><strong>Задача:</strong> Стороны треугольника равны 3 см, 4 см и 5 см. Определите тип треугольника и найдите его площадь.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Проверим, является ли треугольник прямоугольным:</p>
+                        <p>\[3^2 + 4^2 = 9 + 16 = 25 = 5^2\]</p>
+                        <p>Теорема Пифагора выполняется, значит треугольник прямоугольный.</p>
+                        <p>Площадь прямоугольного треугольника:</p>
+                        <p>\[S = \frac{1}{2} \cdot 3 \cdot 4 = 6 \text{ см}^2\]</p>
+                        <p><strong>Ответ:</strong> Прямоугольный треугольник, S = 6 см²</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Пример 3</h3>
+                    <p><strong>Задача:</strong> В равнобедренном треугольнике боковая сторона равна 10 см, а основание 12 см. Найдите периметр.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>В равнобедренном треугольнике две боковые стороны равны.</p>
+                        <p>\[P = a + b + c = 10 + 10 + 12 = 32 \text{ см}\]</p>
+                        <p><strong>Ответ:</strong> 32 см</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="../../js/common.js"></script>
+    <script>
+        // Создаем доску JSXGraph
+        const board = JXG.JSX.initBoard('jxgbox', {
+            boundingbox: [-1, 8, 10, -1],
+            axis: true,
+            showNavigation: false,
+            showCopyright: false
+        });
+
+        // Создаем точки треугольника
+        const A = board.create('point', [0, 0], {
+            name: 'A',
+            size: 4,
+            fillColor: '#e74c3c',
+            strokeColor: '#c0392b',
+            fixed: true
+        });
+
+        const B = board.create('point', [4, 0], {
+            name: 'B',
+            size: 4,
+            fillColor: '#3498db',
+            strokeColor: '#2980b9'
+        });
+
+        const C = board.create('point', [2, 5], {
+            name: 'C',
+            size: 4,
+            fillColor: '#2ecc71',
+            strokeColor: '#27ae60'
+        });
+
+        // Создаем стороны треугольника
+        const sideAB = board.create('segment', [A, B], {
+            strokeColor: '#34495e',
+            strokeWidth: 2
+        });
+
+        const sideBC = board.create('segment', [B, C], {
+            strokeColor: '#34495e',
+            strokeWidth: 2
+        });
+
+        const sideAC = board.create('segment', [A, C], {
+            strokeColor: '#34495e',
+            strokeWidth: 2
+        });
+
+        // Создаем многоугольник для заливки
+        const triangle = board.create('polygon', [A, B, C], {
+            fillColor: '#3498db',
+            fillOpacity: 0.2,
+            borders: {visible: false}
+        });
+
+        // Функция для вычисления угла между тремя точками
+        function calculateAngle(p1, vertex, p2) {
+            const v1x = p1.X() - vertex.X();
+            const v1y = p1.Y() - vertex.Y();
+            const v2x = p2.X() - vertex.X();
+            const v2y = p2.Y() - vertex.Y();
+
+            const dot = v1x * v2x + v1y * v2y;
+            const len1 = Math.sqrt(v1x * v1x + v1y * v1y);
+            const len2 = Math.sqrt(v2x * v2x + v2y * v2y);
+
+            const cosAngle = dot / (len1 * len2);
+            const angle = Math.acos(Math.max(-1, Math.min(1, cosAngle)));
+            return angle * 180 / Math.PI;
+        }
+
+        // Функция для определения типа треугольника
+        function getTriangleType(a, b, c, angleA, angleB, angleC) {
+            const epsilon = 0.5;
+
+            // По углам
+            let angleType = '';
+            if (Math.abs(angleA - 90) < epsilon || Math.abs(angleB - 90) < epsilon || Math.abs(angleC - 90) < epsilon) {
+                angleType = 'Прямоугольный';
+            } else if (angleA > 90 || angleB > 90 || angleC > 90) {
+                angleType = 'Тупоугольный';
+            } else {
+                angleType = 'Остроугольный';
+            }
+
+            // По сторонам
+            let sideType = '';
+            if (Math.abs(a - b) < epsilon && Math.abs(b - c) < epsilon) {
+                sideType = 'Равносторонний';
+            } else if (Math.abs(a - b) < epsilon || Math.abs(b - c) < epsilon || Math.abs(a - c) < epsilon) {
+                sideType = 'Равнобедренный';
+            } else {
+                sideType = 'Разносторонний';
+            }
+
+            return `${angleType}, ${sideType}`;
+        }
+
+        // Функция обновления значений
+        function updateValues() {
+            // Вычисляем длины сторон
+            const c = Math.sqrt(Math.pow(B.X() - A.X(), 2) + Math.pow(B.Y() - A.Y(), 2));
+            const a = Math.sqrt(Math.pow(C.X() - B.X(), 2) + Math.pow(C.Y() - B.Y(), 2));
+            const b = Math.sqrt(Math.pow(C.X() - A.X(), 2) + Math.pow(C.Y() - A.Y(), 2));
+
+            // Вычисляем углы
+            const angleA = calculateAngle(B, A, C);
+            const angleB = calculateAngle(A, B, C);
+            const angleC = calculateAngle(A, C, B);
+
+            // Периметр
+            const perimeter = a + b + c;
+
+            // Площадь (формула Герона)
+            const p = perimeter / 2;
+            const area = Math.sqrt(p * (p - a) * (p - b) * (p - c));
+
+            // Обновляем отображение
+            document.getElementById('side-a').textContent = a.toFixed(2);
+            document.getElementById('side-b').textContent = b.toFixed(2);
+            document.getElementById('side-c').textContent = c.toFixed(2);
+
+            document.getElementById('angle-a').textContent = angleA.toFixed(1);
+            document.getElementById('angle-b').textContent = angleB.toFixed(1);
+            document.getElementById('angle-c').textContent = angleC.toFixed(1);
+            document.getElementById('angle-sum').textContent = (angleA + angleB + angleC).toFixed(1);
+
+            document.getElementById('perimeter').textContent = perimeter.toFixed(2);
+            document.getElementById('area').textContent = area.toFixed(2);
+
+            document.getElementById('triangle-type').textContent = getTriangleType(a, b, c, angleA, angleB, angleC);
+
+            // Обновляем значения бегунков
+            document.getElementById('value-bx').textContent = B.X().toFixed(1);
+            document.getElementById('value-cx').textContent = C.X().toFixed(1);
+            document.getElementById('value-cy').textContent = C.Y().toFixed(1);
+        }
+
+        // Обработчики бегунков
+        document.getElementById('slider-bx').addEventListener('input', function() {
+            B.moveTo([parseFloat(this.value), B.Y()]);
+            board.update();
+        });
+
+        document.getElementById('slider-cx').addEventListener('input', function() {
+            C.moveTo([parseFloat(this.value), C.Y()]);
+            board.update();
+        });
+
+        document.getElementById('slider-cy').addEventListener('input', function() {
+            C.moveTo([C.X(), parseFloat(this.value)]);
+            board.update();
+        });
+
+        // Обновляем при перемещении точек
+        B.on('drag', updateValues);
+        C.on('drag', updateValues);
+
+        // Обновляем при движении бегунков
+        document.getElementById('slider-bx').addEventListener('input', updateValues);
+        document.getElementById('slider-cx').addEventListener('input', updateValues);
+        document.getElementById('slider-cy').addEventListener('input', updateValues);
+
+        // Начальное обновление
+        updateValues();
+    </script>
+</body>
+</html>

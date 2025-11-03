@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Площадь треугольника | Геометрия 7-9</title>
+    <link rel="stylesheet" href="../../css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/jsxgraph@1.4.6/distrib/jsxgraphcore.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph@1.4.6/distrib/jsxgraph.css">
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">
+            <a href="../../index.html">📐 Геометрия 7-9</a>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-parent active"><a href="#">Площади фигур</a></li>
+            <li class="nav-child active"><a href="triangle.html">Площадь треугольника</a></li>
+        </ul>
+    </nav>
+
+    <div class="content">
+        <header>
+            <h1>Площадь треугольника</h1>
+        </header>
+
+        <main>
+            <section>
+                <h2>Формулы площади треугольника</h2>
+                <p>Существует несколько способов вычисления площади треугольника в зависимости от известных элементов.</p>
+            </section>
+
+            <section>
+                <h2>Интерактивный треугольник</h2>
+                <p>Перемещайте вершины треугольника мышью. Наблюдайте, как изменяется площадь при разных формулах вычисления.</p>
+
+                <div id="jxgbox" class="jxgbox"></div>
+
+                <div class="info-box">
+                    <h3>Параметры треугольника:</h3>
+                    <p><strong>Стороны:</strong></p>
+                    <ul>
+                        <li>a (BC) = <span id="side-a">0</span></li>
+                        <li>b (AC) = <span id="side-b">0</span></li>
+                        <li>c (AB) = <span id="side-c">0</span></li>
+                    </ul>
+                    <p><strong>Высота к стороне a:</strong> h<sub>a</sub> = <span id="height-a">0</span></p>
+                    <p><strong>Площадь (основная формула):</strong> S = <span id="area-base">0</span></p>
+                    <p><strong>Площадь (формула Герона):</strong> S = <span id="area-heron">0</span></p>
+                    <p><strong>Полупериметр:</strong> p = <span id="semiperimeter">0</span></p>
+                </div>
+            </section>
+
+            <section>
+                <h2>1. Через основание и высоту</h2>
+                <div class="theorem">
+                    <strong>Основная формула:</strong>
+                    <p>\[S = \frac{1}{2} \cdot a \cdot h_a\]</p>
+                    где a — основание, h<sub>a</sub> — высота, проведённая к этому основанию
+                </div>
+                <p>Эта формула справедлива для любого треугольника. Высота — перпендикуляр, опущенный из вершины на противоположную сторону (или её продолжение).</p>
+            </section>
+
+            <section>
+                <h2>2. Формула Герона</h2>
+                <div class="theorem">
+                    <strong>Формула Герона:</strong>
+                    <p>\[S = \sqrt{p(p-a)(p-b)(p-c)}\]</p>
+                    где p — полупериметр: \(p = \frac{a+b+c}{2}\)
+                </div>
+                <p>Эта формула удобна, когда известны все три стороны треугольника, но неизвестны высоты.</p>
+            </section>
+
+            <section>
+                <h2>3. Через две стороны и угол между ними</h2>
+                <div class="theorem">
+                    <strong>Формула через угол:</strong>
+                    <p>\[S = \frac{1}{2} \cdot a \cdot b \cdot \sin C\]</p>
+                    где a и b — стороны, C — угол между ними
+                </div>
+                <p>Эта формула особенно полезна, когда известны две стороны и угол между ними.</p>
+            </section>
+
+            <section>
+                <h2>4. Частные случаи</h2>
+
+                <div class="property">
+                    <strong>Прямоугольный треугольник:</strong>
+                    <p>\[S = \frac{1}{2} \cdot a \cdot b\]</p>
+                    где a и b — катеты
+                </div>
+
+                <div class="property">
+                    <strong>Равносторонний треугольник:</strong>
+                    <p>\[S = \frac{a^2\sqrt{3}}{4}\]</p>
+                    где a — сторона треугольника
+                </div>
+
+                <div class="property">
+                    <strong>Через радиус описанной окружности:</strong>
+                    <p>\[S = \frac{abc}{4R}\]</p>
+                    где R — радиус описанной окружности
+                </div>
+
+                <div class="property">
+                    <strong>Через радиус вписанной окружности:</strong>
+                    <p>\[S = p \cdot r\]</p>
+                    где p — полупериметр, r — радиус вписанной окружности
+                </div>
+            </section>
+
+            <section class="examples">
+                <h2>Примеры заданий</h2>
+
+                <div class="example">
+                    <h3>Пример 1</h3>
+                    <p><strong>Задача:</strong> Основание треугольника равно 10 см, высота, проведённая к этому основанию, равна 6 см. Найдите площадь треугольника.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Используем основную формулу:</p>
+                        <p>\[S = \frac{1}{2} \cdot a \cdot h\]</p>
+                        <p>\[S = \frac{1}{2} \cdot 10 \cdot 6 = 30 \text{ см}^2\]</p>
+                        <p><strong>Ответ:</strong> 30 см²</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Пример 2</h3>
+                    <p><strong>Задача:</strong> Стороны треугольника равны 3 см, 4 см и 5 см. Найдите площадь треугольника.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Это прямоугольный треугольник (3² + 4² = 5²), поэтому:</p>
+                        <p>\[S = \frac{1}{2} \cdot 3 \cdot 4 = 6 \text{ см}^2\]</p>
+                        <p>Также можно использовать формулу Герона:</p>
+                        <p>\[p = \frac{3 + 4 + 5}{2} = 6\]</p>
+                        <p>\[S = \sqrt{6(6-3)(6-4)(6-5)} = \sqrt{6 \cdot 3 \cdot 2 \cdot 1} = \sqrt{36} = 6 \text{ см}^2\]</p>
+                        <p><strong>Ответ:</strong> 6 см²</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Пример 3</h3>
+                    <p><strong>Задача:</strong> Две стороны треугольника равны 8 см и 10 см, угол между ними 30°. Найдите площадь.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Используем формулу через угол:</p>
+                        <p>\[S = \frac{1}{2} \cdot a \cdot b \cdot \sin C\]</p>
+                        <p>\[S = \frac{1}{2} \cdot 8 \cdot 10 \cdot \sin 30°\]</p>
+                        <p>\[S = \frac{1}{2} \cdot 8 \cdot 10 \cdot 0.5 = 20 \text{ см}^2\]</p>
+                        <p><strong>Ответ:</strong> 20 см²</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Пример 4</h3>
+                    <p><strong>Задача:</strong> Сторона равностороннего треугольника равна 6 см. Найдите его площадь.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Используем формулу для равностороннего треугольника:</p>
+                        <p>\[S = \frac{a^2\sqrt{3}}{4}\]</p>
+                        <p>\[S = \frac{6^2\sqrt{3}}{4} = \frac{36\sqrt{3}}{4} = 9\sqrt{3} \approx 15.59 \text{ см}^2\]</p>
+                        <p><strong>Ответ:</strong> 9√3 см² ≈ 15.59 см²</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Пример 5</h3>
+                    <p><strong>Задача:</strong> Стороны треугольника 5 см, 6 см и 7 см. Найдите площадь по формуле Герона.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Находим полупериметр:</p>
+                        <p>\[p = \frac{5 + 6 + 7}{2} = 9\]</p>
+                        <p>Применяем формулу Герона:</p>
+                        <p>\[S = \sqrt{p(p-a)(p-b)(p-c)}\]</p>
+                        <p>\[S = \sqrt{9(9-5)(9-6)(9-7)}\]</p>
+                        <p>\[S = \sqrt{9 \cdot 4 \cdot 3 \cdot 2} = \sqrt{216} = 6\sqrt{6} \approx 14.7 \text{ см}^2\]</p>
+                        <p><strong>Ответ:</strong> 6√6 см² ≈ 14.7 см²</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="../../js/common.js"></script>
+    <script>
+        // Создаем доску JSXGraph
+        const board = JXG.JSX.initBoard('jxgbox', {
+            boundingbox: [-1, 8, 10, -1],
+            axis: true,
+            showNavigation: false,
+            showCopyright: false
+        });
+
+        // Создаем точки треугольника
+        const A = board.create('point', [1, 1], {
+            name: 'A',
+            size: 4,
+            fillColor: '#e74c3c',
+            strokeColor: '#c0392b'
+        });
+
+        const B = board.create('point', [7, 2], {
+            name: 'B',
+            size: 4,
+            fillColor: '#3498db',
+            strokeColor: '#2980b9'
+        });
+
+        const C = board.create('point', [3, 6], {
+            name: 'C',
+            size: 4,
+            fillColor: '#2ecc71',
+            strokeColor: '#27ae60'
+        });
+
+        // Создаем треугольник
+        const triangle = board.create('polygon', [A, B, C], {
+            fillColor: '#3498db',
+            fillOpacity: 0.2,
+            borders: {
+                strokeColor: '#2c3e50',
+                strokeWidth: 2
+            }
+        });
+
+        // Высота из C к стороне AB
+        // Находим проекцию C на прямую AB
+        const lineAB = board.create('line', [A, B], {visible: false});
+        const H = board.create('perpendicularprojection', [C, lineAB], {
+            name: 'H',
+            size: 3,
+            fillColor: '#e67e22',
+            visible: true
+        });
+
+        const heightLine = board.create('segment', [C, H], {
+            strokeColor: '#e67e22',
+            strokeWidth: 2,
+            dash: 1
+        });
+
+        // Метка прямого угла у высоты
+        const rightAngle = board.create('angle', [C, H, A], {
+            type: 'square',
+            orthoType: 'square',
+            orthoSensitivity: 1,
+            radius: 0.3
+        });
+
+        // Функция для вычисления площади треугольника по координатам (формула Shoelace)
+        function triangleArea(p1, p2, p3) {
+            return Math.abs(
+                (p1.X() * (p2.Y() - p3.Y()) +
+                 p2.X() * (p3.Y() - p1.Y()) +
+                 p3.X() * (p1.Y() - p2.Y())) / 2
+            );
+        }
+
+        // Функция обновления значений
+        function updateValues() {
+            // Вычисляем длины сторон
+            const a = Math.sqrt(Math.pow(C.X() - B.X(), 2) + Math.pow(C.Y() - B.Y(), 2)); // BC
+            const b = Math.sqrt(Math.pow(C.X() - A.X(), 2) + Math.pow(C.Y() - A.Y(), 2)); // AC
+            const c = Math.sqrt(Math.pow(B.X() - A.X(), 2) + Math.pow(B.Y() - A.Y(), 2)); // AB
+
+            // Высота из C к AB
+            const heightA = Math.sqrt(Math.pow(C.X() - H.X(), 2) + Math.pow(C.Y() - H.Y(), 2));
+
+            // Площадь через основание и высоту
+            const areaBase = 0.5 * c * heightA;
+
+            // Площадь по формуле Герона
+            const p = (a + b + c) / 2; // полупериметр
+            const areaHeron = Math.sqrt(p * (p - a) * (p - b) * (p - c));
+
+            // Обновляем отображение
+            document.getElementById('side-a').textContent = a.toFixed(2);
+            document.getElementById('side-b').textContent = b.toFixed(2);
+            document.getElementById('side-c').textContent = c.toFixed(2);
+            document.getElementById('height-a').textContent = heightA.toFixed(2);
+            document.getElementById('area-base').textContent = areaBase.toFixed(2);
+            document.getElementById('area-heron').textContent = areaHeron.toFixed(2);
+            document.getElementById('semiperimeter').textContent = p.toFixed(2);
+        }
+
+        // Обновляем при перемещении точек
+        A.on('drag', updateValues);
+        B.on('drag', updateValues);
+        C.on('drag', updateValues);
+
+        // Начальное обновление
+        updateValues();
+    </script>
+</body>
+</html>

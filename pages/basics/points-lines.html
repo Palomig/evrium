@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Точки и прямые | Геометрия 7-9</title>
+    <link rel="stylesheet" href="../../css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/jsxgraph@1.4.6/distrib/jsxgraphcore.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph@1.4.6/distrib/jsxgraph.css">
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">
+            <a href="../../index.html">📐 Геометрия 7-9</a>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-parent active"><a href="#">Базовые понятия</a></li>
+            <li class="nav-child active"><a href="points-lines.html">Точки и прямые</a></li>
+        </ul>
+    </nav>
+
+    <div class="content">
+        <header>
+            <h1>Точки, прямые и углы</h1>
+        </header>
+
+        <main>
+            <section>
+                <h2>Основные понятия</h2>
+                <div class="definition">
+                    <strong>Точка</strong> — основное неопределяемое понятие геометрии. Точка не имеет размеров и обозначается заглавными латинскими буквами: A, B, C и т.д.
+                </div>
+
+                <div class="definition">
+                    <strong>Прямая</strong> — линия, которая не искривляется и не имеет концов. Прямая обозначается строчными латинскими буквами (a, b, c) или двумя точками (AB).
+                </div>
+
+                <div class="definition">
+                    <strong>Отрезок</strong> — часть прямой, ограниченная двумя точками. Обозначается: AB, где A и B — концы отрезка.
+                </div>
+
+                <div class="definition">
+                    <strong>Луч</strong> — часть прямой, которая имеет начало, но не имеет конца. Обозначается двумя буквами, например AB, где A — начало луча.
+                </div>
+            </section>
+
+            <section>
+                <h2>Интерактивная демонстрация: Точки и прямые</h2>
+                <p>Перемещайте точки A, B, C мышью. Наблюдайте, как изменяются расстояния и углы.</p>
+
+                <div id="jxgbox" class="jxgbox"></div>
+
+                <div class="info-box">
+                    <h3>Измерения:</h3>
+                    <p><strong>Расстояние AB:</strong> <span id="dist-ab">0</span></p>
+                    <p><strong>Расстояние BC:</strong> <span id="dist-bc">0</span></p>
+                    <p><strong>Расстояние AC:</strong> <span id="dist-ac">0</span></p>
+                    <p><strong>Угол ABC:</strong> <span id="angle-abc">0</span>°</p>
+                </div>
+            </section>
+
+            <section>
+                <h2>Углы</h2>
+
+                <div class="definition">
+                    <strong>Угол</strong> — геометрическая фигура, образованная двумя лучами, исходящими из одной точки. Точка называется вершиной угла, а лучи — сторонами угла.
+                </div>
+
+                <h3>Виды углов:</h3>
+                <div class="property">
+                    <strong>Острый угол</strong> — угол, меньший 90°
+                    <p>\[0° < \alpha < 90°\]</p>
+                </div>
+
+                <div class="property">
+                    <strong>Прямой угол</strong> — угол, равный 90°
+                    <p>\[\alpha = 90°\]</p>
+                </div>
+
+                <div class="property">
+                    <strong>Тупой угол</strong> — угол, больший 90°, но меньший 180°
+                    <p>\[90° < \alpha < 180°\]</p>
+                </div>
+
+                <div class="property">
+                    <strong>Развернутый угол</strong> — угол, равный 180°
+                    <p>\[\alpha = 180°\]</p>
+                </div>
+            </section>
+
+            <section>
+                <h2>Смежные и вертикальные углы</h2>
+
+                <h3>Интерактивная визуализация углов</h3>
+                <p>Используйте бегунок для изменения угла α. Наблюдайте изменения смежных и вертикальных углов.</p>
+
+                <div id="jxgbox2" class="jxgbox"></div>
+
+                <div class="controls">
+                    <div class="control-group">
+                        <label class="control-label">Угол α: <span id="value-alpha" class="control-value">45</span>°</label>
+                        <input type="range" id="slider-alpha" class="slider" min="10" max="170" step="5" value="45">
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <h3>Углы:</h3>
+                    <p><strong>Угол α:</strong> <span id="angle-alpha">45</span>°</p>
+                    <p><strong>Смежный угол (180° - α):</strong> <span id="angle-adjacent">135</span>°</p>
+                    <p><strong>Сумма смежных углов:</strong> <span id="sum-adjacent">180</span>° (должно быть 180°)</p>
+                </div>
+
+                <div class="theorem">
+                    <strong>Свойство смежных углов:</strong><br>
+                    Сумма смежных углов равна 180°.
+                    <p>\[\alpha + \beta = 180°\]</p>
+                </div>
+
+                <div class="theorem">
+                    <strong>Свойство вертикальных углов:</strong><br>
+                    Вертикальные углы равны между собой.
+                    <p>\[\alpha_1 = \alpha_2, \quad \beta_1 = \beta_2\]</p>
+                </div>
+            </section>
+
+            <section class="examples">
+                <h2>Примеры заданий</h2>
+
+                <div class="example">
+                    <h3>Пример 1</h3>
+                    <p><strong>Задача:</strong> Один из смежных углов равен 120°. Найдите другой смежный угол.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Сумма смежных углов равна 180°.</p>
+                        <p>\[\alpha + \beta = 180°\]</p>
+                        <p>\[\beta = 180° - 120° = 60°\]</p>
+                        <p><strong>Ответ:</strong> 60°</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Пример 2</h3>
+                    <p><strong>Задача:</strong> На прямой отмечены точки A, B, C так, что AB = 5 см, BC = 3 см. Чему может быть равно расстояние AC?</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Возможны два случая:</p>
+                        <p>1) Точка B лежит между A и C: AC = AB + BC = 5 + 3 = 8 см</p>
+                        <p>2) Точка C лежит между A и B: AC = AB - BC = 5 - 3 = 2 см</p>
+                        <p><strong>Ответ:</strong> 8 см или 2 см</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Пример 3</h3>
+                    <p><strong>Задача:</strong> Угол α в 2 раза больше смежного с ним угла β. Найдите оба угла.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Пусть β = x, тогда α = 2x</p>
+                        <p>Так как углы смежные:</p>
+                        <p>\[\alpha + \beta = 180°\]</p>
+                        <p>\[2x + x = 180°\]</p>
+                        <p>\[3x = 180°\]</p>
+                        <p>\[x = 60°\]</p>
+                        <p>Следовательно: β = 60°, α = 120°</p>
+                        <p><strong>Ответ:</strong> α = 120°, β = 60°</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="../../js/common.js"></script>
+    <script>
+        // Первая доска: точки и прямые
+        const board1 = JXG.JSX.initBoard('jxgbox', {
+            boundingbox: [-1, 8, 10, -1],
+            axis: true,
+            showNavigation: false,
+            showCopyright: false
+        });
+
+        // Создаем три точки
+        const A = board1.create('point', [1, 2], {
+            name: 'A',
+            size: 4,
+            fillColor: '#e74c3c',
+            strokeColor: '#c0392b'
+        });
+
+        const B = board1.create('point', [5, 4], {
+            name: 'B',
+            size: 4,
+            fillColor: '#3498db',
+            strokeColor: '#2980b9'
+        });
+
+        const C = board1.create('point', [8, 2], {
+            name: 'C',
+            size: 4,
+            fillColor: '#2ecc71',
+            strokeColor: '#27ae60'
+        });
+
+        // Прямая через A и B
+        const lineAB = board1.create('line', [A, B], {
+            strokeColor: '#95a5a6',
+            strokeWidth: 1,
+            dash: 2
+        });
+
+        // Отрезок BC
+        const segmentBC = board1.create('segment', [B, C], {
+            strokeColor: '#34495e',
+            strokeWidth: 3
+        });
+
+        // Отрезок AC (для измерения)
+        const segmentAC = board1.create('segment', [A, C], {
+            strokeColor: '#9b59b6',
+            strokeWidth: 2,
+            dash: 1
+        });
+
+        // Функция обновления значений для первой доски
+        function updateBoard1() {
+            const distAB = Math.sqrt(Math.pow(B.X() - A.X(), 2) + Math.pow(B.Y() - A.Y(), 2));
+            const distBC = Math.sqrt(Math.pow(C.X() - B.X(), 2) + Math.pow(C.Y() - B.Y(), 2));
+            const distAC = Math.sqrt(Math.pow(C.X() - A.X(), 2) + Math.pow(C.Y() - A.Y(), 2));
+
+            // Вычисляем угол ABC
+            const v1x = A.X() - B.X();
+            const v1y = A.Y() - B.Y();
+            const v2x = C.X() - B.X();
+            const v2y = C.Y() - B.Y();
+            const dot = v1x * v2x + v1y * v2y;
+            const len1 = Math.sqrt(v1x * v1x + v1y * v1y);
+            const len2 = Math.sqrt(v2x * v2x + v2y * v2y);
+            const cosAngle = dot / (len1 * len2);
+            const angleABC = Math.acos(Math.max(-1, Math.min(1, cosAngle))) * 180 / Math.PI;
+
+            document.getElementById('dist-ab').textContent = distAB.toFixed(2);
+            document.getElementById('dist-bc').textContent = distBC.toFixed(2);
+            document.getElementById('dist-ac').textContent = distAC.toFixed(2);
+            document.getElementById('angle-abc').textContent = angleABC.toFixed(1);
+        }
+
+        A.on('drag', updateBoard1);
+        B.on('drag', updateBoard1);
+        C.on('drag', updateBoard1);
+        updateBoard1();
+
+        // Вторая доска: смежные и вертикальные углы
+        const board2 = JXG.JSX.initBoard('jxgbox2', {
+            boundingbox: [-6, 6, 6, -6],
+            axis: false,
+            showNavigation: false,
+            showCopyright: false
+        });
+
+        // Центральная точка
+        const O = board2.create('point', [0, 0], {
+            name: 'O',
+            size: 4,
+            fillColor: '#e74c3c',
+            strokeColor: '#c0392b',
+            fixed: true
+        });
+
+        // Создаем две пересекающиеся прямые
+        const P1 = board2.create('point', [-5, 0], {visible: false, fixed: true});
+        const P2 = board2.create('point', [5, 0], {visible: false, fixed: true});
+        const line1 = board2.create('line', [P1, P2], {
+            strokeColor: '#34495e',
+            strokeWidth: 2
+        });
+
+        // Вторая прямая с изменяемым углом
+        let currentAngle = 45;
+        const P3 = board2.create('point', [
+            () => 5 * Math.cos(currentAngle * Math.PI / 180),
+            () => 5 * Math.sin(currentAngle * Math.PI / 180)
+        ], {visible: false});
+
+        const P4 = board2.create('point', [
+            () => -5 * Math.cos(currentAngle * Math.PI / 180),
+            () => -5 * Math.sin(currentAngle * Math.PI / 180)
+        ], {visible: false});
+
+        const line2 = board2.create('line', [P3, P4], {
+            strokeColor: '#3498db',
+            strokeWidth: 2
+        });
+
+        // Отмечаем углы дугами
+        const arc1 = board2.create('arc', [O,
+            [2, 0],
+            [() => 2 * Math.cos(currentAngle * Math.PI / 180),
+             () => 2 * Math.sin(currentAngle * Math.PI / 180)]
+        ], {
+            strokeColor: '#e74c3c',
+            strokeWidth: 3
+        });
+
+        // Метка угла α
+        const labelAlpha = board2.create('text', [
+            () => 2.5 * Math.cos(currentAngle * Math.PI / 360),
+            () => 2.5 * Math.sin(currentAngle * Math.PI / 360),
+            'α'
+        ], {
+            fontSize: 20,
+            color: '#e74c3c'
+        });
+
+        // Функция обновления углов
+        function updateAngles() {
+            const alpha = parseInt(document.getElementById('slider-alpha').value);
+            currentAngle = alpha;
+
+            const adjacent = 180 - alpha;
+            const sum = alpha + adjacent;
+
+            document.getElementById('value-alpha').textContent = alpha;
+            document.getElementById('angle-alpha').textContent = alpha;
+            document.getElementById('angle-adjacent').textContent = adjacent;
+            document.getElementById('sum-adjacent').textContent = sum;
+
+            board2.update();
+        }
+
+        document.getElementById('slider-alpha').addEventListener('input', updateAngles);
+        updateAngles();
+    </script>
+</body>
+</html>

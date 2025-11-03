@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Все задания | Геометрия 7-9</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">
+            <a href="../index.html">📐 Геометрия 7-9</a>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-parent active"><a href="#">Все задания</a></li>
+            <li class="nav-child active"><a href="exercises.html">Сборник заданий</a></li>
+        </ul>
+    </nav>
+
+    <div class="content">
+        <header>
+            <h1>Сборник практических заданий</h1>
+            <p>Задания по всем темам курса геометрии 7-9 классов с подробными решениями</p>
+        </header>
+
+        <main>
+            <!-- Базовые понятия -->
+            <section>
+                <h2>📏 Базовые понятия</h2>
+
+                <div class="example">
+                    <h3>Задача 1.1</h3>
+                    <p>Один из смежных углов в 3 раза больше другого. Найдите эти углы.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Пусть меньший угол равен x, тогда больший равен 3x.</p>
+                        <p>Сумма смежных углов равна 180°:</p>
+                        <p>\[x + 3x = 180°\]</p>
+                        <p>\[4x = 180°\]</p>
+                        <p>\[x = 45°\]</p>
+                        <p>Больший угол: 3x = 135°</p>
+                        <p><strong>Ответ:</strong> 45° и 135°</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Задача 1.2</h3>
+                    <p>На прямой отмечены точки A, B, C, D так, что AB = 3 см, BC = 5 см, CD = 2 см. Найдите расстояние AD.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Если точки расположены на прямой в порядке A-B-C-D:</p>
+                        <p>\[AD = AB + BC + CD = 3 + 5 + 2 = 10 \text{ см}\]</p>
+                        <p><strong>Ответ:</strong> 10 см</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Треугольники -->
+            <section>
+                <h2>△ Треугольники</h2>
+
+                <div class="example">
+                    <h3>Задача 2.1</h3>
+                    <p>В треугольнике один угол равен 30°, второй — 70°. Найдите третий угол.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Сумма углов треугольника равна 180°:</p>
+                        <p>\[\gamma = 180° - 30° - 70° = 80°\]</p>
+                        <p><strong>Ответ:</strong> 80°</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Задача 2.2</h3>
+                    <p>Катеты прямоугольного треугольника равны 5 см и 12 см. Найдите гипотенузу.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>По теореме Пифагора:</p>
+                        <p>\[c^2 = a^2 + b^2\]</p>
+                        <p>\[c^2 = 5^2 + 12^2 = 25 + 144 = 169\]</p>
+                        <p>\[c = \sqrt{169} = 13 \text{ см}\]</p>
+                        <p><strong>Ответ:</strong> 13 см</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Задача 2.3</h3>
+                    <p>Периметр равностороннего треугольника равен 24 см. Найдите длину его стороны.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>В равностороннем треугольнике все стороны равны:</p>
+                        <p>\[P = 3a\]</p>
+                        <p>\[24 = 3a\]</p>
+                        <p>\[a = 8 \text{ см}\]</p>
+                        <p><strong>Ответ:</strong> 8 см</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Окружности -->
+            <section>
+                <h2>⭕ Окружности</h2>
+
+                <div class="example">
+                    <h3>Задача 3.1</h3>
+                    <p>Радиус окружности равен 7 см. Найдите длину окружности и площадь круга. (π ≈ 3,14)</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Длина окружности: \(C = 2\pi r\)</p>
+                        <p>\[C = 2 \cdot 3.14 \cdot 7 = 43.96 \text{ см}\]</p>
+                        <p>Площадь круга: \(S = \pi r^2\)</p>
+                        <p>\[S = 3.14 \cdot 7^2 = 3.14 \cdot 49 = 153.86 \text{ см}^2\]</p>
+                        <p><strong>Ответ:</strong> C ≈ 43,96 см, S ≈ 153,86 см²</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Задача 3.2</h3>
+                    <p>Диаметр окружности равен 10 см. Найдите радиус.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Радиус — это половина диаметра:</p>
+                        <p>\[r = \frac{d}{2} = \frac{10}{2} = 5 \text{ см}\]</p>
+                        <p><strong>Ответ:</strong> 5 см</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Четырехугольники -->
+            <section>
+                <h2>▭ Четырехугольники</h2>
+
+                <div class="example">
+                    <h3>Задача 4.1</h3>
+                    <p>Стороны параллелограмма равны 8 см и 5 см. Найдите периметр.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>В параллелограмме противоположные стороны равны:</p>
+                        <p>\[P = 2(a + b) = 2(8 + 5) = 2 \cdot 13 = 26 \text{ см}\]</p>
+                        <p><strong>Ответ:</strong> 26 см</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Задача 4.2</h3>
+                    <p>Площадь прямоугольника 48 см², одна сторона 8 см. Найдите другую сторону и периметр.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Из формулы площади прямоугольника:</p>
+                        <p>\[S = a \cdot b\]</p>
+                        <p>\[48 = 8 \cdot b\]</p>
+                        <p>\[b = 6 \text{ см}\]</p>
+                        <p>Периметр:</p>
+                        <p>\[P = 2(a + b) = 2(8 + 6) = 28 \text{ см}\]</p>
+                        <p><strong>Ответ:</strong> вторая сторона 6 см, периметр 28 см</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Задача 4.3</h3>
+                    <p>Диагонали ромба равны 6 см и 8 см. Найдите площадь ромба.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Площадь ромба через диагонали:</p>
+                        <p>\[S = \frac{d_1 \cdot d_2}{2}\]</p>
+                        <p>\[S = \frac{6 \cdot 8}{2} = \frac{48}{2} = 24 \text{ см}^2\]</p>
+                        <p><strong>Ответ:</strong> 24 см²</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Трапеции -->
+            <section>
+                <h2>⏢ Трапеции</h2>
+
+                <div class="example">
+                    <h3>Задача 5.1</h3>
+                    <p>Основания трапеции 10 см и 6 см, высота 5 см. Найдите площадь.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Формула площади трапеции:</p>
+                        <p>\[S = \frac{(a + b) \cdot h}{2}\]</p>
+                        <p>\[S = \frac{(10 + 6) \cdot 5}{2} = \frac{16 \cdot 5}{2} = 40 \text{ см}^2\]</p>
+                        <p><strong>Ответ:</strong> 40 см²</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Задача 5.2</h3>
+                    <p>Средняя линия трапеции равна 9 см, высота 4 см. Найдите площадь.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Площадь через среднюю линию:</p>
+                        <p>\[S = m \cdot h = 9 \cdot 4 = 36 \text{ см}^2\]</p>
+                        <p><strong>Ответ:</strong> 36 см²</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Задача 5.3</h3>
+                    <p>Основания трапеции 12 см и 8 см. Найдите среднюю линию.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Средняя линия — полусумма оснований:</p>
+                        <p>\[m = \frac{a + b}{2} = \frac{12 + 8}{2} = 10 \text{ см}\]</p>
+                        <p><strong>Ответ:</strong> 10 см</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Площади -->
+            <section>
+                <h2>📐 Площади фигур</h2>
+
+                <div class="example">
+                    <h3>Задача 6.1</h3>
+                    <p>Основание треугольника 12 см, высота 8 см. Найдите площадь.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>\[S = \frac{1}{2} \cdot a \cdot h = \frac{1}{2} \cdot 12 \cdot 8 = 48 \text{ см}^2\]</p>
+                        <p><strong>Ответ:</strong> 48 см²</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Задача 6.2</h3>
+                    <p>Стороны треугольника 6 см, 8 см, 10 см. Найдите площадь по формуле Герона.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Полупериметр: \(p = \frac{6 + 8 + 10}{2} = 12\)</p>
+                        <p>Формула Герона:</p>
+                        <p>\[S = \sqrt{p(p-a)(p-b)(p-c)}\]</p>
+                        <p>\[S = \sqrt{12 \cdot 6 \cdot 4 \cdot 2} = \sqrt{576} = 24 \text{ см}^2\]</p>
+                        <p><strong>Ответ:</strong> 24 см²</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Задача 6.3</h3>
+                    <p>Сторона квадрата 7 см. Найдите площадь и периметр.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Площадь квадрата: \(S = a^2 = 7^2 = 49 \text{ см}^2\)</p>
+                        <p>Периметр квадрата: \(P = 4a = 4 \cdot 7 = 28 \text{ см}\)</p>
+                        <p><strong>Ответ:</strong> S = 49 см², P = 28 см</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Векторы -->
+            <section>
+                <h2>→ Векторы</h2>
+
+                <div class="example">
+                    <h3>Задача 7.1</h3>
+                    <p>Векторы \(\vec{a} = (5, 2)\) и \(\vec{b} = (3, 4)\). Найдите \(\vec{a} + \vec{b}\).</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>\[\vec{a} + \vec{b} = (5 + 3, 2 + 4) = (8, 6)\]</p>
+                        <p><strong>Ответ:</strong> (8, 6)</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Задача 7.2</h3>
+                    <p>Найдите длину вектора \(\vec{c} = (3, 4)\).</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>\[|\vec{c}| = \sqrt{3^2 + 4^2} = \sqrt{9 + 16} = \sqrt{25} = 5\]</p>
+                        <p><strong>Ответ:</strong> 5</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Задача 7.3</h3>
+                    <p>Вектор \(\vec{a} = (4, -2)\). Найдите \(2\vec{a}\) и \(-\vec{a}\).</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>\[2\vec{a} = (2 \cdot 4, 2 \cdot (-2)) = (8, -4)\]</p>
+                        <p>\[-\vec{a} = (-4, 2)\]</p>
+                        <p><strong>Ответ:</strong> 2⃗a = (8, -4), -⃗a = (-4, 2)</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Задача 7.4</h3>
+                    <p>Векторы \(\vec{a} = (6, 3)\) и \(\vec{b} = (2, 5)\). Найдите \(\vec{a} - \vec{b}\).</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>\[\vec{a} - \vec{b} = (6 - 2, 3 - 5) = (4, -2)\]</p>
+                        <p><strong>Ответ:</strong> (4, -2)</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Задачи повышенной сложности -->
+            <section>
+                <h2>⭐ Задачи повышенной сложности</h2>
+
+                <div class="example">
+                    <h3>Задача 8.1</h3>
+                    <p>В прямоугольном треугольнике гипотенуза равна 13 см, один из катетов — 5 см. Найдите площадь треугольника.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Найдем второй катет по теореме Пифагора:</p>
+                        <p>\[b^2 = c^2 - a^2 = 13^2 - 5^2 = 169 - 25 = 144\]</p>
+                        <p>\[b = 12 \text{ см}\]</p>
+                        <p>Площадь:</p>
+                        <p>\[S = \frac{1}{2} \cdot 5 \cdot 12 = 30 \text{ см}^2\]</p>
+                        <p><strong>Ответ:</strong> 30 см²</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Задача 8.2</h3>
+                    <p>Диагонали параллелограмма равны 10 см и 8 см, угол между ними 60°. Найдите площадь параллелограмма.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Площадь параллелограмма через диагонали:</p>
+                        <p>\[S = \frac{1}{2} \cdot d_1 \cdot d_2 \cdot \sin \alpha\]</p>
+                        <p>\[S = \frac{1}{2} \cdot 10 \cdot 8 \cdot \sin 60°\]</p>
+                        <p>\[S = \frac{1}{2} \cdot 10 \cdot 8 \cdot \frac{\sqrt{3}}{2} = 20\sqrt{3} \approx 34.64 \text{ см}^2\]</p>
+                        <p><strong>Ответ:</strong> 20√3 см² ≈ 34,64 см²</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Задача 8.3</h3>
+                    <p>Площадь круга 78,5 см² (π ≈ 3,14). Найдите радиус и длину окружности.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Из формулы площади круга:</p>
+                        <p>\[S = \pi r^2\]</p>
+                        <p>\[78.5 = 3.14 \cdot r^2\]</p>
+                        <p>\[r^2 = 25\]</p>
+                        <p>\[r = 5 \text{ см}\]</p>
+                        <p>Длина окружности:</p>
+                        <p>\[C = 2\pi r = 2 \cdot 3.14 \cdot 5 = 31.4 \text{ см}\]</p>
+                        <p><strong>Ответ:</strong> r = 5 см, C = 31,4 см</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="../js/common.js"></script>
+</body>
+</html>

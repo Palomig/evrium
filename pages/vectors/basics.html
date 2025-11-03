@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Векторы | Геометрия 7-9</title>
+    <link rel="stylesheet" href="../../css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/jsxgraph@1.4.6/distrib/jsxgraphcore.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph@1.4.6/distrib/jsxgraph.css">
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">
+            <a href="../../index.html">📐 Геометрия 7-9</a>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-parent active"><a href="#">Векторы</a></li>
+            <li class="nav-child active"><a href="basics.html">Основные понятия</a></li>
+        </ul>
+    </nav>
+
+    <div class="content">
+        <header>
+            <h1>Векторы: основные понятия и операции</h1>
+        </header>
+
+        <main>
+            <section>
+                <h2>Определение вектора</h2>
+                <div class="definition">
+                    <strong>Вектор</strong> — направленный отрезок, имеющий начало и конец. Обозначается: \(\vec{AB}\) или \(\vec{a}\).
+                </div>
+
+                <div class="definition">
+                    <strong>Длина (модуль) вектора</strong> — расстояние от начала вектора до его конца. Обозначается: \(|\vec{a}|\) или просто \(a\).
+                </div>
+
+                <div class="property">
+                    <strong>Нулевой вектор</strong> \(\vec{0}\) — вектор, у которого начало и конец совпадают. Его длина равна 0.
+                </div>
+
+                <div class="property">
+                    <strong>Коллинеарные векторы</strong> — векторы, лежащие на одной прямой или на параллельных прямых.
+                </div>
+
+                <div class="property">
+                    <strong>Равные векторы</strong> — векторы, имеющие одинаковую длину и одинаковое направление.
+                </div>
+            </section>
+
+            <section>
+                <h2>Интерактивная визуализация векторов</h2>
+                <p>Перемещайте концы векторов \(\vec{a}\) и \(\vec{b}\) мышью. Наблюдайте результаты операций: сложения, вычитания и умножения на число.</p>
+
+                <div id="jxgbox" class="jxgbox"></div>
+
+                <div class="controls">
+                    <div class="control-group">
+                        <label class="control-label">Множитель k для вектора: <span id="value-k" class="control-value">1.5</span></label>
+                        <input type="range" id="slider-k" class="slider" min="-3" max="3" step="0.5" value="1.5">
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <h3>Параметры векторов:</h3>
+                    <p><strong>Вектор \(\vec{a}\):</strong></p>
+                    <ul>
+                        <li>Координаты: (<span id="vec-a-x">0</span>, <span id="vec-a-y">0</span>)</li>
+                        <li>Длина: |\(\vec{a}\)| = <span id="vec-a-len">0</span></li>
+                    </ul>
+                    <p><strong>Вектор \(\vec{b}\):</strong></p>
+                    <ul>
+                        <li>Координаты: (<span id="vec-b-x">0</span>, <span id="vec-b-y">0</span>)</li>
+                        <li>Длина: |\(\vec{b}\)| = <span id="vec-b-len">0</span></li>
+                    </ul>
+                    <p><strong>Сумма \(\vec{a} + \vec{b}\):</strong></p>
+                    <ul>
+                        <li>Координаты: (<span id="vec-sum-x">0</span>, <span id="vec-sum-y">0</span>)</li>
+                        <li>Длина: <span id="vec-sum-len">0</span></li>
+                    </ul>
+                    <p><strong>Разность \(\vec{a} - \vec{b}\):</strong></p>
+                    <ul>
+                        <li>Координаты: (<span id="vec-diff-x">0</span>, <span id="vec-diff-y">0</span>)</li>
+                        <li>Длина: <span id="vec-diff-len">0</span></li>
+                    </ul>
+                    <p><strong>Произведение k·\(\vec{a}\) (k = <span id="k-value">1.5</span>):</strong></p>
+                    <ul>
+                        <li>Координаты: (<span id="vec-mult-x">0</span>, <span id="vec-mult-y">0</span>)</li>
+                        <li>Длина: <span id="vec-mult-len">0</span></li>
+                    </ul>
+                </div>
+            </section>
+
+            <section>
+                <h2>Операции с векторами</h2>
+
+                <h3>1. Сложение векторов</h3>
+                <div class="theorem">
+                    <strong>Правило треугольника:</strong><br>
+                    Чтобы сложить два вектора, нужно начало второго вектора совместить с концом первого. Вектор, соединяющий начало первого с концом второго, — это сумма векторов.
+                </div>
+
+                <div class="theorem">
+                    <strong>Правило параллелограмма:</strong><br>
+                    Если начала двух векторов совмещены, их сумма — диагональ параллелограмма, построенного на этих векторах.
+                </div>
+
+                <div class="property">
+                    <strong>Координатная форма:</strong>
+                    <p>\[\vec{a} + \vec{b} = (a_x + b_x, a_y + b_y)\]</p>
+                </div>
+
+                <h3>2. Вычитание векторов</h3>
+                <div class="property">
+                    <strong>Разность векторов:</strong>
+                    <p>\[\vec{a} - \vec{b} = \vec{a} + (-\vec{b})\]</p>
+                    где \(-\vec{b}\) — вектор, противоположный вектору \(\vec{b}\) (той же длины, но противоположного направления)
+                </div>
+
+                <div class="property">
+                    <strong>Координатная форма:</strong>
+                    <p>\[\vec{a} - \vec{b} = (a_x - b_x, a_y - b_y)\]</p>
+                </div>
+
+                <h3>3. Умножение вектора на число</h3>
+                <div class="property">
+                    <strong>Определение:</strong><br>
+                    При умножении вектора \(\vec{a}\) на число k получается вектор \(k\vec{a}\):
+                    <ul>
+                        <li>Если k > 0: вектор того же направления, длина умножается на k</li>
+                        <li>Если k < 0: вектор противоположного направления, длина умножается на |k|</li>
+                        <li>Если k = 0: получается нулевой вектор</li>
+                    </ul>
+                </div>
+
+                <div class="property">
+                    <strong>Координатная форма:</strong>
+                    <p>\[k\vec{a} = (k \cdot a_x, k \cdot a_y)\]</p>
+                    <p>\[|k\vec{a}| = |k| \cdot |\vec{a}|\]</p>
+                </div>
+            </section>
+
+            <section>
+                <h2>Свойства операций с векторами</h2>
+
+                <div class="property">
+                    <strong>Коммутативность сложения:</strong>
+                    <p>\[\vec{a} + \vec{b} = \vec{b} + \vec{a}\]</p>
+                </div>
+
+                <div class="property">
+                    <strong>Ассоциативность сложения:</strong>
+                    <p>\[(\vec{a} + \vec{b}) + \vec{c} = \vec{a} + (\vec{b} + \vec{c})\]</p>
+                </div>
+
+                <div class="property">
+                    <strong>Дистрибутивность:</strong>
+                    <p>\[k(\vec{a} + \vec{b}) = k\vec{a} + k\vec{b}\]</p>
+                    <p>\[(k + m)\vec{a} = k\vec{a} + m\vec{a}\]</p>
+                </div>
+            </section>
+
+            <section class="examples">
+                <h2>Примеры заданий</h2>
+
+                <div class="example">
+                    <h3>Пример 1</h3>
+                    <p><strong>Задача:</strong> Даны векторы \(\vec{a} = (3, 2)\) и \(\vec{b} = (1, 4)\). Найдите \(\vec{a} + \vec{b}\).</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Складываем координаты:</p>
+                        <p>\[\vec{a} + \vec{b} = (3 + 1, 2 + 4) = (4, 6)\]</p>
+                        <p><strong>Ответ:</strong> (4, 6)</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Пример 2</h3>
+                    <p><strong>Задача:</strong> Найдите длину вектора \(\vec{c} = (6, 8)\).</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Используем формулу длины вектора:</p>
+                        <p>\[|\vec{c}| = \sqrt{c_x^2 + c_y^2}\]</p>
+                        <p>\[|\vec{c}| = \sqrt{6^2 + 8^2} = \sqrt{36 + 64} = \sqrt{100} = 10\]</p>
+                        <p><strong>Ответ:</strong> 10</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Пример 3</h3>
+                    <p><strong>Задача:</strong> Дан вектор \(\vec{a} = (2, -3)\). Найдите вектор \(3\vec{a}\).</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Умножаем каждую координату на 3:</p>
+                        <p>\[3\vec{a} = (3 \cdot 2, 3 \cdot (-3)) = (6, -9)\]</p>
+                        <p><strong>Ответ:</strong> (6, -9)</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Пример 4</h3>
+                    <p><strong>Задача:</strong> Векторы \(\vec{a} = (4, 2)\) и \(\vec{b} = (1, 3)\). Найдите \(\vec{a} - \vec{b}\).</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Вычитаем координаты:</p>
+                        <p>\[\vec{a} - \vec{b} = (4 - 1, 2 - 3) = (3, -1)\]</p>
+                        <p><strong>Ответ:</strong> (3, -1)</p>
+                    </div>
+                </div>
+
+                <div class="example">
+                    <h3>Пример 5</h3>
+                    <p><strong>Задача:</strong> Докажите, что если \(\vec{a} = (2, 3)\) и \(\vec{b} = (4, 6)\), то векторы коллинеарны.</p>
+                    <button onclick="toggleAnswer(this)" class="answer-btn">Показать решение</button>
+                    <div class="answer" style="display: none;">
+                        <p><strong>Решение:</strong></p>
+                        <p>Векторы коллинеарны, если один является произведением другого на число:</p>
+                        <p>\[\vec{b} = k\vec{a}\]</p>
+                        <p>Проверим: \(4 = k \cdot 2\) и \(6 = k \cdot 3\)</p>
+                        <p>Из первого уравнения: \(k = 2\)</p>
+                        <p>Из второго уравнения: \(k = 2\)</p>
+                        <p>Действительно, \(\vec{b} = 2\vec{a}\), значит векторы коллинеарны.</p>
+                        <p><strong>Ответ:</strong> Векторы коллинеарны</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="../../js/common.js"></script>
+    <script>
+        // Создаем доску JSXGraph
+        const board = JXG.JSX.initBoard('jxgbox', {
+            boundingbox: [-2, 8, 10, -2],
+            axis: true,
+            showNavigation: false,
+            showCopyright: false
+        });
+
+        // Начальная точка (общее начало координат)
+        const O = board.create('point', [0, 0], {
+            name: 'O',
+            size: 4,
+            fillColor: '#95a5a6',
+            strokeColor: '#7f8c8d',
+            fixed: true
+        });
+
+        // Вектор a
+        const A = board.create('point', [3, 2], {
+            name: 'A',
+            size: 4,
+            fillColor: '#e74c3c',
+            strokeColor: '#c0392b'
+        });
+
+        const vecA = board.create('arrow', [O, A], {
+            strokeColor: '#e74c3c',
+            strokeWidth: 3,
+            lastArrow: {type: 2, size: 8}
+        });
+
+        const labelA = board.create('text', [
+            () => A.X() / 2 - 0.3,
+            () => A.Y() / 2 + 0.3,
+            '⃗a'
+        ], {
+            fontSize: 18,
+            color: '#e74c3c',
+            fontWeight: 'bold'
+        });
+
+        // Вектор b
+        const B = board.create('point', [2, 4], {
+            name: 'B',
+            size: 4,
+            fillColor: '#3498db',
+            strokeColor: '#2980b9'
+        });
+
+        const vecB = board.create('arrow', [O, B], {
+            strokeColor: '#3498db',
+            strokeWidth: 3,
+            lastArrow: {type: 2, size: 8}
+        });
+
+        const labelB = board.create('text', [
+            () => B.X() / 2 + 0.3,
+            () => B.Y() / 2 + 0.3,
+            '⃗b'
+        ], {
+            fontSize: 18,
+            color: '#3498db',
+            fontWeight: 'bold'
+        });
+
+        // Сумма векторов a + b (правило параллелограмма)
+        const Sum = board.create('point', [
+            () => A.X() + B.X(),
+            () => A.Y() + B.Y()
+        ], {
+            name: 'A+B',
+            size: 3,
+            fillColor: '#2ecc71',
+            strokeColor: '#27ae60',
+            visible: true
+        });
+
+        const vecSum = board.create('arrow', [O, Sum], {
+            strokeColor: '#2ecc71',
+            strokeWidth: 3,
+            dash: 2,
+            lastArrow: {type: 2, size: 8}
+        });
+
+        const labelSum = board.create('text', [
+            () => Sum.X() / 2 + 0.5,
+            () => Sum.Y() / 2 - 0.5,
+            '⃗a + ⃗b'
+        ], {
+            fontSize: 16,
+            color: '#2ecc71'
+        });
+
+        // Вспомогательные линии для параллелограмма
+        const parallelA = board.create('arrow', [B, Sum], {
+            strokeColor: '#e74c3c',
+            strokeWidth: 1,
+            dash: 3,
+            lastArrow: {type: 1, size: 6},
+            opacity: 0.4
+        });
+
+        const parallelB = board.create('arrow', [A, Sum], {
+            strokeColor: '#3498db',
+            strokeWidth: 1,
+            dash: 3,
+            lastArrow: {type: 1, size: 6},
+            opacity: 0.4
+        });
+
+        // Разность векторов a - b
+        const Diff = board.create('point', [
+            () => A.X() - B.X(),
+            () => A.Y() - B.Y()
+        ], {
+            name: 'A-B',
+            size: 3,
+            fillColor: '#9b59b6',
+            strokeColor: '#8e44ad',
+            visible: true
+        });
+
+        const vecDiff = board.create('arrow', [O, Diff], {
+            strokeColor: '#9b59b6',
+            strokeWidth: 3,
+            dash: 2,
+            lastArrow: {type: 2, size: 8}
+        });
+
+        const labelDiff = board.create('text', [
+            () => Diff.X() / 2 - 0.3,
+            () => Diff.Y() / 2 - 0.5,
+            '⃗a - ⃗b'
+        ], {
+            fontSize: 16,
+            color: '#9b59b6'
+        });
+
+        // Произведение k * a
+        let k = 1.5;
+        const Mult = board.create('point', [
+            () => k * A.X(),
+            () => k * A.Y()
+        ], {
+            name: 'k·A',
+            size: 3,
+            fillColor: '#f39c12',
+            strokeColor: '#e67e22',
+            visible: true
+        });
+
+        const vecMult = board.create('arrow', [O, Mult], {
+            strokeColor: '#f39c12',
+            strokeWidth: 3,
+            dash: 2,
+            lastArrow: {type: 2, size: 8}
+        });
+
+        const labelMult = board.create('text', [
+            () => Mult.X() / 2 + 0.5,
+            () => Mult.Y() / 2 + 0.5,
+            () => `k·⃗a (k=${k})`
+        ], {
+            fontSize: 16,
+            color: '#f39c12'
+        });
+
+        // Функция обновления значений
+        function updateValues() {
+            const ax = A.X();
+            const ay = A.Y();
+            const bx = B.X();
+            const by = B.Y();
+
+            const lenA = Math.sqrt(ax * ax + ay * ay);
+            const lenB = Math.sqrt(bx * bx + by * by);
+
+            const sumX = ax + bx;
+            const sumY = ay + by;
+            const lenSum = Math.sqrt(sumX * sumX + sumY * sumY);
+
+            const diffX = ax - bx;
+            const diffY = ay - by;
+            const lenDiff = Math.sqrt(diffX * diffX + diffY * diffY);
+
+            const multX = k * ax;
+            const multY = k * ay;
+            const lenMult = Math.sqrt(multX * multX + multY * multY);
+
+            // Обновляем отображение
+            document.getElementById('vec-a-x').textContent = ax.toFixed(2);
+            document.getElementById('vec-a-y').textContent = ay.toFixed(2);
+            document.getElementById('vec-a-len').textContent = lenA.toFixed(2);
+
+            document.getElementById('vec-b-x').textContent = bx.toFixed(2);
+            document.getElementById('vec-b-y').textContent = by.toFixed(2);
+            document.getElementById('vec-b-len').textContent = lenB.toFixed(2);
+
+            document.getElementById('vec-sum-x').textContent = sumX.toFixed(2);
+            document.getElementById('vec-sum-y').textContent = sumY.toFixed(2);
+            document.getElementById('vec-sum-len').textContent = lenSum.toFixed(2);
+
+            document.getElementById('vec-diff-x').textContent = diffX.toFixed(2);
+            document.getElementById('vec-diff-y').textContent = diffY.toFixed(2);
+            document.getElementById('vec-diff-len').textContent = lenDiff.toFixed(2);
+
+            document.getElementById('vec-mult-x').textContent = multX.toFixed(2);
+            document.getElementById('vec-mult-y').textContent = multY.toFixed(2);
+            document.getElementById('vec-mult-len').textContent = lenMult.toFixed(2);
+
+            document.getElementById('value-k').textContent = k.toFixed(1);
+            document.getElementById('k-value').textContent = k.toFixed(1);
+
+            board.update();
+        }
+
+        // Обработчик бегунка
+        document.getElementById('slider-k').addEventListener('input', function() {
+            k = parseFloat(this.value);
+            updateValues();
+        });
+
+        // Обновляем при перемещении точек
+        A.on('drag', updateValues);
+        B.on('drag', updateValues);
+
+        // Начальное обновление
+        updateValues();
+    </script>
+</body>
+</html>
