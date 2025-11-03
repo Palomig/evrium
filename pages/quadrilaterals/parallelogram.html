@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Параллелограмм | Геометрия 7-9</title>
+
+    <!-- JSXGraph -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css" />
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.js"></script>
+
+    <!-- MathJax -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>MathJax = { tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] } };</script>
+
+    <link rel="stylesheet" href="../../css/style.css">
+</head>
+<body>
+    <div class="container">
+        <nav class="sidebar">
+            <h1>Геометрия<br>7-9 классы</h1>
+            <ul class="menu">
+                <li class="menu-item">
+                    <a href="../../index.html">🏠 Главная</a>
+                </li>
+                <li class="menu-item">
+                    <a href="#" style="cursor: default;">Четырехугольники</a>
+                    <ul class="submenu">
+                        <li class="submenu-item"><a href="parallelogram.html" class="active">Параллелограмм</a></li>
+                        <li class="submenu-item"><a href="rectangle.html">Прямоугольник</a></li>
+                        <li class="submenu-item"><a href="rhombus.html">Ромб</a></li>
+                        <li class="submenu-item"><a href="square.html">Квадрат</a></li>
+                        <li class="submenu-item"><a href="exercises.html">Задания</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+
+        <main class="content">
+            <div class="page-header">
+                <h1>Параллелограмм</h1>
+                <p class="description">Перемещайте вершины, чтобы изменить форму параллелограмма. Наблюдайте, как меняются его свойства!</p>
+            </div>
+
+            <div class="section">
+                <h2>Интерактивная визуализация</h2>
+                <p>Перемещайте точку B или используйте бегунки. Диагонали всегда делятся точкой пересечения пополам!</p>
+
+                <div class="controls">
+                    <div class="control-group">
+                        <div class="control-label">
+                            <span>Основание (AB):</span>
+                            <span class="control-value" id="value-base">5.0</span>
+                        </div>
+                        <input type="range" id="slider-base" class="slider" min="2" max="8" step="0.1" value="5">
+                    </div>
+
+                    <div class="control-group">
+                        <div class="control-label">
+                            <span>Высота:</span>
+                            <span class="control-value" id="value-height">3.0</span>
+                        </div>
+                        <input type="range" id="slider-height" class="slider" min="1" max="5" step="0.1" value="3">
+                    </div>
+
+                    <div class="control-group">
+                        <div class="control-label">
+                            <span>Угол наклона (градусы):</span>
+                            <span class="control-value" id="value-angle">30</span>
+                        </div>
+                        <input type="range" id="slider-angle" class="slider" min="15" max="75" step="1" value="30">
+                    </div>
+
+                    <div style="margin-top: 15px; padding: 15px; background: white; border-radius: 5px;">
+                        <div><strong>Площадь:</strong> <span id="value-area" style="color: #e74c3c; font-weight: bold; font-size: 18px;">15.0</span></div>
+                        <div style="margin-top: 8px;"><strong>Периметр:</strong> <span id="value-perimeter" style="color: #3498db; font-weight: bold;">~17.46</span></div>
+                    </div>
+                </div>
+
+                <div id="jxgbox" class="jxgbox"></div>
+            </div>
+
+            <div class="section">
+                <h2>Определение</h2>
+                <p><strong>Параллелограмм</strong> — это четырехугольник, у которого противоположные стороны попарно параллельны.</p>
+
+                <div class="property">
+                    <div class="property-title">Свойства параллелограмма:</div>
+                    <ul>
+                        <li>Противоположные стороны равны: $AB = CD$, $BC = AD$</li>
+                        <li>Противоположные углы равны: $\angle A = \angle C$, $\angle B = \angle D$</li>
+                        <li>Диагонали точкой пересечения делятся пополам: $AO = OC$, $BO = OD$</li>
+                        <li>Сумма углов, прилежащих к одной стороне, равна $180°$</li>
+                    </ul>
+                </div>
+
+                <div class="theorem">
+                    <div class="theorem-title">Признаки параллелограмма:</div>
+                    <p>Четырехугольник является параллелограммом, если выполняется одно из условий:</p>
+                    <ol>
+                        <li>Противоположные стороны попарно равны</li>
+                        <li>Противоположные углы попарно равны</li>
+                        <li>Диагонали точкой пересечения делятся пополам</li>
+                        <li>Две противоположные стороны равны и параллельны</li>
+                    </ol>
+                </div>
+
+                <h3>Формулы</h3>
+
+                <div class="theorem">
+                    <div class="theorem-title">Площадь параллелограмма:</div>
+                    <div class="formula">$$S = a \cdot h$$</div>
+                    <p>где $a$ — основание, $h$ — высота</p>
+
+                    <div class="formula">$$S = a \cdot b \cdot \sin\alpha$$</div>
+                    <p>где $a$ и $b$ — смежные стороны, $\alpha$ — угол между ними</p>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Примеры</h2>
+
+                <div class="exercise">
+                    <div class="exercise-title">Пример 1</div>
+                    <div class="exercise-text">
+                        В параллелограмме сторона равна 8 см, высота, проведенная к этой стороне, равна 5 см. Найдите площадь параллелограмма.
+                    </div>
+                    <button class="btn-answer" onclick="toggleAnswer(this)">Показать решение</button>
+                    <div class="answer">
+                        <div class="answer-title">Решение:</div>
+                        <p>$S = a \cdot h = 8 \cdot 5 = 40$ см²</p>
+                        <p><strong>Ответ:</strong> 40 см²</p>
+                    </div>
+                </div>
+
+                <div class="exercise">
+                    <div class="exercise-title">Пример 2</div>
+                    <div class="exercise-text">
+                        Периметр параллелограмма равен 36 см. Одна из сторон на 2 см больше другой. Найдите стороны параллелограмма.
+                    </div>
+                    <button class="btn-answer" onclick="toggleAnswer(this)">Показать решение</button>
+                    <div class="answer">
+                        <div class="answer-title">Решение:</div>
+                        <p>Пусть одна сторона $x$ см, тогда другая $(x + 2)$ см</p>
+                        <p>Периметр: $P = 2x + 2(x + 2) = 36$</p>
+                        <p>$2x + 2x + 4 = 36$</p>
+                        <p>$4x = 32$</p>
+                        <p>$x = 8$ см</p>
+                        <p>Вторая сторона: $8 + 2 = 10$ см</p>
+                        <p><strong>Ответ:</strong> 8 см и 10 см</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../../js/common.js"></script>
+    <script>
+        const board = JXG.JSXGraph.initBoard('jxgbox', {
+            boundingbox: [-1, 6, 10, -2],
+            axis: false,
+            showNavigation: false,
+            showCopyright: false
+        });
+
+        // Начальные параметры
+        let base = 5;
+        let height = 3;
+        let angle = 30 * Math.PI / 180;
+
+        // Вычисляем координаты
+        let offsetX = height / Math.tan(angle);
+
+        // Вершины параллелограмма
+        let A = board.create('point', [0, 0], {
+            name: 'A',
+            size: 5,
+            fillColor: '#e74c3c',
+            strokeColor: '#c0392b',
+            fixed: true
+        });
+
+        let B = board.create('point', [base, 0], {
+            name: 'B',
+            size: 5,
+            fillColor: '#e74c3c',
+            strokeColor: '#c0392b',
+            fixed: false
+        });
+
+        let D = board.create('point', [offsetX, height], {
+            name: 'D',
+            size: 5,
+            fillColor: '#e74c3c',
+            strokeColor: '#c0392b',
+            fixed: false
+        });
+
+        let C = board.create('point', [
+            function() { return B.X() + D.X(); },
+            function() { return D.Y(); }
+        ], {
+            name: 'C',
+            size: 5,
+            fillColor: '#e74c3c',
+            strokeColor: '#c0392b'
+        });
+
+        // Параллелограмм
+        let parallelogram = board.create('polygon', [A, B, C, D], {
+            fillColor: '#3498db',
+            fillOpacity: 0.2,
+            borders: {
+                strokeColor: '#2c3e50',
+                strokeWidth: 3
+            }
+        });
+
+        // Диагонали
+        let diag1 = board.create('segment', [A, C], {
+            strokeColor: '#e74c3c',
+            strokeWidth: 2,
+            dash: 2
+        });
+
+        let diag2 = board.create('segment', [B, D], {
+            strokeColor: '#2ecc71',
+            strokeWidth: 2,
+            dash: 2
+        });
+
+        // Точка пересечения диагоналей
+        let O = board.create('intersection', [diag1, diag2], {
+            name: 'O',
+            size: 4,
+            fillColor: '#f39c12',
+            strokeColor: '#d68910'
+        });
+
+        // Высота
+        let heightLine = board.create('segment', [
+            [function() { return D.X(); }, 0],
+            D
+        ], {
+            strokeColor: '#9b59b6',
+            strokeWidth: 2,
+            dash: 3
+        });
+
+        let heightLabel = board.create('text', [
+            function() { return D.X() + 0.2; },
+            function() { return D.Y() / 2; },
+            function() { return 'h = ' + D.Y().toFixed(2); }
+        ], {
+            fontSize: 16,
+            color: '#9b59b6',
+            fontWeight: 'bold'
+        });
+
+        // Подпись основания
+        let baseLabel = board.create('text', [
+            function() { return B.X() / 2; },
+            -0.5,
+            function() { return 'a = ' + B.X().toFixed(2); }
+        ], {
+            fontSize: 16,
+            color: '#2c3e50',
+            fontWeight: 'bold'
+        });
+
+        // Функция обновления значений
+        function updateValues() {
+            const baseLen = B.X();
+            const heightVal = D.Y();
+            const sideLen = Math.sqrt(Math.pow(D.X(), 2) + Math.pow(D.Y(), 2));
+            const area = baseLen * heightVal;
+            const perimeter = 2 * (baseLen + sideLen);
+            const angleVal = Math.atan(heightVal / D.X()) * 180 / Math.PI;
+
+            document.getElementById('value-base').textContent = baseLen.toFixed(2);
+            document.getElementById('value-height').textContent = heightVal.toFixed(2);
+            document.getElementById('value-angle').textContent = Math.round(angleVal);
+            document.getElementById('value-area').textContent = area.toFixed(2);
+            document.getElementById('value-perimeter').textContent = perimeter.toFixed(2);
+        }
+
+        // Обработчики бегунков
+        document.getElementById('slider-base').addEventListener('input', function() {
+            const val = parseFloat(this.value);
+            B.moveTo([val, 0]);
+            board.update();
+            updateValues();
+        });
+
+        document.getElementById('slider-height').addEventListener('input', function() {
+            const val = parseFloat(this.value);
+            const currentAngle = Math.atan(D.Y() / D.X());
+            const newOffsetX = val / Math.tan(currentAngle);
+            D.moveTo([newOffsetX, val]);
+            board.update();
+            updateValues();
+        });
+
+        document.getElementById('slider-angle').addEventListener('input', function() {
+            const angleDeg = parseInt(this.value);
+            const angleRad = angleDeg * Math.PI / 180;
+            const currentHeight = D.Y();
+            const newOffsetX = currentHeight / Math.tan(angleRad);
+            D.moveTo([newOffsetX, currentHeight]);
+            board.update();
+            updateValues();
+        });
+
+        // Обновление при перемещении точек
+        B.on('drag', updateValues);
+        D.on('drag', updateValues);
+
+        updateValues();
+    </script>
+</body>
+</html>

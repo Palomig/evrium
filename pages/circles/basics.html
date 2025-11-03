@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Окружность | Геометрия 7-9</title>
+
+    <!-- JSXGraph -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css" />
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.js"></script>
+
+    <!-- MathJax -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>MathJax = { tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] } };</script>
+
+    <link rel="stylesheet" href="../../css/style.css">
+</head>
+<body>
+    <div class="container">
+        <nav class="sidebar">
+            <h1>Геометрия<br>7-9 классы</h1>
+            <ul class="menu">
+                <li class="menu-item">
+                    <a href="../../index.html">🏠 Главная</a>
+                </li>
+                <li class="menu-item">
+                    <a href="#" style="cursor: default;">Окружности</a>
+                    <ul class="submenu">
+                        <li class="submenu-item"><a href="basics.html" class="active">Основные понятия</a></li>
+                        <li class="submenu-item"><a href="tangent.html">Касательная</a></li>
+                        <li class="submenu-item"><a href="angles.html">Углы в окружности</a></li>
+                        <li class="submenu-item"><a href="exercises.html">Задания</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+
+        <main class="content">
+            <div class="page-header">
+                <h1>Окружность: основные понятия</h1>
+                <p class="description">Изучите элементы окружности интерактивно: радиус, диаметр, хорду. Перемещайте точки и наблюдайте изменения!</p>
+            </div>
+
+            <!-- Интерактивная визуализация -->
+            <div class="section">
+                <h2>Интерактивная визуализация</h2>
+
+                <!-- Бегунки -->
+                <div class="controls">
+                    <div class="control-group">
+                        <div class="control-label">
+                            <span>Радиус окружности:</span>
+                            <span class="control-value" id="value-radius">3.0</span>
+                        </div>
+                        <input type="range" id="slider-radius" class="slider" min="1" max="5" step="0.1" value="3">
+                    </div>
+
+                    <div style="margin-top: 15px; padding: 15px; background: white; border-radius: 5px;">
+                        <div style="margin-bottom: 8px;"><strong>Диаметр:</strong> <span id="value-diameter" style="color: #2ecc71; font-weight: bold;">6.0</span></div>
+                        <div style="margin-bottom: 8px;"><strong>Длина окружности:</strong> <span id="value-circumference" style="color: #3498db; font-weight: bold;">18.85</span></div>
+                        <div><strong>Площадь круга:</strong> <span id="value-area" style="color: #e74c3c; font-weight: bold;">28.27</span></div>
+                    </div>
+                </div>
+
+                <div id="jxgbox" class="jxgbox"></div>
+            </div>
+
+            <!-- Теория -->
+            <div class="section">
+                <h2>Определение</h2>
+                <p><strong>Окружность</strong> — это множество всех точек плоскости, находящихся на одинаковом расстоянии от данной точки, называемой <em>центром окружности</em>.</p>
+
+                <h3>Основные элементы окружности</h3>
+
+                <div class="property">
+                    <div class="property-title">Радиус (r)</div>
+                    <p>Отрезок, соединяющий центр окружности с любой точкой на окружности. Все радиусы окружности равны.</p>
+                </div>
+
+                <div class="property">
+                    <div class="property-title">Диаметр (d)</div>
+                    <p>Отрезок, соединяющий две точки окружности и проходящий через центр. Диаметр равен удвоенному радиусу:</p>
+                    <div class="formula">$$d = 2r$$</div>
+                </div>
+
+                <div class="property">
+                    <div class="property-title">Хорда</div>
+                    <p>Отрезок, соединяющий две точки окружности. Диаметр — самая длинная хорда.</p>
+                </div>
+
+                <div class="property">
+                    <div class="property-title">Дуга</div>
+                    <p>Часть окружности между двумя точками.</p>
+                </div>
+
+                <h3>Формулы</h3>
+
+                <div class="theorem">
+                    <div class="theorem-title">Длина окружности:</div>
+                    <div class="formula">$$C = 2\pi r = \pi d$$</div>
+                    <p>где $\pi \approx 3.14159...$ — число пи</p>
+                </div>
+
+                <div class="theorem">
+                    <div class="theorem-title">Площадь круга:</div>
+                    <div class="formula">$$S = \pi r^2$$</div>
+                </div>
+
+                <div class="important">
+                    <div class="important-title">Важно:</div>
+                    <p>Круг — это часть плоскости, ограниченная окружностью. Окружность — это граница круга.</p>
+                </div>
+            </div>
+
+            <!-- Примеры -->
+            <div class="section">
+                <h2>Примеры</h2>
+
+                <div class="exercise">
+                    <div class="exercise-title">Пример 1</div>
+                    <div class="exercise-text">
+                        Радиус окружности равен 5 см. Найдите длину окружности и площадь круга.
+                    </div>
+                    <button class="btn-answer" onclick="toggleAnswer(this)">Показать решение</button>
+                    <div class="answer">
+                        <div class="answer-title">Решение:</div>
+                        <p>Длина окружности: $C = 2\pi r = 2 \cdot 3.14 \cdot 5 = 31.4$ см</p>
+                        <p>Площадь круга: $S = \pi r^2 = 3.14 \cdot 5^2 = 3.14 \cdot 25 = 78.5$ см²</p>
+                        <p><strong>Ответ:</strong> $C = 31.4$ см, $S = 78.5$ см²</p>
+                    </div>
+                </div>
+
+                <div class="exercise">
+                    <div class="exercise-title">Пример 2</div>
+                    <div class="exercise-text">
+                        Диаметр окружности равен 12 см. Найдите радиус и площадь круга.
+                    </div>
+                    <button class="btn-answer" onclick="toggleAnswer(this)">Показать решение</button>
+                    <div class="answer">
+                        <div class="answer-title">Решение:</div>
+                        <p>Радиус: $r = \frac{d}{2} = \frac{12}{2} = 6$ см</p>
+                        <p>Площадь: $S = \pi r^2 = 3.14 \cdot 6^2 = 3.14 \cdot 36 = 113.04$ см²</p>
+                        <p><strong>Ответ:</strong> $r = 6$ см, $S \approx 113$ см²</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../../js/common.js"></script>
+    <script>
+        const board = JXG.JSXGraph.initBoard('jxgbox', {
+            boundingbox: [-6, 6, 6, -6],
+            axis: true,
+            showNavigation: false,
+            showCopyright: false
+        });
+
+        // Центр окружности
+        let O = board.create('point', [0, 0], {
+            name: 'O',
+            size: 4,
+            fillColor: '#e74c3c',
+            strokeColor: '#c0392b',
+            fixed: true,
+            label: {offset: [-10, -20]}
+        });
+
+        // Окружность
+        let radius = 3;
+        let circle = board.create('circle', [O, radius], {
+            strokeColor: '#2c3e50',
+            strokeWidth: 3,
+            fillColor: '#3498db',
+            fillOpacity: 0.1
+        });
+
+        // Точка на окружности (для радиуса)
+        let A = board.create('glider', [radius, 0, circle], {
+            name: 'A',
+            size: 4,
+            fillColor: '#2ecc71',
+            strokeColor: '#27ae60'
+        });
+
+        // Радиус
+        let radiusLine = board.create('segment', [O, A], {
+            strokeColor: '#3498db',
+            strokeWidth: 3,
+            dash: 0
+        });
+
+        let radiusLabel = board.create('text', [
+            function() { return A.X() / 2 - 0.3; },
+            function() { return A.Y() / 2 + 0.3; },
+            function() { return 'r = ' + circle.Radius().toFixed(2); }
+        ], {
+            fontSize: 16,
+            color: '#3498db',
+            fontWeight: 'bold'
+        });
+
+        // Диаметр
+        let B = board.create('point', [
+            function() { return -A.X(); },
+            function() { return -A.Y(); }
+        ], {
+            name: 'B',
+            size: 4,
+            fillColor: '#2ecc71',
+            strokeColor: '#27ae60',
+            visible: true
+        });
+
+        let diameter = board.create('segment', [A, B], {
+            strokeColor: '#2ecc71',
+            strokeWidth: 2,
+            dash: 2
+        });
+
+        let diameterLabel = board.create('text', [
+            function() { return (A.X() + B.X()) / 2 + 0.5; },
+            function() { return (A.Y() + B.Y()) / 2 + 0.5; },
+            'диаметр'
+        ], {
+            fontSize: 14,
+            color: '#2ecc71'
+        });
+
+        // Хорда (произвольная)
+        let angle1 = Math.PI / 4;
+        let C = board.create('glider', [
+            radius * Math.cos(angle1),
+            radius * Math.sin(angle1),
+            circle
+        ], {
+            name: 'C',
+            size: 4,
+            fillColor: '#f39c12',
+            strokeColor: '#d68910'
+        });
+
+        let D = board.create('glider', [
+            radius * Math.cos(angle1 + Math.PI / 2),
+            radius * Math.sin(angle1 + Math.PI / 2),
+            circle
+        ], {
+            name: 'D',
+            size: 4,
+            fillColor: '#f39c12',
+            strokeColor: '#d68910'
+        });
+
+        let chord = board.create('segment', [C, D], {
+            strokeColor: '#f39c12',
+            strokeWidth: 2
+        });
+
+        let chordLabel = board.create('text', [
+            function() { return (C.X() + D.X()) / 2 + 0.3; },
+            function() { return (C.Y() + D.Y()) / 2 - 0.5; },
+            'хорда'
+        ], {
+            fontSize: 14,
+            color: '#f39c12'
+        });
+
+        // Функция обновления значений
+        function updateValues() {
+            const r = circle.Radius();
+            const d = 2 * r;
+            const circumference = 2 * Math.PI * r;
+            const area = Math.PI * r * r;
+
+            document.getElementById('value-radius').textContent = r.toFixed(2);
+            document.getElementById('value-diameter').textContent = d.toFixed(2);
+            document.getElementById('value-circumference').textContent = circumference.toFixed(2);
+            document.getElementById('value-area').textContent = area.toFixed(2);
+        }
+
+        // Обработчик бегунка
+        document.getElementById('slider-radius').addEventListener('input', function() {
+            const newRadius = parseFloat(this.value);
+
+            // Пересоздаем окружность с новым радиусом
+            board.removeObject(circle);
+            board.removeObject(A);
+            board.removeObject(B);
+            board.removeObject(C);
+            board.removeObject(D);
+            board.removeObject(radiusLine);
+            board.removeObject(radiusLabel);
+            board.removeObject(diameter);
+            board.removeObject(diameterLabel);
+            board.removeObject(chord);
+            board.removeObject(chordLabel);
+
+            circle = board.create('circle', [O, newRadius], {
+                strokeColor: '#2c3e50',
+                strokeWidth: 3,
+                fillColor: '#3498db',
+                fillOpacity: 0.1
+            });
+
+            A = board.create('glider', [newRadius, 0, circle], {
+                name: 'A',
+                size: 4,
+                fillColor: '#2ecc71',
+                strokeColor: '#27ae60'
+            });
+
+            radiusLine = board.create('segment', [O, A], {
+                strokeColor: '#3498db',
+                strokeWidth: 3
+            });
+
+            radiusLabel = board.create('text', [
+                function() { return A.X() / 2 - 0.3; },
+                function() { return A.Y() / 2 + 0.3; },
+                function() { return 'r = ' + circle.Radius().toFixed(2); }
+            ], {
+                fontSize: 16,
+                color: '#3498db',
+                fontWeight: 'bold'
+            });
+
+            B = board.create('point', [
+                function() { return -A.X(); },
+                function() { return -A.Y(); }
+            ], {
+                name: 'B',
+                size: 4,
+                fillColor: '#2ecc71',
+                strokeColor: '#27ae60'
+            });
+
+            diameter = board.create('segment', [A, B], {
+                strokeColor: '#2ecc71',
+                strokeWidth: 2,
+                dash: 2
+            });
+
+            diameterLabel = board.create('text', [
+                function() { return (A.X() + B.X()) / 2 + 0.5; },
+                function() { return (A.Y() + B.Y()) / 2 + 0.5; },
+                'диаметр'
+            ], {
+                fontSize: 14,
+                color: '#2ecc71'
+            });
+
+            C = board.create('glider', [
+                newRadius * Math.cos(angle1),
+                newRadius * Math.sin(angle1),
+                circle
+            ], {
+                name: 'C',
+                size: 4,
+                fillColor: '#f39c12',
+                strokeColor: '#d68910'
+            });
+
+            D = board.create('glider', [
+                newRadius * Math.cos(angle1 + Math.PI / 2),
+                newRadius * Math.sin(angle1 + Math.PI / 2),
+                circle
+            ], {
+                name: 'D',
+                size: 4,
+                fillColor: '#f39c12',
+                strokeColor: '#d68910'
+            });
+
+            chord = board.create('segment', [C, D], {
+                strokeColor: '#f39c12',
+                strokeWidth: 2
+            });
+
+            chordLabel = board.create('text', [
+                function() { return (C.X() + D.X()) / 2 + 0.3; },
+                function() { return (C.Y() + D.Y()) / 2 - 0.5; },
+                'хорда'
+            ], {
+                fontSize: 14,
+                color: '#f39c12'
+            });
+
+            board.update();
+            updateValues();
+        });
+
+        updateValues();
+    </script>
+</body>
+</html>
