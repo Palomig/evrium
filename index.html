@@ -1,0 +1,2313 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Геометрия 7-9 классы | Гайд по учебнику Атанасяна</title>
+
+    <!-- MathJax для красивых формул -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            max-width: 1400px;
+            margin: 20px auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.3);
+            overflow: hidden;
+            min-height: calc(100vh - 40px);
+        }
+
+        /* Навигационное меню */
+        .sidebar {
+            width: 300px;
+            background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 20px 0;
+            overflow-y: auto;
+            position: sticky;
+            top: 0;
+            height: calc(100vh - 40px);
+        }
+
+        .sidebar h1 {
+            padding: 0 20px 20px;
+            font-size: 22px;
+            border-bottom: 2px solid #3498db;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .menu {
+            list-style: none;
+        }
+
+        .menu-item {
+            margin-bottom: 5px;
+        }
+
+        /* Главные элементы меню */
+        .menu-item > a {
+            display: block;
+            padding: 12px 20px;
+            color: #ecf0f1;
+            text-decoration: none;
+            background: #34495e;
+            border-left: 4px solid #3498db;
+            font-weight: bold;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .menu-item > a:hover {
+            background: #2c3e50;
+            border-left-color: #2ecc71;
+            padding-left: 25px;
+        }
+
+        /* Подменю */
+        .submenu {
+            list-style: none;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background: #2c3e50;
+        }
+
+        .submenu.active {
+            max-height: 500px;
+        }
+
+        .submenu-item a {
+            display: block;
+            padding: 10px 20px 10px 40px;
+            color: #bdc3c7;
+            text-decoration: none;
+            border-left: 4px solid #95a5a6;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .submenu-item a:hover {
+            background: #1a252f;
+            color: #3498db;
+            border-left-color: #3498db;
+            padding-left: 45px;
+        }
+
+        /* Контент */
+        .content {
+            flex: 1;
+            padding: 40px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .section {
+            background: white;
+            padding: 30px;
+            margin-bottom: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .section h2 {
+            color: #2c3e50;
+            font-size: 28px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #3498db;
+        }
+
+        .section h3 {
+            color: #34495e;
+            font-size: 22px;
+            margin: 25px 0 15px;
+        }
+
+        .section h4 {
+            color: #555;
+            font-size: 18px;
+            margin: 20px 0 10px;
+        }
+
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+
+        /* Специальные блоки */
+        .theorem {
+            background: #e8f4f8;
+            border-left: 5px solid #3498db;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .theorem-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .property {
+            background: #e8f8f5;
+            border-left: 5px solid #2ecc71;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .property-title {
+            font-weight: bold;
+            color: #27ae60;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .important {
+            background: #fff3cd;
+            border-left: 5px solid #f39c12;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .important-title {
+            font-weight: bold;
+            color: #d68910;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .formula {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            border: 2px solid #dee2e6;
+            text-align: center;
+            font-size: 18px;
+        }
+
+        /* SVG контейнеры */
+        .svg-container {
+            text-align: center;
+            margin: 25px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+        }
+
+        svg {
+            max-width: 100%;
+            height: auto;
+        }
+
+        /* Задания */
+        .exercise {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 2px solid #dee2e6;
+        }
+
+        .exercise-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .exercise-text {
+            margin-bottom: 15px;
+            line-height: 1.8;
+        }
+
+        .answer {
+            background: white;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 5px;
+            border: 2px solid #2ecc71;
+            display: none;
+        }
+
+        .answer.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .answer-title {
+            font-weight: bold;
+            color: #27ae60;
+            margin-bottom: 10px;
+        }
+
+        .btn-answer {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .btn-answer:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        /* Списки */
+        ul, ol {
+            margin: 15px 0 15px 30px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+
+            .content {
+                padding: 20px;
+            }
+        }
+
+        /* Прокрутка для sidebar */
+        .sidebar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: #2c3e50;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: #3498db;
+            border-radius: 4px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Боковое меню -->
+        <nav class="sidebar">
+            <h1>Геометрия<br>7-9 классы</h1>
+            <ul class="menu">
+                <li class="menu-item">
+                    <a href="#intro" onclick="scrollToSection('intro')">Введение</a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="#basics" onclick="toggleSubmenu(event, 'basics-sub')">Базовые понятия</a>
+                    <ul class="submenu" id="basics-sub">
+                        <li class="submenu-item"><a href="#basics-points" onclick="scrollToSection('basics-points')">Точки и прямые</a></li>
+                        <li class="submenu-item"><a href="#basics-angles" onclick="scrollToSection('basics-angles')">Углы</a></li>
+                        <li class="submenu-item"><a href="#basics-parallel" onclick="scrollToSection('basics-parallel')">Параллельные прямые</a></li>
+                        <li class="submenu-item"><a href="#basics-exercises" onclick="scrollToSection('basics-exercises')">Задания</a></li>
+                    </ul>
+                </li>
+
+                <li class="menu-item">
+                    <a href="#triangles" onclick="toggleSubmenu(event, 'triangles-sub')">Треугольники</a>
+                    <ul class="submenu" id="triangles-sub">
+                        <li class="submenu-item"><a href="#triangles-basics" onclick="scrollToSection('triangles-basics')">Основные понятия</a></li>
+                        <li class="submenu-item"><a href="#triangles-equality" onclick="scrollToSection('triangles-equality')">Признаки равенства</a></li>
+                        <li class="submenu-item"><a href="#triangles-similarity" onclick="scrollToSection('triangles-similarity')">Признаки подобия</a></li>
+                        <li class="submenu-item"><a href="#triangles-pythagoras" onclick="scrollToSection('triangles-pythagoras')">Теорема Пифагора</a></li>
+                        <li class="submenu-item"><a href="#triangles-exercises" onclick="scrollToSection('triangles-exercises')">Задания</a></li>
+                    </ul>
+                </li>
+
+                <li class="menu-item">
+                    <a href="#circles" onclick="toggleSubmenu(event, 'circles-sub')">Окружности</a>
+                    <ul class="submenu" id="circles-sub">
+                        <li class="submenu-item"><a href="#circles-basics" onclick="scrollToSection('circles-basics')">Основные понятия</a></li>
+                        <li class="submenu-item"><a href="#circles-tangent" onclick="scrollToSection('circles-tangent')">Касательная</a></li>
+                        <li class="submenu-item"><a href="#circles-angles" onclick="scrollToSection('circles-angles')">Углы в окружности</a></li>
+                        <li class="submenu-item"><a href="#circles-exercises" onclick="scrollToSection('circles-exercises')">Задания</a></li>
+                    </ul>
+                </li>
+
+                <li class="menu-item">
+                    <a href="#quadrilaterals" onclick="toggleSubmenu(event, 'quadrilaterals-sub')">Четырехугольники</a>
+                    <ul class="submenu" id="quadrilaterals-sub">
+                        <li class="submenu-item"><a href="#quad-parallelogram" onclick="scrollToSection('quad-parallelogram')">Параллелограмм</a></li>
+                        <li class="submenu-item"><a href="#quad-rectangle" onclick="scrollToSection('quad-rectangle')">Прямоугольник</a></li>
+                        <li class="submenu-item"><a href="#quad-rhombus" onclick="scrollToSection('quad-rhombus')">Ромб</a></li>
+                        <li class="submenu-item"><a href="#quad-square" onclick="scrollToSection('quad-square')">Квадрат</a></li>
+                        <li class="submenu-item"><a href="#quad-exercises" onclick="scrollToSection('quad-exercises')">Задания</a></li>
+                    </ul>
+                </li>
+
+                <li class="menu-item">
+                    <a href="#trapezoid" onclick="toggleSubmenu(event, 'trapezoid-sub')">Трапеции</a>
+                    <ul class="submenu" id="trapezoid-sub">
+                        <li class="submenu-item"><a href="#trapezoid-basics" onclick="scrollToSection('trapezoid-basics')">Основные понятия</a></li>
+                        <li class="submenu-item"><a href="#trapezoid-types" onclick="scrollToSection('trapezoid-types')">Виды трапеций</a></li>
+                        <li class="submenu-item"><a href="#trapezoid-exercises" onclick="scrollToSection('trapezoid-exercises')">Задания</a></li>
+                    </ul>
+                </li>
+
+                <li class="menu-item">
+                    <a href="#areas" onclick="toggleSubmenu(event, 'areas-sub')">Площади фигур</a>
+                    <ul class="submenu" id="areas-sub">
+                        <li class="submenu-item"><a href="#areas-triangle" onclick="scrollToSection('areas-triangle')">Площадь треугольника</a></li>
+                        <li class="submenu-item"><a href="#areas-quad" onclick="scrollToSection('areas-quad')">Площадь четырехугольников</a></li>
+                        <li class="submenu-item"><a href="#areas-circle" onclick="scrollToSection('areas-circle')">Площадь круга</a></li>
+                        <li class="submenu-item"><a href="#areas-exercises" onclick="scrollToSection('areas-exercises')">Задания</a></li>
+                    </ul>
+                </li>
+
+                <li class="menu-item">
+                    <a href="#vectors" onclick="toggleSubmenu(event, 'vectors-sub')">Векторы</a>
+                    <ul class="submenu" id="vectors-sub">
+                        <li class="submenu-item"><a href="#vectors-basics" onclick="scrollToSection('vectors-basics')">Основные понятия</a></li>
+                        <li class="submenu-item"><a href="#vectors-operations" onclick="scrollToSection('vectors-operations')">Операции с векторами</a></li>
+                        <li class="submenu-item"><a href="#vectors-scalar" onclick="scrollToSection('vectors-scalar')">Скалярное произведение</a></li>
+                        <li class="submenu-item"><a href="#vectors-exercises" onclick="scrollToSection('vectors-exercises')">Задания</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Основной контент -->
+        <main class="content">
+            <!-- Введение -->
+            <section id="intro" class="section">
+                <h2>Введение</h2>
+                <p>Добро пожаловать в интерактивный гайд по геометрии для 7-9 классов, основанный на учебнике Атанасяна!</p>
+                <p>Этот сайт создан для того, чтобы помочь вам быстро освоить основные темы школьной геометрии. Здесь вы найдете:</p>
+                <ul>
+                    <li>Краткие и понятные определения всех важных понятий</li>
+                    <li>Наглядные иллюстрации для каждой темы</li>
+                    <li>Основные теоремы с доказательствами</li>
+                    <li>Практические задания с ответами для самопроверки</li>
+                    <li>Формулы, представленные в красивом математическом формате</li>
+                </ul>
+
+                <div class="important">
+                    <div class="important-title">Как пользоваться сайтом:</div>
+                    <ul>
+                        <li>Используйте меню слева для навигации по темам</li>
+                        <li>Главные разделы выделены жирным шрифтом и более ярким цветом</li>
+                        <li>Нажмите на главный раздел, чтобы развернуть подразделы</li>
+                        <li>В конце каждой темы есть задания для практики</li>
+                        <li>Нажмите кнопку "Показать ответ", чтобы увидеть решение</li>
+                    </ul>
+                </div>
+
+                <p>Геометрия — это наука о пространстве и фигурах. Она изучает формы, размеры, взаимное расположение объектов и их свойства. Знание геометрии помогает развивать логическое мышление и находит применение в архитектуре, инженерии, компьютерной графике и многих других областях.</p>
+            </section>
+
+            <!-- БАЗОВЫЕ ПОНЯТИЯ -->
+            <section id="basics" class="section">
+                <h2>Базовые понятия геометрии</h2>
+
+                <!-- Точки и прямые -->
+                <div id="basics-points">
+                    <h3>Точки и прямые</h3>
+
+                    <p><strong>Точка</strong> — это основное понятие геометрии, не имеющее размеров. Точки обозначаются заглавными латинскими буквами: $A$, $B$, $C$ и т.д.</p>
+
+                    <p><strong>Прямая</strong> — это линия, которая не имеет ни начала, ни конца и бесконечно продолжается в обе стороны. Прямые обозначаются строчными латинскими буквами ($a$, $b$, $c$) или двумя точками, через которые они проходят ($AB$, $CD$).</p>
+
+                    <div class="svg-container">
+                        <svg width="400" height="150" viewBox="0 0 400 150">
+                            <!-- Прямая -->
+                            <defs>
+                                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                    <polygon points="0 0, 10 3.5, 0 7" fill="#2c3e50" />
+                                </marker>
+                            </defs>
+                            <line x1="20" y1="75" x2="380" y2="75" stroke="#2c3e50" stroke-width="2" marker-end="url(#arrowhead)" marker-start="url(#arrowhead)"/>
+                            <!-- Точки на прямой -->
+                            <circle cx="100" cy="75" r="4" fill="#e74c3c"/>
+                            <circle cx="200" cy="75" r="4" fill="#e74c3c"/>
+                            <circle cx="300" cy="75" r="4" fill="#e74c3c"/>
+                            <!-- Подписи -->
+                            <text x="100" y="95" text-anchor="middle" font-size="16" fill="#2c3e50">A</text>
+                            <text x="200" y="95" text-anchor="middle" font-size="16" fill="#2c3e50">B</text>
+                            <text x="300" y="95" text-anchor="middle" font-size="16" fill="#2c3e50">C</text>
+                            <text x="370" y="60" text-anchor="middle" font-size="16" fill="#2c3e50">a</text>
+                        </svg>
+                    </div>
+
+                    <p><strong>Отрезок</strong> — это часть прямой, ограниченная двумя точками. Эти точки называются концами отрезка. Обозначение: $AB$ или $[AB]$.</p>
+
+                    <p><strong>Луч</strong> — это часть прямой, которая имеет начало, но не имеет конца. Обозначается двумя точками, где первая — начало луча: $AB$.</p>
+
+                    <div class="property">
+                        <div class="property-title">Основные свойства:</div>
+                        <ul>
+                            <li>Через две точки можно провести прямую, и только одну</li>
+                            <li>Две различные прямые либо пересекаются в одной точке, либо не пересекаются вовсе (параллельны)</li>
+                            <li>На любом луче от его начала можно отложить отрезок заданной длины, и только один</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Углы -->
+                <div id="basics-angles">
+                    <h3>Углы</h3>
+
+                    <p><strong>Угол</strong> — это геометрическая фигура, образованная двумя лучами, выходящими из одной точки. Эта точка называется <em>вершиной угла</em>, а лучи — <em>сторонами угла</em>.</p>
+
+                    <div class="svg-container">
+                        <svg width="500" height="250" viewBox="0 0 500 250">
+                            <!-- Острый угол -->
+                            <g transform="translate(80, 120)">
+                                <line x1="0" y1="0" x2="80" y2="0" stroke="#2c3e50" stroke-width="2"/>
+                                <line x1="0" y1="0" x2="60" y2="-50" stroke="#2c3e50" stroke-width="2"/>
+                                <path d="M 30 0 A 30 30 0 0 1 23 -19" fill="none" stroke="#3498db" stroke-width="2"/>
+                                <circle cx="0" cy="0" r="3" fill="#e74c3c"/>
+                                <text x="0" y="25" text-anchor="middle" font-size="14" fill="#2c3e50">A</text>
+                                <text x="35" y="-15" text-anchor="middle" font-size="14" fill="#3498db">45°</text>
+                                <text x="40" y="-65" text-anchor="middle" font-size="14" fill="#2c3e50" font-weight="bold">Острый</text>
+                            </g>
+
+                            <!-- Прямой угол -->
+                            <g transform="translate(250, 120)">
+                                <line x1="0" y1="0" x2="80" y2="0" stroke="#2c3e50" stroke-width="2"/>
+                                <line x1="0" y1="0" x2="0" y2="-80" stroke="#2c3e50" stroke-width="2"/>
+                                <rect x="0" y="-15" width="15" height="15" fill="none" stroke="#3498db" stroke-width="2"/>
+                                <circle cx="0" cy="0" r="3" fill="#e74c3c"/>
+                                <text x="0" y="25" text-anchor="middle" font-size="14" fill="#2c3e50">B</text>
+                                <text x="25" y="-15" text-anchor="middle" font-size="14" fill="#3498db">90°</text>
+                                <text x="40" y="-95" text-anchor="middle" font-size="14" fill="#2c3e50" font-weight="bold">Прямой</text>
+                            </g>
+
+                            <!-- Тупой угол -->
+                            <g transform="translate(420, 120)">
+                                <line x1="0" y1="0" x2="80" y2="0" stroke="#2c3e50" stroke-width="2"/>
+                                <line x1="0" y1="0" x2="-50" y2="-40" stroke="#2c3e50" stroke-width="2"/>
+                                <path d="M 30 0 A 30 30 0 0 1 -20 -16" fill="none" stroke="#3498db" stroke-width="2"/>
+                                <circle cx="0" cy="0" r="3" fill="#e74c3c"/>
+                                <text x="0" y="25" text-anchor="middle" font-size="14" fill="#2c3e50">C</text>
+                                <text x="15" y="-20" text-anchor="middle" font-size="14" fill="#3498db">120°</text>
+                                <text x="15" y="-60" text-anchor="middle" font-size="14" fill="#2c3e50" font-weight="bold">Тупой</text>
+                            </g>
+                        </svg>
+                    </div>
+
+                    <h4>Виды углов по величине:</h4>
+                    <ul>
+                        <li><strong>Острый угол</strong> — угол, меньший $90°$ (меньше прямого)</li>
+                        <li><strong>Прямой угол</strong> — угол, равный $90°$</li>
+                        <li><strong>Тупой угол</strong> — угол, больший $90°$, но меньший $180°$</li>
+                        <li><strong>Развернутый угол</strong> — угол, равный $180°$ (стороны лежат на одной прямой)</li>
+                    </ul>
+
+                    <h4>Смежные и вертикальные углы:</h4>
+
+                    <div class="svg-container">
+                        <svg width="500" height="250" viewBox="0 0 500 250">
+                            <!-- Смежные углы -->
+                            <g transform="translate(120, 125)">
+                                <line x1="-80" y1="0" x2="80" y2="0" stroke="#2c3e50" stroke-width="2"/>
+                                <line x1="0" y1="0" x2="0" y2="-80" stroke="#2c3e50" stroke-width="2"/>
+                                <path d="M -30 0 A 30 30 0 0 1 0 -30" fill="none" stroke="#e74c3c" stroke-width="2"/>
+                                <path d="M 30 0 A 30 30 0 0 0 0 -30" fill="none" stroke="#2ecc71" stroke-width="2"/>
+                                <circle cx="0" cy="0" r="3" fill="#e74c3c"/>
+                                <text x="-20" y="-35" text-anchor="middle" font-size="14" fill="#e74c3c">α</text>
+                                <text x="20" y="-35" text-anchor="middle" font-size="14" fill="#2ecc71">β</text>
+                                <text x="0" y="-105" text-anchor="middle" font-size="14" fill="#2c3e50" font-weight="bold">Смежные углы</text>
+                                <text x="0" y="40" text-anchor="middle" font-size="12" fill="#555">α + β = 180°</text>
+                            </g>
+
+                            <!-- Вертикальные углы -->
+                            <g transform="translate(370, 125)">
+                                <line x1="-70" y1="-50" x2="70" y2="50" stroke="#2c3e50" stroke-width="2"/>
+                                <line x1="-70" y1="50" x2="70" y2="-50" stroke="#2c3e50" stroke-width="2"/>
+                                <path d="M 20 10 A 22 22 0 0 1 10 20" fill="none" stroke="#e74c3c" stroke-width="2"/>
+                                <path d="M -20 -10 A 22 22 0 0 1 -10 -20" fill="none" stroke="#e74c3c" stroke-width="2"/>
+                                <path d="M -10 20 A 22 22 0 0 1 -20 10" fill="none" stroke="#3498db" stroke-width="2"/>
+                                <path d="M 10 -20 A 22 22 0 0 1 20 -10" fill="none" stroke="#3498db" stroke-width="2"/>
+                                <circle cx="0" cy="0" r="3" fill="#e74c3c"/>
+                                <text x="25" y="20" text-anchor="middle" font-size="14" fill="#e74c3c">α</text>
+                                <text x="-25" y="-15" text-anchor="middle" font-size="14" fill="#e74c3c">α</text>
+                                <text x="0" y="-105" text-anchor="middle" font-size="14" fill="#2c3e50" font-weight="bold">Вертикальные углы</text>
+                                <text x="0" y="85" text-anchor="middle" font-size="12" fill="#555">Вертикальные углы равны</text>
+                            </g>
+                        </svg>
+                    </div>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Теорема о смежных углах:</div>
+                        <p>Сумма смежных углов равна $180°$.</p>
+                        <p><strong>Доказательство:</strong> Смежные углы вместе образуют развернутый угол, величина которого равна $180°$.</p>
+                    </div>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Теорема о вертикальных углах:</div>
+                        <p>Вертикальные углы равны.</p>
+                        <p><strong>Доказательство:</strong> Пусть углы $\alpha$ и $\beta$ — вертикальные. Тогда каждый из них смежен с одним и тем же третьим углом $\gamma$. Следовательно: $\alpha + \gamma = 180°$ и $\beta + \gamma = 180°$. Отсюда $\alpha = \beta$.</p>
+                    </div>
+                </div>
+
+                <!-- Параллельные прямые -->
+                <div id="basics-parallel">
+                    <h3>Параллельные прямые</h3>
+
+                    <p><strong>Параллельные прямые</strong> — это прямые, которые лежат в одной плоскости и не пересекаются, как бы далеко их ни продолжали. Обозначение: $a \parallel b$ (прямая $a$ параллельна прямой $b$).</p>
+
+                    <div class="svg-container">
+                        <svg width="400" height="200" viewBox="0 0 400 200">
+                            <!-- Параллельные прямые -->
+                            <line x1="20" y1="60" x2="380" y2="60" stroke="#2c3e50" stroke-width="2"/>
+                            <line x1="20" y1="140" x2="380" y2="140" stroke="#2c3e50" stroke-width="2"/>
+                            <text x="390" y="65" font-size="16" fill="#2c3e50">a</text>
+                            <text x="390" y="145" font-size="16" fill="#2c3e50">b</text>
+                            <!-- Секущая -->
+                            <line x1="120" y1="20" x2="280" y2="180" stroke="#e74c3c" stroke-width="2"/>
+                            <text x="290" y="190" font-size="16" fill="#e74c3c">c</text>
+                            <!-- Углы -->
+                            <path d="M 160 60 L 180 60 L 172 75 Z" fill="#3498db" opacity="0.5"/>
+                            <path d="M 200 140 L 220 140 L 212 125 Z" fill="#3498db" opacity="0.5"/>
+                            <text x="180" y="50" font-size="14" fill="#3498db">α</text>
+                            <text x="220" y="150" font-size="14" fill="#3498db">α</text>
+                        </svg>
+                    </div>
+
+                    <h4>Признаки параллельности прямых:</h4>
+
+                    <p>Если две прямые пересечены секущей, то они параллельны, если выполняется одно из условий:</p>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Признаки параллельности:</div>
+                        <ol>
+                            <li><strong>Накрест лежащие углы равны</strong> — углы, расположенные по разные стороны от секущей и между параллельными прямыми</li>
+                            <li><strong>Соответственные углы равны</strong> — углы, расположенные по одну сторону от секущей, один между прямыми, другой вне</li>
+                            <li><strong>Сумма односторонних углов равна $180°$</strong> — углы, расположенные по одну сторону от секущей и между параллельными прямыми</li>
+                        </ol>
+                    </div>
+
+                    <div class="important">
+                        <div class="important-title">Аксиома параллельных прямых:</div>
+                        <p>Через точку, не лежащую на данной прямой, можно провести на плоскости не более одной прямой, параллельной данной.</p>
+                    </div>
+                </div>
+
+                <!-- Задания по базовым понятиям -->
+                <div id="basics-exercises">
+                    <h3>Задания</h3>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 1</div>
+                        <div class="exercise-text">
+                            Один из смежных углов на $40°$ больше другого. Найдите эти углы.
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>Пусть один угол равен $x°$, тогда второй равен $(x + 40)°$.</p>
+                            <p>По теореме о смежных углах: $x + (x + 40) = 180$</p>
+                            <p>$2x + 40 = 180$</p>
+                            <p>$2x = 140$</p>
+                            <p>$x = 70$</p>
+                            <p><strong>Ответ:</strong> $70°$ и $110°$</p>
+                        </div>
+                    </div>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 2</div>
+                        <div class="exercise-text">
+                            Две прямые пересечены секущей. Накрест лежащие углы равны $65°$ и $(3x + 5)°$. При каком значении $x$ прямые параллельны?
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>Для параллельности прямых накрест лежащие углы должны быть равны:</p>
+                            <p>$65 = 3x + 5$</p>
+                            <p>$60 = 3x$</p>
+                            <p>$x = 20$</p>
+                            <p><strong>Ответ:</strong> $x = 20$</p>
+                        </div>
+                    </div>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 3</div>
+                        <div class="exercise-text">
+                            При пересечении двух прямых образовались четыре угла. Один из них равен $130°$. Найдите остальные углы.
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>Вертикальный угол также равен $130°$ (вертикальные углы равны).</p>
+                            <p>Смежные углы в сумме дают $180°$:</p>
+                            <p>$180° - 130° = 50°$</p>
+                            <p>Второй смежный угол также равен $50°$ (вертикальные углы).</p>
+                            <p><strong>Ответ:</strong> $130°$, $50°$, $130°$, $50°$</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ТРЕУГОЛЬНИКИ -->
+            <section id="triangles" class="section">
+                <h2>Треугольники</h2>
+
+                <!-- Основные понятия -->
+                <div id="triangles-basics">
+                    <h3>Основные понятия</h3>
+
+                    <p><strong>Треугольник</strong> — это геометрическая фигура, образованная тремя отрезками, соединяющими три точки, не лежащие на одной прямой. Эти точки называются <em>вершинами треугольника</em>, а отрезки — <em>сторонами треугольника</em>.</p>
+
+                    <div class="svg-container">
+                        <svg width="300" height="250" viewBox="0 0 300 250">
+                            <polygon points="150,40 50,200 250,200" fill="none" stroke="#2c3e50" stroke-width="2"/>
+                            <circle cx="150" cy="40" r="4" fill="#e74c3c"/>
+                            <circle cx="50" cy="200" r="4" fill="#e74c3c"/>
+                            <circle cx="250" cy="200" r="4" fill="#e74c3c"/>
+                            <text x="150" y="30" text-anchor="middle" font-size="16" fill="#2c3e50" font-weight="bold">A</text>
+                            <text x="40" y="215" text-anchor="middle" font-size="16" fill="#2c3e50" font-weight="bold">B</text>
+                            <text x="260" y="215" text-anchor="middle" font-size="16" fill="#2c3e50" font-weight="bold">C</text>
+                            <text x="100" y="130" text-anchor="middle" font-size="14" fill="#3498db">c</text>
+                            <text x="200" y="130" text-anchor="middle" font-size="14" fill="#3498db">b</text>
+                            <text x="150" y="215" text-anchor="middle" font-size="14" fill="#3498db">a</text>
+                        </svg>
+                    </div>
+
+                    <p>Обозначение: треугольник $ABC$ или $\triangle ABC$</p>
+
+                    <h4>Элементы треугольника:</h4>
+                    <ul>
+                        <li><strong>Стороны</strong> — отрезки $AB$, $BC$, $AC$</li>
+                        <li><strong>Вершины</strong> — точки $A$, $B$, $C$</li>
+                        <li><strong>Углы</strong> — $\angle A$, $\angle B$, $\angle C$ (или $\alpha$, $\beta$, $\gamma$)</li>
+                    </ul>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Теорема о сумме углов треугольника:</div>
+                        <p>Сумма углов любого треугольника равна $180°$:</p>
+                        <div class="formula">$$\alpha + \beta + \gamma = 180°$$</div>
+                    </div>
+
+                    <h4>Виды треугольников по сторонам:</h4>
+
+                    <div class="svg-container">
+                        <svg width="700" height="220" viewBox="0 0 700 220">
+                            <!-- Разносторонний -->
+                            <g transform="translate(100, 110)">
+                                <polygon points="0,-80 -70,80 70,80" fill="none" stroke="#2c3e50" stroke-width="2"/>
+                                <line x1="0" y1="-80" x2="-70" y2="80" stroke="#e74c3c" stroke-width="3"/>
+                                <line x1="-70" y1="80" x2="70" y2="80" stroke="#2ecc71" stroke-width="3"/>
+                                <line x1="70" y1="80" x2="0" y2="-80" stroke="#3498db" stroke-width="3"/>
+                                <text x="0" y="110" text-anchor="middle" font-size="14" font-weight="bold">Разносторонний</text>
+                                <text x="0" y="130" text-anchor="middle" font-size="12" fill="#555">все стороны разные</text>
+                            </g>
+
+                            <!-- Равнобедренный -->
+                            <g transform="translate(350, 110)">
+                                <polygon points="0,-80 -60,80 60,80" fill="none" stroke="#2c3e50" stroke-width="2"/>
+                                <line x1="0" y1="-80" x2="-60" y2="80" stroke="#e74c3c" stroke-width="3"/>
+                                <line x1="-60" y1="80" x2="60" y2="80" stroke="#2ecc71" stroke-width="3"/>
+                                <line x1="60" y1="80" x2="0" y2="-80" stroke="#e74c3c" stroke-width="3"/>
+                                <text x="0" y="110" text-anchor="middle" font-size="14" font-weight="bold">Равнобедренный</text>
+                                <text x="0" y="130" text-anchor="middle" font-size="12" fill="#555">две стороны равны</text>
+                            </g>
+
+                            <!-- Равносторонний -->
+                            <g transform="translate(600, 110)">
+                                <polygon points="0,-80 -69.28,40 69.28,40" fill="none" stroke="#2c3e50" stroke-width="2"/>
+                                <line x1="0" y1="-80" x2="-69.28" y2="40" stroke="#e74c3c" stroke-width="3"/>
+                                <line x1="-69.28" y1="40" x2="69.28" y2="40" stroke="#e74c3c" stroke-width="3"/>
+                                <line x1="69.28" y1="40" x2="0" y2="-80" stroke="#e74c3c" stroke-width="3"/>
+                                <text x="0" y="70" text-anchor="middle" font-size="14" font-weight="bold">Равносторонний</text>
+                                <text x="0" y="90" text-anchor="middle" font-size="12" fill="#555">все стороны равны</text>
+                            </g>
+                        </svg>
+                    </div>
+
+                    <h4>Виды треугольников по углам:</h4>
+
+                    <div class="svg-container">
+                        <svg width="700" height="220" viewBox="0 0 700 220">
+                            <!-- Остроугольный -->
+                            <g transform="translate(100, 110)">
+                                <polygon points="0,-70 -60,70 60,70" fill="none" stroke="#2c3e50" stroke-width="2"/>
+                                <text x="0" y="100" text-anchor="middle" font-size="14" font-weight="bold">Остроугольный</text>
+                                <text x="0" y="120" text-anchor="middle" font-size="12" fill="#555">все углы острые</text>
+                            </g>
+
+                            <!-- Прямоугольный -->
+                            <g transform="translate(350, 110)">
+                                <polygon points="0,-70 -70,70 0,70" fill="none" stroke="#2c3e50" stroke-width="2"/>
+                                <rect x="-10" y="60" width="10" height="10" fill="none" stroke="#e74c3c" stroke-width="2"/>
+                                <text x="-35" y="100" text-anchor="middle" font-size="14" font-weight="bold">Прямоугольный</text>
+                                <text x="-35" y="120" text-anchor="middle" font-size="12" fill="#555">один угол 90°</text>
+                            </g>
+
+                            <!-- Тупоугольный -->
+                            <g transform="translate(570, 110)">
+                                <polygon points="0,-40 -80,70 50,70" fill="none" stroke="#2c3e50" stroke-width="2"/>
+                                <text x="-15" y="100" text-anchor="middle" font-size="14" font-weight="bold">Тупоугольный</text>
+                                <text x="-15" y="120" text-anchor="middle" font-size="12" fill="#555">один угол тупой</text>
+                            </g>
+                        </svg>
+                    </div>
+
+                    <div class="property">
+                        <div class="property-title">Важные линии в треугольнике:</div>
+                        <ul>
+                            <li><strong>Медиана</strong> — отрезок, соединяющий вершину с серединой противоположной стороны</li>
+                            <li><strong>Высота</strong> — перпендикуляр, проведенный из вершины к противоположной стороне</li>
+                            <li><strong>Биссектриса</strong> — луч, делящий угол пополам</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Признаки равенства треугольников -->
+                <div id="triangles-equality">
+                    <h3>Признаки равенства треугольников</h3>
+
+                    <p>Два треугольника называются <strong>равными</strong>, если их можно совместить наложением. При этом совмещаются соответствующие стороны и углы.</p>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Первый признак равенства (по двум сторонам и углу между ними):</div>
+                        <p>Если две стороны и угол между ними одного треугольника соответственно равны двум сторонам и углу между ними другого треугольника, то такие треугольники равны.</p>
+                        <div class="svg-container">
+                            <svg width="500" height="200" viewBox="0 0 500 200">
+                                <g transform="translate(120, 100)">
+                                    <polygon points="0,-70 -60,60 50,60" fill="none" stroke="#2c3e50" stroke-width="2"/>
+                                    <line x1="0" y1="-70" x2="-60" y2="60" stroke="#e74c3c" stroke-width="3"/>
+                                    <line x1="0" y1="-70" x2="50" y2="60" stroke="#2ecc71" stroke-width="3"/>
+                                    <path d="M -10 -50 L 0 -70 L 10 -50" fill="none" stroke="#3498db" stroke-width="2"/>
+                                    <text x="0" y="90" text-anchor="middle" font-size="12">Δ ABC</text>
+                                </g>
+                                <text x="250" y="110" font-size="24" fill="#2c3e50">=</text>
+                                <g transform="translate(380, 100)">
+                                    <polygon points="0,-70 -60,60 50,60" fill="none" stroke="#2c3e50" stroke-width="2"/>
+                                    <line x1="0" y1="-70" x2="-60" y2="60" stroke="#e74c3c" stroke-width="3"/>
+                                    <line x1="0" y1="-70" x2="50" y2="60" stroke="#2ecc71" stroke-width="3"/>
+                                    <path d="M -10 -50 L 0 -70 L 10 -50" fill="none" stroke="#3498db" stroke-width="2"/>
+                                    <text x="0" y="90" text-anchor="middle" font-size="12">Δ DEF</text>
+                                </g>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Второй признак равенства (по стороне и двум прилежащим углам):</div>
+                        <p>Если сторона и два прилежащих к ней угла одного треугольника соответственно равны стороне и двум прилежащим к ней углам другого треугольника, то такие треугольники равны.</p>
+                    </div>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Третий признак равенства (по трем сторонам):</div>
+                        <p>Если три стороны одного треугольника соответственно равны трем сторонам другого треугольника, то такие треугольники равны.</p>
+                    </div>
+
+                    <div class="important">
+                        <div class="important-title">Свойства равнобедренного треугольника:</div>
+                        <ul>
+                            <li>Углы при основании равнобедренного треугольника равны</li>
+                            <li>Медиана, проведенная к основанию, является одновременно и высотой, и биссектрисой</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Признаки подобия треугольников -->
+                <div id="triangles-similarity">
+                    <h3>Признаки подобия треугольников</h3>
+
+                    <p>Два треугольника называются <strong>подобными</strong>, если их соответствующие углы равны, а соответствующие стороны пропорциональны. Обозначение: $\triangle ABC \sim \triangle DEF$</p>
+
+                    <div class="formula">$$\frac{AB}{DE} = \frac{BC}{EF} = \frac{AC}{DF} = k$$</div>
+                    <p style="text-align: center;">где $k$ — <strong>коэффициент подобия</strong></p>
+
+                    <div class="svg-container">
+                        <svg width="500" height="250" viewBox="0 0 500 250">
+                            <g transform="translate(100, 150)">
+                                <polygon points="0,-100 -80,80 80,80" fill="none" stroke="#2c3e50" stroke-width="2"/>
+                                <text x="0" y="110" text-anchor="middle" font-size="14" font-weight="bold">Большой треугольник</text>
+                            </g>
+                            <text x="250" y="130" font-size="20" fill="#3498db">∼</text>
+                            <g transform="translate(380, 150)">
+                                <polygon points="0,-60 -48,48 48,48" fill="none" stroke="#2c3e50" stroke-width="2"/>
+                                <text x="0" y="75" text-anchor="middle" font-size="14" font-weight="bold">Малый треугольник</text>
+                                <text x="0" y="95" text-anchor="middle" font-size="12" fill="#555">k = 0.6</text>
+                            </g>
+                        </svg>
+                    </div>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Первый признак подобия (по двум углам):</div>
+                        <p>Если два угла одного треугольника соответственно равны двум углам другого треугольника, то такие треугольники подобны.</p>
+                    </div>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Второй признак подобия (по двум сторонам и углу между ними):</div>
+                        <p>Если две стороны одного треугольника пропорциональны двум сторонам другого треугольника, и углы, заключенные между этими сторонами, равны, то треугольники подобны.</p>
+                    </div>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Третий признак подобия (по трем сторонам):</div>
+                        <p>Если три стороны одного треугольника пропорциональны трем сторонам другого треугольника, то такие треугольники подобны.</p>
+                    </div>
+
+                    <div class="property">
+                        <div class="property-title">Свойства подобных треугольников:</div>
+                        <ul>
+                            <li>Отношение периметров подобных треугольников равно коэффициенту подобия</li>
+                            <li>Отношение площадей подобных треугольников равно квадрату коэффициента подобия</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Теорема Пифагора -->
+                <div id="triangles-pythagoras">
+                    <h3>Теорема Пифагора</h3>
+
+                    <p>Одна из самых известных и важных теорем геометрии, связывающая стороны прямоугольного треугольника.</p>
+
+                    <div class="svg-container">
+                        <svg width="400" height="350" viewBox="0 0 400 350">
+                            <!-- Треугольник -->
+                            <polygon points="80,280 80,80 280,280" fill="#e8f4f8" stroke="#2c3e50" stroke-width="2"/>
+                            <rect x="70" y="270" width="10" height="10" fill="none" stroke="#e74c3c" stroke-width="2"/>
+
+                            <!-- Подписи сторон -->
+                            <text x="80" y="180" text-anchor="middle" font-size="18" fill="#2c3e50" font-weight="bold">a</text>
+                            <text x="180" y="300" text-anchor="middle" font-size="18" fill="#2c3e50" font-weight="bold">b</text>
+                            <text x="180" y="170" text-anchor="middle" font-size="18" fill="#e74c3c" font-weight="bold">c</text>
+
+                            <!-- Квадраты на сторонах (схематично) -->
+                            <rect x="20" y="80" width="60" height="60" fill="none" stroke="#3498db" stroke-width="1" stroke-dasharray="4"/>
+                            <text x="50" y="115" text-anchor="middle" font-size="14" fill="#3498db">a²</text>
+
+                            <rect x="80" y="290" width="200" height="40" fill="none" stroke="#2ecc71" stroke-width="1" stroke-dasharray="4"/>
+                            <text x="180" y="315" text-anchor="middle" font-size="14" fill="#2ecc71">b²</text>
+
+                            <!-- Гипотенуза -->
+                            <circle cx="80" cy="80" r="3" fill="#e74c3c"/>
+                            <circle cx="280" cy="280" r="3" fill="#e74c3c"/>
+                            <circle cx="80" cy="280" r="3" fill="#e74c3c"/>
+                        </svg>
+                    </div>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Теорема Пифагора:</div>
+                        <p>В прямоугольном треугольнике квадрат длины гипотенузы равен сумме квадратов длин катетов.</p>
+                        <div class="formula">$$c^2 = a^2 + b^2$$</div>
+                        <p>где $c$ — гипотенуза (сторона, противолежащая прямому углу), $a$ и $b$ — катеты.</p>
+                    </div>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Доказательство (одно из многих):</div>
+                        <p>Рассмотрим квадрат со стороной $(a + b)$. Расположим в нем четыре равных прямоугольных треугольника так, чтобы их гипотенузы образовали внутренний квадрат.</p>
+                        <p>Площадь большого квадрата: $S = (a + b)^2 = a^2 + 2ab + b^2$</p>
+                        <p>С другой стороны, площадь равна площади четырех треугольников плюс площадь внутреннего квадрата:</p>
+                        <p>$S = 4 \cdot \frac{1}{2}ab + c^2 = 2ab + c^2$</p>
+                        <p>Приравняв выражения: $a^2 + 2ab + b^2 = 2ab + c^2$</p>
+                        <p>Получаем: $c^2 = a^2 + b^2$ ∎</p>
+                    </div>
+
+                    <div class="important">
+                        <div class="important-title">Обратная теорема Пифагора:</div>
+                        <p>Если квадрат одной стороны треугольника равен сумме квадратов двух других сторон, то треугольник прямоугольный.</p>
+                    </div>
+
+                    <div class="property">
+                        <div class="property-title">Пифагоровы тройки:</div>
+                        <p>Это тройки натуральных чисел $(a, b, c)$, для которых выполняется соотношение $a^2 + b^2 = c^2$. Примеры:</p>
+                        <ul>
+                            <li>$(3, 4, 5)$ — самая известная тройка</li>
+                            <li>$(5, 12, 13)$</li>
+                            <li>$(8, 15, 17)$</li>
+                            <li>$(7, 24, 25)$</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Задания по треугольникам -->
+                <div id="triangles-exercises">
+                    <h3>Задания</h3>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 1</div>
+                        <div class="exercise-text">
+                            В треугольнике ABC угол A равен $50°$, а угол B равен $70°$. Найдите угол C. Определите вид треугольника по углам.
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>По теореме о сумме углов треугольника:</p>
+                            <p>$\angle A + \angle B + \angle C = 180°$</p>
+                            <p>$50° + 70° + \angle C = 180°$</p>
+                            <p>$\angle C = 180° - 120° = 60°$</p>
+                            <p>Все углы меньше $90°$, значит треугольник остроугольный.</p>
+                            <p><strong>Ответ:</strong> $60°$, треугольник остроугольный</p>
+                        </div>
+                    </div>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 2</div>
+                        <div class="exercise-text">
+                            Катеты прямоугольного треугольника равны 6 см и 8 см. Найдите гипотенузу.
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>По теореме Пифагора:</p>
+                            <p>$c^2 = a^2 + b^2$</p>
+                            <p>$c^2 = 6^2 + 8^2 = 36 + 64 = 100$</p>
+                            <p>$c = \sqrt{100} = 10$ см</p>
+                            <p><strong>Ответ:</strong> 10 см</p>
+                        </div>
+                    </div>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 3</div>
+                        <div class="exercise-text">
+                            В равнобедренном треугольнике боковая сторона равна 10 см, а основание — 12 см. Найдите высоту, проведенную к основанию.
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>Высота в равнобедренном треугольнике, проведенная к основанию, делит его на два равных прямоугольных треугольника.</p>
+                            <p>Половина основания: $12 : 2 = 6$ см</p>
+                            <p>По теореме Пифагора:</p>
+                            <p>$h^2 = 10^2 - 6^2 = 100 - 36 = 64$</p>
+                            <p>$h = 8$ см</p>
+                            <p><strong>Ответ:</strong> 8 см</p>
+                        </div>
+                    </div>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 4</div>
+                        <div class="exercise-text">
+                            Стороны одного треугольника равны 3 см, 4 см и 5 см. Стороны другого треугольника равны 6 см, 8 см и 10 см. Подобны ли эти треугольники? Если да, найдите коэффициент подобия.
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>Проверим пропорциональность сторон:</p>
+                            <p>$\frac{6}{3} = 2$, $\frac{8}{4} = 2$, $\frac{10}{5} = 2$</p>
+                            <p>Все отношения равны, следовательно, треугольники подобны по третьему признаку подобия.</p>
+                            <p><strong>Ответ:</strong> Да, подобны. Коэффициент подобия $k = 2$</p>
+                        </div>
+                    </div>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 5</div>
+                        <div class="exercise-text">
+                            В прямоугольном треугольнике гипотенуза равна 13 см, а один из катетов — 5 см. Найдите второй катет и площадь треугольника.
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>По теореме Пифагора:</p>
+                            <p>$b^2 = c^2 - a^2 = 13^2 - 5^2 = 169 - 25 = 144$</p>
+                            <p>$b = 12$ см</p>
+                            <p>Площадь прямоугольного треугольника:</p>
+                            <p>$S = \frac{1}{2} \cdot a \cdot b = \frac{1}{2} \cdot 5 \cdot 12 = 30$ см²</p>
+                            <p><strong>Ответ:</strong> 12 см, 30 см²</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ОКРУЖНОСТИ -->
+            <section id="circles" class="section">
+                <h2>Окружности</h2>
+
+                <!-- Основные понятия -->
+                <div id="circles-basics">
+                    <h3>Основные понятия</h3>
+
+                    <p><strong>Окружность</strong> — это множество всех точек плоскости, находящихся на одинаковом расстоянии от данной точки, называемой <em>центром окружности</em>.</p>
+
+                    <div class="svg-container">
+                        <svg width="400" height="400" viewBox="0 0 400 400">
+                            <!-- Окружность -->
+                            <circle cx="200" cy="200" r="120" fill="none" stroke="#2c3e50" stroke-width="2"/>
+                            <!-- Центр -->
+                            <circle cx="200" cy="200" r="4" fill="#e74c3c"/>
+                            <text x="200" y="185" text-anchor="middle" font-size="16" fill="#e74c3c" font-weight="bold">O</text>
+                            <!-- Радиус -->
+                            <line x1="200" y1="200" x2="200" y2="80" stroke="#3498db" stroke-width="2"/>
+                            <text x="210" y="140" font-size="16" fill="#3498db" font-weight="bold">r</text>
+                            <circle cx="200" cy="80" r="3" fill="#2c3e50"/>
+                            <text x="200" y="70" text-anchor="middle" font-size="14" fill="#2c3e50">A</text>
+                            <!-- Диаметр -->
+                            <line x1="115" y1="285" x2="285" y2="115" stroke="#2ecc71" stroke-width="2"/>
+                            <text x="200" y="210" font-size="16" fill="#2ecc71" font-weight="bold">d</text>
+                            <circle cx="115" cy="285" r="3" fill="#2c3e50"/>
+                            <circle cx="285" cy="115" r="3" fill="#2c3e50"/>
+                            <text x="110" y="305" text-anchor="end" font-size="14" fill="#2c3e50">B</text>
+                            <text x="295" y="110" text-anchor="start" font-size="14" fill="#2c3e50">C</text>
+                            <!-- Хорда -->
+                            <line x1="140" y1="140" x2="260" y2="260" stroke="#f39c12" stroke-width="2"/>
+                            <circle cx="140" cy="140" r="3" fill="#2c3e50"/>
+                            <circle cx="260" cy="260" r="3" fill="#2c3e50"/>
+                            <text x="200" y="230" font-size="14" fill="#f39c12" font-weight="bold">хорда</text>
+                        </svg>
+                    </div>
+
+                    <h4>Основные элементы окружности:</h4>
+                    <ul>
+                        <li><strong>Радиус</strong> ($r$) — отрезок, соединяющий центр окружности с любой точкой на окружности</li>
+                        <li><strong>Диаметр</strong> ($d$) — отрезок, соединяющий две точки окружности и проходящий через центр. $d = 2r$</li>
+                        <li><strong>Хорда</strong> — отрезок, соединяющий две точки окружности (диаметр — самая длинная хорда)</li>
+                        <li><strong>Дуга</strong> — часть окружности между двумя точками</li>
+                        <li><strong>Сектор</strong> — часть круга, ограниченная двумя радиусами и дугой</li>
+                        <li><strong>Сегмент</strong> — часть круга, ограниченная хордой и дугой</li>
+                    </ul>
+
+                    <div class="formula">
+                        <p><strong>Длина окружности:</strong></p>
+                        $$C = 2\pi r = \pi d$$
+                    </div>
+
+                    <div class="formula">
+                        <p><strong>Площадь круга:</strong></p>
+                        $$S = \pi r^2$$
+                    </div>
+
+                    <p>где $\pi \approx 3.14159...$ — число пи</p>
+                </div>
+
+                <!-- Касательная к окружности -->
+                <div id="circles-tangent">
+                    <h3>Касательная к окружности</h3>
+
+                    <p><strong>Касательная</strong> — это прямая, имеющая с окружностью только одну общую точку. Эта точка называется <em>точкой касания</em>.</p>
+
+                    <div class="svg-container">
+                        <svg width="400" height="350" viewBox="0 0 400 350">
+                            <!-- Окружность -->
+                            <circle cx="200" cy="200" r="100" fill="none" stroke="#2c3e50" stroke-width="2"/>
+                            <!-- Центр -->
+                            <circle cx="200" cy="200" r="4" fill="#e74c3c"/>
+                            <text x="190" y="195" text-anchor="end" font-size="16" fill="#e74c3c" font-weight="bold">O</text>
+                            <!-- Точка касания -->
+                            <circle cx="300" cy="200" r="4" fill="#2ecc71"/>
+                            <text x="310" y="195" font-size="16" fill="#2ecc71" font-weight="bold">A</text>
+                            <!-- Радиус к точке касания -->
+                            <line x1="200" y1="200" x2="300" y2="200" stroke="#3498db" stroke-width="2"/>
+                            <text x="250" y="190" text-anchor="middle" font-size="14" fill="#3498db">r</text>
+                            <!-- Касательная -->
+                            <line x1="300" y1="100" x2="300" y2="300" stroke="#e74c3c" stroke-width="2"/>
+                            <text x="310" y="120" font-size="16" fill="#e74c3c" font-weight="bold">l</text>
+                            <!-- Прямой угол -->
+                            <rect x="290" y="200" width="10" height="10" fill="none" stroke="#f39c12" stroke-width="2"/>
+                        </svg>
+                    </div>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Теорема о касательной:</div>
+                        <p>Касательная к окружности перпендикулярна радиусу, проведенному в точку касания.</p>
+                        <div class="formula">$$OA \perp l$$</div>
+                        <p><strong>Доказательство:</strong> Предположим противное — что касательная не перпендикулярна радиусу. Тогда можно опустить из центра перпендикуляр на касательную, и он будет короче радиуса. Но тогда на касательной найдется точка, находящаяся от центра на расстоянии, равном радиусу, т.е. лежащая на окружности. Это противоречит определению касательной. ∎</p>
+                    </div>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Теорема об отрезках касательных:</div>
+                        <p>Отрезки касательных к окружности, проведенные из одной точки, равны.</p>
+                        <div class="svg-container">
+                            <svg width="400" height="350" viewBox="0 0 400 350">
+                                <!-- Окружность -->
+                                <circle cx="200" cy="200" r="80" fill="none" stroke="#2c3e50" stroke-width="2"/>
+                                <!-- Центр -->
+                                <circle cx="200" cy="200" r="3" fill="#e74c3c"/>
+                                <text x="190" y="195" text-anchor="end" font-size="14" fill="#e74c3c">O</text>
+                                <!-- Внешняя точка -->
+                                <circle cx="200" cy="50" r="4" fill="#2ecc71"/>
+                                <text x="200" y="40" text-anchor="middle" font-size="16" fill="#2ecc71" font-weight="bold">M</text>
+                                <!-- Точки касания -->
+                                <circle cx="145" cy="165" r="3" fill="#2c3e50"/>
+                                <text x="135" y="165" text-anchor="end" font-size="14" fill="#2c3e50">A</text>
+                                <circle cx="255" cy="165" r="3" fill="#2c3e50"/>
+                                <text x="265" y="165" text-anchor="start" font-size="14" fill="#2c3e50">B</text>
+                                <!-- Касательные -->
+                                <line x1="200" y1="50" x2="145" y2="165" stroke="#3498db" stroke-width="2"/>
+                                <line x1="200" y1="50" x2="255" y2="165" stroke="#3498db" stroke-width="2"/>
+                                <text x="160" y="100" font-size="14" fill="#3498db" font-weight="bold">MA</text>
+                                <text x="235" y="100" font-size="14" fill="#3498db" font-weight="bold">MB</text>
+                                <!-- Радиусы -->
+                                <line x1="200" y1="200" x2="145" y2="165" stroke="#95a5a6" stroke-width="1" stroke-dasharray="3"/>
+                                <line x1="200" y1="200" x2="255" y2="165" stroke="#95a5a6" stroke-width="1" stroke-dasharray="3"/>
+                            </svg>
+                        </div>
+                        <p>Если из точки $M$ проведены две касательные $MA$ и $MB$ к окружности, то $MA = MB$.</p>
+                    </div>
+                </div>
+
+                <!-- Углы в окружности -->
+                <div id="circles-angles">
+                    <h3>Углы в окружности</h3>
+
+                    <h4>Центральный угол</h4>
+                    <p><strong>Центральный угол</strong> — это угол с вершиной в центре окружности.</p>
+
+                    <div class="svg-container">
+                        <svg width="350" height="350" viewBox="0 0 350 350">
+                            <!-- Окружность -->
+                            <circle cx="175" cy="175" r="100" fill="none" stroke="#2c3e50" stroke-width="2"/>
+                            <!-- Центр -->
+                            <circle cx="175" cy="175" r="4" fill="#e74c3c"/>
+                            <text x="165" y="170" text-anchor="end" font-size="16" fill="#e74c3c" font-weight="bold">O</text>
+                            <!-- Точки на окружности -->
+                            <circle cx="175" cy="75" r="3" fill="#2c3e50"/>
+                            <text x="175" y="65" text-anchor="middle" font-size="14" fill="#2c3e50">A</text>
+                            <circle cx="245" cy="220" r="3" fill="#2c3e50"/>
+                            <text x="255" y="225" text-anchor="start" font-size="14" fill="#2c3e50">B</text>
+                            <!-- Радиусы -->
+                            <line x1="175" y1="175" x2="175" y2="75" stroke="#3498db" stroke-width="2"/>
+                            <line x1="175" y1="175" x2="245" y2="220" stroke="#3498db" stroke-width="2"/>
+                            <!-- Дуга угла -->
+                            <path d="M 175 125 A 50 50 0 0 1 210 195" fill="none" stroke="#e74c3c" stroke-width="2"/>
+                            <text x="195" y="160" font-size="16" fill="#e74c3c" font-weight="bold">α</text>
+                            <!-- Дуга окружности -->
+                            <path d="M 175 75 A 100 100 0 0 1 245 220" fill="none" stroke="#2ecc71" stroke-width="3"/>
+                        </svg>
+                    </div>
+
+                    <div class="property">
+                        <div class="property-title">Свойство:</div>
+                        <p>Центральный угол равен градусной мере дуги, на которую он опирается.</p>
+                    </div>
+
+                    <h4>Вписанный угол</h4>
+                    <p><strong>Вписанный угол</strong> — это угол, вершина которого лежит на окружности, а стороны пересекают окружность.</p>
+
+                    <div class="svg-container">
+                        <svg width="400" height="350" viewBox="0 0 400 350">
+                            <!-- Окружность -->
+                            <circle cx="200" cy="200" r="120" fill="none" stroke="#2c3e50" stroke-width="2"/>
+                            <!-- Центр -->
+                            <circle cx="200" cy="200" r="3" fill="#95a5a6"/>
+                            <text x="190" y="195" text-anchor="end" font-size="12" fill="#95a5a6">O</text>
+                            <!-- Точки на окружности -->
+                            <circle cx="140" cy="110" r="3" fill="#2c3e50"/>
+                            <text x="130" y="105" text-anchor="end" font-size="14" fill="#2c3e50">A</text>
+                            <circle cx="260" cy="110" r="3" fill="#2c3e50"/>
+                            <text x="270" y="105" text-anchor="start" font-size="14" fill="#2c3e50">B</text>
+                            <circle cx="150" cy="290" r="4" fill="#e74c3c"/>
+                            <text x="140" y="310" text-anchor="end" font-size="16" fill="#e74c3c" font-weight="bold">C</text>
+                            <!-- Хорды -->
+                            <line x1="150" y1="290" x2="140" y2="110" stroke="#3498db" stroke-width="2"/>
+                            <line x1="150" y1="290" x2="260" y2="110" stroke="#3498db" stroke-width="2"/>
+                            <line x1="140" y1="110" x2="260" y2="110" stroke="#95a5a6" stroke-width="1" stroke-dasharray="3"/>
+                            <!-- Вписанный угол -->
+                            <path d="M 150 265 A 25 25 0 0 1 170 270" fill="none" stroke="#e74c3c" stroke-width="2"/>
+                            <text x="160" y="270" font-size="16" fill="#e74c3c" font-weight="bold">β</text>
+                        </svg>
+                    </div>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Теорема о вписанном угле:</div>
+                        <p>Вписанный угол равен половине центрального угла, опирающегося на ту же дугу.</p>
+                        <div class="formula">$$\beta = \frac{\alpha}{2}$$</div>
+                    </div>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Следствие:</div>
+                        <p>Вписанные углы, опирающиеся на одну и ту же дугу, равны.</p>
+                    </div>
+
+                    <div class="important">
+                        <div class="important-title">Важное свойство:</div>
+                        <p>Вписанный угол, опирающийся на диаметр, — прямой (равен $90°$).</p>
+                    </div>
+                </div>
+
+                <!-- Задания по окружностям -->
+                <div id="circles-exercises">
+                    <h3>Задания</h3>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 1</div>
+                        <div class="exercise-text">
+                            Найдите длину окружности и площадь круга, если радиус равен 5 см. (Используйте $\pi \approx 3.14$)
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>Длина окружности: $C = 2\pi r = 2 \cdot 3.14 \cdot 5 = 31.4$ см</p>
+                            <p>Площадь круга: $S = \pi r^2 = 3.14 \cdot 5^2 = 3.14 \cdot 25 = 78.5$ см²</p>
+                            <p><strong>Ответ:</strong> $C = 31.4$ см, $S = 78.5$ см²</p>
+                        </div>
+                    </div>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 2</div>
+                        <div class="exercise-text">
+                            Центральный угол равен $120°$. Найдите градусную меру дуги, на которую он опирается, и вписанный угол, опирающийся на ту же дугу.
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>Центральный угол равен градусной мере дуги, значит дуга равна $120°$.</p>
+                            <p>Вписанный угол равен половине центрального угла:</p>
+                            <p>$\beta = \frac{120°}{2} = 60°$</p>
+                            <p><strong>Ответ:</strong> дуга $120°$, вписанный угол $60°$</p>
+                        </div>
+                    </div>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 3</div>
+                        <div class="exercise-text">
+                            Из точки вне окружности проведены две касательные. Расстояние от точки до центра окружности равно 10 см, радиус окружности равен 6 см. Найдите длину отрезка касательной от точки до точки касания.
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>Пусть $M$ — внешняя точка, $O$ — центр, $A$ — точка касания.</p>
+                            <p>$\triangle OAM$ — прямоугольный ($OA \perp MA$)</p>
+                            <p>$OM = 10$ см (расстояние от точки до центра)</p>
+                            <p>$OA = 6$ см (радиус)</p>
+                            <p>По теореме Пифагора:</p>
+                            <p>$MA^2 = OM^2 - OA^2 = 10^2 - 6^2 = 100 - 36 = 64$</p>
+                            <p>$MA = 8$ см</p>
+                            <p><strong>Ответ:</strong> 8 см</p>
+                        </div>
+                    </div>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 4</div>
+                        <div class="exercise-text">
+                            Хорда окружности равна радиусу. Найдите угол, который она образует с радиусом, проведенным в один из концов хорды.
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>Пусть $AB$ — хорда, $O$ — центр, $OA$ и $OB$ — радиусы.</p>
+                            <p>Дано: $AB = r$, $OA = r$, $OB = r$</p>
+                            <p>Треугольник $OAB$ — равносторонний (все стороны равны $r$)</p>
+                            <p>В равностороннем треугольнике все углы равны $60°$</p>
+                            <p><strong>Ответ:</strong> $60°$</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ЧЕТЫРЕХУГОЛЬНИКИ -->
+            <section id="quadrilaterals" class="section">
+                <h2>Четырехугольники</h2>
+
+                <!-- Параллелограмм -->
+                <div id="quad-parallelogram">
+                    <h3>Параллелограмм</h3>
+
+                    <p><strong>Параллелограмм</strong> — это четырехугольник, у которого противоположные стороны попарно параллельны.</p>
+
+                    <div class="svg-container">
+                        <svg width="500" height="300" viewBox="0 0 500 300">
+                            <!-- Параллелограмм -->
+                            <polygon points="100,200 250,200 350,80 200,80" fill="#e8f4f8" stroke="#2c3e50" stroke-width="2"/>
+                            <!-- Вершины -->
+                            <circle cx="100" cy="200" r="4" fill="#e74c3c"/>
+                            <circle cx="250" cy="200" r="4" fill="#e74c3c"/>
+                            <circle cx="350" cy="80" r="4" fill="#e74c3c"/>
+                            <circle cx="200" cy="80" r="4" fill="#e74c3c"/>
+                            <!-- Подписи вершин -->
+                            <text x="90" y="220" font-size="16" fill="#2c3e50" font-weight="bold">A</text>
+                            <text x="260" y="220" font-size="16" fill="#2c3e50" font-weight="bold">B</text>
+                            <text x="360" y="80" font-size="16" fill="#2c3e50" font-weight="bold">C</text>
+                            <text x="190" y="70" font-size="16" fill="#2c3e50" font-weight="bold">D</text>
+                            <!-- Диагонали -->
+                            <line x1="100" y1="200" x2="350" y2="80" stroke="#3498db" stroke-width="2" stroke-dasharray="5"/>
+                            <line x1="250" y1="200" x2="200" y2="80" stroke="#2ecc71" stroke-width="2" stroke-dasharray="5"/>
+                            <!-- Точка пересечения диагоналей -->
+                            <circle cx="225" cy="140" r="4" fill="#f39c12"/>
+                            <text x="235" y="135" font-size="14" fill="#f39c12">O</text>
+                            <!-- Параллельные стороны -->
+                            <text x="175" y="215" font-size="14" fill="#e74c3c">a</text>
+                            <text x="275" y="95" font-size="14" fill="#e74c3c">a</text>
+                        </svg>
+                    </div>
+
+                    <div class="property">
+                        <div class="property-title">Свойства параллелограмма:</div>
+                        <ul>
+                            <li>Противоположные стороны равны: $AB = CD$, $BC = AD$</li>
+                            <li>Противоположные углы равны: $\angle A = \angle C$, $\angle B = \angle D$</li>
+                            <li>Диагонали точкой пересечения делятся пополам: $AO = OC$, $BO = OD$</li>
+                            <li>Сумма углов, прилежащих к одной стороне, равна $180°$</li>
+                        </ul>
+                    </div>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Признаки параллелограмма:</div>
+                        <p>Четырехугольник является параллелограммом, если выполняется одно из условий:</p>
+                        <ol>
+                            <li>Противоположные стороны попарно равны</li>
+                            <li>Противоположные углы попарно равны</li>
+                            <li>Диагонали точкой пересечения делятся пополам</li>
+                            <li>Две противоположные стороны равны и параллельны</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- Прямоугольник -->
+                <div id="quad-rectangle">
+                    <h3>Прямоугольник</h3>
+
+                    <p><strong>Прямоугольник</strong> — это параллелограмм, у которого все углы прямые.</p>
+
+                    <div class="svg-container">
+                        <svg width="450" height="300" viewBox="0 0 450 300">
+                            <!-- Прямоугольник -->
+                            <rect x="75" y="80" width="300" height="180" fill="#e8f8f5" stroke="#2c3e50" stroke-width="2"/>
+                            <!-- Вершины -->
+                            <circle cx="75" cy="80" r="4" fill="#e74c3c"/>
+                            <circle cx="375" cy="80" r="4" fill="#e74c3c"/>
+                            <circle cx="375" cy="260" r="4" fill="#e74c3c"/>
+                            <circle cx="75" cy="260" r="4" fill="#e74c3c"/>
+                            <!-- Подписи -->
+                            <text x="65" y="75" font-size="16" fill="#2c3e50" font-weight="bold">A</text>
+                            <text x="385" y="75" font-size="16" fill="#2c3e50" font-weight="bold">B</text>
+                            <text x="385" y="275" font-size="16" fill="#2c3e50" font-weight="bold">C</text>
+                            <text x="65" y="275" font-size="16" fill="#2c3e50" font-weight="bold">D</text>
+                            <!-- Прямые углы -->
+                            <rect x="75" y="80" width="15" height="15" fill="none" stroke="#e74c3c" stroke-width="2"/>
+                            <rect x="360" y="80" width="15" height="15" fill="none" stroke="#e74c3c" stroke-width="2"/>
+                            <rect x="360" y="245" width="15" height="15" fill="none" stroke="#e74c3c" stroke-width="2"/>
+                            <rect x="75" y="245" width="15" height="15" fill="none" stroke="#e74c3c" stroke-width="2"/>
+                            <!-- Диагонали -->
+                            <line x1="75" y1="80" x2="375" y2="260" stroke="#3498db" stroke-width="2" stroke-dasharray="5"/>
+                            <line x1="375" y1="80" x2="75" y2="260" stroke="#3498db" stroke-width="2" stroke-dasharray="5"/>
+                            <!-- Размеры -->
+                            <text x="225" y="70" font-size="14" fill="#2c3e50">a</text>
+                            <text x="390" y="170" font-size="14" fill="#2c3e50">b</text>
+                        </svg>
+                    </div>
+
+                    <div class="property">
+                        <div class="property-title">Свойства прямоугольника:</div>
+                        <ul>
+                            <li>Все свойства параллелограмма</li>
+                            <li>Все углы равны $90°$</li>
+                            <li><strong>Диагонали равны:</strong> $AC = BD$</li>
+                        </ul>
+                    </div>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Признак прямоугольника:</div>
+                        <p>Если в параллелограмме диагонали равны, то этот параллелограмм — прямоугольник.</p>
+                    </div>
+                </div>
+
+                <!-- Ромб -->
+                <div id="quad-rhombus">
+                    <h3>Ромб</h3>
+
+                    <p><strong>Ромб</strong> — это параллелограмм, у которого все стороны равны.</p>
+
+                    <div class="svg-container">
+                        <svg width="400" height="350" viewBox="0 0 400 350">
+                            <!-- Ромб -->
+                            <polygon points="200,50 320,170 200,290 80,170" fill="#fff3cd" stroke="#2c3e50" stroke-width="2"/>
+                            <!-- Вершины -->
+                            <circle cx="200" cy="50" r="4" fill="#e74c3c"/>
+                            <circle cx="320" cy="170" r="4" fill="#e74c3c"/>
+                            <circle cx="200" cy="290" r="4" fill="#e74c3c"/>
+                            <circle cx="80" cy="170" r="4" fill="#e74c3c"/>
+                            <!-- Подписи -->
+                            <text x="200" y="40" text-anchor="middle" font-size="16" fill="#2c3e50" font-weight="bold">A</text>
+                            <text x="335" y="175" font-size="16" fill="#2c3e50" font-weight="bold">B</text>
+                            <text x="200" y="315" text-anchor="middle" font-size="16" fill="#2c3e50" font-weight="bold">C</text>
+                            <text x="65" y="175" font-size="16" fill="#2c3e50" font-weight="bold">D</text>
+                            <!-- Диагонали -->
+                            <line x1="200" y1="50" x2="200" y2="290" stroke="#3498db" stroke-width="2" stroke-dasharray="5"/>
+                            <line x1="80" y1="170" x2="320" y2="170" stroke="#2ecc71" stroke-width="2" stroke-dasharray="5"/>
+                            <!-- Прямой угол пересечения диагоналей -->
+                            <rect x="190" y="160" width="10" height="10" fill="none" stroke="#e74c3c" stroke-width="2"/>
+                            <!-- Центр -->
+                            <circle cx="200" cy="170" r="4" fill="#f39c12"/>
+                            <text x="210" y="165" font-size="14" fill="#f39c12">O</text>
+                            <!-- Стороны -->
+                            <text x="140" y="110" font-size="14" fill="#2c3e50">a</text>
+                        </svg>
+                    </div>
+
+                    <div class="property">
+                        <div class="property-title">Свойства ромба:</div>
+                        <ul>
+                            <li>Все свойства параллелограмма</li>
+                            <li>Все стороны равны: $AB = BC = CD = DA = a$</li>
+                            <li><strong>Диагонали перпендикулярны:</strong> $AC \perp BD$</li>
+                            <li>Диагонали являются биссектрисами углов</li>
+                        </ul>
+                    </div>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Признаки ромба:</div>
+                        <p>Параллелограмм является ромбом, если:</p>
+                        <ol>
+                            <li>Все его стороны равны</li>
+                            <li>Его диагонали перпендикулярны</li>
+                            <li>Диагональ является биссектрисой угла</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- Квадрат -->
+                <div id="quad-square">
+                    <h3>Квадрат</h3>
+
+                    <p><strong>Квадрат</strong> — это прямоугольник, у которого все стороны равны. Или: это ромб, у которого все углы прямые.</p>
+
+                    <div class="svg-container">
+                        <svg width="350" height="350" viewBox="0 0 350 350">
+                            <!-- Квадрат -->
+                            <rect x="75" y="75" width="200" height="200" fill="#e8f4f8" stroke="#2c3e50" stroke-width="2"/>
+                            <!-- Вершины -->
+                            <circle cx="75" cy="75" r="4" fill="#e74c3c"/>
+                            <circle cx="275" cy="75" r="4" fill="#e74c3c"/>
+                            <circle cx="275" cy="275" r="4" fill="#e74c3c"/>
+                            <circle cx="75" cy="275" r="4" fill="#e74c3c"/>
+                            <!-- Подписи -->
+                            <text x="65" y="70" font-size="16" fill="#2c3e50" font-weight="bold">A</text>
+                            <text x="285" y="70" font-size="16" fill="#2c3e50" font-weight="bold">B</text>
+                            <text x="285" y="290" font-size="16" fill="#2c3e50" font-weight="bold">C</text>
+                            <text x="65" y="290" font-size="16" fill="#2c3e50" font-weight="bold">D</text>
+                            <!-- Прямые углы -->
+                            <rect x="75" y="75" width="15" height="15" fill="none" stroke="#e74c3c" stroke-width="2"/>
+                            <rect x="260" y="75" width="15" height="15" fill="none" stroke="#e74c3c" stroke-width="2"/>
+                            <rect x="260" y="260" width="15" height="15" fill="none" stroke="#e74c3c" stroke-width="2"/>
+                            <rect x="75" y="260" width="15" height="15" fill="none" stroke="#e74c3c" stroke-width="2"/>
+                            <!-- Диагонали -->
+                            <line x1="75" y1="75" x2="275" y2="275" stroke="#3498db" stroke-width="2" stroke-dasharray="5"/>
+                            <line x1="275" y1="75" x2="75" y2="275" stroke="#3498db" stroke-width="2" stroke-dasharray="5"/>
+                            <!-- Прямой угол между диагоналями -->
+                            <rect x="165" y="165" width="10" height="10" fill="none" stroke="#f39c12" stroke-width="2"/>
+                            <!-- Сторона -->
+                            <text x="175" y="65" text-anchor="middle" font-size="14" fill="#2c3e50">a</text>
+                            <text x="290" y="175" font-size="14" fill="#2c3e50">a</text>
+                        </svg>
+                    </div>
+
+                    <div class="property">
+                        <div class="property-title">Свойства квадрата:</div>
+                        <ul>
+                            <li>Все свойства прямоугольника и ромба</li>
+                            <li>Все стороны равны: $AB = BC = CD = DA = a$</li>
+                            <li>Все углы равны $90°$</li>
+                            <li>Диагонали равны, перпендикулярны и делят углы пополам</li>
+                        </ul>
+                    </div>
+
+                    <div class="important">
+                        <div class="important-title">Иерархия четырехугольников:</div>
+                        <p>Квадрат → Прямоугольник → Параллелограмм → Четырехугольник</p>
+                        <p>Квадрат → Ромб → Параллелограмм → Четырехугольник</p>
+                    </div>
+                </div>
+
+                <!-- Задания по четырехугольникам -->
+                <div id="quad-exercises">
+                    <h3>Задания</h3>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 1</div>
+                        <div class="exercise-text">
+                            В параллелограмме ABCD сторона AB равна 8 см, сторона BC равна 5 см. Найдите периметр параллелограмма.
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>В параллелограмме противоположные стороны равны:</p>
+                            <p>$AB = CD = 8$ см, $BC = AD = 5$ см</p>
+                            <p>Периметр: $P = AB + BC + CD + AD = 8 + 5 + 8 + 5 = 26$ см</p>
+                            <p><strong>Ответ:</strong> 26 см</p>
+                        </div>
+                    </div>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 2</div>
+                        <div class="exercise-text">
+                            В прямоугольнике одна сторона равна 12 см, а диагональ — 13 см. Найдите вторую сторону и площадь прямоугольника.
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>Диагональ прямоугольника образует прямоугольный треугольник со сторонами.</p>
+                            <p>По теореме Пифагора: $b^2 = d^2 - a^2 = 13^2 - 12^2 = 169 - 144 = 25$</p>
+                            <p>$b = 5$ см</p>
+                            <p>Площадь: $S = a \cdot b = 12 \cdot 5 = 60$ см²</p>
+                            <p><strong>Ответ:</strong> 5 см, 60 см²</p>
+                        </div>
+                    </div>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 3</div>
+                        <div class="exercise-text">
+                            В ромбе диагонали равны 16 см и 12 см. Найдите сторону ромба.
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>Диагонали ромба перпендикулярны и делятся точкой пересечения пополам.</p>
+                            <p>Половины диагоналей: $\frac{16}{2} = 8$ см и $\frac{12}{2} = 6$ см</p>
+                            <p>Сторона ромба — гипотенуза прямоугольного треугольника:</p>
+                            <p>$a^2 = 8^2 + 6^2 = 64 + 36 = 100$</p>
+                            <p>$a = 10$ см</p>
+                            <p><strong>Ответ:</strong> 10 см</p>
+                        </div>
+                    </div>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 4</div>
+                        <div class="exercise-text">
+                            Периметр квадрата равен 36 см. Найдите его сторону, диагональ и площадь.
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>Сторона квадрата: $a = \frac{P}{4} = \frac{36}{4} = 9$ см</p>
+                            <p>Диагональ (по теореме Пифагора):</p>
+                            <p>$d^2 = a^2 + a^2 = 2a^2 = 2 \cdot 81 = 162$</p>
+                            <p>$d = \sqrt{162} = 9\sqrt{2} \approx 12.73$ см</p>
+                            <p>Площадь: $S = a^2 = 9^2 = 81$ см²</p>
+                            <p><strong>Ответ:</strong> сторона 9 см, диагональ $9\sqrt{2}$ см, площадь 81 см²</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ТРАПЕЦИИ -->
+            <section id="trapezoid" class="section">
+                <h2>Трапеции</h2>
+
+                <!-- Основные понятия -->
+                <div id="trapezoid-basics">
+                    <h3>Основные понятия</h3>
+
+                    <p><strong>Трапеция</strong> — это четырехугольник, у которого две стороны параллельны, а две другие — не параллельны. Параллельные стороны называются <em>основаниями</em>, а непараллельные — <em>боковыми сторонами</em>.</p>
+
+                    <div class="svg-container">
+                        <svg width="450" height="300" viewBox="0 0 450 300">
+                            <!-- Трапеция -->
+                            <polygon points="100,230 350,230 280,80 150,80" fill="#e8f4f8" stroke="#2c3e50" stroke-width="2"/>
+                            <!-- Вершины -->
+                            <circle cx="100" cy="230" r="4" fill="#e74c3c"/>
+                            <circle cx="350" cy="230" r="4" fill="#e74c3c"/>
+                            <circle cx="280" cy="80" r="4" fill="#e74c3c"/>
+                            <circle cx="150" cy="80" r="4" fill="#e74c3c"/>
+                            <!-- Подписи -->
+                            <text x="90" y="250" font-size="16" fill="#2c3e50" font-weight="bold">A</text>
+                            <text x="360" y="250" font-size="16" fill="#2c3e50" font-weight="bold">B</text>
+                            <text x="290" y="75" font-size="16" fill="#2c3e50" font-weight="bold">C</text>
+                            <text x="140" y="75" font-size="16" fill="#2c3e50" font-weight="bold">D</text>
+                            <!-- Основания -->
+                            <text x="225" y="250" text-anchor="middle" font-size="14" fill="#e74c3c">a (большее основание)</text>
+                            <text x="215" y="70" text-anchor="middle" font-size="14" fill="#2ecc71">b (меньшее основание)</text>
+                            <!-- Высота -->
+                            <line x1="215" y1="230" x2="215" y2="80" stroke="#3498db" stroke-width="2" stroke-dasharray="5"/>
+                            <text x="220" y="160" font-size="14" fill="#3498db">h</text>
+                            <!-- Средняя линия -->
+                            <line x1="125" y1="155" x2="315" y2="155" stroke="#f39c12" stroke-width="2" stroke-dasharray="3"/>
+                            <text x="220" y="145" text-anchor="middle" font-size="14" fill="#f39c12">m (средняя линия)</text>
+                        </svg>
+                    </div>
+
+                    <div class="property">
+                        <div class="property-title">Элементы трапеции:</div>
+                        <ul>
+                            <li><strong>Основания:</strong> $AB$ и $CD$ ($AB \parallel CD$)</li>
+                            <li><strong>Боковые стороны:</strong> $BC$ и $AD$</li>
+                            <li><strong>Высота:</strong> перпендикуляр, опущенный из любой точки одного основания на другое основание</li>
+                            <li><strong>Средняя линия:</strong> отрезок, соединяющий середины боковых сторон</li>
+                        </ul>
+                    </div>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Теорема о средней линии трапеции:</div>
+                        <p>Средняя линия трапеции параллельна основаниям и равна их полусумме:</p>
+                        <div class="formula">$$m = \frac{a + b}{2}$$</div>
+                        <p>где $a$ и $b$ — основания трапеции.</p>
+                    </div>
+                </div>
+
+                <!-- Виды трапеций -->
+                <div id="trapezoid-types">
+                    <h3>Виды трапеций</h3>
+
+                    <h4>Равнобедренная (равнобокая) трапеция</h4>
+                    <p><strong>Равнобедренная трапеция</strong> — это трапеция, у которой боковые стороны равны.</p>
+
+                    <div class="svg-container">
+                        <svg width="450" height="300" viewBox="0 0 450 300">
+                            <!-- Равнобедренная трапеция -->
+                            <polygon points="80,240 370,240 300,80 150,80" fill="#e8f8f5" stroke="#2c3e50" stroke-width="2"/>
+                            <!-- Вершины -->
+                            <circle cx="80" cy="240" r="4" fill="#e74c3c"/>
+                            <circle cx="370" cy="240" r="4" fill="#e74c3c"/>
+                            <circle cx="300" cy="80" r="4" fill="#e74c3c"/>
+                            <circle cx="150" cy="80" r="4" fill="#e74c3c"/>
+                            <!-- Подписи -->
+                            <text x="70" y="260" font-size="16" fill="#2c3e50" font-weight="bold">A</text>
+                            <text x="380" y="260" font-size="16" fill="#2c3e50" font-weight="bold">B</text>
+                            <text x="310" y="75" font-size="16" fill="#2c3e50" font-weight="bold">C</text>
+                            <text x="140" y="75" font-size="16" fill="#2c3e50" font-weight="bold">D</text>
+                            <!-- Равные боковые стороны -->
+                            <text x="100" y="155" font-size="14" fill="#2ecc71" font-weight="bold">c</text>
+                            <text x="345" y="155" font-size="14" fill="#2ecc71" font-weight="bold">c</text>
+                            <!-- Диагонали -->
+                            <line x1="80" y1="240" x2="300" y2="80" stroke="#3498db" stroke-width="2" stroke-dasharray="5"/>
+                            <line x1="370" y1="240" x2="150" y2="80" stroke="#3498db" stroke-width="2" stroke-dasharray="5"/>
+                        </svg>
+                    </div>
+
+                    <div class="property">
+                        <div class="property-title">Свойства равнобедренной трапеции:</div>
+                        <ul>
+                            <li>Боковые стороны равны: $AD = BC$</li>
+                            <li>Углы при каждом основании равны: $\angle A = \angle B$, $\angle D = \angle C$</li>
+                            <li>Диагонали равны: $AC = BD$</li>
+                            <li>Сумма противоположных углов равна $180°$</li>
+                        </ul>
+                    </div>
+
+                    <h4>Прямоугольная трапеция</h4>
+                    <p><strong>Прямоугольная трапеция</strong> — это трапеция, у которой одна из боковых сторон перпендикулярна основаниям.</p>
+
+                    <div class="svg-container">
+                        <svg width="400" height="300" viewBox="0 0 400 300">
+                            <!-- Прямоугольная трапеция -->
+                            <polygon points="100,240 320,240 320,100 150,100" fill="#fff3cd" stroke="#2c3e50" stroke-width="2"/>
+                            <!-- Вершины -->
+                            <circle cx="100" cy="240" r="4" fill="#e74c3c"/>
+                            <circle cx="320" cy="240" r="4" fill="#e74c3c"/>
+                            <circle cx="320" cy="100" r="4" fill="#e74c3c"/>
+                            <circle cx="150" cy="100" r="4" fill="#e74c3c"/>
+                            <!-- Подписи -->
+                            <text x="90" y="260" font-size="16" fill="#2c3e50" font-weight="bold">A</text>
+                            <text x="330" y="260" font-size="16" fill="#2c3e50" font-weight="bold">B</text>
+                            <text x="330" y="95" font-size="16" fill="#2c3e50" font-weight="bold">C</text>
+                            <text x="140" y="95" font-size="16" fill="#2c3e50" font-weight="bold">D</text>
+                            <!-- Прямые углы -->
+                            <rect x="100" y="225" width="15" height="15" fill="none" stroke="#e74c3c" stroke-width="2"/>
+                            <rect x="305" y="100" width="15" height="15" fill="none" stroke="#e74c3c" stroke-width="2"/>
+                            <!-- Высота -->
+                            <text x="335" y="170" font-size="14" fill="#3498db">h = BC</text>
+                        </svg>
+                    </div>
+
+                    <div class="property">
+                        <div class="property-title">Свойство прямоугольной трапеции:</div>
+                        <p>В прямоугольной трапеции две углы прямые ($90°$), и одна из боковых сторон является высотой.</p>
+                    </div>
+                </div>
+
+                <!-- Задания по трапециям -->
+                <div id="trapezoid-exercises">
+                    <h3>Задания</h3>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 1</div>
+                        <div class="exercise-text">
+                            Основания трапеции равны 8 см и 14 см. Найдите среднюю линию трапеции.
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>Средняя линия трапеции равна полусумме оснований:</p>
+                            <p>$m = \frac{a + b}{2} = \frac{14 + 8}{2} = \frac{22}{2} = 11$ см</p>
+                            <p><strong>Ответ:</strong> 11 см</p>
+                        </div>
+                    </div>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 2</div>
+                        <div class="exercise-text">
+                            В прямоугольной трапеции основания равны 5 см и 9 см, а высота равна 4 см. Найдите площадь трапеции.
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>Площадь трапеции:</p>
+                            <p>$S = \frac{(a + b) \cdot h}{2} = \frac{(9 + 5) \cdot 4}{2} = \frac{14 \cdot 4}{2} = \frac{56}{2} = 28$ см²</p>
+                            <p><strong>Ответ:</strong> 28 см²</p>
+                        </div>
+                    </div>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 3</div>
+                        <div class="exercise-text">
+                            В равнобедренной трапеции диагонали равны 10 см каждая, а средняя линия равна 6 см. Найдите основания трапеции, если их разность равна 4 см.
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>Средняя линия: $m = \frac{a + b}{2} = 6$</p>
+                            <p>Следовательно: $a + b = 12$</p>
+                            <p>По условию: $a - b = 4$</p>
+                            <p>Решаем систему:</p>
+                            <p>$a + b = 12$</p>
+                            <p>$a - b = 4$</p>
+                            <p>Складывая: $2a = 16$, откуда $a = 8$ см</p>
+                            <p>$b = 12 - 8 = 4$ см</p>
+                            <p><strong>Ответ:</strong> 8 см и 4 см</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ПЛОЩАДИ ФИГУР -->
+            <section id="areas" class="section">
+                <h2>Площади фигур</h2>
+
+                <!-- Площадь треугольника -->
+                <div id="areas-triangle">
+                    <h3>Площадь треугольника</h3>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Формула площади через основание и высоту:</div>
+                        <div class="formula">$$S = \frac{1}{2} \cdot a \cdot h$$</div>
+                        <p>где $a$ — основание, $h$ — высота, проведенная к этому основанию.</p>
+                    </div>
+
+                    <div class="svg-container">
+                        <svg width="350" height="280" viewBox="0 0 350 280">
+                            <polygon points="50,230 300,230 175,60" fill="#e8f4f8" stroke="#2c3e50" stroke-width="2"/>
+                            <circle cx="50" cy="230" r="3" fill="#e74c3c"/>
+                            <circle cx="300" cy="230" r="3" fill="#e74c3c"/>
+                            <circle cx="175" cy="60" r="3" fill="#e74c3c"/>
+                            <text x="40" y="250" font-size="14" fill="#2c3e50">A</text>
+                            <text x="310" y="250" font-size="14" fill="#2c3e50">B</text>
+                            <text x="175" y="50" text-anchor="middle" font-size="14" fill="#2c3e50">C</text>
+                            <!-- Основание -->
+                            <text x="175" y="250" text-anchor="middle" font-size="14" fill="#e74c3c">a</text>
+                            <!-- Высота -->
+                            <line x1="175" y1="230" x2="175" y2="60" stroke="#3498db" stroke-width="2" stroke-dasharray="5"/>
+                            <text x="185" y="145" font-size="14" fill="#3498db">h</text>
+                        </svg>
+                    </div>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Формула Герона:</div>
+                        <p>Площадь треугольника можно вычислить через три стороны:</p>
+                        <div class="formula">$$S = \sqrt{p(p-a)(p-b)(p-c)}$$</div>
+                        <p>где $p = \frac{a+b+c}{2}$ — полупериметр треугольника.</p>
+                    </div>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Формула через две стороны и угол между ними:</div>
+                        <div class="formula">$$S = \frac{1}{2} \cdot a \cdot b \cdot \sin\gamma$$</div>
+                        <p>где $a$ и $b$ — стороны, $\gamma$ — угол между ними.</p>
+                    </div>
+
+                    <div class="important">
+                        <div class="important-title">Площадь прямоугольного треугольника:</div>
+                        <div class="formula">$$S = \frac{1}{2} \cdot a \cdot b$$</div>
+                        <p>где $a$ и $b$ — катеты.</p>
+                    </div>
+                </div>
+
+                <!-- Площадь четырехугольников -->
+                <div id="areas-quad">
+                    <h3>Площадь четырехугольников</h3>
+
+                    <h4>Параллелограмм</h4>
+                    <div class="formula">$$S = a \cdot h$$</div>
+                    <p>где $a$ — основание, $h$ — высота.</p>
+                    <div class="formula">$$S = a \cdot b \cdot \sin\alpha$$</div>
+                    <p>где $a$ и $b$ — смежные стороны, $\alpha$ — угол между ними.</p>
+
+                    <h4>Прямоугольник</h4>
+                    <div class="formula">$$S = a \cdot b$$</div>
+                    <p>где $a$ и $b$ — стороны прямоугольника.</p>
+
+                    <h4>Ромб</h4>
+                    <div class="formula">$$S = a \cdot h$$</div>
+                    <p>где $a$ — сторона, $h$ — высота.</p>
+                    <div class="formula">$$S = \frac{d_1 \cdot d_2}{2}$$</div>
+                    <p>где $d_1$ и $d_2$ — диагонали ромба.</p>
+
+                    <h4>Квадрат</h4>
+                    <div class="formula">$$S = a^2$$</div>
+                    <p>где $a$ — сторона квадрата.</p>
+                    <div class="formula">$$S = \frac{d^2}{2}$$</div>
+                    <p>где $d$ — диагональ квадрата.</p>
+
+                    <h4>Трапеция</h4>
+                    <div class="formula">$$S = \frac{(a + b) \cdot h}{2}$$</div>
+                    <p>где $a$ и $b$ — основания, $h$ — высота.</p>
+                    <div class="formula">$$S = m \cdot h$$</div>
+                    <p>где $m$ — средняя линия, $h$ — высота.</p>
+                </div>
+
+                <!-- Площадь круга -->
+                <div id="areas-circle">
+                    <h3>Площадь круга и его частей</h3>
+
+                    <h4>Площадь круга</h4>
+                    <div class="formula">$$S = \pi r^2$$</div>
+                    <p>где $r$ — радиус круга.</p>
+
+                    <h4>Площадь сектора</h4>
+                    <div class="formula">$$S = \frac{\pi r^2 \cdot n}{360}$$</div>
+                    <p>где $r$ — радиус, $n$ — градусная мера центрального угла сектора.</p>
+
+                    <div class="svg-container">
+                        <svg width="300" height="300" viewBox="0 0 300 300">
+                            <circle cx="150" cy="150" r="100" fill="none" stroke="#2c3e50" stroke-width="2"/>
+                            <path d="M 150 150 L 150 50 A 100 100 0 0 1 236.6 193.3 Z" fill="#e8f4f8" stroke="#3498db" stroke-width="2"/>
+                            <circle cx="150" cy="150" r="3" fill="#e74c3c"/>
+                            <text x="140" y="145" font-size="12" fill="#e74c3c">O</text>
+                            <text x="175" y="100" font-size="14" fill="#2c3e50">r</text>
+                            <text x="200" y="140" font-size="14" fill="#3498db" font-weight="bold">Сектор</text>
+                        </svg>
+                    </div>
+
+                    <div class="important">
+                        <div class="important-title">Отношение площадей подобных фигур:</div>
+                        <p>Если фигуры подобны с коэффициентом подобия $k$, то отношение их площадей равно $k^2$:</p>
+                        <div class="formula">$$\frac{S_1}{S_2} = k^2$$</div>
+                    </div>
+                </div>
+
+                <!-- Задания по площадям -->
+                <div id="areas-exercises">
+                    <h3>Задания</h3>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 1</div>
+                        <div class="exercise-text">
+                            Стороны треугольника равны 5 см, 6 см и 7 см. Найдите площадь треугольника по формуле Герона.
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>Полупериметр: $p = \frac{5 + 6 + 7}{2} = \frac{18}{2} = 9$ см</p>
+                            <p>По формуле Герона:</p>
+                            <p>$S = \sqrt{p(p-a)(p-b)(p-c)}$</p>
+                            <p>$S = \sqrt{9 \cdot 4 \cdot 3 \cdot 2} = \sqrt{216} = 6\sqrt{6} \approx 14.7$ см²</p>
+                            <p><strong>Ответ:</strong> $6\sqrt{6}$ см² или приблизительно 14.7 см²</p>
+                        </div>
+                    </div>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 2</div>
+                        <div class="exercise-text">
+                            Диагонали ромба равны 10 см и 24 см. Найдите площадь ромба.
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>Площадь ромба через диагонали:</p>
+                            <p>$S = \frac{d_1 \cdot d_2}{2} = \frac{10 \cdot 24}{2} = \frac{240}{2} = 120$ см²</p>
+                            <p><strong>Ответ:</strong> 120 см²</p>
+                        </div>
+                    </div>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 3</div>
+                        <div class="exercise-text">
+                            Площадь круга равна $64\pi$ см². Найдите радиус круга и длину окружности.
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>Из формулы площади круга: $S = \pi r^2$</p>
+                            <p>$64\pi = \pi r^2$</p>
+                            <p>$r^2 = 64$</p>
+                            <p>$r = 8$ см</p>
+                            <p>Длина окружности: $C = 2\pi r = 2\pi \cdot 8 = 16\pi$ см</p>
+                            <p><strong>Ответ:</strong> радиус 8 см, длина окружности $16\pi$ см</p>
+                        </div>
+                    </div>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 4</div>
+                        <div class="exercise-text">
+                            Два подобных треугольника имеют коэффициент подобия 3. Площадь меньшего треугольника равна 12 см². Найдите площадь большего треугольника.
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>Отношение площадей подобных фигур равно квадрату коэффициента подобия:</p>
+                            <p>$\frac{S_{\text{большего}}}{S_{\text{меньшего}}} = k^2 = 3^2 = 9$</p>
+                            <p>$S_{\text{большего}} = 9 \cdot 12 = 108$ см²</p>
+                            <p><strong>Ответ:</strong> 108 см²</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ВЕКТОРЫ -->
+            <section id="vectors" class="section">
+                <h2>Векторы</h2>
+
+                <!-- Основные понятия -->
+                <div id="vectors-basics">
+                    <h3>Основные понятия</h3>
+
+                    <p><strong>Вектор</strong> — это направленный отрезок, т.е. отрезок, для которого указано, какая из его граничных точек является началом, а какая — концом.</p>
+
+                    <div class="svg-container">
+                        <svg width="400" height="200" viewBox="0 0 400 200">
+                            <!-- Вектор -->
+                            <defs>
+                                <marker id="arrowhead2" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                    <polygon points="0 0, 10 3.5, 0 7" fill="#e74c3c" />
+                                </marker>
+                            </defs>
+                            <line x1="80" y1="100" x2="320" y2="100" stroke="#e74c3c" stroke-width="3" marker-end="url(#arrowhead2)"/>
+                            <circle cx="80" cy="100" r="4" fill="#2c3e50"/>
+                            <circle cx="320" cy="100" r="4" fill="#2c3e50"/>
+                            <text x="70" y="90" font-size="16" fill="#2c3e50" font-weight="bold">A</text>
+                            <text x="330" y="90" font-size="16" fill="#2c3e50" font-weight="bold">B</text>
+                            <text x="200" y="85" text-anchor="middle" font-size="18" fill="#e74c3c" font-weight="bold">$\vec{AB}$</text>
+                        </svg>
+                    </div>
+
+                    <p>Обозначение: $\vec{AB}$ или $\vec{a}$</p>
+
+                    <h4>Основные характеристики вектора:</h4>
+                    <ul>
+                        <li><strong>Длина (модуль) вектора</strong> — длина отрезка $AB$. Обозначение: $|\vec{AB}|$ или $|\vec{a}|$</li>
+                        <li><strong>Направление</strong> — от начала к концу</li>
+                    </ul>
+
+                    <div class="important">
+                        <div class="important-title">Особые векторы:</div>
+                        <ul>
+                            <li><strong>Нулевой вектор</strong> $\vec{0}$ — вектор, у которого начало и конец совпадают. Его длина равна нулю, направление не определено.</li>
+                            <li><strong>Единичный вектор</strong> — вектор, длина которого равна 1</li>
+                        </ul>
+                    </div>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Равенство векторов:</div>
+                        <p>Два вектора называются равными, если они имеют одинаковую длину и одинаковое направление.</p>
+                    </div>
+
+                    <div class="svg-container">
+                        <svg width="500" height="250" viewBox="0 0 500 250">
+                            <defs>
+                                <marker id="arrowhead3" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                    <polygon points="0 0, 10 3.5, 0 7" fill="#3498db" />
+                                </marker>
+                            </defs>
+                            <!-- Равные векторы -->
+                            <line x1="80" y1="100" x2="200" y2="100" stroke="#3498db" stroke-width="3" marker-end="url(#arrowhead3)"/>
+                            <line x1="100" y1="180" x2="220" y2="180" stroke="#3498db" stroke-width="3" marker-end="url(#arrowhead3)"/>
+                            <line x1="300" y1="140" x2="420" y2="140" stroke="#3498db" stroke-width="3" marker-end="url(#arrowhead3)"/>
+                            <text x="140" y="85" text-anchor="middle" font-size="16" fill="#3498db" font-weight="bold">$\vec{a}$</text>
+                            <text x="160" y="170" text-anchor="middle" font-size="16" fill="#3498db" font-weight="bold">$\vec{b}$</text>
+                            <text x="360" y="125" text-anchor="middle" font-size="16" fill="#3498db" font-weight="bold">$\vec{c}$</text>
+                            <text x="250" y="50" text-anchor="middle" font-size="16" fill="#2c3e50">$\vec{a} = \vec{b} = \vec{c}$</text>
+                        </svg>
+                    </div>
+
+                    <h4>Коллинеарные векторы</h4>
+                    <p><strong>Коллинеарные векторы</strong> — это векторы, лежащие на одной прямой или на параллельных прямых. Они могут быть сонаправленными ($\vec{a} \uparrow\uparrow \vec{b}$) или противоположно направленными ($\vec{a} \uparrow\downarrow \vec{b}$).</p>
+                </div>
+
+                <!-- Операции с векторами -->
+                <div id="vectors-operations">
+                    <h3>Операции с векторами</h3>
+
+                    <h4>Сложение векторов</h4>
+                    <p>Существует два основных правила сложения векторов:</p>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Правило треугольника:</div>
+                        <p>Чтобы сложить векторы $\vec{a}$ и $\vec{b}$, нужно начало вектора $\vec{b}$ совместить с концом вектора $\vec{a}$. Тогда вектор суммы $\vec{c} = \vec{a} + \vec{b}$ идет от начала $\vec{a}$ к концу $\vec{b}$.</p>
+                    </div>
+
+                    <div class="svg-container">
+                        <svg width="400" height="250" viewBox="0 0 400 250">
+                            <defs>
+                                <marker id="arrow-a" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                    <polygon points="0 0, 10 3.5, 0 7" fill="#e74c3c" />
+                                </marker>
+                                <marker id="arrow-b" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                    <polygon points="0 0, 10 3.5, 0 7" fill="#2ecc71" />
+                                </marker>
+                                <marker id="arrow-c" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                    <polygon points="0 0, 10 3.5, 0 7" fill="#3498db" />
+                                </marker>
+                            </defs>
+                            <!-- Вектор a -->
+                            <line x1="50" y1="180" x2="180" y2="180" stroke="#e74c3c" stroke-width="3" marker-end="url(#arrow-a)"/>
+                            <text x="115" y="170" text-anchor="middle" font-size="16" fill="#e74c3c" font-weight="bold">$\vec{a}$</text>
+                            <!-- Вектор b -->
+                            <line x1="180" y1="180" x2="280" y2="80" stroke="#2ecc71" stroke-width="3" marker-end="url(#arrow-b)"/>
+                            <text x="240" y="130" text-anchor="middle" font-size="16" fill="#2ecc71" font-weight="bold">$\vec{b}$</text>
+                            <!-- Сумма -->
+                            <line x1="50" y1="180" x2="280" y2="80" stroke="#3498db" stroke-width="3" marker-end="url(#arrow-c)" stroke-dasharray="5"/>
+                            <text x="165" y="110" text-anchor="middle" font-size="16" fill="#3498db" font-weight="bold">$\vec{a} + \vec{b}$</text>
+                        </svg>
+                    </div>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Правило параллелограмма:</div>
+                        <p>Если векторы $\vec{a}$ и $\vec{b}$ имеют общее начало, то их сумма — это диагональ параллелограмма, построенного на этих векторах.</p>
+                    </div>
+
+                    <h4>Вычитание векторов</h4>
+                    <p>Разность векторов $\vec{a} - \vec{b}$ — это сумма вектора $\vec{a}$ и вектора, противоположного $\vec{b}$:</p>
+                    <div class="formula">$$\vec{a} - \vec{b} = \vec{a} + (-\vec{b})$$</div>
+
+                    <h4>Умножение вектора на число</h4>
+                    <p>При умножении вектора $\vec{a}$ на число $k$:</p>
+                    <ul>
+                        <li>Длина вектора умножается на $|k|$: $|\vec{k} \cdot \vec{a}| = |k| \cdot |\vec{a}|$</li>
+                        <li>Если $k > 0$, направление сохраняется</li>
+                        <li>Если $k < 0$, направление меняется на противоположное</li>
+                        <li>Если $k = 0$, получается нулевой вектор</li>
+                    </ul>
+
+                    <div class="svg-container">
+                        <svg width="500" height="200" viewBox="0 0 500 200">
+                            <defs>
+                                <marker id="arrow-vec" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                    <polygon points="0 0, 10 3.5, 0 7" fill="#e74c3c" />
+                                </marker>
+                            </defs>
+                            <!-- Вектор a -->
+                            <line x1="50" y1="100" x2="150" y2="100" stroke="#e74c3c" stroke-width="3" marker-end="url(#arrow-vec)"/>
+                            <text x="100" y="85" text-anchor="middle" font-size="16" fill="#e74c3c" font-weight="bold">$\vec{a}$</text>
+                            <!-- 2a -->
+                            <line x1="220" y1="100" x2="420" y2="100" stroke="#2ecc71" stroke-width="3" marker-end="url(#arrow-vec)"/>
+                            <text x="320" y="85" text-anchor="middle" font-size="16" fill="#2ecc71" font-weight="bold">$2\vec{a}$</text>
+                        </svg>
+                    </div>
+
+                    <div class="property">
+                        <div class="property-title">Свойства операций с векторами:</div>
+                        <ul>
+                            <li>$\vec{a} + \vec{b} = \vec{b} + \vec{a}$ (коммутативность)</li>
+                            <li>$(\vec{a} + \vec{b}) + \vec{c} = \vec{a} + (\vec{b} + \vec{c})$ (ассоциативность)</li>
+                            <li>$k(\vec{a} + \vec{b}) = k\vec{a} + k\vec{b}$</li>
+                            <li>$(k + m)\vec{a} = k\vec{a} + m\vec{a}$</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Скалярное произведение -->
+                <div id="vectors-scalar">
+                    <h3>Скалярное произведение векторов</h3>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Определение:</div>
+                        <p><strong>Скалярное произведение</strong> векторов $\vec{a}$ и $\vec{b}$ — это число, равное произведению их длин на косинус угла между ними:</p>
+                        <div class="formula">$$\vec{a} \cdot \vec{b} = |\vec{a}| \cdot |\vec{b}| \cdot \cos\alpha$$</div>
+                        <p>где $\alpha$ — угол между векторами.</p>
+                    </div>
+
+                    <div class="property">
+                        <div class="property-title">Свойства скалярного произведения:</div>
+                        <ul>
+                            <li>$\vec{a} \cdot \vec{b} = \vec{b} \cdot \vec{a}$ (коммутативность)</li>
+                            <li>$(\vec{a} + \vec{b}) \cdot \vec{c} = \vec{a} \cdot \vec{c} + \vec{b} \cdot \vec{c}$ (дистрибутивность)</li>
+                            <li>$(k\vec{a}) \cdot \vec{b} = k(\vec{a} \cdot \vec{b})$</li>
+                            <li>$\vec{a} \cdot \vec{a} = |\vec{a}|^2$ (скалярный квадрат)</li>
+                        </ul>
+                    </div>
+
+                    <div class="important">
+                        <div class="important-title">Важные случаи:</div>
+                        <ul>
+                            <li>Если векторы <strong>перпендикулярны</strong> ($\alpha = 90°$), то $\vec{a} \cdot \vec{b} = 0$</li>
+                            <li>Если векторы <strong>сонаправлены</strong> ($\alpha = 0°$), то $\vec{a} \cdot \vec{b} = |\vec{a}| \cdot |\vec{b}|$</li>
+                            <li>Если векторы <strong>противоположно направлены</strong> ($\alpha = 180°$), то $\vec{a} \cdot \vec{b} = -|\vec{a}| \cdot |\vec{b}|$</li>
+                        </ul>
+                    </div>
+
+                    <div class="theorem">
+                        <div class="theorem-title">Вычисление угла между векторами:</div>
+                        <p>Из формулы скалярного произведения можно выразить угол:</p>
+                        <div class="formula">$$\cos\alpha = \frac{\vec{a} \cdot \vec{b}}{|\vec{a}| \cdot |\vec{b}|}$$</div>
+                    </div>
+
+                    <h4>Координаты вектора</h4>
+                    <p>Если вектор задан координатами $\vec{a} = (x_1, y_1)$ и $\vec{b} = (x_2, y_2)$, то:</p>
+                    <ul>
+                        <li>Сумма: $\vec{a} + \vec{b} = (x_1 + x_2, y_1 + y_2)$</li>
+                        <li>Разность: $\vec{a} - \vec{b} = (x_1 - x_2, y_1 - y_2)$</li>
+                        <li>Умножение на число: $k\vec{a} = (kx_1, ky_1)$</li>
+                        <li>Скалярное произведение: $\vec{a} \cdot \vec{b} = x_1 x_2 + y_1 y_2$</li>
+                        <li>Длина вектора: $|\vec{a}| = \sqrt{x_1^2 + y_1^2}$</li>
+                    </ul>
+                </div>
+
+                <!-- Задания по векторам -->
+                <div id="vectors-exercises">
+                    <h3>Задания</h3>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 1</div>
+                        <div class="exercise-text">
+                            Даны векторы $\vec{a} = (3, 4)$ и $\vec{b} = (1, 2)$. Найдите:
+                            а) $\vec{a} + \vec{b}$
+                            б) $\vec{a} - \vec{b}$
+                            в) $|\vec{a}|$
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>а) $\vec{a} + \vec{b} = (3+1, 4+2) = (4, 6)$</p>
+                            <p>б) $\vec{a} - \vec{b} = (3-1, 4-2) = (2, 2)$</p>
+                            <p>в) $|\vec{a}| = \sqrt{3^2 + 4^2} = \sqrt{9 + 16} = \sqrt{25} = 5$</p>
+                            <p><strong>Ответ:</strong> а) $(4, 6)$, б) $(2, 2)$, в) $5$</p>
+                        </div>
+                    </div>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 2</div>
+                        <div class="exercise-text">
+                            Векторы $\vec{a}$ и $\vec{b}$ имеют длины $|\vec{a}| = 6$ и $|\vec{b}| = 4$. Угол между ними равен $60°$. Найдите скалярное произведение $\vec{a} \cdot \vec{b}$.
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>По определению скалярного произведения:</p>
+                            <p>$\vec{a} \cdot \vec{b} = |\vec{a}| \cdot |\vec{b}| \cdot \cos 60°$</p>
+                            <p>$\vec{a} \cdot \vec{b} = 6 \cdot 4 \cdot 0.5 = 12$</p>
+                            <p><strong>Ответ:</strong> $12$</p>
+                        </div>
+                    </div>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 3</div>
+                        <div class="exercise-text">
+                            Даны векторы $\vec{a} = (2, 3)$ и $\vec{b} = (-1, 2)$. Найдите скалярное произведение $\vec{a} \cdot \vec{b}$ и определите, являются ли векторы перпендикулярными.
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>Скалярное произведение в координатах:</p>
+                            <p>$\vec{a} \cdot \vec{b} = 2 \cdot (-1) + 3 \cdot 2 = -2 + 6 = 4$</p>
+                            <p>Так как $\vec{a} \cdot \vec{b} \neq 0$, векторы не перпендикулярны.</p>
+                            <p><strong>Ответ:</strong> $4$, векторы не перпендикулярны</p>
+                        </div>
+                    </div>
+
+                    <div class="exercise">
+                        <div class="exercise-title">Задание 4</div>
+                        <div class="exercise-text">
+                            Найдите угол между векторами $\vec{a} = (1, 0)$ и $\vec{b} = (1, 1)$.
+                        </div>
+                        <button class="btn-answer" onclick="toggleAnswer(this)">Показать ответ</button>
+                        <div class="answer">
+                            <div class="answer-title">Решение:</div>
+                            <p>Скалярное произведение: $\vec{a} \cdot \vec{b} = 1 \cdot 1 + 0 \cdot 1 = 1$</p>
+                            <p>Длины векторов: $|\vec{a}| = \sqrt{1^2 + 0^2} = 1$</p>
+                            <p>$|\vec{b}| = \sqrt{1^2 + 1^2} = \sqrt{2}$</p>
+                            <p>$\cos\alpha = \frac{\vec{a} \cdot \vec{b}}{|\vec{a}| \cdot |\vec{b}|} = \frac{1}{1 \cdot \sqrt{2}} = \frac{1}{\sqrt{2}} = \frac{\sqrt{2}}{2}$</p>
+                            <p>$\alpha = 45°$</p>
+                            <p><strong>Ответ:</strong> $45°$</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        // Функции для интерактивности
+
+        // Переключение подменю
+        function toggleSubmenu(event, submenuId) {
+            event.preventDefault();
+            const submenu = document.getElementById(submenuId);
+            submenu.classList.toggle('active');
+        }
+
+        // Плавная прокрутка к разделу
+        function scrollToSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        // Показать/скрыть ответ
+        function toggleAnswer(button) {
+            const answer = button.nextElementSibling;
+            if (answer.classList.contains('show')) {
+                answer.classList.remove('show');
+                button.textContent = 'Показать ответ';
+            } else {
+                answer.classList.add('show');
+                button.textContent = 'Скрыть ответ';
+            }
+        }
+
+        // Автоматическое раскрытие активного подменю при загрузке
+        window.addEventListener('DOMContentLoaded', () => {
+            // Если в URL есть якорь, раскрываем соответствующее подменю
+            const hash = window.location.hash.substring(1);
+            if (hash) {
+                const section = document.getElementById(hash);
+                if (section) {
+                    // Определяем родительское меню
+                    const sectionId = hash.split('-')[0];
+                    const submenu = document.getElementById(sectionId + '-sub');
+                    if (submenu) {
+                        submenu.classList.add('active');
+                    }
+                    // Прокручиваем к разделу
+                    setTimeout(() => {
+                        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 100);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
