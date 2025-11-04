@@ -1,0 +1,20 @@
+# robots.txt для интерактивного сайта по геометрии
+
+# Разрешаем доступ всем поисковым роботам ко всем страницам
+User-agent: *
+Allow: /
+
+# Разрешаем индексацию всех HTML страниц
+Allow: /index.html
+Allow: /examples.html
+Allow: /editor.html
+Allow: /README.html
+
+# Разрешаем доступ к статическим ресурсам
+Allow: /css/
+Allow: /js/
+Allow: /exercises/
+Allow: /assets/
+
+# Карта сайта (если будет добавлена в будущем)
+# Sitemap: https://ваш-домен.ru/sitemap.xml

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Интерактивный сайт по геометрии для 7-9 классов (учебник Атанасяна)">
+    <title>Интерактивная геометрия | Атанасян 7-9 класс</title>
+
+    <!-- CSS Framework - Bootstrap для адаптивности -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Кастомные стили -->
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <!-- Навигационное меню (адаптивное) -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html">
+                <svg width="30" height="30" class="me-2">
+                    <circle cx="15" cy="15" r="10" fill="white" opacity="0.8"/>
+                    <line x1="5" y1="15" x2="25" y2="15" stroke="white" stroke-width="2"/>
+                </svg>
+                Интерактивная геометрия
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="index.html">Главная</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="examples.html">Примеры</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="editor.html">Редактор</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="README.html">Документация</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Главный контент -->
+    <div class="container my-4">
+        <!-- Приветственный блок -->
+        <div class="row">
+            <div class="col-12">
+                <div class="jumbotron bg-light p-4 rounded">
+                    <h1 class="display-4">Добро пожаловать!</h1>
+                    <p class="lead">Интерактивный сайт для изучения геометрии по учебнику Л.С. Атанасяна (7-9 классы)</p>
+                    <hr class="my-4">
+                    <p>Здесь вы найдете интерактивные упражнения, визуализации и демонстрации геометрических концепций.</p>
+                    <a class="btn btn-primary btn-lg" href="examples.html" role="button">Перейти к упражнениям</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Классы -->
+        <div class="row mt-5">
+            <div class="col-12">
+                <h2 class="mb-4">Выберите класс</h2>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- 7 класс -->
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-header bg-success text-white">
+                        <h3 class="mb-0">7 класс</h3>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item">
+                                <a href="#" class="chapter-link" data-chapter="1">
+                                    Глава I. Начальные геометрические сведения
+                                </a>
+                            </li>
+                            <li class="list-group-item">
+                                <a href="#" class="chapter-link" data-chapter="2">
+                                    Глава II. Треугольники
+                                </a>
+                            </li>
+                            <li class="list-group-item">
+                                <a href="examples.html?id=001-parallel-transversal" class="chapter-link" data-chapter="3">
+                                    Глава III. Параллельные прямые
+                                </a>
+                            </li>
+                            <li class="list-group-item">
+                                <a href="#" class="chapter-link" data-chapter="4">
+                                    Глава IV. Соотношения между сторонами и углами треугольника
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 8 класс -->
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-header bg-info text-white">
+                        <h3 class="mb-0">8 класс</h3>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item">
+                                <a href="#" class="chapter-link" data-chapter="5">
+                                    Глава V. Четырехугольники
+                                </a>
+                            </li>
+                            <li class="list-group-item">
+                                <a href="examples.html?id=002-triangle-area" class="chapter-link" data-chapter="6">
+                                    Глава VI. Площадь
+                                </a>
+                            </li>
+                            <li class="list-group-item">
+                                <a href="#" class="chapter-link" data-chapter="7">
+                                    Глава VII. Подобные треугольники
+                                </a>
+                            </li>
+                            <li class="list-group-item">
+                                <a href="#" class="chapter-link" data-chapter="8">
+                                    Глава VIII. Окружность
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 9 класс -->
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-header bg-warning text-dark">
+                        <h3 class="mb-0">9 класс</h3>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item">
+                                <a href="#" class="chapter-link" data-chapter="9">
+                                    Глава IX. Векторы
+                                </a>
+                            </li>
+                            <li class="list-group-item">
+                                <a href="#" class="chapter-link" data-chapter="10">
+                                    Глава X. Метод координат
+                                </a>
+                            </li>
+                            <li class="list-group-item">
+                                <a href="#" class="chapter-link" data-chapter="11">
+                                    Глава XI. Соотношения между сторонами и углами треугольника
+                                </a>
+                            </li>
+                            <li class="list-group-item">
+                                <a href="#" class="chapter-link" data-chapter="12">
+                                    Глава XII. Длина окружности и площадь круга
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Особенности -->
+        <div class="row mt-5">
+            <div class="col-12">
+                <h2 class="mb-4">Особенности сайта</h2>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="feature-card text-center p-4">
+                    <svg width="60" height="60" class="mb-3">
+                        <circle cx="30" cy="30" r="20" fill="#0d6efd" opacity="0.2"/>
+                        <circle cx="30" cy="30" r="15" fill="#0d6efd"/>
+                    </svg>
+                    <h4>Интерактивность</h4>
+                    <p>Перетаскивайте точки, изменяйте углы и длины, наблюдайте за изменениями в реальном времени</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card text-center p-4">
+                    <svg width="60" height="60" class="mb-3">
+                        <rect x="10" y="10" width="40" height="40" fill="#198754" opacity="0.6"/>
+                    </svg>
+                    <h4>Визуализация</h4>
+                    <p>Все геометрические концепции представлены в виде наглядных SVG-иллюстраций</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card text-center p-4">
+                    <svg width="60" height="60" class="mb-3">
+                        <polygon points="30,10 50,50 10,50" fill="#ffc107"/>
+                    </svg>
+                    <h4>Адаптивность</h4>
+                    <p>Сайт работает на всех устройствах: компьютерах, планшетах и смартфонах</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Футер -->
+    <footer class="bg-dark text-white mt-5 py-4">
+        <div class="container text-center">
+            <p class="mb-0">&copy; 2024 Интерактивная геометрия. По учебнику Л.С. Атанасяна (7-9 классы)</p>
+            <p class="mt-2 small">Статический сайт для shared hosting. Все упражнения работают на клиенте.</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- App JS -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
