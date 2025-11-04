@@ -1,4 +1,4 @@
-name: Auto Merge to Main
+name: Auto Merge and Deploy
 
 on:
   push:
@@ -38,3 +38,32 @@ jobs:
 
           # Пушим изменения в main
           git push origin main
+
+  deploy:
+    needs: auto-merge
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Deploy to Timeweb via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./
+          server-dir: /PALOMATIKA/public_html/
+          dangerous-clean-slate: false
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/.github/**
+            **/.vscode/**
+            **/.idea/**
+            **/README.md
+            **/.DS_Store
