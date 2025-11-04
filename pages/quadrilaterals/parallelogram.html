@@ -17,33 +17,69 @@
     <link rel="stylesheet" href="../../css/style.css">
 </head>
 <body>
-    <div class="container">
-        <nav class="sidebar">
-            <h1>Геометрия<br>7-9 классы</h1>
-            <ul class="menu">
-                <li class="menu-item">
-                    <a href="../../index.html">🏠 Главная</a>
-                </li>
-                <li class="menu-item">
-                    <a href="#" style="cursor: default;">Четырехугольники</a>
-                    <ul class="submenu">
-                        <li class="submenu-item"><a href="parallelogram.html" class="active">Параллелограмм</a></li>
-                        <li class="submenu-item"><a href="rectangle.html">Прямоугольник</a></li>
-                        <li class="submenu-item"><a href="rhombus.html">Ромб</a></li>
-                        <li class="submenu-item"><a href="square.html">Квадрат</a></li>
-                        <li class="submenu-item"><a href="exercises.html">Задания</a></li>
-                    </ul>
-                </li>
-            </ul>
-        </nav>
+    
+            <div class="sidebar">
+        <div class="logo">
+            <a href="../../index.html">📐 Геометрия 7-9</a>
+        </div>
+        <ul class="menu">
+            <li class="menu-item">
+                <a href="../basics/points-lines.html">📏 Базовые понятия</a>
+                <ul class="submenu">
+                    <li class="submenu-item"><a href="../basics/points-lines.html">Точки и прямые</a></li>
+                </ul>
+            </li>
+            <li class="menu-item">
+                <a href="../triangles/basics.html">△ Треугольники</a>
+                <ul class="submenu">
+                    <li class="submenu-item"><a href="../triangles/basics.html">Основные понятия</a></li>
+                    <li class="submenu-item"><a href="../triangles/pythagoras.html">Теорема Пифагора</a></li>
+                </ul>
+            </li>
+            <li class="menu-item">
+                <a href="../circles/basics.html">⭕ Окружности</a>
+                <ul class="submenu">
+                    <li class="submenu-item"><a href="../circles/basics.html">Основные элементы</a></li>
+                </ul>
+            </li>
+            <li class="menu-item">
+                <a href="../quadrilaterals/parallelogram.html">▭ Четырехугольники</a>
+                <ul class="submenu">
+                    <li class="submenu-item"><a href="../quadrilaterals/parallelogram.html">Параллелограмм</a></li>
+                </ul>
+            </li>
+            <li class="menu-item">
+                <a href="../trapezoids/basics.html">⏢ Трапеции</a>
+                <ul class="submenu">
+                    <li class="submenu-item"><a href="../trapezoids/basics.html">Основные понятия</a></li>
+                </ul>
+            </li>
+            <li class="menu-item">
+                <a href="../areas/triangle.html">📐 Площади фигур</a>
+                <ul class="submenu">
+                    <li class="submenu-item"><a href="../areas/triangle.html">Площадь треугольника</a></li>
+                </ul>
+            </li>
+            <li class="menu-item">
+                <a href="../vectors/basics.html">→ Векторы</a>
+                <ul class="submenu">
+                    <li class="submenu-item"><a href="../vectors/basics.html">Основные понятия</a></li>
+                </ul>
+            </li>
+            <li class="menu-item">
+                <a href="../exercises.html">📝 Все задания</a>
+            </li>
+        </ul>
+    </div>
 
-        <main class="content">
-            <div class="page-header">
+        <div class="content">
+            <header>
                 <h1>Параллелограмм</h1>
                 <p class="description">Перемещайте вершины, чтобы изменить форму параллелограмма. Наблюдайте, как меняются его свойства!</p>
-            </div>
+            </header>
 
-            <div class="section">
+        <main>
+            <section>
                 <h2>Интерактивная визуализация</h2>
                 <p>Перемещайте точку B или используйте бегунки. Диагонали всегда делятся точкой пересечения пополам!</p>
 
@@ -81,7 +117,7 @@
                 <div id="jxgbox" class="jxgbox"></div>
             </div>
 
-            <div class="section">
+            <section>
                 <h2>Определение</h2>
                 <p><strong>Параллелограмм</strong> — это четырехугольник, у которого противоположные стороны попарно параллельны.</p>
 
@@ -118,7 +154,7 @@
                 </div>
             </div>
 
-            <div class="section">
+            <section>
                 <h2>Примеры</h2>
 
                 <div class="exercise">
@@ -152,6 +188,8 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </section>
         </main>
     </div>
 
