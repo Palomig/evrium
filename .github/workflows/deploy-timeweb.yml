@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main  # Деплой при пуше в main ветку
+  workflow_dispatch:  # Возможность ручного запуска
 
 jobs:
   deploy:
