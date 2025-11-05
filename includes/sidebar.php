@@ -18,17 +18,17 @@ $current_chapter = isset($_GET['chapter']) ? (int)$_GET['chapter'] : 0;
             </a>
         </li>
 
-        <?php foreach ($chapters as $class_num => $class_data): ?>
+        <?php foreach ($chapters as $menu_class_num => $menu_class_data): ?>
         <li>
-            <div class="menu-item-label collapsed" onclick="toggleSubmenu('class<?php echo $class_num; ?>')">
-                <i class="fas fa-graduation-cap"></i> <?php echo $class_data['name']; ?>
+            <div class="menu-item-label collapsed" onclick="toggleSubmenu('class<?php echo $menu_class_num; ?>')">
+                <i class="fas fa-graduation-cap"></i> <?php echo $menu_class_data['name']; ?>
             </div>
-            <ul class="submenu <?php echo ($current_class == $class_num) ? 'open' : ''; ?>" id="class<?php echo $class_num; ?>">
-                <?php foreach ($class_data['chapters'] as $chapter_num => $chapter_data): ?>
+            <ul class="submenu <?php echo ($current_class == $menu_class_num) ? 'open' : ''; ?>" id="class<?php echo $menu_class_num; ?>">
+                <?php foreach ($menu_class_data['chapters'] as $menu_chapter_num => $menu_chapter_data): ?>
                 <li>
-                    <a href="chapter.php?class=<?php echo $class_num; ?>&chapter=<?php echo $chapter_num; ?>"
-                       class="<?php echo ($current_class == $class_num && $current_chapter == $chapter_num) ? 'active' : ''; ?>">
-                        <i class="fas fa-book-reader"></i> <?php echo $chapter_data['title']; ?>
+                    <a href="chapter.php?class=<?php echo $menu_class_num; ?>&chapter=<?php echo $menu_chapter_num; ?>"
+                       class="<?php echo ($current_class == $menu_class_num && $current_chapter == $menu_chapter_num) ? 'active' : ''; ?>">
+                        <i class="fas fa-book-reader"></i> <?php echo $menu_chapter_data['title']; ?>
                     </a>
                 </li>
                 <?php endforeach; ?>
