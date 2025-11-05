@@ -167,31 +167,33 @@ include 'includes/header.php';
                     <div class="col-12">
                         <div class="d-flex justify-content-between">
                             <?php
+                            // Получаем все главы текущего класса
+                            $all_chapters = array_keys($chapters[$class]['chapters']);
+                            $current_index = array_search($chapter_num, $all_chapters);
+
                             // Предыдущая глава
                             $prev_chapter = null;
                             $prev_class = $class;
-                            if ($chapter_num > 1) {
-                                if (isset($chapters[$class]['chapters'][$chapter_num - 1])) {
-                                    $prev_chapter = $chapter_num - 1;
-                                }
-                            } else {
-                                // Переходим к предыдущему классу
-                                if ($class > 7) {
-                                    $prev_class = $class - 1;
-                                    $prev_chapters = array_keys($chapters[$prev_class]['chapters']);
-                                    $prev_chapter = end($prev_chapters);
-                                }
+
+                            if ($current_index > 0) {
+                                // Есть предыдущая глава в текущем классе
+                                $prev_chapter = $all_chapters[$current_index - 1];
+                            } else if ($class > 7) {
+                                // Переходим к последней главе предыдущего класса
+                                $prev_class = $class - 1;
+                                $prev_chapters = array_keys($chapters[$prev_class]['chapters']);
+                                $prev_chapter = end($prev_chapters);
                             }
 
                             // Следующая глава
                             $next_chapter = null;
                             $next_class = $class;
-                            $all_chapters = array_keys($chapters[$class]['chapters']);
-                            $current_index = array_search($chapter_num, $all_chapters);
+
                             if (isset($all_chapters[$current_index + 1])) {
+                                // Есть следующая глава в текущем классе
                                 $next_chapter = $all_chapters[$current_index + 1];
                             } else if ($class < 9) {
-                                // Переходим к следующему классу
+                                // Переходим к первой главе следующего класса
                                 $next_class = $class + 1;
                                 $next_chapters = array_keys($chapters[$next_class]['chapters']);
                                 $next_chapter = reset($next_chapters);
