@@ -698,3 +698,94 @@ pre code {
     padding: 0;
     color: #333;
 }
+
+/* Стили для кликабельных тем */
+.clickable {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.topic-link-card {
+    display: block;
+}
+
+.topic-item.clickable:hover {
+    background-color: #e7f1ff !important;
+    border-color: var(--primary-color) !important;
+    transform: translateX(5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Заголовок темы */
+.topic-header {
+    border-left: 4px solid var(--primary-color);
+    padding-left: 20px;
+}
+
+.badges {
+    margin-top: 10px;
+}
+
+/* Списки теории */
+.theory-list {
+    list-style: none;
+    padding-left: 0;
+}
+
+.theory-list li {
+    font-size: 1.05em;
+    line-height: 1.8;
+}
+
+/* Блоки определений */
+.definition-box {
+    background-color: #e7f1ff;
+    border-left: 4px solid var(--info-color);
+    border-radius: 4px;
+    font-size: 1.05em;
+}
+
+/* Блоки примеров */
+.examples-list {
+    list-style: none;
+    counter-reset: example-counter;
+}
+
+.examples-list li {
+    counter-increment: example-counter;
+}
+
+.examples-list li::before {
+    content: "Пример " counter(example-counter) ": ";
+    font-weight: bold;
+    color: var(--success-color);
+}
+
+.example-box {
+    background-color: #d1e7dd;
+    border-left: 4px solid var(--success-color);
+    border-radius: 4px;
+}
+
+/* Заглушка для интерактивной визуализации */
+.interactive-placeholder {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border-radius: 8px;
+}
+
+/* Список вопросов */
+.questions-list {
+    list-style: none;
+    padding-left: 0;
+}
+
+.questions-list li {
+    padding-left: 30px;
+    position: relative;
+}
+
+.questions-list li i {
+    position: absolute;
+    left: 0;
+    top: 5px;
+}

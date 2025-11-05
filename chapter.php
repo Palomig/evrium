@@ -66,19 +66,35 @@ include 'includes/header.php';
                             </div>
                             <div class="card-body">
                                 <div class="row">
-                                    <?php foreach ($chapter_data['topics'] as $index => $topic): ?>
+                                    <?php
+                                    $topic_index = 1;
+                                    foreach ($chapter_data['topics'] as $topic_num => $topic_info):
+                                        // Проверяем, является ли тема массивом с детальной информацией
+                                        $is_detailed = is_array($topic_info) && isset($topic_info['title']);
+                                        $topic_title = $is_detailed ? $topic_info['title'] : $topic_info;
+                                        $topic_desc = $is_detailed && isset($topic_info['description']) ? $topic_info['description'] : 'Изучите теорию и выполните упражнения';
+                                        $topic_link = $is_detailed ? "topic.php?class={$class}&chapter={$chapter_num}&topic={$topic_num}" : "#";
+                                    ?>
                                     <div class="col-md-6 mb-3">
-                                        <div class="topic-item p-3 border rounded">
-                                            <h5>
-                                                <span class="badge bg-secondary"><?php echo $index + 1; ?></span>
-                                                <?php echo $topic; ?>
-                                            </h5>
-                                            <p class="text-muted small mb-0">
-                                                <i class="fas fa-clock"></i> Изучите теорию и выполните упражнения
-                                            </p>
-                                        </div>
+                                        <a href="<?php echo $topic_link; ?>" class="topic-link-card" style="text-decoration: none; color: inherit;">
+                                            <div class="topic-item p-3 border rounded clickable">
+                                                <h5>
+                                                    <span class="badge bg-secondary"><?php echo $topic_index; ?></span>
+                                                    <?php echo $topic_title; ?>
+                                                    <?php if ($is_detailed): ?>
+                                                    <i class="fas fa-arrow-right text-primary float-end"></i>
+                                                    <?php endif; ?>
+                                                </h5>
+                                                <p class="text-muted small mb-0">
+                                                    <i class="fas fa-book-open"></i> <?php echo $topic_desc; ?>
+                                                </p>
+                                            </div>
+                                        </a>
                                     </div>
-                                    <?php endforeach; ?>
+                                    <?php
+                                        $topic_index++;
+                                    endforeach;
+                                    ?>
                                 </div>
                             </div>
                         </div>
