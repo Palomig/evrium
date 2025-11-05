@@ -45,14 +45,62 @@
         </div>
     </nav>
 
-    <!-- Контент -->
-    <div class="container-fluid my-4">
-        <div class="row">
-            <div class="col-12">
-                <h1 class="mb-4">Редактор упражнений</h1>
-                <p class="lead">Создавайте и редактируйте упражнения с помощью JSON-формата. Изменения отображаются в реальном времени.</p>
-            </div>
-        </div>
+    <!-- Контейнер с боковым меню -->
+    <div class="layout-container">
+        <!-- Левое боковое меню -->
+        <aside class="sidebar">
+            <ul class="sidebar-menu">
+                <li>
+                    <a href="index.html">Главная</a>
+                </li>
+                <li>
+                    <div class="menu-item-label" onclick="toggleSubmenu('class7')">7 класс</div>
+                    <ul class="submenu" id="class7">
+                        <li><a href="examples.html?class=7&chapter=1">Глава I. Начальные геометрические сведения</a></li>
+                        <li><a href="examples.html?class=7&chapter=2">Глава II. Треугольники</a></li>
+                        <li><a href="examples.html?class=7&chapter=3">Глава III. Параллельные прямые</a></li>
+                        <li><a href="examples.html?class=7&chapter=4">Глава IV. Соотношения между сторонами и углами треугольника</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <div class="menu-item-label" onclick="toggleSubmenu('class8')">8 класс</div>
+                    <ul class="submenu" id="class8">
+                        <li><a href="examples.html?class=8&chapter=5">Глава V. Четырехугольники</a></li>
+                        <li><a href="examples.html?class=8&chapter=6">Глава VI. Площадь</a></li>
+                        <li><a href="examples.html?class=8&chapter=7">Глава VII. Подобные треугольники</a></li>
+                        <li><a href="examples.html?class=8&chapter=8">Глава VIII. Окружность</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <div class="menu-item-label" onclick="toggleSubmenu('class9')">9 класс</div>
+                    <ul class="submenu" id="class9">
+                        <li><a href="examples.html?class=9&chapter=9">Глава IX. Векторы</a></li>
+                        <li><a href="examples.html?class=9&chapter=10">Глава X. Метод координат</a></li>
+                        <li><a href="examples.html?class=9&chapter=11">Глава XI. Соотношения между сторонами и углами треугольника</a></li>
+                        <li><a href="examples.html?class=9&chapter=12">Глава XII. Длина окружности и площадь круга</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="examples.html">Примеры</a>
+                </li>
+                <li>
+                    <a href="editor.html" class="active">Редактор</a>
+                </li>
+                <li>
+                    <a href="README.html">Документация</a>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- Основной контент -->
+        <main class="main-content">
+            <div class="container-fluid my-4">
+                <div class="row">
+                    <div class="col-12">
+                        <h1 class="mb-4">Редактор упражнений</h1>
+                        <p class="lead">Создавайте и редактируйте упражнения с помощью JSON-формата. Изменения отображаются в реальном времени.</p>
+                    </div>
+                </div>
 
         <div class="row">
             <!-- JSON редактор -->
@@ -138,8 +186,13 @@
                     </div>
                 </div>
             </div>
-        </div>
+                </div>
+            </div>
+        </main>
     </div>
+
+    <!-- Кнопка переключения меню для мобильных -->
+    <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
 
     <!-- Футер -->
     <footer class="bg-dark text-white mt-5 py-4">
@@ -153,5 +206,44 @@
 
     <!-- Editor JS -->
     <script type="module" src="js/editor.js"></script>
+
+    <!-- Sidebar JS -->
+    <script>
+        // Переключение подменю
+        function toggleSubmenu(id) {
+            const submenu = document.getElementById(id);
+            const label = submenu.previousElementSibling;
+
+            submenu.classList.toggle('open');
+            label.classList.toggle('collapsed');
+        }
+
+        // Переключение бокового меню (для мобильных)
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            sidebar.classList.toggle('open');
+        }
+
+        // Закрытие меню при клике вне его (для мобильных)
+        document.addEventListener('click', function(event) {
+            if (window.innerWidth <= 768) {
+                const sidebar = document.querySelector('.sidebar');
+                const toggle = document.querySelector('.sidebar-toggle');
+
+                if (sidebar.classList.contains('open') &&
+                    !sidebar.contains(event.target) &&
+                    !toggle.contains(event.target)) {
+                    sidebar.classList.remove('open');
+                }
+            }
+        });
+
+        // Сворачивание меню по умолчанию
+        window.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.menu-item-label').forEach(label => {
+                label.classList.add('collapsed');
+            });
+        });
+    </script>
 </body>
 </html>
