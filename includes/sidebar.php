@@ -18,6 +18,12 @@ $current_chapter = isset($_GET['chapter']) ? (int)$_GET['chapter'] : 0;
             </a>
         </li>
 
+        <li>
+            <a href="oge/index.php" class="<?php echo ($current_page == 'oge') ? 'active' : ''; ?>">
+                <i class="fas fa-graduation-cap"></i> Подготовка к ОГЭ
+            </a>
+        </li>
+
         <?php foreach ($chapters as $menu_class_num => $menu_class_data): ?>
         <li>
             <div class="menu-item-label collapsed" onclick="toggleSubmenu('class<?php echo $menu_class_num; ?>')">

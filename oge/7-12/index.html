@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Задача 7 ОГЭ 2026 - Ромб</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 1000px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            color: #764ba2;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #ff9800, #ff5722);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .task-box {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            border-left: 6px solid #ff9800;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .task-box h2 {
+            color: #333;
+            font-size: 22px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .task-box h2::before {
+            content: "📝";
+            margin-right: 10px;
+            font-size: 28px;
+        }
+
+        .task-text {
+            color: #555;
+            font-size: 20px;
+            line-height: 1.8;
+            font-weight: 500;
+        }
+
+        .given-data {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 25px 0;
+            border-left: 5px solid #2196f3;
+        }
+
+        .given-data h3 {
+            color: #1565c0;
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .given-data h3::before {
+            content: "📊";
+            margin-right: 8px;
+        }
+
+        .given-data p {
+            color: #333;
+            font-size: 18px;
+            margin: 8px 0;
+            font-weight: 500;
+        }
+
+        .illustration {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 30px 0;
+            text-align: center;
+            border: 3px solid #e0e0e0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+
+        .illustration h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .solution-section {
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            padding: 30px;
+            border-radius: 15px;
+            margin: 25px 0;
+            border-left: 6px solid #4caf50;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .solution-section h3 {
+            color: #2e7d32;
+            font-size: 22px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .solution-section h3::before {
+            content: "💡";
+            margin-right: 10px;
+            font-size: 26px;
+        }
+
+        .step {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 18px 0;
+            border-left: 4px solid #4caf50;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            transition: transform 0.3s;
+        }
+
+        .step:hover {
+            transform: translateX(5px);
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            font-weight: bold;
+            margin-right: 12px;
+            font-size: 16px;
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+        }
+
+        .step-title {
+            font-weight: 600;
+            color: #2e7d32;
+            font-size: 17px;
+        }
+
+        .step-content {
+            color: #555;
+            font-size: 16px;
+            line-height: 1.7;
+            margin-left: 47px;
+        }
+
+        .formula {
+            background: #fff3e0;
+            padding: 18px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            text-align: center;
+            border: 2px dashed #ff9800;
+            color: #e65100;
+            font-weight: 600;
+        }
+
+        .answer-box {
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+            padding: 30px;
+            border-radius: 15px;
+            margin: 30px 0;
+            text-align: center;
+            color: white;
+            box-shadow: 0 8px 20px rgba(76, 175, 80, 0.4);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .answer-box h3 {
+            font-size: 24px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .answer-box h3::before {
+            content: "✅";
+            margin-right: 10px;
+            font-size: 28px;
+        }
+
+        .answer-value {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 15px 0;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .interactive-section {
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+            padding: 30px;
+            border-radius: 15px;
+            margin: 30px 0;
+            border-left: 6px solid #ff9800;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .interactive-section h3 {
+            color: #e65100;
+            margin-bottom: 25px;
+            font-size: 22px;
+            display: flex;
+            align-items: center;
+        }
+
+        .interactive-section h3::before {
+            content: "🎮";
+            margin-right: 10px;
+            font-size: 26px;
+        }
+
+        .input-group {
+            margin: 20px 0;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .calculate-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .calculate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .calculate-btn:active {
+            transform: translateY(0);
+        }
+
+        .result-display {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border: 3px solid #4caf50;
+            display: none;
+        }
+
+        .result-display.show {
+            display: block;
+            animation: slideIn 0.5s;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-display h4 {
+            color: #2e7d32;
+            font-size: 20px;
+            margin-bottom: 15px;
+        }
+
+        .result-value {
+            font-size: 36px;
+            color: #4caf50;
+            font-weight: bold;
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        .explanation {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .note {
+            background: #e1f5fe;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #03a9f4;
+            margin: 20px 0;
+            font-size: 15px;
+            color: #01579b;
+        }
+
+        .note::before {
+            content: "💡 ";
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Заголовок -->
+        <div class="header">
+            <h1>Задача 7 ОГЭ 2026</h1>
+            <div class="subtitle">Геометрическая задача на вычисление</div>
+            <span class="badge">РОМБ</span>
+        </div>
+
+        <!-- Условие задачи -->
+        <div class="task-box">
+            <h2>Условие задачи</h2>
+            <div class="task-text">
+                Расстояние от точки пересечения диагоналей ромба до одной из его сторон равно 15, 
+                а одна из диагоналей ромба равна 60. Найдите углы ромба.
+            </div>
+        </div>
+
+        <!-- Данные -->
+        <div class="given-data">
+            <h3>Дано:</h3>
+            <p>• Ромб ABCD</p>
+            <p>• O — точка пересечения диагоналей</p>
+            <p>• Расстояние от O до стороны = 15</p>
+            <p>• Одна из диагоналей = 60</p>
+            <p><strong>Найти:</strong> Углы ромба</p>
+        </div>
+
+        <!-- Иллюстрация -->
+        <div class="illustration">
+            <h3>📐 Чертёж</h3>
+            <svg width="600" height="500" viewBox="0 0 600 500">
+                <!-- Ромб ABCD -->
+                <polygon points="300,50 500,250 300,450 100,250" 
+                         fill="rgba(102, 126, 234, 0.05)" stroke="#667eea" stroke-width="3"/>
+                
+                <!-- Диагонали -->
+                <line x1="300" y1="50" x2="300" y2="450" stroke="#2196f3" stroke-width="2" stroke-dasharray="5,5"/>
+                <line x1="100" y1="250" x2="500" y2="250" stroke="#2196f3" stroke-width="2" stroke-dasharray="5,5"/>
+                
+                <!-- Перпендикуляр от O к стороне AB -->
+                <line x1="300" y1="250" x2="230" y2="150" stroke="#ff5722" stroke-width="2"/>
+                <line x1="225" y1="155" x2="235" y2="145" stroke="#ff5722" stroke-width="2"/>
+                <line x1="225" y1="145" x2="235" y2="155" stroke="#ff5722" stroke-width="2"/>
+                
+                <!-- Точки -->
+                <circle cx="300" cy="50" r="6" fill="#764ba2"/>
+                <circle cx="500" cy="250" r="6" fill="#764ba2"/>
+                <circle cx="300" cy="450" r="6" fill="#764ba2"/>
+                <circle cx="100" cy="250" r="6" fill="#764ba2"/>
+                <circle cx="300" cy="250" r="7" fill="#ff5722"/>
+                <circle cx="230" cy="150" r="5" fill="#ff5722"/>
+                
+                <!-- Подписи вершин -->
+                <text x="300" y="35" text-anchor="middle" font-size="26" fill="#764ba2" font-weight="bold">A</text>
+                <text x="520" y="260" text-anchor="start" font-size="26" fill="#764ba2" font-weight="bold">B</text>
+                <text x="300" y="480" text-anchor="middle" font-size="26" fill="#764ba2" font-weight="bold">C</text>
+                <text x="75" y="260" text-anchor="end" font-size="26" fill="#764ba2" font-weight="bold">D</text>
+                <text x="315" y="260" text-anchor="start" font-size="24" fill="#ff5722" font-weight="bold">O</text>
+                <text x="215" y="145" text-anchor="end" font-size="20" fill="#ff5722" font-weight="bold">H</text>
+                
+                <!-- Обозначения -->
+                <text x="280" y="150" text-anchor="end" font-size="20" fill="#ff5722" font-weight="bold">15</text>
+                <text x="315" y="150" text-anchor="start" font-size="20" fill="#2196f3" font-weight="bold">30</text>
+                <text x="200" y="245" text-anchor="middle" font-size="20" fill="#2196f3" font-weight="bold">BD</text>
+            </svg>
+        </div>
+
+        <!-- Решение -->
+        <div class="solution-section">
+            <h3>Решение</h3>
+
+            <div class="step">
+                <div class="step-header">
+                    <span class="step-number">1</span>
+                    <span class="step-title">Свойства ромба</span>
+                </div>
+                <div class="step-content">
+                    В ромбе диагонали пересекаются под прямым углом и делятся точкой пересечения пополам.
+                    Пусть диагональ AC = 60, тогда AO = OC = 30.
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-header">
+                    <span class="step-number">2</span>
+                    <span class="step-title">Находим половину второй диагонали</span>
+                </div>
+                <div class="step-content">
+                    Опустим перпендикуляр OH из точки O на сторону AB. По условию OH = 15.
+                    <br><br>
+                    В прямоугольном треугольнике AOB высота OH делит его на два треугольника.
+                    Используя свойство высоты к гипотенузе: BO = AO · tan(∠OAB)
+                    <br><br>
+                    Площадь треугольника AOB можно вычислить двумя способами:
+                    <br>S = ½ · AO · BO = ½ · AB · OH
+                    <br><br>
+                    Из прямоугольного треугольника AOH: AH² + OH² = AO²
+                    <br>AH² + 15² = 30²
+                    <br>AH² = 900 - 225 = 675
+                    <br>AH = 15√3
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-header">
+                    <span class="step-number">3</span>
+                    <span class="step-title">Вычисляем угол</span>
+                </div>
+                <div class="step-content">
+                    В прямоугольном треугольнике AOH:
+                    <br>sin(∠OAH) = OH/AO = 15/30 = 1/2
+                    <br><br>
+                    Следовательно, ∠OAH = 30°
+                    <br><br>
+                    Угол ромба при вершине A: ∠DAB = 2 · ∠OAH = 2 · 30° = 60°
+                </div>
+                <div class="formula">
+                    ∠DAB = 60°
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-header">
+                    <span class="step-number">4</span>
+                    <span class="step-title">Находим остальные углы</span>
+                </div>
+                <div class="step-content">
+                    В ромбе противоположные углы равны, а сумма соседних углов равна 180°.
+                    <br><br>
+                    ∠DAB = ∠BCD = 60° (противоположные углы)
+                    <br>∠ABC = ∠CDA = 180° - 60° = 120° (соседние углы)
+                </div>
+            </div>
+        </div>
+
+        <div class="note">
+            <strong>Ключевые свойства ромба:</strong>
+            <br>• Диагонали перпендикулярны и делятся пополам
+            <br>• Диагонали являются биссектрисами углов
+            <br>• Противоположные углы равны
+            <br>• Сумма соседних углов = 180°
+        </div>
+
+        <!-- Ответ -->
+        <div class="answer-box">
+            <h3>Ответ</h3>
+            <div class="answer-value">60° и 120°</div>
+            <p style="font-size: 18px;">Углы ромба: 60°, 120°, 60°, 120°</p>
+        </div>
+
+        <!-- Интерактивный калькулятор -->
+        <div class="interactive-section">
+            <h3>Попробуйте решить с другими данными</h3>
+            <p style="margin-bottom: 20px; color: #666;">
+                Введите расстояние от центра до стороны и длину диагонали:
+            </p>
+
+            <div class="input-group">
+                <label for="h-input">Расстояние от O до стороны (h):</label>
+                <input type="number" id="h-input" placeholder="Введите h" value="15" min="0.1" step="0.1">
+            </div>
+
+            <div class="input-group">
+                <label for="d-input">Длина диагонали:</label>
+                <input type="number" id="d-input" placeholder="Введите диагональ" value="60" min="0.1" step="0.1">
+            </div>
+
+            <button class="calculate-btn" onclick="calculate()">🧮 Вычислить углы</button>
+
+            <div class="result-display" id="result">
+                <h4>Результат вычислений:</h4>
+                <div class="result-value" id="result-value">—</div>
+                <div class="explanation">
+                    <strong>Решение:</strong><br>
+                    <span id="explanation-text"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function calculate() {
+            const h = parseFloat(document.getElementById('h-input').value);
+            const d = parseFloat(document.getElementById('d-input').value);
+            
+            if (isNaN(h) || isNaN(d) || h <= 0 || d <= 0) {
+                alert('Пожалуйста, введите корректные положительные числа!');
+                return;
+            }
+
+            // Вычисления
+            const halfDiag = d / 2; // AO = половина диагонали
+            
+            // Проверка: h не может быть больше половины диагонали
+            if (h > halfDiag) {
+                alert('Ошибка: расстояние до стороны не может быть больше половины диагонали!');
+                return;
+            }
+            
+            // sin(angle) = h / halfDiag
+            const sinAngle = h / halfDiag;
+            
+            // Угол в радианах, затем в градусах
+            const angleRad = Math.asin(sinAngle);
+            const angleDeg = angleRad * 180 / Math.PI;
+            
+            // Угол ромба = 2 * угол в прямоугольном треугольнике
+            const rhombusAngle1 = 2 * angleDeg;
+            const rhombusAngle2 = 180 - rhombusAngle1;
+
+            // Отображение результата
+            document.getElementById('result-value').textContent = 
+                `${rhombusAngle1.toFixed(1)}° и ${rhombusAngle2.toFixed(1)}°`;
+            
+            const explanation = `
+                1. Половина диагонали AO = ${d}/2 = ${halfDiag}<br>
+                2. sin(∠OAH) = h/AO = ${h}/${halfDiag} = ${sinAngle.toFixed(4)}<br>
+                3. ∠OAH = arcsin(${sinAngle.toFixed(4)}) ≈ ${angleDeg.toFixed(1)}°<br>
+                4. Угол ромба ∠A = 2 × ${angleDeg.toFixed(1)}° = ${rhombusAngle1.toFixed(1)}°<br>
+                5. Противоположный угол ∠B = 180° - ${rhombusAngle1.toFixed(1)}° = ${rhombusAngle2.toFixed(1)}°
+            `;
+            
+            document.getElementById('explanation-text').innerHTML = explanation;
+            document.getElementById('result').classList.add('show');
+        }
+
+        // Автоматический расчёт при изменении значений
+        document.getElementById('h-input').addEventListener('input', function() {
+            document.getElementById('result').classList.remove('show');
+        });
+        
+        document.getElementById('d-input').addEventListener('input', function() {
+            document.getElementById('result').classList.remove('show');
+        });
+    </script>
+</body>
+</html>

@@ -34,6 +34,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link <?php echo ($current_page == 'oge') ? 'active' : ''; ?>" href="oge/index.php">
+                            <i class="fas fa-graduation-cap"></i> ОГЭ
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link <?php echo ($current_page == 'examples') ? 'active' : ''; ?>" href="examples.php">
                             <i class="fas fa-book"></i> Примеры
                         </a>
