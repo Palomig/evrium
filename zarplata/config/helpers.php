@@ -429,3 +429,33 @@ function truncate($text, $length = 100, $suffix = '...') {
 
     return mb_substr($text, 0, $length) . $suffix;
 }
+
+/**
+ * Получить badge для действия аудита
+ * @param string $action Действие
+ * @return array ['text' => 'Текст', 'class' => 'CSS класс', 'icon' => 'Material Icon']
+ */
+function getActionBadge($action) {
+    // Общие паттерны действий
+    if (strpos($action, 'created') !== false) {
+        return ['text' => 'Создано', 'class' => 'success', 'icon' => 'add_circle'];
+    } elseif (strpos($action, 'updated') !== false) {
+        return ['text' => 'Изменено', 'class' => 'info', 'icon' => 'edit'];
+    } elseif (strpos($action, 'deleted') !== false || strpos($action, 'deactivated') !== false) {
+        return ['text' => 'Удалено', 'class' => 'danger', 'icon' => 'delete'];
+    } elseif (strpos($action, 'activated') !== false) {
+        return ['text' => 'Активировано', 'class' => 'success', 'icon' => 'check_circle'];
+    } elseif (strpos($action, 'completed') !== false) {
+        return ['text' => 'Завершено', 'class' => 'success', 'icon' => 'done'];
+    } elseif (strpos($action, 'cancelled') !== false) {
+        return ['text' => 'Отменено', 'class' => 'warning', 'icon' => 'cancel'];
+    } elseif (strpos($action, 'approved') !== false) {
+        return ['text' => 'Одобрено', 'class' => 'info', 'icon' => 'thumb_up'];
+    } elseif (strpos($action, 'login') !== false) {
+        return ['text' => 'Вход', 'class' => 'info', 'icon' => 'login'];
+    } elseif (strpos($action, 'logout') !== false) {
+        return ['text' => 'Выход', 'class' => 'secondary', 'icon' => 'logout'];
+    } else {
+        return ['text' => ucfirst($action), 'class' => 'secondary', 'icon' => 'info'];
+    }
+}
