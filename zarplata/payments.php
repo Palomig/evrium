@@ -22,6 +22,9 @@ $payments = dbQuery(
     []
 );
 
+// Получить список преподавателей для селекта
+$teachers = dbQuery("SELECT id, name FROM teachers WHERE active = 1 ORDER BY name", []);
+
 // Статистика
 $stats = dbQueryOne(
     "SELECT
@@ -161,7 +164,7 @@ require_once __DIR__ . '/templates/header.php';
 <div class="table-container">
     <div class="table-header">
         <h2 class="table-title">Все выплаты</h2>
-        <button class="btn btn-primary" onclick="alert('Функция добавления разовой выплаты будет реализована позже')">
+        <button class="btn btn-primary" onclick="openPaymentModal()">
             <span class="material-icons" style="margin-right: 8px; font-size: 18px;">add</span>
             Разовая выплата
         </button>
@@ -223,18 +226,28 @@ require_once __DIR__ . '/templates/header.php';
                         </td>
                         <td>
                             <?php if ($payment['status'] === 'pending'): ?>
-                                <button class="btn btn-text" onclick="alert('Одобрить выплату #<?= $payment['id'] ?>')">
+                                <button class="btn btn-text" onclick="approvePayment(<?= $payment['id'] ?>)" title="Одобрить">
                                     <span class="material-icons" style="font-size: 18px;">thumb_up</span>
                                 </button>
                             <?php endif; ?>
                             <?php if ($payment['status'] === 'approved'): ?>
-                                <button class="btn btn-text" onclick="alert('Отметить как выплачено #<?= $payment['id'] ?>')">
+                                <button class="btn btn-text" onclick="openMarkPaidModal(<?= $payment['id'] ?>)" title="Отметить выплаченной">
                                     <span class="material-icons" style="font-size: 18px;">check</span>
                                 </button>
                             <?php endif; ?>
-                            <button class="btn btn-text" onclick="alert('Просмотр выплаты #<?= $payment['id'] ?>')">
+                            <button class="btn btn-text" onclick="viewPayment(<?= $payment['id'] ?>)" title="Просмотр">
                                 <span class="material-icons" style="font-size: 18px;">visibility</span>
                             </button>
+                            <?php if ($payment['status'] !== 'paid'): ?>
+                                <button class="btn btn-text" onclick="cancelPayment(<?= $payment['id'] ?>)" title="Отменить">
+                                    <span class="material-icons" style="font-size: 18px; color: var(--md-warning);">cancel</span>
+                                </button>
+                            <?php endif; ?>
+                            <?php if ($payment['status'] !== 'paid' && $payment['payment_type'] !== 'lesson'): ?>
+                                <button class="btn btn-text" onclick="deletePayment(<?= $payment['id'] ?>)" title="Удалить">
+                                    <span class="material-icons" style="font-size: 18px; color: var(--md-error);">delete</span>
+                                </button>
+                            <?php endif; ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -242,5 +255,115 @@ require_once __DIR__ . '/templates/header.php';
         </table>
     <?php endif; ?>
 </div>
+
+<!-- Модальное окно добавления разовой выплаты -->
+<div id="payment-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modal-title">Разовая выплата</h3>
+            <button class="modal-close" onclick="closePaymentModal()">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <form id="payment-form" onsubmit="savePayment(event)">
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label for="payment-teacher">Преподаватель *</label>
+                    <select id="payment-teacher" name="teacher_id" required>
+                        <option value="">Выберите преподавателя</option>
+                        <?php foreach ($teachers as $teacher): ?>
+                            <option value="<?= $teacher['id'] ?>"><?= e($teacher['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label for="payment-type">Тип выплаты *</label>
+                    <select id="payment-type" name="payment_type" required>
+                        <option value="bonus">Премия</option>
+                        <option value="penalty">Штраф</option>
+                        <option value="adjustment">Корректировка</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label for="payment-amount">Сумма (₽) *</label>
+                    <input type="number" id="payment-amount" name="amount" step="0.01" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label for="payment-date">Дата</label>
+                    <input type="date" id="payment-date" name="payment_date">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label for="payment-comment">Комментарий</label>
+                    <textarea id="payment-comment" name="comment" rows="3"></textarea>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-text" onclick="closePaymentModal()">Отмена</button>
+                <button type="submit" class="btn btn-primary" id="save-payment-btn">
+                    <span class="material-icons" style="margin-right: 8px; font-size: 18px;">save</span>
+                    Сохранить
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Модальное окно просмотра выплаты -->
+<div id="view-payment-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Детали выплаты</h3>
+            <button class="modal-close" onclick="closeViewModal()">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <div id="view-payment-content" style="padding: 24px;">
+            <p style="text-align: center;">Загрузка...</p>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-primary" onclick="closeViewModal()">Закрыть</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно отметки как выплаченной -->
+<div id="mark-paid-modal" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h3>Отметить выплаченной</h3>
+            <button class="modal-close" onclick="closeMarkPaidModal()">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <form onsubmit="saveMarkPaid(event)">
+            <input type="hidden" id="mark-paid-id">
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label for="mark-paid-date">Дата выплаты</label>
+                    <input type="date" id="mark-paid-date" name="payment_date" required>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-text" onclick="closeMarkPaidModal()">Отмена</button>
+                <button type="submit" class="btn btn-primary" id="mark-paid-btn">
+                    <span class="material-icons" style="margin-right: 8px; font-size: 18px;">check_circle</span>
+                    Отметить выплаченной
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="/zarplata/assets/js/payments.js"></script>
 
 <?php require_once __DIR__ . '/templates/footer.php'; ?>
