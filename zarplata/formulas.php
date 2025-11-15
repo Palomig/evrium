@@ -26,7 +26,7 @@ require_once __DIR__ . '/templates/header.php';
 <div class="table-container">
     <div class="table-header">
         <h2 class="table-title">Все формулы</h2>
-        <button class="btn btn-primary" onclick="alert('Функция создания формулы будет реализована позже')">
+        <button class="btn btn-primary" onclick="openFormulaModal()">
             <span class="material-icons" style="margin-right: 8px; font-size: 18px;">add</span>
             Создать формулу
         </button>
@@ -37,7 +37,7 @@ require_once __DIR__ . '/templates/header.php';
             <div class="material-icons">functions</div>
             <p>Нет формул оплаты</p>
             <p style="margin-top: 8px;">
-                <button class="btn btn-primary" onclick="alert('Функция создания формулы будет реализована позже')">
+                <button class="btn btn-primary" onclick="openFormulaModal()">
                     Создать первую формулу
                 </button>
             </p>
@@ -121,11 +121,16 @@ require_once __DIR__ . '/templates/header.php';
                             <?php endif; ?>
                         </td>
                         <td>
-                            <button class="btn btn-text" onclick="alert('Редактировать формулу #<?= $formula['id'] ?>')">
+                            <button class="btn btn-text" onclick="editFormula(<?= $formula['id'] ?>)" title="Редактировать">
                                 <span class="material-icons" style="font-size: 18px;">edit</span>
                             </button>
-                            <button class="btn btn-text" onclick="alert('Дублировать формулу #<?= $formula['id'] ?>')">
-                                <span class="material-icons" style="font-size: 18px;">content_copy</span>
+                            <button class="btn btn-text" onclick="toggleFormulaActive(<?= $formula['id'] ?>)" title="Переключить активность">
+                                <span class="material-icons" style="font-size: 18px;">
+                                    <?= $formula['active'] ? 'toggle_on' : 'toggle_off' ?>
+                                </span>
+                            </button>
+                            <button class="btn btn-text" onclick="deleteFormula(<?= $formula['id'] ?>)" title="Удалить">
+                                <span class="material-icons" style="font-size: 18px; color: var(--md-error);">delete</span>
                             </button>
                         </td>
                     </tr>
@@ -186,5 +191,103 @@ require_once __DIR__ . '/templates/header.php';
         </div>
     </div>
 </div>
+
+<!-- Модальное окно добавления/редактирования формулы -->
+<div id="formula-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modal-title">Создать формулу</h3>
+            <button class="modal-close" onclick="closeFormulaModal()">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <form id="formula-form" onsubmit="saveFormula(event)">
+            <input type="hidden" id="formula-id" name="id">
+
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label for="formula-name">Название формулы *</label>
+                    <input type="text" id="formula-name" name="name" required maxlength="100">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label for="formula-description">Описание</label>
+                    <textarea id="formula-description" name="description" rows="2"></textarea>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label for="formula-type">Тип формулы *</label>
+                    <select id="formula-type" name="type" required onchange="updateFormulaFields()">
+                        <option value="">Выберите тип</option>
+                        <option value="min_plus_per">Минимум + Доплата</option>
+                        <option value="fixed">Фиксированная сумма</option>
+                        <option value="expression">Пользовательская формула</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Поля для типа min_plus_per -->
+            <div id="min-plus-per-fields" style="display: none;">
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="min-payment">Минимальная оплата (₽) *</label>
+                        <input type="number" id="min-payment" name="min_payment" step="0.01" min="0">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="per-student">Доплата за ученика (₽) *</label>
+                        <input type="number" id="per-student" name="per_student" step="0.01" min="0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="threshold">Начиная с N-го ученика *</label>
+                        <input type="number" id="threshold" name="threshold" min="1" value="1">
+                        <small style="color: var(--text-medium-emphasis);">
+                            С какого ученика начинать доплату (обычно 1 или 2)
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Поля для типа fixed -->
+            <div id="fixed-fields" style="display: none;">
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="fixed-amount">Фиксированная сумма (₽) *</label>
+                        <input type="number" id="fixed-amount" name="fixed_amount" step="0.01" min="0">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Поля для типа expression -->
+            <div id="expression-fields" style="display: none;">
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="expression">Математическое выражение *</label>
+                        <input type="text" id="expression" name="expression" placeholder="max(500, N * 150)">
+                        <small style="color: var(--text-medium-emphasis);">
+                            Доступные переменные: <strong>N</strong> (кол-во учеников), <strong>min</strong>, <strong>base</strong><br>
+                            Функции: max, min, abs, pow, sqrt, floor, ceil
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-text" onclick="closeFormulaModal()">Отмена</button>
+                <button type="submit" class="btn btn-primary" id="save-formula-btn">
+                    <span class="material-icons" style="margin-right: 8px; font-size: 18px;">save</span>
+                    Сохранить
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="/zarplata/assets/js/formulas.js"></script>
 
 <?php require_once __DIR__ . '/templates/footer.php'; ?>

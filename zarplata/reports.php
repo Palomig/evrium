@@ -1,6 +1,6 @@
 <?php
 /**
- * Страница отчётов
+ * Страница отчётов и аналитики
  */
 
 require_once __DIR__ . '/config/db.php';
@@ -10,89 +10,128 @@ require_once __DIR__ . '/config/helpers.php';
 requireAuth();
 $user = getCurrentUser();
 
-// Получить статистику по преподавателям
-$teacherStats = dbQuery(
-    "SELECT * FROM teacher_stats ORDER BY total_earned DESC",
-    []
-);
+// Параметры по умолчанию
+$dateFrom = $_GET['date_from'] ?? date('Y-m-01');
+$dateTo = $_GET['date_to'] ?? date('Y-m-t');
 
-// Статистика за текущий месяц
-$currentMonth = date('Y-m');
-$monthStats = dbQueryOne(
-    "SELECT
-        COUNT(DISTINCT li.id) as lessons_count,
-        SUM(CASE WHEN li.status = 'completed' THEN 1 ELSE 0 END) as completed_count,
-        SUM(CASE WHEN li.status = 'completed' THEN li.actual_students ELSE 0 END) as total_students,
-        COALESCE(SUM(p.amount), 0) as total_paid
-     FROM lessons_instance li
-     LEFT JOIN payments p ON li.id = p.lesson_instance_id AND p.status != 'cancelled'
-     WHERE DATE_FORMAT(li.lesson_date, '%Y-%m') = ?",
-    [$currentMonth]
-);
+// Получить всех преподавателей для фильтра
+$teachers = dbQuery("SELECT id, name FROM teachers WHERE active = 1 ORDER BY name", []);
 
-define('PAGE_TITLE', 'Отчёты');
-define('PAGE_SUBTITLE', 'Аналитика и статистика');
+define('PAGE_TITLE', 'Отчёты и аналитика');
+define('PAGE_SUBTITLE', 'Статистика, графики и экспорт данных');
 define('ACTIVE_PAGE', 'reports');
 
 require_once __DIR__ . '/templates/header.php';
 ?>
 
-<!-- Статистика за месяц -->
-<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 24px;">
-    <div class="stat-card">
-        <div class="stat-card-header">
-            <div>
-                <div class="stat-card-value"><?= $monthStats['lessons_count'] ?? 0 ?></div>
-                <div class="stat-card-label">Уроков за месяц</div>
+<!-- Фильтры -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h3 style="margin: 0;">
+            <span class="material-icons" style="vertical-align: middle;">filter_list</span>
+            Фильтры отчётов
+        </h3>
+    </div>
+    <div class="card-body">
+        <form id="filters-form">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                <div class="form-group">
+                    <label class="form-label">Дата с</label>
+                    <input type="date" class="form-control" id="date_from" name="date_from" value="<?= $dateFrom ?>">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Дата по</label>
+                    <input type="date" class="form-control" id="date_to" name="date_to" value="<?= $dateTo ?>">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Преподаватель</label>
+                    <select class="form-control" id="teacher_id" name="teacher_id">
+                        <option value="">Все преподаватели</option>
+                        <?php foreach ($teachers as $teacher): ?>
+                            <option value="<?= $teacher['id'] ?>"><?= e($teacher['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="form-group" style="display: flex; align-items: flex-end;">
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <span class="material-icons" style="margin-right: 8px; font-size: 18px;">search</span>
+                        Применить
+                    </button>
+                </div>
             </div>
-            <div class="stat-card-icon primary">
-                <span class="material-icons">school</span>
-            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Статистика (загружается динамически) -->
+<div id="summary-stats"></div>
+
+<!-- Графики -->
+<div class="row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 24px;">
+    <!-- График по дням -->
+    <div class="card">
+        <div class="card-header">
+            <h3 style="margin: 0;">
+                <span class="material-icons" style="vertical-align: middle;">show_chart</span>
+                Уроки и выручка по дням
+            </h3>
+        </div>
+        <div class="card-body">
+            <canvas id="daily-chart" height="300"></canvas>
         </div>
     </div>
 
-    <div class="stat-card">
-        <div class="stat-card-header">
-            <div>
-                <div class="stat-card-value"><?= $monthStats['completed_count'] ?? 0 ?></div>
-                <div class="stat-card-label">Завершено</div>
-            </div>
-            <div class="stat-card-icon success">
-                <span class="material-icons">check_circle</span>
-            </div>
+    <!-- График по преподавателям -->
+    <div class="card">
+        <div class="card-header">
+            <h3 style="margin: 0;">
+                <span class="material-icons" style="vertical-align: middle;">pie_chart</span>
+                Распределение по преподавателям
+            </h3>
         </div>
-    </div>
-
-    <div class="stat-card">
-        <div class="stat-card-header">
-            <div>
-                <div class="stat-card-value"><?= $monthStats['total_students'] ?? 0 ?></div>
-                <div class="stat-card-label">Учеников обучено</div>
-            </div>
-            <div class="stat-card-icon info">
-                <span class="material-icons">groups</span>
-            </div>
-        </div>
-    </div>
-
-    <div class="stat-card">
-        <div class="stat-card-header">
-            <div>
-                <div class="stat-card-value"><?= formatMoney($monthStats['total_paid'] ?? 0) ?></div>
-                <div class="stat-card-label">Начислено за месяц</div>
-            </div>
-            <div class="stat-card-icon secondary">
-                <span class="material-icons">payments</span>
-            </div>
+        <div class="card-body">
+            <canvas id="teacher-chart" height="300"></canvas>
         </div>
     </div>
 </div>
+
+<!-- Детальная таблица (для выбранного преподавателя) -->
+<div id="teacher-details" style="display: none;"></div>
+
+<!-- Экспорт -->
+<div class="card">
+    <div class="card-header">
+        <h3 style="margin: 0;">
+            <span class="material-icons" style="vertical-align: middle;">cloud_download</span>
+            Экспорт данных
+        </h3>
+    </div>
+    <div class="card-body">
+        <p style="color: var(--text-medium-emphasis); margin-bottom: 16px;">
+            Выгрузить отчёт за выбранный период
+        </p>
+        <div style="display: flex; gap: 16px;">
+            <button class="btn btn-outline" onclick="exportToExcel()">
+                <span class="material-icons" style="margin-right: 8px; font-size: 18px;">table_chart</span>
+                Экспорт в CSV
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Подключаем Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="/zarplata/assets/js/reports.js"></script>
 
 <style>
     .stats-grid {
         display: grid;
         gap: 24px;
         margin-bottom: 32px;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     }
 
     .stat-card {
@@ -158,140 +197,28 @@ require_once __DIR__ . '/templates/header.php';
         font-size: 0.875rem;
         color: var(--text-medium-emphasis);
     }
+
+    .row {
+        margin-left: -12px;
+        margin-right: -12px;
+    }
+
+    .card {
+        margin-bottom: 24px;
+    }
+
+    .card-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--md-surface-3);
+    }
+
+    .card-body {
+        padding: 24px;
+    }
+
+    .btn-block {
+        width: 100%;
+    }
 </style>
-
-<!-- Статистика по преподавателям -->
-<div class="table-container">
-    <div class="table-header">
-        <h2 class="table-title">Статистика по преподавателям</h2>
-        <div>
-            <button class="btn btn-outline" onclick="alert('Функция экспорта в Excel будет реализована позже')">
-                <span class="material-icons" style="margin-right: 8px; font-size: 18px;">download</span>
-                Экспорт в Excel
-            </button>
-            <button class="btn btn-outline" onclick="alert('Функция генерации PDF будет реализована позже')" style="margin-left: 8px;">
-                <span class="material-icons" style="margin-right: 8px; font-size: 18px;">picture_as_pdf</span>
-                Генерация PDF
-            </button>
-        </div>
-    </div>
-
-    <?php if (empty($teacherStats)): ?>
-        <div class="empty-state">
-            <div class="material-icons">assessment</div>
-            <p>Нет данных для отчёта</p>
-        </div>
-    <?php else: ?>
-        <table>
-            <thead>
-                <tr>
-                    <th>Преподаватель</th>
-                    <th>Уроков всего</th>
-                    <th>Завершено</th>
-                    <th>Всего заработано</th>
-                    <th>Выплачено</th>
-                    <th>К выплате</th>
-                    <th>Действия</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($teacherStats as $stat): ?>
-                    <tr>
-                        <td><strong><?= e($stat['teacher_name']) ?></strong></td>
-                        <td><?= $stat['total_lessons'] ?? 0 ?></td>
-                        <td>
-                            <?= $stat['completed_lessons'] ?? 0 ?>
-                            <?php if ($stat['total_lessons'] > 0): ?>
-                                <br>
-                                <small style="color: var(--text-medium-emphasis);">
-                                    <?= round(($stat['completed_lessons'] / $stat['total_lessons']) * 100) ?>%
-                                </small>
-                            <?php endif; ?>
-                        </td>
-                        <td><strong><?= formatMoney($stat['total_earned'] ?? 0) ?></strong></td>
-                        <td><?= formatMoney($stat['total_paid'] ?? 0) ?></td>
-                        <td>
-                            <strong style="color: var(--md-warning);">
-                                <?= formatMoney($stat['pending_amount'] ?? 0) ?>
-                            </strong>
-                        </td>
-                        <td>
-                            <button class="btn btn-text" onclick="alert('Детальный отчёт по преподавателю #<?= $stat['teacher_id'] ?>')">
-                                <span class="material-icons" style="font-size: 18px;">visibility</span>
-                            </button>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-            <tfoot style="background-color: var(--md-surface-2); font-weight: 500;">
-                <tr>
-                    <td>ИТОГО</td>
-                    <td><?= array_sum(array_column($teacherStats, 'total_lessons')) ?></td>
-                    <td><?= array_sum(array_column($teacherStats, 'completed_lessons')) ?></td>
-                    <td><strong><?= formatMoney(array_sum(array_column($teacherStats, 'total_earned'))) ?></strong></td>
-                    <td><?= formatMoney(array_sum(array_column($teacherStats, 'total_paid'))) ?></td>
-                    <td>
-                        <strong style="color: var(--md-warning);">
-                            <?= formatMoney(array_sum(array_column($teacherStats, 'pending_amount'))) ?>
-                        </strong>
-                    </td>
-                    <td></td>
-                </tr>
-            </tfoot>
-        </table>
-    <?php endif; ?>
-</div>
-
-<!-- Фильтры отчётов -->
-<div class="card mt-4">
-    <div class="card-header">
-        <h3 style="margin: 0;">
-            <span class="material-icons" style="vertical-align: middle;">filter_list</span>
-            Фильтры отчётов
-        </h3>
-    </div>
-    <div class="card-body">
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
-            <div class="form-group">
-                <label class="form-label">Период</label>
-                <select class="form-control">
-                    <option>Текущий месяц</option>
-                    <option>Предыдущий месяц</option>
-                    <option>Текущая неделя</option>
-                    <option>Произвольный период</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Преподаватель</label>
-                <select class="form-control">
-                    <option>Все преподаватели</option>
-                    <?php foreach ($teacherStats as $stat): ?>
-                        <option value="<?= $stat['teacher_id'] ?>">
-                            <?= e($stat['teacher_name']) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Статус выплат</label>
-                <select class="form-control">
-                    <option>Все статусы</option>
-                    <option>Ожидают</option>
-                    <option>Одобрено</option>
-                    <option>Выплачено</option>
-                </select>
-            </div>
-
-            <div class="form-group" style="display: flex; align-items: flex-end;">
-                <button class="btn btn-primary btn-block" onclick="alert('Функция фильтрации будет реализована позже')">
-                    <span class="material-icons" style="margin-right: 8px; font-size: 18px;">search</span>
-                    Применить фильтры
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
 
 <?php require_once __DIR__ . '/templates/footer.php'; ?>
