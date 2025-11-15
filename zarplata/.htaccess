@@ -1,0 +1,103 @@
+# Apache Configuration
+# Система учёта зарплаты преподавателей
+
+# Включить mod_rewrite
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /zarplata/
+
+    # Редирект с trailing slash
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)/$ /$1 [L,R=301]
+
+    # Редирект index.php на корень
+    RewriteCond %{THE_REQUEST} ^GET.*index\.php [NC]
+    RewriteRule ^(.*)index\.php$ /$1 [R=301,L]
+</IfModule>
+
+# Безопасность
+<IfModule mod_headers.c>
+    # Защита от XSS
+    Header set X-XSS-Protection "1; mode=block"
+
+    # Запретить отображение сайта в iframe
+    Header set X-Frame-Options "SAMEORIGIN"
+
+    # Запретить определение типа контента браузером
+    Header set X-Content-Type-Options "nosniff"
+
+    # Referrer Policy
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Content Security Policy (базовая)
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;"
+</IfModule>
+
+# Запретить доступ к служебным файлам
+<FilesMatch "\.(htaccess|htpasswd|ini|log|sh|sql|md)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Запретить доступ к папке config напрямую
+<IfModule mod_rewrite.c>
+    RewriteRule ^config/.*$ - [F,L]
+</IfModule>
+
+# PHP настройки
+<IfModule mod_php.c>
+    # Отключить отображение ошибок в production
+    php_flag display_errors Off
+    php_flag display_startup_errors Off
+    php_value error_reporting 0
+
+    # Логирование ошибок
+    php_flag log_errors On
+    php_value error_log ../php_errors.log
+
+    # Безопасность
+    php_flag expose_php Off
+    php_flag session.cookie_httponly On
+    php_flag session.cookie_secure On
+    php_value session.cookie_samesite Strict
+
+    # Загрузка файлов
+    php_value upload_max_filesize 20M
+    php_value post_max_size 20M
+    php_value max_execution_time 300
+    php_value max_input_time 300
+    php_value memory_limit 256M
+</IfModule>
+
+# Сжатие
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+</IfModule>
+
+# Кэширование
+<IfModule mod_expires.c>
+    ExpiresActive On
+
+    # Изображения
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/webp "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType image/x-icon "access plus 1 year"
+
+    # CSS и JavaScript
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+
+    # Шрифты
+    ExpiresByType font/ttf "access plus 1 year"
+    ExpiresByType font/woff "access plus 1 year"
+    ExpiresByType font/woff2 "access plus 1 year"
+
+    # HTML по умолчанию
+    ExpiresByType text/html "access plus 0 seconds"
+</IfModule>
+
+# Charset
+AddDefaultCharset UTF-8
