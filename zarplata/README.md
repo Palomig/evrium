@@ -116,32 +116,37 @@ zarplata/
 
 ### Шаг 3: Создание базы данных
 
-1. Создать базу данных:
-   ```sql
-   CREATE DATABASE evrium_zarplata CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+1. База данных уже создана:
+   ```
+   Название: cw95865_admin
+   Пользователь: cw95865_admin
+   Пароль: 123456789
    ```
 
 2. Импортировать схему:
    ```bash
-   mysql -u root -p evrium_zarplata < database.sql
+   mysql -u cw95865_admin -p cw95865_admin < database.sql
+   # Пароль: 123456789
    ```
 
 3. Проверить создание таблиц:
    ```sql
-   USE evrium_zarplata;
+   USE cw95865_admin;
    SHOW TABLES;
    ```
 
 ### Шаг 4: Настройка конфигурации
 
-Отредактировать файл `config/db.php`:
+Файл `config/db.php` уже настроен с актуальными данными:
 
 ```php
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'evrium_zarplata');
-define('DB_USER', 'your_db_user');
-define('DB_PASS', 'your_db_password');
+define('DB_NAME', 'cw95865_admin');
+define('DB_USER', 'cw95865_admin');
+define('DB_PASS', '123456789');
 ```
+
+**Данные БД уже внесены в конфигурацию!**
 
 ### Шаг 5: Настройка Apache
 

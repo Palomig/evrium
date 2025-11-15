@@ -6,9 +6,9 @@
 
 // Настройки подключения к БД
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'evrium_zarplata');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+define('DB_NAME', 'cw95865_admin');
+define('DB_USER', 'cw95865_admin');
+define('DB_PASS', '123456789');
 define('DB_CHARSET', 'utf8mb4');
 
 // Глобальное подключение PDO
