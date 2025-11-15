@@ -55,7 +55,7 @@
 }
 
 body {
-    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background-color: var(--md-background);
     color: var(--text-high-emphasis);
     line-height: 1.5;
