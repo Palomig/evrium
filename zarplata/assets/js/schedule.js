@@ -5,22 +5,35 @@
 let currentTemplateId = null;
 
 // Открыть модальное окно шаблона
-function openTemplateModal(templateId = null) {
-    currentTemplateId = templateId;
+function openTemplateModal(dayOfWeek = null) {
+    // Если dayOfWeek это число - это предзаполнение дня, иначе это ID для редактирования
+    const isEditing = typeof dayOfWeek === 'number' && dayOfWeek > 10;
+
+    currentTemplateId = isEditing ? dayOfWeek : null;
     const modal = document.getElementById('template-modal');
     const form = document.getElementById('template-form');
     const title = document.getElementById('modal-title');
 
     form.reset();
 
-    if (templateId) {
+    // Сбросить активные кнопки
+    document.querySelectorAll('.time-btn, .subject-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    if (isEditing) {
         // Режим редактирования
-        title.textContent = 'Редактировать шаблон';
-        loadTemplateData(templateId);
+        title.textContent = 'Редактировать урок';
+        loadTemplateData(dayOfWeek);
     } else {
         // Режим создания
-        title.textContent = 'Добавить урок в шаблон';
+        title.textContent = 'Добавить урок в расписание';
         document.getElementById('template-id').value = '';
+
+        // Предзаполнить день недели если передан
+        if (dayOfWeek && dayOfWeek >= 1 && dayOfWeek <= 7) {
+            document.getElementById('template-day').value = dayOfWeek;
+        }
     }
 
     modal.classList.add('active');
@@ -64,6 +77,11 @@ async function loadTemplateData(templateId) {
 function closeTemplateModal() {
     document.getElementById('template-modal').classList.remove('active');
     currentTemplateId = null;
+
+    // Сбросить активные кнопки
+    document.querySelectorAll('.time-btn, .subject-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
 }
 
 // Сохранить шаблон
@@ -110,7 +128,22 @@ async function saveTemplate(event) {
                 'success'
             );
             closeTemplateModal();
-            setTimeout(() => location.reload(), 500);
+
+            // Перезагрузить канбан доску если функция существует
+            if (typeof renderKanban === 'function') {
+                // Обновить данные шаблонов
+                fetch('/zarplata/api/schedule.php?action=list_templates')
+                    .then(res => res.json())
+                    .then(res => {
+                        if (res.success && typeof templatesData !== 'undefined') {
+                            // Обновить глобальную переменную templatesData
+                            window.templatesData = res.data;
+                        }
+                        setTimeout(() => location.reload(), 500);
+                    });
+            } else {
+                setTimeout(() => location.reload(), 500);
+            }
         } else {
             showNotification(result.error || 'Ошибка сохранения', 'error');
         }
@@ -147,7 +180,13 @@ async function deleteTemplate(templateId) {
 
         if (result.success) {
             showNotification(result.data.message || 'Шаблон удалён', 'success');
-            setTimeout(() => location.reload(), 500);
+
+            // Перезагрузить канбан доску если функция существует
+            if (typeof renderKanban === 'function') {
+                setTimeout(() => location.reload(), 500);
+            } else {
+                setTimeout(() => location.reload(), 500);
+            }
         } else {
             showNotification(result.error || 'Ошибка удаления', 'error');
         }
