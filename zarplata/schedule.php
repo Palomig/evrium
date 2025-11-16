@@ -11,24 +11,55 @@ requireAuth();
 $user = getCurrentUser();
 
 // Получить преподавателей с их формулами оплаты
-$teachers = dbQuery("
-    SELECT t.id, t.name, t.formula_id, pf.name as formula_name
-    FROM teachers t
-    LEFT JOIN payment_formulas pf ON t.formula_id = pf.id
-    WHERE t.active = 1
-    ORDER BY t.name
-", []);
+// Проверяем, существует ли столбец formula_id (для обратной совместимости)
+try {
+    $teachers = dbQuery("
+        SELECT t.id, t.name, t.formula_id, pf.name as formula_name
+        FROM teachers t
+        LEFT JOIN payment_formulas pf ON t.formula_id = pf.id
+        WHERE t.active = 1
+        ORDER BY t.name
+    ", []);
+} catch (PDOException $e) {
+    // Если столбец formula_id не существует, загружаем без него
+    if (strpos($e->getMessage(), 'formula_id') !== false) {
+        $teachers = dbQuery("
+            SELECT t.id, t.name, NULL as formula_id, NULL as formula_name
+            FROM teachers t
+            WHERE t.active = 1
+            ORDER BY t.name
+        ", []);
+    } else {
+        throw $e;
+    }
+}
 
 // Получить все активные шаблоны расписания
-$templates = dbQuery(
-    "SELECT lt.*, t.name as teacher_name, pf.name as formula_name
-     FROM lessons_template lt
-     LEFT JOIN teachers t ON lt.teacher_id = t.id
-     LEFT JOIN payment_formulas pf ON lt.formula_id = pf.id
-     WHERE lt.active = 1
-     ORDER BY lt.day_of_week ASC, lt.time_start ASC",
-    []
-);
+// Используем formula_id из teachers если есть, иначе из lessons_template
+try {
+    $templates = dbQuery(
+        "SELECT lt.*, t.name as teacher_name,
+                COALESCE(t_pf.name, lt_pf.name) as formula_name
+         FROM lessons_template lt
+         LEFT JOIN teachers t ON lt.teacher_id = t.id
+         LEFT JOIN payment_formulas t_pf ON t.formula_id = t_pf.id
+         LEFT JOIN payment_formulas lt_pf ON lt.formula_id = lt_pf.id
+         WHERE lt.active = 1
+         ORDER BY lt.day_of_week ASC, lt.time_start ASC",
+        []
+    );
+} catch (PDOException $e) {
+    // Fallback если столбец formula_id не существует в teachers
+    $templates = dbQuery(
+        "SELECT lt.*, t.name as teacher_name, pf.name as formula_name
+         FROM lessons_template lt
+         LEFT JOIN teachers t ON lt.teacher_id = t.id
+         LEFT JOIN payment_formulas pf ON lt.formula_id = pf.id
+         WHERE lt.active = 1
+         ORDER BY lt.day_of_week ASC, lt.time_start ASC",
+        []
+    );
+}
 
 define('PAGE_TITLE', 'Расписание');
 define('PAGE_SUBTITLE', 'Канбан доска с расписанием занятий');
