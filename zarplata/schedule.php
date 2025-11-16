@@ -219,14 +219,32 @@ require_once __DIR__ . '/templates/header.php';
                 </div>
             </div>
 
-            <div class="form-row">
-                <div class="form-group" style="flex: 1;">
-                    <label for="template-time-start">Время начала *</label>
-                    <input type="time" id="template-time-start" name="time_start" required>
+            <div class="form-group">
+                <label>Время начала урока *</label>
+                <input type="hidden" id="template-time-start" name="time_start" required>
+                <input type="hidden" id="template-time-end" name="time_end" required>
+                <div class="time-buttons">
+                    <?php for ($hour = 8; $hour <= 21; $hour++): ?>
+                        <button type="button" class="time-btn" data-hour="<?= $hour ?>" onclick="selectTime(<?= $hour ?>)">
+                            <?= sprintf('%02d', $hour) ?>
+                        </button>
+                    <?php endfor; ?>
                 </div>
-                <div class="form-group" style="flex: 1;">
-                    <label for="template-time-end">Время окончания *</label>
-                    <input type="time" id="template-time-end" name="time_end" required>
+            </div>
+
+            <div class="form-group">
+                <label>Предмет *</label>
+                <input type="hidden" id="template-subject" name="subject" required>
+                <div class="subject-buttons">
+                    <button type="button" class="subject-btn" data-subject="Математика" onclick="selectSubject('Математика')">
+                        Математика
+                    </button>
+                    <button type="button" class="subject-btn" data-subject="Физика" onclick="selectSubject('Физика')">
+                        Физика
+                    </button>
+                    <button type="button" class="subject-btn" data-subject="Информатика" onclick="selectSubject('Информатика')">
+                        Информатика
+                    </button>
                 </div>
             </div>
 
@@ -244,20 +262,14 @@ require_once __DIR__ . '/templates/header.php';
                 </div>
             </div>
 
-            <div class="form-row">
-                <div class="form-group" style="flex: 1;">
-                    <label for="template-subject">Предмет</label>
-                    <input type="text" id="template-subject" name="subject" maxlength="100">
-                </div>
-                <div class="form-group" style="flex: 1;">
-                    <label for="template-formula">Формула оплаты</label>
-                    <select id="template-formula" name="formula_id">
-                        <option value="">Не выбрана</option>
-                        <?php foreach ($formulas as $formula): ?>
-                            <option value="<?= $formula['id'] ?>"><?= e($formula['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
+            <div class="form-group">
+                <label for="template-formula">Формула оплаты</label>
+                <select id="template-formula" name="formula_id">
+                    <option value="">Не выбрана</option>
+                    <?php foreach ($formulas as $formula): ?>
+                        <option value="<?= $formula['id'] ?>"><?= e($formula['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
             </div>
 
             <div class="modal-actions">

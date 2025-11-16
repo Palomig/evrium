@@ -37,12 +37,20 @@ async function loadTemplateData(templateId) {
             document.getElementById('template-id').value = template.id;
             document.getElementById('template-teacher').value = template.teacher_id || '';
             document.getElementById('template-day').value = template.day_of_week || '';
-            document.getElementById('template-time-start').value = template.time_start || '';
-            document.getElementById('template-time-end').value = template.time_end || '';
             document.getElementById('template-type').value = template.lesson_type || 'group';
             document.getElementById('template-students').value = template.expected_students || 1;
-            document.getElementById('template-subject').value = template.subject || '';
             document.getElementById('template-formula').value = template.formula_id || '';
+
+            // Установить время (извлечь час из time_start)
+            if (template.time_start) {
+                const hour = parseInt(template.time_start.split(':')[0]);
+                selectTime(hour);
+            }
+
+            // Установить предмет
+            if (template.subject) {
+                selectSubject(template.subject);
+            }
         } else {
             showNotification(result.error || 'Ошибка загрузки данных', 'error');
         }
@@ -176,6 +184,44 @@ async function generateWeek() {
         console.error('Error generating week:', error);
         showNotification('Ошибка генерации уроков', 'error');
     }
+}
+
+// Выбор времени
+function selectTime(hour) {
+    // Снять выделение со всех кнопок времени
+    document.querySelectorAll('.time-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    // Выделить выбранную кнопку
+    const selectedBtn = document.querySelector(`.time-btn[data-hour="${hour}"]`);
+    if (selectedBtn) {
+        selectedBtn.classList.add('active');
+    }
+
+    // Установить скрытые поля (время начала и конца)
+    const timeStart = String(hour).padStart(2, '0') + ':00:00';
+    const timeEnd = String(hour + 1).padStart(2, '0') + ':00:00';
+
+    document.getElementById('template-time-start').value = timeStart;
+    document.getElementById('template-time-end').value = timeEnd;
+}
+
+// Выбор предмета
+function selectSubject(subject) {
+    // Снять выделение со всех кнопок предметов
+    document.querySelectorAll('.subject-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    // Выделить выбранную кнопку
+    const selectedBtn = document.querySelector(`.subject-btn[data-subject="${subject}"]`);
+    if (selectedBtn) {
+        selectedBtn.classList.add('active');
+    }
+
+    // Установить скрытое поле
+    document.getElementById('template-subject').value = subject;
 }
 
 // Утилиты
