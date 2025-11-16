@@ -10,9 +10,14 @@ require_once __DIR__ . '/config/helpers.php';
 requireAuth();
 $user = getCurrentUser();
 
-// Получить преподавателей и формулы для селектов
-$teachers = dbQuery("SELECT id, name FROM teachers WHERE active = 1 ORDER BY name", []);
-$formulas = dbQuery("SELECT id, name FROM payment_formulas WHERE active = 1 ORDER BY name", []);
+// Получить преподавателей с их формулами оплаты
+$teachers = dbQuery("
+    SELECT t.id, t.name, t.formula_id, pf.name as formula_name
+    FROM teachers t
+    LEFT JOIN payment_formulas pf ON t.formula_id = pf.id
+    WHERE t.active = 1
+    ORDER BY t.name
+", []);
 
 // Получить все активные шаблоны расписания
 $templates = dbQuery(
@@ -578,14 +583,21 @@ require_once __DIR__ . '/templates/header.php';
                 </div>
             </div>
 
-            <div class="form-group">
-                <label for="template-formula">Формула оплаты</label>
-                <select id="template-formula" name="formula_id">
-                    <option value="">Не выбрана</option>
-                    <?php foreach ($formulas as $formula): ?>
-                        <option value="<?= $formula['id'] ?>"><?= e($formula['name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
+            <!-- Скрытое поле для formula_id (подставляется автоматически из данных преподавателя) -->
+            <input type="hidden" id="template-formula" name="formula_id">
+
+            <!-- Информация о формуле оплаты -->
+            <div class="form-group" id="formula-info-group" style="display: none;">
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <span class="material-icons" style="font-size: 18px; color: var(--md-secondary);">payments</span>
+                    Формула оплаты
+                </label>
+                <div style="padding: 12px; background-color: rgba(3, 218, 198, 0.1); border-left: 3px solid var(--md-secondary); border-radius: 4px;">
+                    <p id="formula-info-text" style="margin: 0; color: var(--text-high-emphasis); font-size: 0.875rem;"></p>
+                    <p style="margin: 4px 0 0 0; color: var(--text-medium-emphasis); font-size: 0.75rem;">
+                        Назначается автоматически из профиля преподавателя
+                    </p>
+                </div>
             </div>
 
             <div class="modal-actions">
@@ -603,6 +615,9 @@ require_once __DIR__ . '/templates/header.php';
 // Данные шаблонов из PHP
 const templatesData = <?= json_encode($templates, JSON_UNESCAPED_UNICODE) ?>;
 
+// Данные преподавателей с формулами
+const teachersData = <?= json_encode($teachers, JSON_UNESCAPED_UNICODE) ?>;
+
 // Дни недели
 const daysOfWeek = [
     { id: 1, name: 'Понедельник', short: 'Пн' },
@@ -613,6 +628,44 @@ const daysOfWeek = [
     { id: 6, name: 'Суббота', short: 'Сб' },
     { id: 7, name: 'Воскресенье', short: 'Вс' }
 ];
+
+// Обработчик изменения преподавателя - автоматическая подстановка формулы
+document.addEventListener('DOMContentLoaded', () => {
+    const teacherSelect = document.getElementById('template-teacher');
+    const formulaInput = document.getElementById('template-formula');
+    const formulaInfoGroup = document.getElementById('formula-info-group');
+    const formulaInfoText = document.getElementById('formula-info-text');
+
+    if (teacherSelect) {
+        teacherSelect.addEventListener('change', function() {
+            const teacherId = parseInt(this.value);
+
+            if (!teacherId) {
+                // Преподаватель не выбран - скрыть информацию о формуле
+                formulaInfoGroup.style.display = 'none';
+                formulaInput.value = '';
+                return;
+            }
+
+            // Найти преподавателя в данных
+            const teacher = teachersData.find(t => t.id === teacherId);
+
+            if (teacher) {
+                if (teacher.formula_id) {
+                    // У преподавателя есть формула - подставить
+                    formulaInput.value = teacher.formula_id;
+                    formulaInfoText.textContent = teacher.formula_name || 'Формула назначена';
+                    formulaInfoGroup.style.display = 'block';
+                } else {
+                    // У преподавателя нет формулы
+                    formulaInput.value = '';
+                    formulaInfoText.textContent = 'У преподавателя не назначена формула оплаты';
+                    formulaInfoGroup.style.display = 'block';
+                }
+            }
+        });
+    }
+});
 
 // Отрисовка канбан доски
 function renderKanban() {

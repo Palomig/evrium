@@ -52,7 +52,6 @@ async function loadTemplateData(templateId) {
             document.getElementById('template-day').value = template.day_of_week || '';
             document.getElementById('template-type').value = template.lesson_type || 'group';
             document.getElementById('template-students').value = template.expected_students || 1;
-            document.getElementById('template-formula').value = template.formula_id || '';
 
             // Установить время (извлечь час из time_start)
             if (template.time_start) {
@@ -63,6 +62,30 @@ async function loadTemplateData(templateId) {
             // Установить предмет
             if (template.subject) {
                 selectSubject(template.subject);
+            }
+
+            // Подставить формулу из преподавателя (автоматически)
+            if (template.teacher_id && typeof teachersData !== 'undefined') {
+                const teacher = teachersData.find(t => t.id === parseInt(template.teacher_id));
+                if (teacher) {
+                    const formulaInput = document.getElementById('template-formula');
+                    const formulaInfoGroup = document.getElementById('formula-info-group');
+                    const formulaInfoText = document.getElementById('formula-info-text');
+
+                    if (teacher.formula_id) {
+                        formulaInput.value = teacher.formula_id;
+                        if (formulaInfoText && formulaInfoGroup) {
+                            formulaInfoText.textContent = teacher.formula_name || 'Формула назначена';
+                            formulaInfoGroup.style.display = 'block';
+                        }
+                    } else {
+                        formulaInput.value = '';
+                        if (formulaInfoText && formulaInfoGroup) {
+                            formulaInfoText.textContent = 'У преподавателя не назначена формула оплаты';
+                            formulaInfoGroup.style.display = 'block';
+                        }
+                    }
+                }
             }
         } else {
             showNotification(result.error || 'Ошибка загрузки данных', 'error');
@@ -82,6 +105,12 @@ function closeTemplateModal() {
     document.querySelectorAll('.time-btn, .subject-btn').forEach(btn => {
         btn.classList.remove('active');
     });
+
+    // Скрыть информацию о формуле
+    const formulaInfoGroup = document.getElementById('formula-info-group');
+    if (formulaInfoGroup) {
+        formulaInfoGroup.style.display = 'none';
+    }
 }
 
 // Сохранить шаблон
