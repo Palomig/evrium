@@ -170,7 +170,7 @@ function handleAdd() {
     try {
         $paymentId = dbExecute(
             "INSERT INTO payments
-             (teacher_id, amount, payment_type, payment_date, status, comment)
+             (teacher_id, amount, payment_type, period_start, status, notes)
              VALUES (?, ?, ?, ?, 'pending', ?)",
             [$teacherId, $amount, $paymentType, $paymentDate, $comment ?: null]
         );
@@ -281,7 +281,7 @@ function handleMarkPaid() {
     try {
         $result = dbExecute(
             "UPDATE payments
-             SET status = 'paid', payment_date = ?, updated_at = NOW()
+             SET status = 'paid', paid_at = ?, updated_at = NOW()
              WHERE id = ?",
             [$paymentDate, $id]
         );
@@ -289,7 +289,7 @@ function handleMarkPaid() {
         if ($result !== false) {
             logAudit('payment_paid', 'payment', $id,
                 ['status' => 'approved'],
-                ['status' => 'paid', 'payment_date' => $paymentDate],
+                ['status' => 'paid', 'paid_at' => $paymentDate],
                 'Выплата отмечена как выплаченная'
             );
 
