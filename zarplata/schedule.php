@@ -79,6 +79,7 @@ require_once __DIR__ . '/templates/header.php';
     padding: 24px;
     margin-bottom: 24px;
     box-shadow: var(--elevation-2);
+    max-width: 100%;
 }
 
 .schedule-header-top {
@@ -88,6 +89,7 @@ require_once __DIR__ . '/templates/header.php';
     margin-bottom: 20px;
     flex-wrap: wrap;
     gap: 16px;
+    max-width: 100%;
 }
 
 .schedule-legend {
@@ -549,7 +551,15 @@ require_once __DIR__ . '/templates/header.php';
 .students-list::-webkit-scrollbar-thumb:hover {
     background: var(--md-surface-5);
 }
+
+/* Обертка для изоляции ширины */
+.schedule-page-wrapper {
+    width: 100%;
+    overflow-x: hidden;
+}
 </style>
+
+<div class="schedule-page-wrapper">
 
 <!-- Заголовок -->
 <div class="schedule-header">
@@ -648,6 +658,8 @@ require_once __DIR__ . '/templates/header.php';
         <!-- Генерируется JavaScript -->
     </div>
 </div>
+
+</div><!-- .schedule-page-wrapper -->
 
 <!-- Модальное окно добавления/редактирования урока -->
 <div id="template-modal" class="modal">
