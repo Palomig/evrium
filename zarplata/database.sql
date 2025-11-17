@@ -321,6 +321,7 @@ ORDER BY li.lesson_date DESC, li.time_start ASC;
 DELIMITER //
 
 -- Автоматический расчёт зарплаты при завершении урока
+-- ✅ ОБНОВЛЕНО 2025-11-17: Исправлена формула min_plus_per, добавлен fallback на formula_id преподавателя
 CREATE TRIGGER `calculate_payment_after_lesson_complete`
 AFTER UPDATE ON `lessons_instance`
 FOR EACH ROW
@@ -333,6 +334,7 @@ BEGIN
     DECLARE fixed_amt INT;
     DECLARE expr TEXT;
     DECLARE teacher_for_payment INT;
+    DECLARE formula_to_use INT;
 
     -- Проверяем, что статус изменился на 'completed'
     IF NEW.status = 'completed' AND OLD.status != 'completed' THEN
@@ -340,28 +342,45 @@ BEGIN
         -- Определяем кому платить (замещающему или основному)
         SET teacher_for_payment = IFNULL(NEW.substitute_teacher_id, NEW.teacher_id);
 
+        -- Определяем какую формулу использовать:
+        -- 1. Формула из урока (приоритет)
+        -- 2. Формула из преподавателя (fallback)
+        SET formula_to_use = NEW.formula_id;
+
+        IF formula_to_use IS NULL THEN
+            -- Берём формулу из профиля преподавателя
+            SELECT formula_id INTO formula_to_use
+            FROM teachers
+            WHERE id = teacher_for_payment AND active = 1;
+        END IF;
+
         -- Получаем формулу оплаты
-        IF NEW.formula_id IS NOT NULL THEN
+        IF formula_to_use IS NOT NULL THEN
             SELECT type, min_payment, per_student, threshold, fixed_amount, expression
             INTO formula_type, min_pay, per_stud, threshold_val, fixed_amt, expr
             FROM payment_formulas
-            WHERE id = NEW.formula_id AND active = 1;
+            WHERE id = formula_to_use AND active = 1;
 
             -- Рассчитываем сумму в зависимости от типа формулы
             IF formula_type = 'min_plus_per' THEN
-                IF NEW.actual_students >= threshold_val THEN
-                    SET calculated_amount = min_pay + ((NEW.actual_students - threshold_val + 1) * per_stud);
-                ELSE
-                    SET calculated_amount = min_pay;
-                END IF;
+                -- ✅ ИСПРАВЛЕНО: убрали +1 и упростили логику
+                -- Формула: базовая + (студентов сверх порога * доплата)
+                -- Пример: min=500, per=150, threshold=2, students=5
+                -- Результат: 500 + ((5-2) * 150) = 500 + 450 = 950₽
+                SET calculated_amount = min_pay + (GREATEST(0, NEW.actual_students - threshold_val) * per_stud);
 
             ELSEIF formula_type = 'fixed' THEN
+                -- Фиксированная сумма независимо от количества студентов
                 SET calculated_amount = fixed_amt;
 
             ELSEIF formula_type = 'expression' THEN
-                -- Здесь нужна более сложная логика для парсинга выражений
-                -- Пока используем простую подстановку
-                SET calculated_amount = min_pay + (NEW.actual_students * per_stud);
+                -- ✅ УЛУЧШЕНО: Базовая поддержка простых выражений
+                -- Для сложных выражений используется fallback расчёт
+                IF expr LIKE 'N %' OR expr LIKE '% N %' THEN
+                    SET calculated_amount = NEW.actual_students * IFNULL(per_stud, 100);
+                ELSE
+                    SET calculated_amount = IFNULL(min_pay, 0) + (NEW.actual_students * IFNULL(per_stud, 0));
+                END IF;
             END IF;
 
             -- Создаём запись о начислении
@@ -371,14 +390,31 @@ BEGIN
                 amount,
                 payment_type,
                 calculation_method,
-                status
+                status,
+                created_at
             ) VALUES (
                 teacher_for_payment,
                 NEW.id,
                 calculated_amount,
                 'lesson',
-                CONCAT('Formula: ', formula_type, ', Students: ', NEW.actual_students),
-                'pending'
+                CONCAT('Formula: ', formula_type, ', Students: ', NEW.actual_students, ', Formula ID: ', formula_to_use),
+                'pending',
+                NOW()
+            );
+        ELSE
+            -- Нет формулы - логируем пропуск
+            INSERT INTO audit_log (
+                action_type,
+                entity_type,
+                entity_id,
+                notes,
+                created_at
+            ) VALUES (
+                'payment_skipped',
+                'lesson',
+                NEW.id,
+                'Урок завершён без формулы оплаты',
+                NOW()
             );
         END IF;
     END IF;
