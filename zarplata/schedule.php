@@ -89,6 +89,7 @@ require_once __DIR__ . '/templates/header.php';
     align-items: center;
     margin-bottom: 20px;
     gap: 16px;
+    flex-wrap: wrap;
 }
 
 .schedule-legend {
@@ -246,6 +247,9 @@ require_once __DIR__ . '/templates/header.php';
     background-color: var(--md-surface-3);
     border-radius: 12px;
     min-width: 420px;
+    max-width: 420px;
+    width: 420px;
+    flex-shrink: 0;
     box-shadow: var(--elevation-1);
     display: flex;
     flex-direction: column;

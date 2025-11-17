@@ -138,6 +138,9 @@ if (!defined('ACTIVE_PAGE')) {
             margin-left: 280px;
             padding: 24px;
             background-color: var(--md-background);
+            max-width: calc(100vw - 280px);
+            overflow-x: hidden;
+            box-sizing: border-box;
         }
 
         .page-header {
