@@ -341,39 +341,143 @@ require_once __DIR__ . '/templates/header.php';
 }
 
 .card-body {
-    padding: 12px;
+    padding: 0;
 }
 
-.card-row {
+.card-table {
+    width: 100%;
+}
+
+.card-row-tier {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    min-height: 40px;
+}
+
+.card-row-info {
+    display: grid;
+    grid-template-columns: 1fr;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    min-height: 32px;
+}
+
+.card-row-info:last-child {
+    border-bottom: none;
+}
+
+.card-cell {
+    padding: 8px 12px;
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
+    justify-content: center;
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+.card-cell.tier-cell {
+    padding: 8px;
+    justify-content: center;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.card-cell.capacity {
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.card-cell.capacity.available {
+    color: #55cc77;
+}
+
+.card-cell.capacity.full {
+    color: #ff5555;
+}
+
+.card-cell.grades {
+    color: #88bbff;
     font-size: 0.875rem;
 }
 
-.card-row:last-child {
-    margin-bottom: 0;
-}
-
-.card-row .material-icons {
-    font-size: 16px;
-    color: var(--text-medium-emphasis);
-}
-
-.card-label {
-    color: var(--text-medium-emphasis);
-    flex: 1;
-}
-
-.card-value {
+.card-cell.teacher {
     color: var(--text-high-emphasis);
-    font-weight: 500;
+    font-size: 0.875rem;
 }
 
-.card-subject {
+.tier-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: inline-block;
+    text-transform: uppercase;
+}
+
+.tier-S {
+    background: #ff9999;
+    color: #000;
+}
+
+.tier-A {
+    background: #ffcc99;
+    color: #000;
+}
+
+.tier-B {
+    background: #ffff99;
+    color: #000;
+}
+
+.tier-C {
+    background: #ccff99;
+    color: #000;
+}
+
+.tier-D {
+    background: #99ff99;
+    color: #000;
+}
+
+.spoiler-btn {
+    width: 100%;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
     color: var(--md-primary);
+    cursor: pointer;
+    font-size: 0.875rem;
     font-weight: 600;
+    font-family: 'Montserrat', sans-serif;
+    transition: all 0.2s var(--transition-standard);
+    text-align: center;
+}
+
+.spoiler-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.students-list {
+    display: none;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.students-list.show {
+    display: block;
+}
+
+.student-name {
+    font-size: 0.875rem;
+    color: var(--text-medium-emphasis);
+    padding: 4px 8px;
+    border-left: 2px solid rgba(187, 134, 252, 0.3);
+    margin-bottom: 4px;
+}
+
+.student-name:last-child {
+    margin-bottom: 0;
 }
 
 .empty-slot {
@@ -609,9 +713,33 @@ require_once __DIR__ . '/templates/header.php';
                     </select>
                 </div>
                 <div class="form-group" style="flex: 1;">
-                    <label for="template-students">Количество учеников *</label>
-                    <input type="number" id="template-students" name="expected_students" min="1" value="1" required>
+                    <label for="template-students">Макс. учеников *</label>
+                    <input type="number" id="template-students" name="expected_students" min="1" max="10" value="6" required>
                 </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label for="template-tier">Уровень группы (Тир) *</label>
+                    <select id="template-tier" name="tier" required>
+                        <option value="S">S - Высший</option>
+                        <option value="A">A - Высокий</option>
+                        <option value="B">B - Средний</option>
+                        <option value="C" selected>C - Базовый</option>
+                        <option value="D">D - Начальный</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label for="template-grades">Классы (через запятую)</label>
+                    <input type="text" id="template-grades" name="grades" placeholder="6, 7, 8">
+                    <small>Например: 6, 7 или 9, 10, 11</small>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="template-student-list">Список учеников (каждый с новой строки)</label>
+                <textarea id="template-student-list" name="students" rows="4" placeholder="Иван Петров&#10;Мария Сидорова&#10;Дмитрий Козлов"></textarea>
+                <small>Введите имена учеников, каждое имя на отдельной строке</small>
             </div>
 
             <!-- Скрытое поле для formula_id (подставляется автоматически из данных преподавателя) -->
@@ -755,12 +883,33 @@ function createLessonCard(lesson) {
     const card = document.createElement('div');
     card.className = `lesson-card ${lesson.subject || ''}`;
     card.dataset.time = lesson.time_start;
-    card.onclick = () => editTemplate(lesson.id);
 
     const timeStart = lesson.time_start.substring(0, 5);
-    const timeEnd = lesson.time_end.substring(0, 5);
     const typeBadge = lesson.lesson_type === 'group' ? 'group' : 'individual';
     const typeText = lesson.lesson_type === 'group' ? 'Групп.' : 'Индив.';
+
+    // Парсим учеников из JSON или текста
+    let students = [];
+    if (lesson.students) {
+        try {
+            students = typeof lesson.students === 'string' ? JSON.parse(lesson.students) : lesson.students;
+        } catch (e) {
+            // Если не JSON, пытаемся разбить по переводам строк
+            students = lesson.students.split('\n').filter(s => s.trim());
+        }
+    }
+
+    // Текущее количество учеников
+    const currentStudents = students.length || 0;
+    const maxStudents = lesson.expected_students || 6;
+    const isFull = currentStudents >= maxStudents;
+    const capacityClass = isFull ? 'full' : 'available';
+
+    // Тир (по умолчанию C если не указан)
+    const tier = lesson.tier || 'C';
+
+    // Классы
+    const grades = lesson.grades || '';
 
     card.innerHTML = `
         <div class="card-header">
@@ -771,29 +920,57 @@ function createLessonCard(lesson) {
             <span class="card-type-badge ${typeBadge}">${typeText}</span>
         </div>
         <div class="card-body">
-            <div class="card-row">
-                <span class="material-icons">subject</span>
-                <span class="card-subject">${escapeHtml(lesson.subject || '—')}</span>
+            <div class="card-table">
+                <div class="card-row-tier">
+                    <div class="card-cell tier-cell">
+                        <span class="tier-badge tier-${tier}">${tier}</span>
+                    </div>
+                    <div class="card-cell capacity ${capacityClass}">
+                        ${currentStudents}/${maxStudents}
+                    </div>
+                </div>
+                ${grades ? `
+                <div class="card-row-info">
+                    <div class="card-cell grades">${escapeHtml(grades)} кл.</div>
+                </div>
+                ` : ''}
+                <div class="card-row-info">
+                    <div class="card-cell teacher">${escapeHtml(lesson.teacher_name || '—')}</div>
+                </div>
             </div>
-            <div class="card-row">
-                <span class="material-icons">person</span>
-                <span class="card-value">${escapeHtml(lesson.teacher_name || '—')}</span>
-            </div>
-            <div class="card-row">
-                <span class="material-icons">group</span>
-                <span class="card-label">Учеников:</span>
-                <span class="card-value">${lesson.expected_students}</span>
-            </div>
-            ${lesson.formula_name ? `
-            <div class="card-row">
-                <span class="material-icons">payments</span>
-                <span class="card-value" style="font-size: 0.8rem;">${escapeHtml(lesson.formula_name)}</span>
-            </div>
-            ` : ''}
         </div>
+        ${students.length > 0 ? `
+        <button class="spoiler-btn" onclick="event.stopPropagation(); toggleStudents(this, ${lesson.id})">
+            👥 Ученики (${students.length})
+        </button>
+        <div class="students-list" id="students-${lesson.id}">
+            ${students.map(s => `<div class="student-name">• ${escapeHtml(s)}</div>`).join('')}
+        </div>
+        ` : ''}
     `;
 
+    // Добавляем обработчик клика для редактирования (но не на кнопку спойлера)
+    card.addEventListener('click', (e) => {
+        if (!e.target.classList.contains('spoiler-btn') && !e.target.closest('.spoiler-btn')) {
+            editTemplate(lesson.id);
+        }
+    });
+
     return card;
+}
+
+// Функция для раскрытия/скрытия списка учеников
+function toggleStudents(button, lessonId) {
+    const list = document.getElementById(`students-${lessonId}`);
+    if (list) {
+        const isShown = list.classList.contains('show');
+        list.classList.toggle('show');
+
+        const studentCount = list.children.length;
+        button.textContent = isShown
+            ? `👥 Ученики (${studentCount})`
+            : `👥 Скрыть (${studentCount})`;
+    }
 }
 
 // Фильтр по дням

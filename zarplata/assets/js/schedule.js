@@ -64,6 +64,32 @@ async function loadTemplateData(templateId) {
                 selectSubject(template.subject);
             }
 
+            // Установить тир
+            if (template.tier) {
+                document.getElementById('template-tier').value = template.tier;
+            }
+
+            // Установить классы
+            if (template.grades) {
+                document.getElementById('template-grades').value = template.grades;
+            }
+
+            // Установить список учеников
+            if (template.students) {
+                let studentsText = '';
+                try {
+                    // Если это JSON массив
+                    const studentsArray = typeof template.students === 'string'
+                        ? JSON.parse(template.students)
+                        : template.students;
+                    studentsText = studentsArray.join('\n');
+                } catch (e) {
+                    // Если это обычный текст
+                    studentsText = template.students;
+                }
+                document.getElementById('template-student-list').value = studentsText;
+            }
+
             // Подставить формулу из преподавателя (автоматически)
             if (template.teacher_id && typeof teachersData !== 'undefined') {
                 const teacher = teachersData.find(t => t.id === parseInt(template.teacher_id));
@@ -134,6 +160,17 @@ async function saveTemplate(event) {
     data.expected_students = parseInt(data.expected_students);
     if (data.formula_id) {
         data.formula_id = parseInt(data.formula_id);
+    }
+
+    // Конвертируем список учеников в JSON массив
+    if (data.students) {
+        const studentsArray = data.students
+            .split('\n')
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+        data.students = JSON.stringify(studentsArray);
+    } else {
+        data.students = '[]';
     }
 
     const saveBtn = document.getElementById('save-template-btn');
