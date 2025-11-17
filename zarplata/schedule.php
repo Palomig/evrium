@@ -230,6 +230,8 @@ require_once __DIR__ . '/templates/header.php';
     padding: 20px;
     box-shadow: var(--elevation-2);
     max-height: calc(100vh - 400px);
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .schedule-board {
@@ -552,14 +554,8 @@ require_once __DIR__ . '/templates/header.php';
     background: var(--md-surface-5);
 }
 
-/* Обертка для изоляции ширины */
-.schedule-page-wrapper {
-    width: 100%;
-    overflow-x: hidden;
 }
 </style>
-
-<div class="schedule-page-wrapper">
 
 <!-- Заголовок -->
 <div class="schedule-header">
@@ -658,8 +654,6 @@ require_once __DIR__ . '/templates/header.php';
         <!-- Генерируется JavaScript -->
     </div>
 </div>
-
-</div><!-- .schedule-page-wrapper -->
 
 <!-- Модальное окно добавления/редактирования урока -->
 <div id="template-modal" class="modal">
