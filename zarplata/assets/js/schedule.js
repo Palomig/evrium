@@ -6,8 +6,9 @@ let currentTemplateId = null;
 
 // Открыть модальное окно шаблона
 function openTemplateModal(dayOfWeek = null) {
-    // Если dayOfWeek это число - это предзаполнение дня, иначе это ID для редактирования
-    const isEditing = typeof dayOfWeek === 'number' && dayOfWeek > 10;
+    // Если dayOfWeek это число > 7 - это ID для редактирования
+    // Если число от 1 до 7 - это предзаполнение дня недели
+    const isEditing = typeof dayOfWeek === 'number' && dayOfWeek > 7;
 
     currentTemplateId = isEditing ? dayOfWeek : null;
     const modal = document.getElementById('template-modal');
