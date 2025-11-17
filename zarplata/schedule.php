@@ -222,11 +222,12 @@ require_once __DIR__ . '/templates/header.php';
 .schedule-container {
     position: relative;
     overflow-x: auto;
-    overflow-y: hidden;
+    overflow-y: auto;
     background-color: var(--md-surface);
     border-radius: 12px;
     padding: 20px;
     box-shadow: var(--elevation-2);
+    max-height: calc(100vh - 400px);
 }
 
 .schedule-board {
@@ -457,9 +458,9 @@ require_once __DIR__ . '/templates/header.php';
     background: rgba(255, 255, 255, 0.05);
     border: none;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
-    color: var(--md-primary);
+    color: #55cc77;
     cursor: pointer;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     font-weight: 600;
     font-family: 'Montserrat', sans-serif;
     transition: all 0.2s var(--transition-standard);
@@ -467,7 +468,7 @@ require_once __DIR__ . '/templates/header.php';
 }
 
 .spoiler-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(85, 204, 119, 0.1);
 }
 
 .students-list {
