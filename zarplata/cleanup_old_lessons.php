@@ -11,13 +11,14 @@ require_once __DIR__ . '/config/helpers.php';
 requireAuth();
 $user = getCurrentUser();
 
-// Только для администраторов
-if ($user['role'] !== 'superadmin') {
-    die('Доступ запрещён. Только для суперадминистратора.');
-}
-
-// Получить все уроки
-$lessons = dbQuery("SELECT * FROM lessons_template WHERE active = 1 ORDER BY id ASC", []);
+// Получить все уроки с именами преподавателей
+$lessons = dbQuery("
+    SELECT lt.*, t.name as teacher_name
+    FROM lessons_template lt
+    LEFT JOIN teachers t ON lt.teacher_id = t.id
+    WHERE lt.active = 1
+    ORDER BY lt.id ASC
+", []);
 
 // Обработка удаления
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
