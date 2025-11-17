@@ -133,6 +133,7 @@ function handleAddTemplate() {
 
     // Создаём шаблон
     try {
+        // Сначала пробуем с новыми полями (room, tier, grades, students)
         $templateId = dbExecute(
             "INSERT INTO lessons_template
              (teacher_id, day_of_week, room, time_start, time_end, lesson_type,
@@ -141,22 +142,39 @@ function handleAddTemplate() {
             [$teacherId, $dayOfWeek, $room, $timeStart, $timeEnd, $lessonType,
              $subject ?: null, $expectedStudents, $formulaId, $tier, $grades ?: null, $students ?: null]
         );
-
-        if ($templateId) {
-            logAudit('template_created', 'template', $templateId, null, [
-                'teacher_id' => $teacherId,
-                'day_of_week' => $dayOfWeek,
-                'time' => "$timeStart-$timeEnd"
-            ], 'Создан шаблон урока');
-
-            $template = dbQueryOne("SELECT * FROM lessons_template WHERE id = ?", [$templateId]);
-            jsonSuccess($template);
+    } catch (PDOException $e) {
+        // Если ошибка из-за отсутствующих полей - пробуем без них
+        if (strpos($e->getMessage(), 'Unknown column') !== false) {
+            try {
+                $templateId = dbExecute(
+                    "INSERT INTO lessons_template
+                     (teacher_id, day_of_week, time_start, time_end, lesson_type,
+                      subject, expected_students, formula_id, active)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)",
+                    [$teacherId, $dayOfWeek, $timeStart, $timeEnd, $lessonType,
+                     $subject ?: null, $expectedStudents, $formulaId]
+                );
+            } catch (PDOException $e2) {
+                error_log("Failed to create template (fallback): " . $e2->getMessage());
+                jsonError('Ошибка при создании шаблона: ' . $e2->getMessage(), 500);
+            }
         } else {
-            jsonError('Не удалось создать шаблон', 500);
+            error_log("Failed to create template: " . $e->getMessage());
+            jsonError('Ошибка при создании шаблона: ' . $e->getMessage(), 500);
         }
-    } catch (Exception $e) {
-        error_log("Failed to create template: " . $e->getMessage());
-        jsonError('Ошибка при создании шаблона', 500);
+    }
+
+    if ($templateId) {
+        logAudit('template_created', 'template', $templateId, null, [
+            'teacher_id' => $teacherId,
+            'day_of_week' => $dayOfWeek,
+            'time' => "$timeStart-$timeEnd"
+        ], 'Создан шаблон урока');
+
+        $template = dbQueryOne("SELECT * FROM lessons_template WHERE id = ?", [$templateId]);
+        jsonSuccess($template);
+    } else {
+        jsonError('Не удалось создать шаблон', 500);
     }
 }
 
@@ -216,6 +234,7 @@ function handleUpdateTemplate() {
 
     // Обновляем шаблон
     try {
+        // Сначала пробуем с новыми полями (room, tier, grades, students)
         $result = dbExecute(
             "UPDATE lessons_template
              SET teacher_id = ?, day_of_week = ?, room = ?, time_start = ?, time_end = ?,
@@ -225,21 +244,33 @@ function handleUpdateTemplate() {
             [$teacherId, $dayOfWeek, $room, $timeStart, $timeEnd, $lessonType,
              $subject ?: null, $expectedStudents, $formulaId, $tier, $grades ?: null, $students ?: null, $id]
         );
-
-        if ($result !== false) {
-            logAudit('template_updated', 'template', $id, $existing, [
-                'teacher_id' => $teacherId,
-                'day_of_week' => $dayOfWeek
-            ], 'Обновлён шаблон урока');
-
-            $template = dbQueryOne("SELECT * FROM lessons_template WHERE id = ?", [$id]);
-            jsonSuccess($template);
+    } catch (PDOException $e) {
+        // Если ошибка из-за отсутствующих полей - пробуем без них
+        if (strpos($e->getMessage(), 'Unknown column') !== false) {
+            $result = dbExecute(
+                "UPDATE lessons_template
+                 SET teacher_id = ?, day_of_week = ?, time_start = ?, time_end = ?,
+                     lesson_type = ?, subject = ?, expected_students = ?,
+                     formula_id = ?, updated_at = NOW()
+                 WHERE id = ?",
+                [$teacherId, $dayOfWeek, $timeStart, $timeEnd, $lessonType,
+                 $subject ?: null, $expectedStudents, $formulaId, $id]
+            );
         } else {
-            jsonError('Не удалось обновить шаблон', 500);
+            throw $e;
         }
-    } catch (Exception $e) {
-        error_log("Failed to update template: " . $e->getMessage());
-        jsonError('Ошибка при обновлении шаблона', 500);
+    }
+
+    if ($result !== false) {
+        logAudit('template_updated', 'template', $id, $existing, [
+            'teacher_id' => $teacherId,
+            'day_of_week' => $dayOfWeek
+        ], 'Обновлён шаблон урока');
+
+        $template = dbQueryOne("SELECT * FROM lessons_template WHERE id = ?", [$id]);
+        jsonSuccess($template);
+    } else {
+        jsonError('Не удалось обновить шаблон', 500);
     }
 }
 
