@@ -97,10 +97,17 @@ function dbExecute($sql, $params = []) {
 
         // Для INSERT возвращаем lastInsertId, для других - количество строк
         $lastId = $pdo->lastInsertId();
-        return $lastId ?: $stmt->rowCount();
+
+        // Если это INSERT (lastInsertId > 0), возвращаем ID
+        if ($lastId && $lastId !== '0') {
+            return (int)$lastId;
+        }
+
+        // Иначе возвращаем количество затронутых строк
+        return $stmt->rowCount();
     } catch (PDOException $e) {
         error_log("Execute failed: " . $e->getMessage());
-        return 0;
+        throw $e; // Пробрасываем исключение вместо возврата 0
     }
 }
 
