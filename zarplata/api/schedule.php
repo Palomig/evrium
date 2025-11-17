@@ -106,7 +106,16 @@ function handleAddTemplate() {
     $lessonType = $data['lesson_type'] ?? 'group';
     $subject = trim($data['subject'] ?? '');
     $expectedStudents = filter_var($data['expected_students'] ?? 1, FILTER_VALIDATE_INT);
-    $formulaId = filter_var($data['formula_id'] ?? null, FILTER_VALIDATE_INT);
+
+    // formula_id может быть NULL, поэтому обрабатываем отдельно
+    $formulaId = null;
+    if (isset($data['formula_id']) && $data['formula_id']) {
+        $formulaId = filter_var($data['formula_id'], FILTER_VALIDATE_INT);
+        if ($formulaId === false || $formulaId === 0) {
+            $formulaId = null;
+        }
+    }
+
     $tier = trim($data['tier'] ?? 'C');
     $grades = trim($data['grades'] ?? '');
     $students = $data['students'] ?? '';
@@ -233,7 +242,16 @@ function handleUpdateTemplate() {
     $lessonType = $data['lesson_type'] ?? 'group';
     $subject = trim($data['subject'] ?? '');
     $expectedStudents = filter_var($data['expected_students'] ?? 1, FILTER_VALIDATE_INT);
-    $formulaId = filter_var($data['formula_id'] ?? null, FILTER_VALIDATE_INT);
+
+    // formula_id может быть NULL, поэтому обрабатываем отдельно
+    $formulaId = null;
+    if (isset($data['formula_id']) && $data['formula_id']) {
+        $formulaId = filter_var($data['formula_id'], FILTER_VALIDATE_INT);
+        if ($formulaId === false || $formulaId === 0) {
+            $formulaId = null;
+        }
+    }
+
     $tier = trim($data['tier'] ?? 'C');
     $grades = trim($data['grades'] ?? '');
     $students = $data['students'] ?? '';
