@@ -13,6 +13,7 @@ function openTemplateModal(dayOfWeek = null) {
     const modal = document.getElementById('template-modal');
     const form = document.getElementById('template-form');
     const title = document.getElementById('modal-title');
+    const deleteBtn = document.getElementById('delete-template-btn');
 
     form.reset();
 
@@ -24,10 +25,12 @@ function openTemplateModal(dayOfWeek = null) {
     if (isEditing) {
         // Режим редактирования
         title.textContent = 'Редактировать урок';
+        deleteBtn.style.display = 'inline-flex'; // Показать кнопку удаления
         loadTemplateData(dayOfWeek);
     } else {
         // Режим создания
         title.textContent = 'Добавить урок в расписание';
+        deleteBtn.style.display = 'none'; // Скрыть кнопку удаления
         document.getElementById('template-id').value = '';
 
         // Предзаполнить день недели если передан
@@ -234,8 +237,15 @@ function editTemplate(templateId) {
 }
 
 // Удалить шаблон
-async function deleteTemplate(templateId) {
-    if (!confirm('Вы уверены, что хотите удалить этот шаблон?')) {
+async function deleteTemplate() {
+    const templateId = document.getElementById('template-id').value;
+
+    if (!templateId) {
+        showNotification('Ошибка: ID шаблона не найден', 'error');
+        return;
+    }
+
+    if (!confirm('Вы уверены, что хотите удалить этот урок из расписания?')) {
         return;
     }
 
@@ -245,26 +255,23 @@ async function deleteTemplate(templateId) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ id: templateId })
+            body: JSON.stringify({ id: parseInt(templateId) })
         });
 
         const result = await response.json();
 
         if (result.success) {
-            showNotification(result.data.message || 'Шаблон удалён', 'success');
+            showNotification(result.data.message || 'Урок удалён из расписания', 'success');
+            closeTemplateModal();
 
-            // Перезагрузить канбан доску если функция существует
-            if (typeof renderKanban === 'function') {
-                setTimeout(() => location.reload(), 500);
-            } else {
-                setTimeout(() => location.reload(), 500);
-            }
+            // Перезагрузить расписание
+            setTimeout(() => location.reload(), 500);
         } else {
             showNotification(result.error || 'Ошибка удаления', 'error');
         }
     } catch (error) {
         console.error('Error deleting template:', error);
-        showNotification('Ошибка удаления шаблона', 'error');
+        showNotification('Ошибка удаления урока', 'error');
     }
 }
 

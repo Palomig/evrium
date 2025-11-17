@@ -159,6 +159,15 @@ h6 { font-size: 1rem; font-weight: 500; }
     color: var(--md-on-secondary);
 }
 
+.btn-danger {
+    background-color: #cf6679;
+    color: #000000;
+}
+
+.btn-danger:hover {
+    background-color: #b85566;
+}
+
 .btn-outline {
     background-color: transparent;
     border: 1px solid var(--md-primary);

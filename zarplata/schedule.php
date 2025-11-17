@@ -786,6 +786,10 @@ require_once __DIR__ . '/templates/header.php';
 
             <div class="modal-actions">
                 <button type="button" class="btn btn-text" onclick="closeTemplateModal()">Отмена</button>
+                <button type="button" class="btn btn-danger" id="delete-template-btn" onclick="deleteTemplate()" style="display: none;">
+                    <span class="material-icons" style="margin-right: 8px; font-size: 18px;">delete_outline</span>
+                    Удалить
+                </button>
                 <button type="submit" class="btn btn-primary" id="save-template-btn">
                     <span class="material-icons" style="margin-right: 8px; font-size: 18px;">save</span>
                     Сохранить
