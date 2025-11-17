@@ -133,6 +133,8 @@ function handleAddTemplate() {
 
     // Создаём шаблон
     $templateId = null;
+    $lastError = null;
+
     try {
         // Сначала пробуем с новыми полями (room, tier, grades, students)
         $templateId = dbExecute(
@@ -143,8 +145,14 @@ function handleAddTemplate() {
             [$teacherId, $dayOfWeek, $room, $timeStart, $timeEnd, $lessonType,
              $subject ?: null, $expectedStudents, $formulaId, $tier, $grades ?: null, $students ?: null]
         );
+
+        if (!$templateId) {
+            $lastError = "dbExecute returned empty value (full fields)";
+            error_log($lastError);
+        }
     } catch (PDOException $e) {
         $errorMsg = $e->getMessage();
+        $lastError = $errorMsg;
         error_log("Failed to create template (with new fields): " . $errorMsg);
 
         // Если ошибка из-за отсутствующих полей - пробуем без них
@@ -158,14 +166,24 @@ function handleAddTemplate() {
                     [$teacherId, $dayOfWeek, $timeStart, $timeEnd, $lessonType,
                      $subject ?: null, $expectedStudents, $formulaId]
                 );
+
+                if (!$templateId) {
+                    $lastError = "dbExecute returned empty value (fallback fields)";
+                    error_log($lastError);
+                }
             } catch (PDOException $e2) {
-                error_log("Failed to create template (fallback): " . $e2->getMessage());
-                jsonError('Ошибка БД (fallback): ' . $e2->getMessage(), 500);
+                $lastError = $e2->getMessage();
+                error_log("Failed to create template (fallback): " . $lastError);
+                jsonError('Ошибка БД (fallback): ' . $lastError, 500);
             }
         } else {
             // Другая ошибка - показываем её
             jsonError('Ошибка БД: ' . $errorMsg, 500);
         }
+    } catch (Exception $e) {
+        $lastError = $e->getMessage();
+        error_log("Unexpected error creating template: " . $lastError);
+        jsonError('Неожиданная ошибка: ' . $lastError, 500);
     }
 
     if ($templateId) {
@@ -178,7 +196,7 @@ function handleAddTemplate() {
         $template = dbQueryOne("SELECT * FROM lessons_template WHERE id = ?", [$templateId]);
         jsonSuccess($template);
     } else {
-        jsonError('Не удалось создать шаблон', 500);
+        jsonError('Не удалось создать шаблон. Последняя ошибка: ' . ($lastError ?: 'unknown'), 500);
     }
 }
 
