@@ -80,6 +80,7 @@ require_once __DIR__ . '/templates/header.php';
     margin-bottom: 24px;
     box-shadow: var(--elevation-2);
     max-width: 100%;
+    overflow: hidden;
 }
 
 .schedule-header-top {
@@ -87,9 +88,7 @@ require_once __DIR__ . '/templates/header.php';
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
-    flex-wrap: wrap;
     gap: 16px;
-    max-width: 100%;
 }
 
 .schedule-legend {
@@ -141,6 +140,8 @@ require_once __DIR__ . '/templates/header.php';
     padding: 20px;
     margin-bottom: 24px;
     box-shadow: var(--elevation-2);
+    max-width: 100%;
+    overflow: hidden;
 }
 
 .filters-content {
@@ -269,7 +270,7 @@ require_once __DIR__ . '/templates/header.php';
 /* Заголовки кабинетов */
 .room-headers {
     display: grid;
-    grid-template-columns: 60px repeat(3, 1fr);
+    grid-template-columns: 60px repeat(3, 120px);
     background: var(--md-surface-4);
     border-bottom: 2px solid rgba(255, 255, 255, 0.12);
 }
@@ -308,7 +309,7 @@ require_once __DIR__ . '/templates/header.php';
 /* Строка времени */
 .time-row {
     display: grid;
-    grid-template-columns: 60px repeat(3, 1fr);
+    grid-template-columns: 60px repeat(3, 120px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     min-height: 60px;
 }
@@ -876,6 +877,10 @@ function renderSchedule() {
         const timeSlots = getTimeSlots(dayLessons);
 
         if (timeSlots.length > 0) {
+            // Есть уроки - показываем заголовки кабинетов и таблицу
+            dayColumn.appendChild(header);
+            dayColumn.appendChild(roomHeaders);
+
             timeSlots.forEach(time => {
                 const timeRow = document.createElement('div');
                 timeRow.className = 'time-row';
@@ -915,7 +920,9 @@ function renderSchedule() {
                 content.appendChild(timeRow);
             });
         } else {
-            // Нет уроков в этот день
+            // Нет уроков в этот день - показываем только заголовок и сообщение
+            dayColumn.appendChild(header);
+
             const emptyMsg = document.createElement('div');
             emptyMsg.style.padding = '40px 20px';
             emptyMsg.style.textAlign = 'center';
@@ -924,8 +931,6 @@ function renderSchedule() {
             content.appendChild(emptyMsg);
         }
 
-        dayColumn.appendChild(header);
-        dayColumn.appendChild(roomHeaders);
         dayColumn.appendChild(content);
         board.appendChild(dayColumn);
     });
@@ -1039,7 +1044,7 @@ function updateVisibleRooms() {
 
     // Обновляем сетку
     const visibleCount = activeRooms.length === 0 ? 3 : activeRooms.length;
-    const gridTemplate = `60px repeat(${visibleCount}, 1fr)`;
+    const gridTemplate = `60px repeat(${visibleCount}, 120px)`;
 
     document.querySelectorAll('.room-headers, .time-row').forEach(elem => {
         elem.style.gridTemplateColumns = gridTemplate;
@@ -1049,6 +1054,8 @@ function updateVisibleRooms() {
     const columnWidth = 60 + (visibleCount * 120);
     document.querySelectorAll('.day-column').forEach(col => {
         col.style.minWidth = `${columnWidth}px`;
+        col.style.maxWidth = `${columnWidth}px`;
+        col.style.width = `${columnWidth}px`;
     });
 }
 
