@@ -132,6 +132,7 @@ function handleAddTemplate() {
     }
 
     // Создаём шаблон
+    $templateId = null;
     try {
         // Сначала пробуем с новыми полями (room, tier, grades, students)
         $templateId = dbExecute(
@@ -143,8 +144,11 @@ function handleAddTemplate() {
              $subject ?: null, $expectedStudents, $formulaId, $tier, $grades ?: null, $students ?: null]
         );
     } catch (PDOException $e) {
+        $errorMsg = $e->getMessage();
+        error_log("Failed to create template (with new fields): " . $errorMsg);
+
         // Если ошибка из-за отсутствующих полей - пробуем без них
-        if (strpos($e->getMessage(), 'Unknown column') !== false) {
+        if (strpos($errorMsg, 'Unknown column') !== false) {
             try {
                 $templateId = dbExecute(
                     "INSERT INTO lessons_template
@@ -156,11 +160,11 @@ function handleAddTemplate() {
                 );
             } catch (PDOException $e2) {
                 error_log("Failed to create template (fallback): " . $e2->getMessage());
-                jsonError('Ошибка при создании шаблона: ' . $e2->getMessage(), 500);
+                jsonError('Ошибка БД (fallback): ' . $e2->getMessage(), 500);
             }
         } else {
-            error_log("Failed to create template: " . $e->getMessage());
-            jsonError('Ошибка при создании шаблона: ' . $e->getMessage(), 500);
+            // Другая ошибка - показываем её
+            jsonError('Ошибка БД: ' . $errorMsg, 500);
         }
     }
 
