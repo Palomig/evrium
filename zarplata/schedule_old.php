@@ -1,6 +1,6 @@
 <?php
 /**
- * Страница расписания (Табличная структура с кабинетами)
+ * Страница расписания (Канбан доска)
  */
 
 require_once __DIR__ . '/config/db.php';
@@ -11,6 +11,7 @@ requireAuth();
 $user = getCurrentUser();
 
 // Получить преподавателей с их формулами оплаты
+// Проверяем, существует ли столбец formula_id (для обратной совместимости)
 try {
     $teachers = dbQuery("
         SELECT t.id, t.name, t.formula_id, pf.name as formula_name
@@ -20,6 +21,7 @@ try {
         ORDER BY t.name
     ", []);
 } catch (PDOException $e) {
+    // Если столбец formula_id не существует, загружаем без него
     if (strpos($e->getMessage(), 'formula_id') !== false) {
         $teachers = dbQuery("
             SELECT t.id, t.name, NULL as formula_id, NULL as formula_name
@@ -32,7 +34,8 @@ try {
     }
 }
 
-// Получить все активные шаблоны расписания с кабинетами
+// Получить все активные шаблоны расписания
+// Используем formula_id из teachers если есть, иначе из lessons_template
 try {
     $templates = dbQuery(
         "SELECT lt.*, t.name as teacher_name,
@@ -46,6 +49,7 @@ try {
         []
     );
 } catch (PDOException $e) {
+    // Fallback если столбец formula_id не существует в teachers
     $templates = dbQuery(
         "SELECT lt.*, t.name as teacher_name, pf.name as formula_name
          FROM lessons_template lt
@@ -57,23 +61,16 @@ try {
     );
 }
 
-// Добавляем поле room (кабинет) если его нет
-foreach ($templates as &$template) {
-    if (!isset($template['room'])) {
-        $template['room'] = 1; // По умолчанию кабинет 1
-    }
-}
-
 define('PAGE_TITLE', 'Расписание');
-define('PAGE_SUBTITLE', 'Таблица расписания по дням и кабинетам');
+define('PAGE_SUBTITLE', 'Канбан доска с расписанием занятий');
 define('ACTIVE_PAGE', 'schedule');
 
 require_once __DIR__ . '/templates/header.php';
 ?>
 
 <style>
-/* Заголовок */
-.schedule-header {
+/* Канбан доска стили */
+.kanban-header {
     background-color: var(--md-surface);
     border-radius: 12px;
     padding: 24px;
@@ -81,7 +78,7 @@ require_once __DIR__ . '/templates/header.php';
     box-shadow: var(--elevation-2);
 }
 
-.schedule-header-top {
+.kanban-header-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -90,7 +87,7 @@ require_once __DIR__ . '/templates/header.php';
     gap: 16px;
 }
 
-.schedule-legend {
+.kanban-legend {
     display: flex;
     gap: 24px;
     flex-wrap: wrap;
@@ -132,7 +129,6 @@ require_once __DIR__ . '/templates/header.php';
     background: rgba(255, 255, 255, 0.12);
 }
 
-/* Панель фильтров */
 .filters-panel {
     background-color: var(--md-surface);
     border-radius: 12px;
@@ -155,7 +151,6 @@ require_once __DIR__ . '/templates/header.php';
 }
 
 .day-filter-btn,
-.room-filter-btn,
 .time-filter-select {
     padding: 10px 16px;
     border: 2px solid rgba(255, 255, 255, 0.12);
@@ -170,14 +165,12 @@ require_once __DIR__ . '/templates/header.php';
     user-select: none;
 }
 
-.day-filter-btn:hover,
-.room-filter-btn:hover {
+.day-filter-btn:hover {
     border-color: var(--md-primary);
     background-color: var(--md-surface-4);
 }
 
-.day-filter-btn.active,
-.room-filter-btn.active {
+.day-filter-btn.active {
     background-color: rgba(187, 134, 252, 0.15);
     border-color: var(--md-primary);
     color: var(--md-primary);
@@ -218,8 +211,7 @@ require_once __DIR__ . '/templates/header.php';
     color: white;
 }
 
-/* Контейнер расписания */
-.schedule-container {
+.kanban-container {
     position: relative;
     overflow-x: auto;
     overflow-y: hidden;
@@ -229,135 +221,75 @@ require_once __DIR__ . '/templates/header.php';
     box-shadow: var(--elevation-2);
 }
 
-.schedule-board {
+.kanban-board {
     display: flex;
     gap: 20px;
     min-width: fit-content;
 }
 
-/* Столбец дня - это ТАБЛИЦА */
-.day-column {
+.kanban-column {
     background-color: var(--md-surface-3);
     border-radius: 12px;
-    min-width: 420px;
+    min-width: 300px;
+    max-width: 300px;
     box-shadow: var(--elevation-1);
     display: flex;
     flex-direction: column;
 }
 
-.day-column.hidden {
+.kanban-column.hidden {
     display: none;
 }
 
-/* Заголовок дня */
-.day-header {
+.kanban-column-header {
     background-color: var(--md-surface-4);
-    color: white;
+    color: var(--text-high-emphasis);
     padding: 16px;
     border-radius: 12px 12px 0 0;
     text-align: center;
     font-weight: 700;
     font-size: 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 10;
     border-bottom: 2px solid rgba(255, 255, 255, 0.12);
 }
 
-/* Заголовки кабинетов */
-.room-headers {
-    display: grid;
-    grid-template-columns: 60px repeat(3, 1fr);
-    background: var(--md-surface-4);
-    border-bottom: 2px solid rgba(255, 255, 255, 0.12);
-}
-
-.room-header {
-    padding: 12px 8px;
-    text-align: center;
-    font-weight: 600;
-    font-size: 0.8rem;
-    color: var(--text-medium-emphasis);
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.room-header:last-child {
-    border-right: none;
-}
-
-.room-header.time-label {
-    background: var(--md-surface-3);
-    color: var(--text-disabled);
-    font-size: 0.75rem;
-}
-
-.room-header.hidden {
-    display: none;
-}
-
-/* Контент дня */
-.day-content {
-    padding: 0;
+.kanban-column-content {
+    padding: 16px;
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
     max-height: 70vh;
     overflow-y: auto;
 }
 
-/* Строка времени */
-.time-row {
-    display: grid;
-    grid-template-columns: 60px repeat(3, 1fr);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    min-height: 60px;
-}
-
-.time-row:last-child {
-    border-bottom: none;
-}
-
-/* Ячейка времени */
-.time-cell {
-    padding: 10px 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: var(--text-medium-emphasis);
-    background: var(--md-surface-3);
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-/* Ячейка кабинета */
-.room-cell {
-    padding: 6px;
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
-    display: flex;
-    align-items: stretch;
-}
-
-.room-cell:last-child {
-    border-right: none;
-}
-
-.room-cell.hidden {
-    display: none;
-}
-
-/* Карточка урока - КОМПАКТНАЯ */
 .lesson-card {
     background-color: var(--md-surface);
-    border-radius: 6px;
+    border-radius: 8px;
     overflow: hidden;
     cursor: pointer;
     transition: all 0.3s var(--transition-standard);
-    box-shadow: var(--elevation-1);
+    box-shadow: var(--elevation-2);
     border-left: 4px solid;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
 }
 
 .lesson-card:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--elevation-2);
+    transform: translateY(-2px);
+    box-shadow: var(--elevation-3);
+}
+
+.lesson-card.math {
+    border-left-color: #5599ff;
+}
+
+.lesson-card.physics {
+    border-left-color: #ff5555;
+}
+
+.lesson-card.informatics {
+    border-left-color: #55cc77;
 }
 
 .lesson-card.Математика {
@@ -372,9 +304,44 @@ require_once __DIR__ . '/templates/header.php';
     border-left-color: #55cc77;
 }
 
+.card-header {
+    padding: 12px;
+    background-color: rgba(255, 255, 255, 0.03);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.card-time {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--md-primary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.card-type-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.card-type-badge.group {
+    background-color: rgba(3, 218, 198, 0.2);
+    color: var(--md-secondary);
+}
+
+.card-type-badge.individual {
+    background-color: rgba(76, 175, 80, 0.2);
+    color: var(--md-success);
+}
+
 .card-body {
     padding: 0;
-    flex: 1;
 }
 
 .card-table {
@@ -385,14 +352,14 @@ require_once __DIR__ . '/templates/header.php';
     display: grid;
     grid-template-columns: auto 1fr;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    min-height: 32px;
+    min-height: 40px;
 }
 
 .card-row-info {
     display: grid;
     grid-template-columns: 1fr;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    min-height: 28px;
+    min-height: 32px;
 }
 
 .card-row-info:last-child {
@@ -400,23 +367,23 @@ require_once __DIR__ . '/templates/header.php';
 }
 
 .card-cell {
-    padding: 6px 8px;
+    padding: 8px 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     text-align: center;
 }
 
 .card-cell.tier-cell {
-    padding: 6px;
+    padding: 8px;
     justify-content: center;
     border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .card-cell.capacity {
     font-weight: 700;
-    font-size: 0.85rem;
+    font-size: 1rem;
 }
 
 .card-cell.capacity.available {
@@ -429,37 +396,57 @@ require_once __DIR__ . '/templates/header.php';
 
 .card-cell.grades {
     color: #88bbff;
-    font-size: 0.75rem;
+    font-size: 0.875rem;
 }
 
 .card-cell.teacher {
     color: var(--text-high-emphasis);
-    font-size: 0.75rem;
+    font-size: 0.875rem;
 }
 
 .tier-badge {
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 0.7rem;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.75rem;
     font-weight: 700;
     display: inline-block;
+    text-transform: uppercase;
 }
 
-.tier-S { background: #ff9999; color: #000; }
-.tier-A { background: #ffcc99; color: #000; }
-.tier-B { background: #ffff99; color: #000; }
-.tier-C { background: #ccff99; color: #000; }
-.tier-D { background: #99ff99; color: #000; }
+.tier-S {
+    background: #ff9999;
+    color: #000;
+}
+
+.tier-A {
+    background: #ffcc99;
+    color: #000;
+}
+
+.tier-B {
+    background: #ffff99;
+    color: #000;
+}
+
+.tier-C {
+    background: #ccff99;
+    color: #000;
+}
+
+.tier-D {
+    background: #99ff99;
+    color: #000;
+}
 
 .spoiler-btn {
     width: 100%;
-    padding: 6px;
+    padding: 10px;
     background: rgba(255, 255, 255, 0.05);
     border: none;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
     color: var(--md-primary);
     cursor: pointer;
-    font-size: 0.7rem;
+    font-size: 0.875rem;
     font-weight: 600;
     font-family: 'Montserrat', sans-serif;
     transition: all 0.2s var(--transition-standard);
@@ -472,11 +459,9 @@ require_once __DIR__ . '/templates/header.php';
 
 .students-list {
     display: none;
-    padding: 8px;
+    padding: 12px;
     background: rgba(0, 0, 0, 0.2);
     border-top: 1px solid rgba(255, 255, 255, 0.08);
-    max-height: 100px;
-    overflow-y: auto;
 }
 
 .students-list.show {
@@ -484,31 +469,30 @@ require_once __DIR__ . '/templates/header.php';
 }
 
 .student-name {
-    font-size: 0.7rem;
+    font-size: 0.875rem;
     color: var(--text-medium-emphasis);
-    padding: 2px 6px;
+    padding: 4px 8px;
     border-left: 2px solid rgba(187, 134, 252, 0.3);
-    margin-bottom: 2px;
+    margin-bottom: 4px;
 }
 
 .student-name:last-child {
     margin-bottom: 0;
 }
 
-/* Пустой слот */
 .empty-slot {
-    width: 100%;
-    height: 100%;
-    min-height: 50px;
+    min-height: 80px;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     color: var(--text-disabled);
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     border: 2px dashed rgba(255, 255, 255, 0.12);
-    border-radius: 6px;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s var(--transition-standard);
+    padding: 16px;
 }
 
 .empty-slot:hover {
@@ -518,41 +502,53 @@ require_once __DIR__ . '/templates/header.php';
 }
 
 .empty-slot .material-icons {
-    font-size: 24px;
+    font-size: 32px;
+    margin-bottom: 4px;
 }
 
-/* Скроллбары */
-.schedule-container::-webkit-scrollbar,
-.day-content::-webkit-scrollbar,
-.students-list::-webkit-scrollbar {
-    height: 8px;
+.empty-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    color: var(--text-disabled);
+    text-align: center;
+}
+
+.empty-column .material-icons {
+    font-size: 48px;
+    margin-bottom: 12px;
+}
+
+/* Скроллбар */
+.kanban-container::-webkit-scrollbar,
+.kanban-column-content::-webkit-scrollbar {
+    height: 10px;
     width: 8px;
 }
 
-.schedule-container::-webkit-scrollbar-track,
-.day-content::-webkit-scrollbar-track,
-.students-list::-webkit-scrollbar-track {
+.kanban-container::-webkit-scrollbar-track,
+.kanban-column-content::-webkit-scrollbar-track {
     background: var(--md-background);
     border-radius: 10px;
 }
 
-.schedule-container::-webkit-scrollbar-thumb,
-.day-content::-webkit-scrollbar-thumb,
-.students-list::-webkit-scrollbar-thumb {
+.kanban-container::-webkit-scrollbar-thumb,
+.kanban-column-content::-webkit-scrollbar-thumb {
     background: var(--md-surface-4);
     border-radius: 10px;
 }
 
-.schedule-container::-webkit-scrollbar-thumb:hover,
-.day-content::-webkit-scrollbar-thumb:hover,
-.students-list::-webkit-scrollbar-thumb:hover {
+.kanban-container::-webkit-scrollbar-thumb:hover,
+.kanban-column-content::-webkit-scrollbar-thumb:hover {
     background: var(--md-surface-5);
 }
 </style>
 
-<!-- Заголовок -->
-<div class="schedule-header">
-    <div class="schedule-header-top">
+<!-- Заголовок с легендой -->
+<div class="kanban-header">
+    <div class="kanban-header-top">
         <h2 style="margin: 0; font-size: 1.5rem;">📅 Расписание занятий</h2>
         <button class="btn btn-primary" onclick="openTemplateModal()">
             <span class="material-icons" style="margin-right: 8px; font-size: 18px;">add</span>
@@ -560,7 +556,7 @@ require_once __DIR__ . '/templates/header.php';
         </button>
     </div>
 
-    <div class="schedule-legend">
+    <div class="kanban-legend">
         <div class="legend-group">
             <span class="legend-label">Предметы:</span>
             <div class="legend-item">
@@ -580,12 +576,15 @@ require_once __DIR__ . '/templates/header.php';
         <div class="legend-divider"></div>
 
         <div class="legend-group">
-            <span class="legend-label">Тиры:</span>
-            <span class="tier-badge tier-S">S</span>
-            <span class="tier-badge tier-A">A</span>
-            <span class="tier-badge tier-B">B</span>
-            <span class="tier-badge tier-C">C</span>
-            <span class="tier-badge tier-D">D</span>
+            <span class="legend-label">Типы:</span>
+            <div class="legend-item">
+                <span class="card-type-badge group">Групп.</span>
+                <span>Групповое</span>
+            </div>
+            <div class="legend-item">
+                <span class="card-type-badge individual">Индив.</span>
+                <span>Индивидуальное</span>
+            </div>
         </div>
     </div>
 </div>
@@ -601,15 +600,6 @@ require_once __DIR__ . '/templates/header.php';
             <button class="day-filter-btn active" data-day="5" onclick="toggleDayFilter(this)">Пт</button>
             <button class="day-filter-btn active" data-day="6" onclick="toggleDayFilter(this)">Сб</button>
             <button class="day-filter-btn active" data-day="7" onclick="toggleDayFilter(this)">Вс</button>
-        </div>
-
-        <div class="filter-divider"></div>
-
-        <div class="filter-group">
-            <span class="legend-label">Кабинеты:</span>
-            <button class="room-filter-btn active" data-room="1" onclick="toggleRoomFilter(this)">1</button>
-            <button class="room-filter-btn active" data-room="2" onclick="toggleRoomFilter(this)">2</button>
-            <button class="room-filter-btn active" data-room="3" onclick="toggleRoomFilter(this)">3</button>
         </div>
 
         <div class="filter-divider"></div>
@@ -641,9 +631,9 @@ require_once __DIR__ . '/templates/header.php';
     </div>
 </div>
 
-<!-- Таблица расписания -->
-<div class="schedule-container">
-    <div class="schedule-board" id="scheduleBoard">
+<!-- Канбан доска -->
+<div class="kanban-container">
+    <div class="kanban-board" id="kanbanBoard">
         <!-- Генерируется JavaScript -->
     </div>
 </div>
@@ -682,21 +672,6 @@ require_once __DIR__ . '/templates/header.php';
                         <option value="6">Суббота</option>
                         <option value="7">Воскресенье</option>
                     </select>
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group" style="flex: 1;">
-                    <label for="template-room">Кабинет *</label>
-                    <select id="template-room" name="room" required>
-                        <option value="">Выберите кабинет</option>
-                        <option value="1">Кабинет 1</option>
-                        <option value="2">Кабинет 2</option>
-                        <option value="3">Кабинет 3</option>
-                    </select>
-                </div>
-                <div class="form-group" style="flex: 1;">
-                    <!-- Пустое место для симметрии -->
                 </div>
             </div>
 
@@ -796,10 +771,13 @@ require_once __DIR__ . '/templates/header.php';
 </div>
 
 <script>
-// Данные из PHP
+// Данные шаблонов из PHP
 const templatesData = <?= json_encode($templates, JSON_UNESCAPED_UNICODE) ?>;
+
+// Данные преподавателей с формулами
 const teachersData = <?= json_encode($teachers, JSON_UNESCAPED_UNICODE) ?>;
 
+// Дни недели
 const daysOfWeek = [
     { id: 1, name: 'Понедельник', short: 'Пн' },
     { id: 2, name: 'Вторник', short: 'Вт' },
@@ -810,113 +788,93 @@ const daysOfWeek = [
     { id: 7, name: 'Воскресенье', short: 'Вс' }
 ];
 
-const rooms = [1, 2, 3];
+// Обработчик изменения преподавателя - автоматическая подстановка формулы
+document.addEventListener('DOMContentLoaded', () => {
+    const teacherSelect = document.getElementById('template-teacher');
+    const formulaInput = document.getElementById('template-formula');
+    const formulaInfoGroup = document.getElementById('formula-info-group');
+    const formulaInfoText = document.getElementById('formula-info-text');
 
-// Получить временные слоты для дня
-function getTimeSlots(dayLessons) {
-    if (dayLessons.length === 0) return [];
+    if (teacherSelect) {
+        teacherSelect.addEventListener('change', function() {
+            const teacherId = parseInt(this.value);
 
-    const times = dayLessons.map(l => l.time_start.substring(0, 5)).sort();
-    const firstTime = times[0];
-    const lastTime = times[times.length - 1];
+            if (!teacherId) {
+                // Преподаватель не выбран - скрыть информацию о формуле
+                formulaInfoGroup.style.display = 'none';
+                formulaInput.value = '';
+                return;
+            }
 
-    const allTimes = [];
-    for (let h = 8; h <= 21; h++) {
-        const time = String(h).padStart(2, '0') + ':00';
-        if (time >= firstTime && time <= lastTime) {
-            allTimes.push(time);
-        }
+            // Найти преподавателя в данных
+            const teacher = teachersData.find(t => t.id === teacherId);
+
+            if (teacher) {
+                if (teacher.formula_id) {
+                    // У преподавателя есть формула - подставить
+                    formulaInput.value = teacher.formula_id;
+                    formulaInfoText.textContent = teacher.formula_name || 'Формула назначена';
+                    formulaInfoGroup.style.display = 'block';
+                } else {
+                    // У преподавателя нет формулы
+                    formulaInput.value = '';
+                    formulaInfoText.textContent = 'У преподавателя не назначена формула оплаты';
+                    formulaInfoGroup.style.display = 'block';
+                }
+            }
+        });
     }
+});
 
-    return allTimes;
-}
-
-// Отрисовать расписание
-function renderSchedule() {
-    const board = document.getElementById('scheduleBoard');
+// Отрисовка канбан доски
+function renderKanban() {
+    const board = document.getElementById('kanbanBoard');
     board.innerHTML = '';
 
     daysOfWeek.forEach(day => {
-        const dayColumn = document.createElement('div');
-        dayColumn.className = 'day-column';
-        dayColumn.dataset.day = day.id;
+        const column = document.createElement('div');
+        column.className = 'kanban-column';
+        column.dataset.day = day.id;
 
-        // Заголовок дня
         const header = document.createElement('div');
-        header.className = 'day-header';
+        header.className = 'kanban-column-header';
         header.textContent = day.name;
 
-        // Заголовки кабинетов
-        const roomHeaders = document.createElement('div');
-        roomHeaders.className = 'room-headers';
-        roomHeaders.innerHTML = `
-            <div class="room-header time-label">Время</div>
-            <div class="room-header" data-room="1">Кабинет 1</div>
-            <div class="room-header" data-room="2">Кабинет 2</div>
-            <div class="room-header" data-room="3">Кабинет 3</div>
-        `;
-
-        // Контент дня
         const content = document.createElement('div');
-        content.className = 'day-content';
+        content.className = 'kanban-column-content';
 
         // Получить уроки для этого дня
-        const dayLessons = templatesData.filter(t => parseInt(t.day_of_week) === day.id);
-        const timeSlots = getTimeSlots(dayLessons);
+        const dayLessons = templatesData.filter(t => parseInt(t.day_of_week) === day.id)
+            .sort((a, b) => a.time_start.localeCompare(b.time_start));
 
-        if (timeSlots.length > 0) {
-            timeSlots.forEach(time => {
-                const timeRow = document.createElement('div');
-                timeRow.className = 'time-row';
-                timeRow.dataset.time = time;
-
-                // Ячейка времени
-                const timeCell = document.createElement('div');
-                timeCell.className = 'time-cell';
-                timeCell.textContent = time;
-                timeRow.appendChild(timeCell);
-
-                // Ячейки кабинетов
-                rooms.forEach(roomNum => {
-                    const roomCell = document.createElement('div');
-                    roomCell.className = 'room-cell';
-                    roomCell.dataset.room = roomNum;
-
-                    // Найти урок для этого времени и кабинета
-                    const lessonInRoom = dayLessons.find(l =>
-                        l.time_start.substring(0, 5) === time && parseInt(l.room) === roomNum
-                    );
-
-                    if (lessonInRoom) {
-                        const card = createLessonCard(lessonInRoom);
-                        roomCell.appendChild(card);
-                    } else {
-                        const emptySlot = document.createElement('div');
-                        emptySlot.className = 'empty-slot';
-                        emptySlot.innerHTML = '<span class="material-icons">add_circle_outline</span>';
-                        emptySlot.onclick = () => openTemplateModal(day.id, time, roomNum);
-                        roomCell.appendChild(emptySlot);
-                    }
-
-                    timeRow.appendChild(roomCell);
-                });
-
-                content.appendChild(timeRow);
-            });
+        if (dayLessons.length === 0) {
+            const emptyState = document.createElement('div');
+            emptyState.className = 'empty-column';
+            emptyState.innerHTML = `
+                <span class="material-icons">event_busy</span>
+                <p>Нет занятий</p>
+            `;
+            content.appendChild(emptyState);
         } else {
-            // Нет уроков в этот день
-            const emptyMsg = document.createElement('div');
-            emptyMsg.style.padding = '40px 20px';
-            emptyMsg.style.textAlign = 'center';
-            emptyMsg.style.color = 'var(--text-disabled)';
-            emptyMsg.textContent = 'Нет занятий';
-            content.appendChild(emptyMsg);
+            dayLessons.forEach(lesson => {
+                const card = createLessonCard(lesson);
+                content.appendChild(card);
+            });
         }
 
-        dayColumn.appendChild(header);
-        dayColumn.appendChild(roomHeaders);
-        dayColumn.appendChild(content);
-        board.appendChild(dayColumn);
+        // Добавить пустой слот для добавления нового урока
+        const emptySlot = document.createElement('div');
+        emptySlot.className = 'empty-slot';
+        emptySlot.innerHTML = `
+            <span class="material-icons">add_circle_outline</span>
+            <span>Добавить урок</span>
+        `;
+        emptySlot.onclick = () => openTemplateModal(day.id);
+        content.appendChild(emptySlot);
+
+        column.appendChild(header);
+        column.appendChild(content);
+        board.appendChild(column);
     });
 }
 
@@ -924,26 +882,43 @@ function renderSchedule() {
 function createLessonCard(lesson) {
     const card = document.createElement('div');
     card.className = `lesson-card ${lesson.subject || ''}`;
-    card.onclick = () => editTemplate(lesson.id);
+    card.dataset.time = lesson.time_start;
 
-    // Парсим учеников
+    const timeStart = lesson.time_start.substring(0, 5);
+    const typeBadge = lesson.lesson_type === 'group' ? 'group' : 'individual';
+    const typeText = lesson.lesson_type === 'group' ? 'Групп.' : 'Индив.';
+
+    // Парсим учеников из JSON или текста
     let students = [];
     if (lesson.students) {
         try {
             students = typeof lesson.students === 'string' ? JSON.parse(lesson.students) : lesson.students;
         } catch (e) {
+            // Если не JSON, пытаемся разбить по переводам строк
             students = lesson.students.split('\n').filter(s => s.trim());
         }
     }
 
+    // Текущее количество учеников
     const currentStudents = students.length || 0;
     const maxStudents = lesson.expected_students || 6;
     const isFull = currentStudents >= maxStudents;
     const capacityClass = isFull ? 'full' : 'available';
+
+    // Тир (по умолчанию C если не указан)
     const tier = lesson.tier || 'C';
+
+    // Классы
     const grades = lesson.grades || '';
 
     card.innerHTML = `
+        <div class="card-header">
+            <div class="card-time">
+                <span class="material-icons" style="font-size: 18px;">schedule</span>
+                ${timeStart}
+            </div>
+            <span class="card-type-badge ${typeBadge}">${typeText}</span>
+        </div>
         <div class="card-body">
             <div class="card-table">
                 <div class="card-row-tier">
@@ -966,7 +941,7 @@ function createLessonCard(lesson) {
         </div>
         ${students.length > 0 ? `
         <button class="spoiler-btn" onclick="event.stopPropagation(); toggleStudents(this, ${lesson.id})">
-            👥 (${students.length})
+            👥 Ученики (${students.length})
         </button>
         <div class="students-list" id="students-${lesson.id}">
             ${students.map(s => `<div class="student-name">• ${escapeHtml(s)}</div>`).join('')}
@@ -974,10 +949,31 @@ function createLessonCard(lesson) {
         ` : ''}
     `;
 
+    // Добавляем обработчик клика для редактирования (но не на кнопку спойлера)
+    card.addEventListener('click', (e) => {
+        if (!e.target.classList.contains('spoiler-btn') && !e.target.closest('.spoiler-btn')) {
+            editTemplate(lesson.id);
+        }
+    });
+
     return card;
 }
 
-// Функции для фильтров
+// Функция для раскрытия/скрытия списка учеников
+function toggleStudents(button, lessonId) {
+    const list = document.getElementById(`students-${lessonId}`);
+    if (list) {
+        const isShown = list.classList.contains('show');
+        list.classList.toggle('show');
+
+        const studentCount = list.children.length;
+        button.textContent = isShown
+            ? `👥 Ученики (${studentCount})`
+            : `👥 Скрыть (${studentCount})`;
+    }
+}
+
+// Фильтр по дням
 function toggleDayFilter(button) {
     button.classList.toggle('active');
     updateVisibleDays();
@@ -987,7 +983,7 @@ function updateVisibleDays() {
     const activeDays = Array.from(document.querySelectorAll('.day-filter-btn.active'))
         .map(btn => parseInt(btn.dataset.day));
 
-    document.querySelectorAll('.day-column').forEach(col => {
+    document.querySelectorAll('.kanban-column').forEach(col => {
         const day = parseInt(col.dataset.day);
         if (activeDays.length === 0 || activeDays.includes(day)) {
             col.classList.remove('hidden');
@@ -997,100 +993,47 @@ function updateVisibleDays() {
     });
 }
 
-function toggleRoomFilter(button) {
-    button.classList.toggle('active');
-    updateVisibleRooms();
-}
-
-function updateVisibleRooms() {
-    const activeRooms = Array.from(document.querySelectorAll('.room-filter-btn.active'))
-        .map(btn => parseInt(btn.dataset.room));
-
-    // Обновляем заголовки кабинетов
-    document.querySelectorAll('.room-header[data-room]').forEach(header => {
-        const room = parseInt(header.dataset.room);
-        if (activeRooms.length === 0 || activeRooms.includes(room)) {
-            header.classList.remove('hidden');
-        } else {
-            header.classList.add('hidden');
-        }
-    });
-
-    // Обновляем ячейки кабинетов
-    document.querySelectorAll('.room-cell').forEach(cell => {
-        const room = parseInt(cell.dataset.room);
-        if (activeRooms.length === 0 || activeRooms.includes(room)) {
-            cell.classList.remove('hidden');
-        } else {
-            cell.classList.add('hidden');
-        }
-    });
-
-    // Обновляем сетку
-    const visibleCount = activeRooms.length === 0 ? 3 : activeRooms.length;
-    const gridTemplate = `60px repeat(${visibleCount}, 1fr)`;
-
-    document.querySelectorAll('.room-headers, .time-row').forEach(elem => {
-        elem.style.gridTemplateColumns = gridTemplate;
-    });
-
-    // Обновляем ширину столбцов
-    const columnWidth = 60 + (visibleCount * 120);
-    document.querySelectorAll('.day-column').forEach(col => {
-        col.style.minWidth = `${columnWidth}px`;
-    });
-}
-
+// Фильтр по времени
 function applyTimeRange() {
     const timeFrom = document.getElementById('timeFrom').value;
     const timeTo = document.getElementById('timeTo').value;
 
-    document.querySelectorAll('.time-row').forEach(row => {
-        const rowTime = row.dataset.time;
+    document.querySelectorAll('.lesson-card').forEach(card => {
+        const cardTime = card.dataset.time;
         let shouldShow = true;
 
-        if (timeFrom && rowTime < timeFrom) shouldShow = false;
-        if (timeTo && rowTime > timeTo) shouldShow = false;
+        if (timeFrom && cardTime < timeFrom) {
+            shouldShow = false;
+        }
+        if (timeTo && cardTime > timeTo) {
+            shouldShow = false;
+        }
 
-        row.style.display = shouldShow ? 'grid' : 'none';
+        card.style.display = shouldShow ? 'block' : 'none';
     });
 }
 
+// Сбросить фильтры
 function resetFilters() {
-    document.querySelectorAll('.day-filter-btn, .room-filter-btn').forEach(btn => {
+    // Сбросить дни
+    document.querySelectorAll('.day-filter-btn').forEach(btn => {
         btn.classList.add('active');
     });
     updateVisibleDays();
-    updateVisibleRooms();
 
+    // Сбросить время
     document.getElementById('timeFrom').value = '';
     document.getElementById('timeTo').value = '';
-    document.querySelectorAll('.time-row').forEach(row => {
-        row.style.display = 'grid';
+
+    // Показать все карточки
+    document.querySelectorAll('.lesson-card').forEach(card => {
+        card.style.display = 'block';
     });
-}
-
-function toggleStudents(button, lessonId) {
-    const list = document.getElementById(`students-${lessonId}`);
-    if (list) {
-        const isShown = list.classList.contains('show');
-        list.classList.toggle('show');
-
-        const count = list.children.length;
-        button.textContent = isShown ? `👥 (${count})` : `👥 Скрыть`;
-    }
-}
-
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }
 
 // Инициализация
 document.addEventListener('DOMContentLoaded', () => {
-    renderSchedule();
+    renderKanban();
 });
 </script>
 
