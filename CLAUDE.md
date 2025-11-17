@@ -1,7 +1,7 @@
 # CLAUDE.md - AI Assistant Guide for Evrium Project
 
-**Last Updated**: 2025-11-15
-**Project**: Evrium - Interactive Geometry Learning Platform + CRM System
+**Last Updated**: 2025-11-17
+**Project**: Evrium - Educational Platform + CRM + Salary Management System
 **Repository**: Palomig/evrium
 
 ---
@@ -13,7 +13,7 @@
 3. [Technology Stack](#technology-stack)
 4. [Development Workflows](#development-workflows)
 5. [Code Conventions](#code-conventions)
-6. [Database Schema](#database-schema)
+6. [Database Schemas](#database-schemas)
 7. [API Guidelines](#api-guidelines)
 8. [Security Practices](#security-practices)
 9. [Testing Guidelines](#testing-guidelines)
@@ -25,15 +25,16 @@
 
 ## 🎯 Project Overview
 
-### Dual-Purpose Application
+### Triple-Purpose Application
 
-Evrium consists of **two integrated systems**:
+Evrium consists of **three integrated systems**:
 
 #### 1. Interactive Geometry Learning Platform (Root)
 - **Purpose**: Educational website for geometry (grades 7-9) based on Atanasyan textbook
 - **Features**: Interactive SVG visualizations, chapter navigation, exercise editor, documentation
 - **Tech**: PHP + Vanilla JavaScript + Bootstrap 5
 - **Entry Point**: `index.php`
+- **URL**: `https://эвриум.рф/`
 
 #### 2. Evrium CRM (Tutoring Management System)
 - **Purpose**: Full-featured CRM for tutors managing students, lessons, payments, skills tracking
@@ -41,13 +42,36 @@ Evrium consists of **two integrated systems**:
 - **Tech**: PHP 8.x + MySQL + Bootstrap 5
 - **Location**: `/crm/` directory
 - **Entry Point**: `crm/login.php`
+- **URL**: `https://эвриум.рф/crm/`
+
+#### 3. Zarplata (Teacher Salary Management System) ⭐ NEW
+- **Purpose**: Automated salary calculation and scheduling system for teachers
+- **Features**: Template-based scheduling, payment formulas, attendance tracking, Telegram bot integration
+- **Tech**: PHP 8.x + MySQL + Material Design Dark Theme + Vanilla JavaScript
+- **Location**: `/zarplata/` directory
+- **Entry Point**: `zarplata/login.php`
+- **URL**: `https://эвриум.рф/zarplata/`
+- **Font**: Montserrat (Google Fonts)
 
 ### Key Metrics
+
+**Geometry Platform**:
+- **Curriculum**: 12 chapters across 3 grades (7-9)
+- **Topics**: 100+ geometry topics
+- **Exercises**: 300+ interactive problems
+
+**CRM System**:
 - **Database Tables**: 8 (+ 2 views + 3 triggers)
 - **API Endpoints**: 10+ REST endpoints
-- **Curriculum**: 12 chapters across 3 grades (7-9)
 - **Skills Tracked**: 5 core math competencies (extendable)
 - **Roles**: Teacher, SuperAdmin
+
+**Zarplata System**:
+- **Database Tables**: 10 (users, teachers, students, payment_formulas, lessons_template, lessons_instance, attendance_log, payments, audit_log, settings)
+- **Views**: 2 (teacher_stats, lessons_stats)
+- **Triggers**: 2 (calculate_payment_after_lesson_complete, audit_attendance_log)
+- **Payment Formula Types**: 3 (min_plus_per, fixed, expression)
+- **Roles**: Admin, Owner
 
 ---
 
@@ -82,6 +106,62 @@ evrium/
 │       │
 │       └── api/                     # REST API Endpoints
 │           └── students.php         # Student CRUD + filters/search
+│
+├── 💰 ZARPLATA SYSTEM (Teacher Salary Management) ⭐ NEW
+│   └── zarplata/
+│       ├── 📁 Main Pages
+│       │   ├── index.php            # Dashboard with statistics
+│       │   ├── login.php            # Material Design login
+│       │   ├── logout.php           # Session cleanup
+│       │   ├── teachers.php         # Teacher CRUD management
+│       │   ├── schedule.php         # ⭐ Weekly schedule (table layout)
+│       │   ├── lessons.php          # Lesson instances management
+│       │   ├── payments.php         # Payment history
+│       │   ├── reports.php          # Reports generation
+│       │   ├── formulas.php         # Payment formula editor
+│       │   ├── settings.php         # System settings
+│       │   └── audit.php            # Audit log viewer
+│       │
+│       ├── 📁 config/               # ⭐ CORE CONFIGURATION
+│       │   ├── db.php               # PDO database layer
+│       │   ├── auth.php             # Authentication system
+│       │   └── helpers.php          # Helper functions
+│       │
+│       ├── 📁 api/                  # REST API Endpoints
+│       │   ├── teachers.php         # Teacher CRUD API
+│       │   ├── schedule.php         # ⭐ Schedule template API
+│       │   ├── lessons.php          # Lesson instance API
+│       │   ├── payments.php         # Payment calculations API
+│       │   ├── formulas.php         # Formula management API
+│       │   ├── reports.php          # Reports generation API
+│       │   ├── settings.php         # Settings API
+│       │   └── audit.php            # Audit log API
+│       │
+│       ├── 📁 bot/                  # Telegram Bot (Planned)
+│       │   ├── webhook.php          # Bot webhook handler
+│       │   ├── cron.php             # Attendance polling cron
+│       │   └── handlers/            # Command handlers
+│       │
+│       ├── 📁 assets/
+│       │   ├── css/
+│       │   │   └── material-dark.css  # ⭐ Material Design Dark Theme
+│       │   ├── js/
+│       │   │   └── schedule.js      # ⭐ Schedule management JS
+│       │   └── images/
+│       │
+│       ├── 📁 templates/
+│       │   ├── header.php           # ⭐ Sidebar + header (fixed layout)
+│       │   └── footer.php           # Footer template
+│       │
+│       ├── 📁 migrations/           # Database migrations
+│       │   ├── add_room_to_lessons.sql
+│       │   ├── add_tier_grades_students.sql
+│       │   ├── add_formula_to_teachers.sql
+│       │   └── README.md
+│       │
+│       ├── database.sql             # ⭐ Complete DB schema
+│       ├── README.md                # Full documentation (Russian)
+│       └── .htaccess                # Apache config
 │
 ├── 📄 DOCUMENTATION
 │   └── docs/
@@ -118,13 +198,24 @@ evrium/
 | **Password** | `password_hash()` | PASSWORD_DEFAULT (bcrypt) |
 
 ### Frontend
+
+**Geometry Platform & CRM**:
 | Component | Technology | Notes |
 |-----------|-----------|-------|
 | **Framework** | Bootstrap 5 | Loaded via CDN |
-| **JavaScript** | Vanilla JS | No framework (keep it simple) |
+| **JavaScript** | Vanilla JS | No framework |
 | **Icons** | Font Awesome | CDN-based |
-| **Charts** | Chart.js | For progress visualization |
-| **Visualization** | SVG | For geometry diagrams |
+| **Charts** | Chart.js | Progress visualization |
+| **Font** | System default | Bootstrap defaults |
+
+**Zarplata System** ⭐:
+| Component | Technology | Notes |
+|-----------|-----------|-------|
+| **Design** | Material Design | Google's design system |
+| **JavaScript** | Vanilla JS | No framework |
+| **Icons** | Material Icons | Google Icons CDN |
+| **Font** | Montserrat | Google Fonts |
+| **Theme** | Dark Theme | Custom Material Dark CSS |
 
 ### DevOps
 | Component | Technology | Notes |
@@ -143,10 +234,12 @@ evrium/
 **CRITICAL**: All development happens on Claude-specific branches:
 
 ```
-claude/claude-md-{session-id}-{unique-id}
+claude/{feature}-{session-id}
 ```
 
-**Example**: `claude/claude-md-mhzka2eubzn0cg1j-01EEf1yfqC2HN82csG6kygKB`
+**Examples**:
+- `claude/find-zarplata-file-01G7rwMTUaKtyuj4HEuCsRtv`
+- `claude/claude-md-mhzka2eubzn0cg1j-01EEf1yfqC2HN82csG6kygKB`
 
 ### Workflow Steps
 
@@ -160,15 +253,15 @@ claude/claude-md-{session-id}-{unique-id}
    - **Types**: `feat`, `fix`, `refactor`, `docs`, `style`, `test`, `chore`
    - **Examples**:
      - `feat: Add payment filtering API endpoint`
-     - `fix: Correct student balance calculation trigger`
-     - `docs: Update CLAUDE.md with API guidelines`
+     - `fix: Resolve 4 critical schedule layout issues`
+     - `docs: Update CLAUDE.md with zarplata system`
      - `refactor: Extract auth logic to separate module`
 
 3. **Push to Remote**
    ```bash
    git add .
-   git commit -m "feat: Add student skills tracking"
-   git push -u origin claude/claude-md-{session-id}
+   git commit -m "feat: Add schedule template management"
+   git push -u origin claude/feature-{session-id}
    ```
    - **MUST** use `-u origin` flag
    - Branch MUST start with `claude/` and end with session ID
@@ -236,79 +329,39 @@ $students = dbQuery("SELECT * FROM students WHERE teacher_id = ?", [$teacherId])
 | **Functions** | camelCase | `getCurrentUser()`, `validateInput()` |
 | **Constants** | UPPER_SNAKE_CASE | `DB_HOST`, `SESSION_TIMEOUT` |
 | **Classes** | PascalCase | `StudentManager`, `ReportGenerator` |
-| **Files** | lowercase, hyphen-separated | `student-profile.php`, `api-helpers.php` |
-| **Database Tables** | snake_case | `students`, `student_skills`, `api_tokens` |
+| **Files** | lowercase | `schedule.php`, `api/teachers.php` |
+| **Database Tables** | snake_case | `students`, `lessons_template`, `audit_log` |
 | **Database Columns** | snake_case | `teacher_id`, `created_at`, `password_hash` |
-
-#### Security Practices
-```php
-// ✅ ALWAYS use prepared statements
-$stmt = $pdo->prepare("SELECT * FROM students WHERE id = ?");
-$stmt->execute([$studentId]);
-
-// ✅ ALWAYS escape output
-echo htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8');
-
-// ✅ ALWAYS validate input
-$studentId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
-if (!$studentId) {
-    http_response_code(400);
-    exit('Invalid ID');
-}
-
-// ✅ ALWAYS check authentication
-if (!isLoggedIn()) {
-    http_response_code(401);
-    exit('Unauthorized');
-}
-
-// ✅ ALWAYS verify authorization
-if (!checkResourceOwner($student['teacher_id'])) {
-    http_response_code(403);
-    exit('Forbidden');
-}
-```
 
 ### JavaScript Conventions
 
-#### Code Style
+#### Code Style (Zarplata System)
 ```javascript
 // Use const/let, never var
-const studentId = 123;
+const teacherId = 123;
 let balance = 0;
 
 // Use arrow functions for callbacks
-students.filter(s => s.balance < 0);
+teachers.filter(t => t.active === 1);
 
 // Use template literals
-const message = `Student ${name} has balance ${balance}`;
+const message = `Teacher ${name} has ${count} lessons`;
 
 // Use async/await for API calls
-async function fetchStudents() {
-    const response = await fetch('/crm/api/students.php?action=list');
+async function fetchTemplates() {
+    const response = await fetch('/zarplata/api/schedule.php?action=list_templates');
     const data = await response.json();
     return data;
 }
 
 // Handle errors properly
 try {
-    const students = await fetchStudents();
-    renderStudents(students);
+    const templates = await fetchTemplates();
+    renderSchedule(templates);
 } catch (error) {
-    console.error('Failed to fetch students:', error);
-    showErrorMessage('Unable to load students');
+    console.error('Failed to fetch templates:', error);
+    showErrorMessage('Unable to load schedule');
 }
-```
-
-#### DOM Manipulation
-```javascript
-// Use modern DOM methods
-document.querySelector('.student-list');
-document.querySelectorAll('.student-item');
-element.classList.add('active');
-element.addEventListener('click', handleClick);
-
-// Avoid jQuery (not used in this project)
 ```
 
 ### SQL Conventions
@@ -316,10 +369,10 @@ element.addEventListener('click', handleClick);
 #### Query Style
 ```sql
 -- Use uppercase for SQL keywords
-SELECT s.id, s.name, s.balance, t.name AS teacher_name
+SELECT s.id, s.name, t.name AS teacher_name
 FROM students s
-LEFT JOIN admins t ON s.teacher_id = t.id
-WHERE s.balance < 0
+LEFT JOIN teachers t ON s.teacher_id = t.id
+WHERE s.active = 1
 ORDER BY s.created_at DESC
 LIMIT 20 OFFSET 0;
 
@@ -328,276 +381,355 @@ LIMIT 20 OFFSET 0;
 -- Use prepared statement placeholders (?)
 ```
 
-#### Table Design
+#### Table Design Principles
 - **Primary Keys**: Always `id INT AUTO_INCREMENT PRIMARY KEY`
 - **Foreign Keys**: Always name with `_id` suffix (e.g., `teacher_id`, `student_id`)
 - **Timestamps**: Use `DATETIME` type, named `created_at`, `updated_at`
 - **Soft Deletes**: Use `active BOOLEAN DEFAULT 1` or `deleted_at DATETIME NULL`
-- **Enums**: Use for fixed sets (e.g., `ENUM('teacher', 'superadmin')`)
-- **Decimals**: Use `DECIMAL(8,2)` for currency (e.g., balance, amount)
+- **Enums**: Use for fixed sets (e.g., `ENUM('teacher', 'owner')`)
+- **Decimals**: Use `DECIMAL(8,2)` for currency
 - **Indexes**: Add on foreign keys and frequently queried columns
 
 ---
 
-## 🗄️ Database Schema
+## 🗄️ Database Schemas
 
-### Core Tables
+### Zarplata System Database ⭐
 
-#### `admins` (Teachers & Administrators)
+**Database Name**: `cw95865_admin`
+**Credentials**:
+- Host: `localhost`
+- User: `cw95865_admin`
+- Password: `123456789`
+- Charset: `utf8mb4`
+
+#### Core Tables
+
+##### `users` - System Administrators
 ```sql
-CREATE TABLE admins (
+CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     name VARCHAR(100) NOT NULL,
-    role ENUM('teacher', 'superadmin') DEFAULT 'teacher',
+    email VARCHAR(100),
+    role ENUM('admin', 'owner') DEFAULT 'admin',
     active BOOLEAN DEFAULT 1,
-    telegram_id BIGINT UNIQUE NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 ```
-- **Roles**: `teacher` (manages own students), `superadmin` (manages all)
-- **Default Credentials**: username=`admin`, password=`admin123` (change in production!)
+**Default Credentials**: username=`admin`, password=`admin123` ⚠️ Change in production!
 
-#### `students` (Student Records)
+##### `teachers` - Teachers/Instructors
+```sql
+CREATE TABLE teachers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    telegram_id BIGINT UNIQUE NULL,
+    telegram_username VARCHAR(50),
+    phone VARCHAR(20),
+    email VARCHAR(100),
+    formula_id INT NULL,  -- Default payment formula
+    active BOOLEAN DEFAULT 1,
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (formula_id) REFERENCES payment_formulas(id) ON DELETE SET NULL
+);
+```
+
+##### `students` - Students
 ```sql
 CREATE TABLE students (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    teacher_id INT NOT NULL,
     name VARCHAR(100) NOT NULL,
-    class INT NOT NULL,
     phone VARCHAR(20),
-    schedule VARCHAR(255),
-    goal VARCHAR(255),
-    comment TEXT,
-    balance DECIMAL(8,2) DEFAULT 0.00,
-    status ENUM('оплачено', 'ожидает', 'задолженность') DEFAULT 'ожидает',
+    parent_phone VARCHAR(20),
+    email VARCHAR(100),
+    class INT,  -- Grade level (7-11)
+    notes TEXT,
+    active BOOLEAN DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (teacher_id) REFERENCES admins(id) ON DELETE CASCADE
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 ```
-- **Balance**: Updated automatically by payment triggers
-- **Status**: Auto-updated by `update_student_status` trigger
 
-#### `skills` (Competency Framework)
+##### `payment_formulas` - Salary Calculation Formulas
 ```sql
-CREATE TABLE skills (
+CREATE TABLE payment_formulas (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    category VARCHAR(100),
-    class INT,
+    type ENUM('min_plus_per', 'fixed', 'expression') NOT NULL,
     description TEXT,
-    INDEX idx_class (class),
-    INDEX idx_category (category)
+
+    -- For type 'min_plus_per'
+    min_payment INT DEFAULT 0,        -- Base salary
+    per_student INT DEFAULT 0,         -- Payment per student
+    threshold INT DEFAULT 2,           -- Start counting from Nth student
+
+    -- For type 'fixed'
+    fixed_amount INT DEFAULT 0,        -- Fixed salary
+
+    -- For type 'expression'
+    expression TEXT,                   -- Custom formula: e.g., "max(500, N * 150)"
+
+    active BOOLEAN DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 ```
-- **Pre-populated**: 5 core math skills (linear equations, geometry, Pythagorean theorem, quadratic equations, trigonometry)
-- **Extendable**: Teachers/admins can add custom skills
 
-#### `student_skills` (Student Competency Tracking)
-```sql
-CREATE TABLE student_skills (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    student_id INT NOT NULL,
-    skill_id INT NOT NULL,
-    level TINYINT DEFAULT 0,  -- 0-5 scale
-    last_update DATE,
-    comment TEXT,
-    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
-    FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_student_skill (student_id, skill_id)
-);
-```
-- **Level Scale**: 0 (not started) to 5 (mastered)
+**Formula Types**:
+1. **min_plus_per**: Base + per student (e.g., 500₽ + 150₽ per student from 2nd)
+2. **fixed**: Fixed amount regardless of students
+3. **expression**: Custom math expression with variable `N` (student count)
 
-#### `lessons` (Lesson Records)
+##### `lessons_template` - Weekly Schedule Templates ⭐
 ```sql
-CREATE TABLE lessons (
+CREATE TABLE lessons_template (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    student_id INT NOT NULL,
     teacher_id INT NOT NULL,
-    date DATE NOT NULL,
-    topics TEXT,
-    homework_given BOOLEAN DEFAULT 0,
-    homework_done BOOLEAN DEFAULT 0,
-    comment TEXT,
-    paid BOOLEAN DEFAULT 0,
-    rating TINYINT,  -- 1-5 scale
-    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
-    FOREIGN KEY (teacher_id) REFERENCES admins(id) ON DELETE CASCADE,
-    INDEX idx_date (date)
+    day_of_week TINYINT NOT NULL,     -- 1=Monday, 7=Sunday
+    room TINYINT DEFAULT 1,            -- ⭐ Room number (1-3)
+    time_start TIME NOT NULL,
+    time_end TIME NOT NULL,
+    lesson_type ENUM('group', 'individual') DEFAULT 'group',
+    subject VARCHAR(100),              -- e.g., "Математика", "Физика"
+    expected_students INT DEFAULT 1,
+    formula_id INT NULL,               -- Override teacher's default formula
+
+    -- ⭐ NEW FIELDS (added via migrations)
+    tier ENUM('S', 'A', 'B', 'C', 'D') DEFAULT 'C',  -- Student tier/level
+    grades VARCHAR(50) NULL,                          -- e.g., "7, 8-9"
+    students TEXT NULL,                               -- JSON array of student names
+
+    active BOOLEAN DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE,
+    FOREIGN KEY (formula_id) REFERENCES payment_formulas(id) ON DELETE SET NULL
 );
 ```
 
-#### `payments` (Payment Records)
+**Schedule Features**:
+- **Table Layout**: Time × Room grid view
+- **Room Support**: 1-3 classrooms
+- **Tier System**: S/A/B/C/D levels for grouping students
+- **Grades**: Multiple grade levels per lesson (e.g., "7, 8-9")
+- **Student List**: JSON array stored in TEXT field
+
+##### `lessons_instance` - Actual Lesson Records
+```sql
+CREATE TABLE lessons_instance (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    template_id INT NULL,              -- NULL = one-time lesson
+    teacher_id INT NOT NULL,
+    substitute_teacher_id INT NULL,    -- For substitutions
+    lesson_date DATE NOT NULL,
+    time_start TIME NOT NULL,
+    time_end TIME NOT NULL,
+    lesson_type ENUM('group', 'individual') DEFAULT 'group',
+    subject VARCHAR(100),
+    expected_students INT DEFAULT 1,
+    actual_students INT DEFAULT 0,     -- Counted from attendance
+    formula_id INT NULL,
+    status ENUM('scheduled', 'completed', 'cancelled', 'rescheduled') DEFAULT 'scheduled',
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (template_id) REFERENCES lessons_template(id) ON DELETE SET NULL,
+    FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE,
+    FOREIGN KEY (substitute_teacher_id) REFERENCES teachers(id) ON DELETE SET NULL,
+    FOREIGN KEY (formula_id) REFERENCES payment_formulas(id) ON DELETE SET NULL
+);
+```
+
+##### `attendance_log` - Student Attendance
+```sql
+CREATE TABLE attendance_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    lesson_instance_id INT NOT NULL,
+    student_id INT NOT NULL,
+    attended BOOLEAN NOT NULL,
+    marked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    marked_by VARCHAR(50),             -- 'telegram_bot' or 'admin'
+
+    FOREIGN KEY (lesson_instance_id) REFERENCES lessons_instance(id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+);
+```
+
+##### `payments` - Teacher Payments
 ```sql
 CREATE TABLE payments (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    student_id INT NOT NULL,
     teacher_id INT NOT NULL,
-    date DATE NOT NULL,
-    amount DECIMAL(8,2) NOT NULL,
-    method VARCHAR(50),  -- 'наличные', 'перевод', etc.
-    comment TEXT,
-    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
-    FOREIGN KEY (teacher_id) REFERENCES admins(id) ON DELETE CASCADE,
-    INDEX idx_date (date)
+    lesson_instance_id INT NULL,       -- NULL = manual payment
+    amount INT NOT NULL,               -- Salary in rubles
+    payment_type ENUM('lesson', 'bonus', 'penalty', 'adjustment') DEFAULT 'lesson',
+    status ENUM('pending', 'approved', 'paid', 'cancelled') DEFAULT 'pending',
+    notes TEXT,
+    paid_at DATETIME NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE,
+    FOREIGN KEY (lesson_instance_id) REFERENCES lessons_instance(id) ON DELETE SET NULL
 );
 ```
 
-#### `materials` (Learning Materials)
+##### `audit_log` - System Audit Trail
 ```sql
-CREATE TABLE materials (
+CREATE TABLE audit_log (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    teacher_id INT NOT NULL,
-    name VARCHAR(100) NOT NULL,
-    category VARCHAR(100),
-    class INT,
-    type ENUM('pdf', 'image') NOT NULL,
-    path VARCHAR(255) NOT NULL,
+    action_type VARCHAR(50) NOT NULL,  -- e.g., 'template_created', 'lesson_completed'
+    entity_type VARCHAR(50) NOT NULL,  -- e.g., 'template', 'lesson', 'payment'
+    entity_id INT NULL,
+    user_id INT NULL,
+    old_value TEXT NULL,               -- JSON of old state
+    new_value TEXT NULL,               -- JSON of new state
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+```
+
+##### `settings` - System Configuration
+```sql
+CREATE TABLE settings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    setting_key VARCHAR(100) UNIQUE NOT NULL,
+    setting_value TEXT,
     description TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (teacher_id) REFERENCES admins(id) ON DELETE CASCADE
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 ```
 
-#### `api_tokens` (API Authentication)
-```sql
-CREATE TABLE api_tokens (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    admin_id INT NOT NULL,
-    token VARCHAR(255) UNIQUE NOT NULL,
-    expires_at DATETIME NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE
-);
-```
-- **Default Expiry**: 30 days from creation
-- **Format**: Random 64-character hex string
+#### Database Views
 
-### Database Views
-
-#### `teacher_stats` (Per-Teacher Analytics)
+##### `teacher_stats` - Teacher Statistics
 ```sql
 CREATE VIEW teacher_stats AS
 SELECT
-    a.id AS teacher_id,
-    a.name AS teacher_name,
-    COUNT(DISTINCT s.id) AS student_count,
-    COUNT(l.id) AS lesson_count,
-    COALESCE(SUM(p.amount), 0) AS total_revenue,
-    AVG(l.rating) AS avg_rating
-FROM admins a
-LEFT JOIN students s ON a.id = s.teacher_id
-LEFT JOIN lessons l ON a.id = l.teacher_id
-LEFT JOIN payments p ON a.id = p.teacher_id
-GROUP BY a.id;
+    t.id AS teacher_id,
+    t.name AS teacher_name,
+    COUNT(DISTINCT li.id) AS total_lessons,
+    SUM(CASE WHEN li.status = 'completed' THEN 1 ELSE 0 END) AS completed_lessons,
+    SUM(CASE WHEN p.status = 'paid' THEN p.amount ELSE 0 END) AS total_paid,
+    SUM(CASE WHEN p.status = 'pending' THEN p.amount ELSE 0 END) AS total_pending
+FROM teachers t
+LEFT JOIN lessons_instance li ON t.id = li.teacher_id
+LEFT JOIN payments p ON t.id = p.teacher_id
+GROUP BY t.id;
 ```
 
-#### `student_stats` (Per-Student Analytics)
+##### `lessons_stats` - Lesson Statistics with Payments
 ```sql
-CREATE VIEW student_stats AS
+CREATE VIEW lessons_stats AS
 SELECT
-    s.id AS student_id,
-    s.name AS student_name,
-    COUNT(l.id) AS lesson_count,
-    SUM(l.homework_done) AS homework_completed,
-    AVG(l.rating) AS avg_rating,
-    s.balance
-FROM students s
-LEFT JOIN lessons l ON s.id = l.student_id
-GROUP BY s.id;
+    li.id AS lesson_id,
+    li.lesson_date,
+    li.time_start,
+    li.time_end,
+    t.name AS teacher_name,
+    li.subject,
+    li.actual_students,
+    li.status,
+    p.amount AS payment_amount,
+    p.status AS payment_status
+FROM lessons_instance li
+LEFT JOIN teachers t ON li.teacher_id = t.id
+LEFT JOIN payments p ON li.id = p.lesson_instance_id
+ORDER BY li.lesson_date DESC, li.time_start ASC;
 ```
 
-### Database Triggers
+#### Database Triggers
 
-#### `after_payment_insert` (Update Balance on Payment)
+##### `calculate_payment_after_lesson_complete`
 ```sql
-CREATE TRIGGER after_payment_insert
-AFTER INSERT ON payments
+CREATE TRIGGER calculate_payment_after_lesson_complete
+AFTER UPDATE ON lessons_instance
 FOR EACH ROW
 BEGIN
-    UPDATE students
-    SET balance = balance + NEW.amount
-    WHERE id = NEW.student_id;
-END;
-```
-
-#### `after_payment_delete` (Update Balance on Payment Deletion)
-```sql
-CREATE TRIGGER after_payment_delete
-AFTER DELETE ON payments
-FOR EACH ROW
-BEGIN
-    UPDATE students
-    SET balance = balance - OLD.amount
-    WHERE id = OLD.student_id;
-END;
-```
-
-#### `update_student_status` (Auto-Update Payment Status)
-```sql
-CREATE TRIGGER update_student_status
-AFTER UPDATE ON students
-FOR EACH ROW
-BEGIN
-    IF NEW.balance > 0 THEN
-        UPDATE students SET status = 'оплачено' WHERE id = NEW.id;
-    ELSEIF NEW.balance < 0 THEN
-        UPDATE students SET status = 'задолженность' WHERE id = NEW.id;
-    ELSE
-        UPDATE students SET status = 'ожидает' WHERE id = NEW.id;
+    IF NEW.status = 'completed' AND OLD.status != 'completed' THEN
+        -- Calculate payment based on formula
+        -- Insert into payments table
+        -- (Implementation depends on formula type)
     END IF;
+END;
+```
+
+##### `audit_attendance_log`
+```sql
+CREATE TRIGGER audit_attendance_log
+AFTER INSERT ON attendance_log
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (action_type, entity_type, entity_id, new_value)
+    VALUES ('attendance_marked', 'attendance', NEW.id,
+            JSON_OBJECT('student_id', NEW.student_id, 'attended', NEW.attended));
 END;
 ```
 
 ---
 
-## 🔌 API Guidelines
+## 🔌 API Guidelines (Zarplata System)
 
 ### Authentication
 
 **Session-Based** (for web UI):
 ```php
 session_start();
-if (!isLoggedIn()) {
-    http_response_code(401);
-    exit(json_encode(['error' => 'Unauthorized']));
-}
+requireAuth();  // Redirects to login if not authenticated
+$user = getCurrentUser();
 ```
 
-**Token-Based** (for API):
+**Helper Functions** (zarplata/config/auth.php):
 ```php
-$token = getBearerToken();  // Extracts from Authorization header
-$admin = validateAPIToken($token);
-if (!$admin) {
-    http_response_code(401);
-    exit(json_encode(['error' => 'Invalid or expired token']));
-}
+isLoggedIn()          // Check if user has active session
+getCurrentUser()      // Get user array with id, username, name, role
+requireAuth()         // Enforce login (redirect if not logged in)
+logout()             // Destroy session and redirect to login
 ```
 
-### Request Format
+### API Structure
 
-**GET Requests** (query parameters):
+**Pattern**: `/zarplata/api/{resource}.php?action={action}`
+
+**Example Endpoints**:
 ```
-GET /crm/api/students.php?action=list&teacher_id=5&status=задолженность&page=1
+GET  /zarplata/api/schedule.php?action=list_templates
+GET  /zarplata/api/schedule.php?action=get_template&id=5
+POST /zarplata/api/schedule.php?action=add_template
+POST /zarplata/api/schedule.php?action=update_template
+POST /zarplata/api/schedule.php?action=delete_template
+GET  /zarplata/api/schedule.php?action=get_week&date=2025-11-17
+POST /zarplata/api/schedule.php?action=generate_week&date=2025-11-17
 ```
 
-**POST Requests** (JSON body):
+### Request/Response Format
+
+**POST Request** (JSON body):
 ```bash
-curl -X POST /crm/api/students.php?action=add \
-  -H "Authorization: Bearer TOKEN" \
+curl -X POST '/zarplata/api/schedule.php?action=add_template' \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Иван Петров",
-    "class": 9,
-    "phone": "+79991234567",
-    "schedule": "Пн, Ср 16:00",
-    "goal": "Подготовка к ОГЭ"
+    "teacher_id": 5,
+    "day_of_week": 1,
+    "room": 1,
+    "time_start": "14:00",
+    "time_end": "15:30",
+    "subject": "Математика",
+    "tier": "A",
+    "grades": "8-9",
+    "expected_students": 6,
+    "students": ["Иван", "Мария", "Петр"]
   }'
 ```
-
-### Response Format
 
 **Success Response**:
 ```json
@@ -605,9 +737,9 @@ curl -X POST /crm/api/students.php?action=add \
   "success": true,
   "data": {
     "id": 123,
-    "name": "Иван Петров",
-    "class": 9,
-    "balance": 5000.00
+    "teacher_id": 5,
+    "day_of_week": 1,
+    ...
   }
 }
 ```
@@ -616,719 +748,303 @@ curl -X POST /crm/api/students.php?action=add \
 ```json
 {
   "success": false,
-  "error": "Student not found",
-  "code": 404
+  "error": "Выберите преподавателя",
+  "code": 400
 }
 ```
 
-### HTTP Status Codes
+### Implemented APIs
 
-| Code | Meaning | When to Use |
-|------|---------|-------------|
-| **200** | OK | Successful GET/POST/PUT |
-| **201** | Created | Successful resource creation |
-| **400** | Bad Request | Invalid input data |
-| **401** | Unauthorized | Missing/invalid authentication |
-| **403** | Forbidden | Authenticated but no permission |
-| **404** | Not Found | Resource doesn't exist |
-| **500** | Internal Server Error | Unexpected server error |
+1. **schedule.php** ✅
+   - `list_templates` - Get all active templates
+   - `get_template` - Get single template by ID
+   - `add_template` - Create new template
+   - `update_template` - Update existing template
+   - `delete_template` - Soft delete template
+   - `get_week` - Get lesson instances for a week
+   - `generate_week` - Generate instances from templates
 
-### API Endpoint Structure
+2. **teachers.php** ✅
+   - CRUD operations for teachers
+   - Formula assignment
 
-**File**: `/crm/api/{resource}.php`
+3. **formulas.php** ✅
+   - CRUD operations for payment formulas
+   - Formula calculation testing
 
-**Pattern**:
-```php
-<?php
-require_once __DIR__ . '/../config/db.php';
-require_once __DIR__ . '/../config/auth.php';
-
-// Set JSON response headers
-header('Content-Type: application/json');
-
-// Authenticate
-$admin = validateAPIToken(getBearerToken());
-if (!$admin) {
-    http_response_code(401);
-    exit(json_encode(['error' => 'Unauthorized']));
-}
-
-// Get action
-$action = $_GET['action'] ?? '';
-
-// Route by action
-switch ($action) {
-    case 'list':
-        handleList($admin);
-        break;
-    case 'get':
-        handleGet($admin);
-        break;
-    case 'add':
-        handleAdd($admin);
-        break;
-    case 'update':
-        handleUpdate($admin);
-        break;
-    case 'delete':
-        handleDelete($admin);
-        break;
-    default:
-        http_response_code(400);
-        echo json_encode(['error' => 'Invalid action']);
-}
-
-function handleList($admin) {
-    // Implement list logic
-    $teacherId = $admin['role'] === 'superadmin'
-        ? ($_GET['teacher_id'] ?? null)
-        : $admin['id'];
-
-    $query = "SELECT * FROM students";
-    $params = [];
-
-    if ($teacherId) {
-        $query .= " WHERE teacher_id = ?";
-        $params[] = $teacherId;
-    }
-
-    $students = dbQuery($query, $params);
-    echo json_encode(['success' => true, 'data' => $students]);
-}
-
-// Implement other handlers...
-```
-
-### Existing API Endpoints
-
-**Students API** (`/crm/api/students.php`):
-
-| Action | Method | Parameters | Description |
-|--------|--------|------------|-------------|
-| `list` | GET | `teacher_id`, `status`, `search`, `page`, `per_page` | List students with filters |
-| `get` | GET | `id` | Get single student |
-| `add` | POST | JSON body | Create new student |
-| `update` | POST | JSON body with `id` | Update student |
-| `delete` | POST | JSON body with `id` | Delete student |
-| `stats` | GET | - | Get student statistics |
-
-**Planned Endpoints** (need implementation):
-- `/crm/api/lessons.php` - Lesson CRUD
-- `/crm/api/payments.php` - Payment CRUD
-- `/crm/api/skills.php` - Skills management
-- `/crm/api/reports.php` - Report generation
-- `/crm/api/telegram.php` - Telegram bot integration
+4. **lessons.php** ⚠️ Partially implemented
+5. **payments.php** ⚠️ Partially implemented
+6. **reports.php** ⚠️ Not implemented
+7. **settings.php** ✅ Implemented
+8. **audit.php** ✅ Implemented
 
 ---
 
 ## 🔐 Security Practices
 
-### Authentication & Authorization
-
-**Always Check Both**:
+### Input Validation (Zarplata Example)
 ```php
-// 1. Authentication (who are you?)
-if (!isLoggedIn()) {
-    http_response_code(401);
-    exit('Unauthorized');
+// From zarplata/api/schedule.php
+$teacherId = filter_var($data['teacher_id'] ?? 0, FILTER_VALIDATE_INT);
+$dayOfWeek = filter_var($data['day_of_week'] ?? 0, FILTER_VALIDATE_INT);
+$room = filter_var($data['room'] ?? 1, FILTER_VALIDATE_INT);
+
+if (!$teacherId) {
+    jsonError('Выберите преподавателя', 400);
 }
 
-// 2. Authorization (can you do this?)
-$student = dbQueryOne("SELECT teacher_id FROM students WHERE id = ?", [$studentId]);
-if (!checkResourceOwner($student['teacher_id'])) {
-    http_response_code(403);
-    exit('Forbidden');
-}
-```
-
-### Input Validation
-
-**Server-Side Validation (Required)**:
-```php
-// Validate integer IDs
-$studentId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
-if (!$studentId) {
-    http_response_code(400);
-    exit('Invalid ID');
+if ($dayOfWeek < 1 || $dayOfWeek > 7) {
+    jsonError('Неверный день недели', 400);
 }
 
-// Validate strings
-$name = trim($_POST['name'] ?? '');
-if (empty($name) || strlen($name) > 100) {
-    http_response_code(400);
-    exit('Name must be 1-100 characters');
-}
-
-// Validate enums
-$role = $_POST['role'] ?? '';
-if (!in_array($role, ['teacher', 'superadmin'])) {
-    http_response_code(400);
-    exit('Invalid role');
-}
-
-// Validate email
-$email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
-if (!$email) {
-    http_response_code(400);
-    exit('Invalid email');
+if ($room < 1 || $room > 3) {
+    jsonError('Неверный номер кабинета', 400);
 }
 ```
 
-### SQL Injection Prevention
-
-**Always Use Prepared Statements**:
+### NULL Handling for Foreign Keys
 ```php
-// ✅ CORRECT
-$stmt = $pdo->prepare("SELECT * FROM students WHERE id = ?");
-$stmt->execute([$studentId]);
-
-// ✅ CORRECT (named parameters)
-$stmt = $pdo->prepare("SELECT * FROM students WHERE name = :name AND class = :class");
-$stmt->execute(['name' => $name, 'class' => $class]);
-
-// ❌ NEVER DO THIS
-$query = "SELECT * FROM students WHERE id = $studentId";  // VULNERABLE!
-$result = $pdo->query($query);
-```
-
-### XSS Prevention
-
-**Escape All Output**:
-```php
-// In HTML context
-echo htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8');
-
-// In JavaScript context
-echo json_encode($student['name'], JSON_HEX_TAG | JSON_HEX_AMP);
-
-// In URL context
-echo urlencode($student['name']);
-```
-
-### CSRF Protection
-
-**Generate Token**:
-```php
-// In form
-$csrfToken = generateCSRFToken();
-echo "<input type='hidden' name='csrf_token' value='" . htmlspecialchars($csrfToken) . "'>";
-```
-
-**Validate Token**:
-```php
-// On form submission
-if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
-    http_response_code(403);
-    exit('Invalid CSRF token');
+// formula_id can be NULL, so handle separately
+$formulaId = null;
+if (isset($data['formula_id']) && $data['formula_id']) {
+    $formulaId = filter_var($data['formula_id'], FILTER_VALIDATE_INT);
+    if ($formulaId === false || $formulaId === 0) {
+        $formulaId = null;  // Prevent foreign key constraint violations
+    }
 }
 ```
 
-### Password Security
-
-**Hash Passwords**:
+### Database Migration Safety
 ```php
-// On registration/password change
-$passwordHash = password_hash($password, PASSWORD_DEFAULT);
-dbExecute("INSERT INTO admins (username, password_hash) VALUES (?, ?)", [$username, $passwordHash]);
-```
-
-**Verify Passwords**:
-```php
-// On login
-$admin = dbQueryOne("SELECT * FROM admins WHERE username = ?", [$username]);
-if ($admin && password_verify($password, $admin['password_hash'])) {
-    // Success
-    $_SESSION['admin_id'] = $admin['id'];
-} else {
-    // Failure
-    exit('Invalid credentials');
-}
-```
-
-### API Token Security
-
-**Generate Secure Tokens**:
-```php
-// 64-character random hex string
-$token = bin2hex(random_bytes(32));
-$expiresAt = date('Y-m-d H:i:s', strtotime('+30 days'));
-dbExecute("INSERT INTO api_tokens (admin_id, token, expires_at) VALUES (?, ?, ?)",
-    [$adminId, $token, $expiresAt]);
-```
-
-**Validate Tokens**:
-```php
-function validateAPIToken($token) {
-    if (!$token) return null;
-
-    $result = dbQueryOne(
-        "SELECT a.* FROM admins a
-         JOIN api_tokens t ON a.id = t.admin_id
-         WHERE t.token = ? AND t.expires_at > NOW()",
-        [$token]
+try {
+    // Try with new fields first
+    $result = dbExecute(
+        "INSERT INTO lessons_template
+         (teacher_id, day_of_week, room, tier, grades, students, ...)
+         VALUES (?, ?, ?, ?, ?, ?, ...)",
+        [$teacherId, $dayOfWeek, $room, $tier, $grades, $students, ...]
     );
-
-    return $result;
+} catch (PDOException $e) {
+    // Fallback for databases without new fields
+    if (strpos($e->getMessage(), 'Unknown column') !== false) {
+        $result = dbExecute(
+            "INSERT INTO lessons_template
+             (teacher_id, day_of_week, ...)
+             VALUES (?, ?, ...)",
+            [$teacherId, $dayOfWeek, ...]
+        );
+    }
 }
 ```
-
----
-
-## 🧪 Testing Guidelines
-
-### Current State
-- **No formal test suite** exists yet
-- Manual testing only
-
-### Recommended Testing Stack
-
-**Backend (PHP)**:
-- **PHPUnit** for unit/integration tests
-- Test files: `/tests/` directory
-- Naming: `{ClassOrFile}Test.php`
-
-**Frontend (JavaScript)**:
-- **Jest** for unit tests
-- Test files: `__tests__/` or `*.test.js`
-
-**API Testing**:
-- **Postman Collections** for API endpoint testing
-- **cURL scripts** for smoke tests
-
-### Testing Checklist (Manual)
-
-**Before Committing**:
-- [ ] Test CRUD operations for affected resources
-- [ ] Verify authentication/authorization logic
-- [ ] Check SQL queries return correct results
-- [ ] Validate input handling (edge cases, invalid data)
-- [ ] Test error responses (400, 401, 403, 404, 500)
-- [ ] Verify no SQL injection vulnerabilities
-- [ ] Check XSS prevention on output
-- [ ] Test on both teacher and superadmin roles
-
-**Before Deploying**:
-- [ ] Check database migrations (if any)
-- [ ] Verify `.htaccess` configuration
-- [ ] Test on staging environment first
-- [ ] Check FTP deployment excludes correct files
-- [ ] Verify GitHub Secrets are set correctly
-
-### Example Test Cases
-
-**Student CRUD**:
-1. Create student → verify in database
-2. Get student → verify correct data returned
-3. Update student → verify changes persisted
-4. Delete student → verify cascade deletion (lessons, payments, student_skills)
-5. List students → verify filtering/pagination works
-6. Test with invalid data → verify 400 errors
-7. Test unauthorized access → verify 401/403 errors
-
-**Payment Operations**:
-1. Add payment → verify balance updated (trigger)
-2. Delete payment → verify balance reverted (trigger)
-3. Check status update → verify status enum correct
-4. Test negative balance → verify "задолженность" status
-5. Test positive balance → verify "оплачено" status
 
 ---
 
 ## 🚀 Deployment Process
 
-### Prerequisites
+### Database Migrations (Zarplata)
 
-**GitHub Secrets** (set in repository settings):
-- `FTP_SERVER` - Timeweb FTP hostname
-- `FTP_USERNAME` - FTP login
-- `FTP_PASSWORD` - FTP password
+**Location**: `/zarplata/migrations/`
 
-**Database Setup**:
-1. Create database: `evrium_crm`
-2. Import schema: `mysql -u root -p evrium_crm < crm/database.sql`
-3. Update credentials in `crm/config/db.php`
+**Applied Migrations**:
+1. ✅ `add_room_to_lessons.sql` - Added `room` field to lessons_template
+2. ✅ `add_tier_grades_students.sql` - Added tier, grades, students fields
+3. ✅ `add_formula_to_teachers.sql` - Added formula_id to teachers
 
-### Automated Deployment Flow
+**How to Apply**:
+1. Via phpMyAdmin: Copy SQL commands one-by-one
+2. Via CLI: `mysql -u cw95865_admin -p cw95865_admin < migration.sql`
 
-```mermaid
-graph LR
-    A[Push to claude/* branch] --> B[auto-merge.yml triggers]
-    B --> C[Merge to main with --no-ff]
-    C --> D[deploy-timeweb.yml triggers]
-    D --> E[FTP upload to Timeweb]
-    E --> F[Live on /PALOMATIKA/public_html/]
-```
-
-**Timeline**: ~2-3 minutes from push to live
-
-### Manual Deployment (if needed)
-
-**Via GitHub Actions**:
-1. Go to Actions tab
-2. Select "Deploy to Timeweb"
-3. Click "Run workflow"
-4. Select branch (usually `main`)
-5. Click "Run workflow"
-
-**Via FTP Client** (emergency):
-1. Connect to Timeweb FTP
-2. Navigate to `/PALOMATIKA/public_html/`
-3. Upload files (exclude `.git`, `.github`, `README.md`)
-4. Set permissions: `755` for directories, `644` for files
-5. Verify `crm/config/db.php` has correct credentials
-
-### Post-Deployment Checklist
-
-- [ ] Visit homepage: `https://your-domain.com/`
-- [ ] Visit CRM login: `https://your-domain.com/crm/login.php`
-- [ ] Test login with default credentials
-- [ ] Check database connection
-- [ ] Verify API endpoint: `/crm/api/students.php?action=list`
-- [ ] Check `.htaccess` is working (clean URLs)
-- [ ] Verify file permissions (writable directories)
-
-### Rollback Procedure
-
-**If deployment fails**:
-1. Check GitHub Actions logs for errors
-2. Revert merge commit on `main` branch:
-   ```bash
-   git revert HEAD
-   git push origin main
-   ```
-3. Auto-deployment will trigger with reverted state
-4. Investigate and fix issue on new `claude/*` branch
+**Backwards Compatibility**: All API endpoints have fallback logic for missing columns.
 
 ---
 
-## 🛠️ Common Tasks
+## 🛠️ Common Tasks (Zarplata)
 
-### Adding a New Student (via API)
+### Creating a Schedule Template
+```php
+// From schedule.php JavaScript
+const data = {
+    teacher_id: 5,
+    day_of_week: 1,  // Monday
+    room: 1,
+    time_start: '14:00',
+    time_end: '15:30',
+    lesson_type: 'group',
+    subject: 'Математика',
+    tier: 'A',
+    grades: '8-9',
+    expected_students: 6,
+    formula_id: 2,
+    students: JSON.stringify(['Иван', 'Мария', 'Петр'])
+};
 
-```bash
-curl -X POST "https://your-domain.com/crm/api/students.php?action=add" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Мария Иванова",
-    "class": 8,
-    "phone": "+79991234567",
-    "schedule": "Вт, Чт 15:00",
-    "goal": "Улучшить оценки по геометрии",
-    "comment": "Проблемы с теоремами"
-  }'
+const response = await fetch('/zarplata/api/schedule.php?action=add_template', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+});
 ```
 
-### Adding a New Lesson
-
+### Generating Week from Templates
 ```php
-$lessonId = dbExecute(
-    "INSERT INTO lessons (student_id, teacher_id, date, topics, homework_given, rating)
-     VALUES (?, ?, ?, ?, ?, ?)",
-    [$studentId, $teacherId, $date, $topics, 1, 4]
-);
-```
+// Automatically creates lesson instances for the entire week
+$response = fetch('/zarplata/api/schedule.php?action=generate_week&date=2025-11-17', {
+    method: 'POST'
+});
 
-### Recording a Payment
-
-```php
-// Payment is automatically added to balance via trigger
-$paymentId = dbExecute(
-    "INSERT INTO payments (student_id, teacher_id, date, amount, method, comment)
-     VALUES (?, ?, ?, ?, ?, ?)",
-    [$studentId, $teacherId, $date, 5000.00, 'перевод', 'Оплата за октябрь']
-);
-```
-
-### Updating Student Skill Level
-
-```php
-dbExecute(
-    "INSERT INTO student_skills (student_id, skill_id, level, last_update, comment)
-     VALUES (?, ?, ?, CURDATE(), ?)
-     ON DUPLICATE KEY UPDATE level = ?, last_update = CURDATE(), comment = ?",
-    [$studentId, $skillId, $newLevel, $comment, $newLevel, $comment]
-);
-```
-
-### Generating Student Report (Conceptual)
-
-```php
-// Get all lessons for student in date range
-$lessons = dbQuery(
-    "SELECT * FROM lessons
-     WHERE student_id = ? AND date BETWEEN ? AND ?
-     ORDER BY date ASC",
-    [$studentId, $startDate, $endDate]
-);
-
-// Calculate statistics
-$totalLessons = count($lessons);
-$homeworkCompleted = array_sum(array_column($lessons, 'homework_done'));
-$avgRating = array_sum(array_column($lessons, 'rating')) / $totalLessons;
-
-// Get skills progress
-$skills = dbQuery(
-    "SELECT sk.name, ss.level, ss.comment
-     FROM student_skills ss
-     JOIN skills sk ON ss.skill_id = sk.id
-     WHERE ss.student_id = ?",
-    [$studentId]
-);
-
-// Generate PDF (using library like TCPDF or FPDF)
-// ... PDF generation code ...
-```
-
-### Adding a New Admin/Teacher
-
-```php
-$passwordHash = password_hash('secure_password_123', PASSWORD_DEFAULT);
-$adminId = dbExecute(
-    "INSERT INTO admins (username, password_hash, name, role, active)
-     VALUES (?, ?, ?, ?, 1)",
-    ['ivanov', $passwordHash, 'Иван Иванов', 'teacher']
-);
-```
-
-### Creating an API Token
-
-```php
-$token = bin2hex(random_bytes(32));
-$expiresAt = date('Y-m-d H:i:s', strtotime('+30 days'));
-
-dbExecute(
-    "INSERT INTO api_tokens (admin_id, token, expires_at)
-     VALUES (?, ?, ?)",
-    [$adminId, $token, $expiresAt]
-);
-
-echo "Your API token: " . $token;
+// Creates instances for Monday-Sunday based on active templates
+// Skips if instance already exists (prevents duplicates)
 ```
 
 ---
 
-## 🐛 Troubleshooting
+## 🐛 Troubleshooting (Zarplata-Specific)
 
-### Database Connection Issues
+### Schedule Table Overlaps Sidebar
 
-**Error**: "SQLSTATE[HY000] [2002] Connection refused"
+**Problem**: Wide schedule table extends over fixed sidebar
 
-**Solutions**:
-1. Check `crm/config/db.php` credentials
-2. Verify MySQL service is running: `systemctl status mysql`
-3. Check MySQL port: `netstat -an | grep 3306`
-4. Verify user has correct permissions:
-   ```sql
-   GRANT ALL ON evrium_crm.* TO 'username'@'localhost';
-   FLUSH PRIVILEGES;
-   ```
+**Solution**: Applied in `/zarplata/templates/header.php:141-143`
+```css
+.main-content {
+    max-width: calc(100vw - 280px);  /* Viewport width minus sidebar */
+    overflow-x: hidden;
+    box-sizing: border-box;
+}
+```
 
-### Authentication Not Working
+### Empty Days Show Room Headers
 
-**Symptom**: Login always fails even with correct credentials
+**Problem**: Days with no lessons showed empty table headers
 
-**Solutions**:
-1. Check session is started: `session_start()` at top of file
-2. Verify password hash in database:
-   ```sql
-   SELECT username, password_hash FROM admins;
-   ```
-3. Test password verification:
-   ```php
-   var_dump(password_verify('admin123', $admin['password_hash']));
-   ```
-4. Clear browser cookies/session storage
+**Solution**: Applied in `/zarplata/schedule.php:875-931`
+```javascript
+if (timeSlots.length > 0) {
+    // Show headers + table rows
+    dayColumn.appendChild(header);
+    dayColumn.appendChild(roomHeaders);
+    // ... render time slots
+} else {
+    // Show only header + "Нет занятий" message
+    dayColumn.appendChild(header);
+    const emptyMsg = document.createElement('div');
+    emptyMsg.textContent = 'Нет занятий';
+    content.appendChild(emptyMsg);
+}
+```
 
-### API Returns 401 Unauthorized
+### Foreign Key Constraint Violations
 
-**Symptom**: API calls fail with 401 even with valid token
+**Problem**: `formula_id = 0` causes foreign key error
 
-**Solutions**:
-1. Check token exists in database:
-   ```sql
-   SELECT * FROM api_tokens WHERE token = 'YOUR_TOKEN';
-   ```
-2. Verify token not expired:
-   ```sql
-   SELECT * FROM api_tokens WHERE expires_at > NOW();
-   ```
-3. Check `Authorization` header format: `Bearer YOUR_TOKEN` (with space)
-4. Verify token extraction in `getBearerToken()` function
+**Solution**: Explicit NULL handling
+```php
+$formulaId = null;
+if (isset($data['formula_id']) && $data['formula_id']) {
+    $formulaId = filter_var($data['formula_id'], FILTER_VALIDATE_INT);
+    if ($formulaId === false || $formulaId === 0) {
+        $formulaId = null;  // ← KEY FIX
+    }
+}
+```
 
-### .htaccess Not Working
+### dbExecute Returns Empty for INSERT
 
-**Symptom**: URLs like `/crm/api/students` return 404
+**Problem**: `pdo->lastInsertId()` returns "0" (string) which is falsy
 
-**Solutions**:
-1. Enable mod_rewrite: `a2enmod rewrite && systemctl restart apache2`
-2. Check `.htaccess` file exists in `/crm/` directory
-3. Verify AllowOverride is set:
-   ```apache
-   <Directory /var/www/html>
-       AllowOverride All
-   </Directory>
-   ```
-4. Test with full URL: `/crm/api/students.php?action=list`
-
-### FTP Deployment Fails
-
-**Symptom**: GitHub Action fails at "Sync files" step
-
-**Solutions**:
-1. Verify GitHub Secrets are set correctly
-2. Test FTP credentials manually with FileZilla
-3. Check server path exists: `/PALOMATIKA/public_html/`
-4. Verify FTP user has write permissions
-5. Check GitHub Actions logs for specific error
-
-### Student Balance Not Updating
-
-**Symptom**: Payments added but balance stays 0
-
-**Solutions**:
-1. Check triggers exist:
-   ```sql
-   SHOW TRIGGERS LIKE 'payments';
-   ```
-2. Re-create triggers from `database.sql`
-3. Manually update balance:
-   ```sql
-   UPDATE students s
-   SET balance = (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE student_id = s.id)
-   WHERE id = ?;
-   ```
-
-### Large File Upload Fails
-
-**Symptom**: Material upload fails for PDF > 2MB
-
-**Solutions**:
-1. Increase PHP limits in `php.ini`:
-   ```ini
-   upload_max_filesize = 20M
-   post_max_size = 20M
-   max_execution_time = 300
-   ```
-2. Restart web server: `systemctl restart apache2`
-3. Check `.htaccess` doesn't override limits
+**Solution**: Applied in `/zarplata/config/db.php:102-104`
+```php
+if ($lastId && $lastId !== '0') {  // Explicit check for string "0"
+    return (int)$lastId;
+}
+```
 
 ---
 
-## 📚 Additional Resources
+## 📚 Additional Resources (Zarplata)
 
-### Documentation Files
-- **`crm/README.md`** - CRM system overview (Russian)
-- **`crm/INSTALL.md`** - Installation instructions
-- **`docs/claude.md`** - Technical specification (Russian)
-- **`DEPLOYMENT.md`** - Deployment documentation
+### Documentation
+- **`zarplata/README.md`** - Complete system documentation (Russian)
+- **`zarplata/database.sql`** - Full database schema
+- **`zarplata/migrations/README.md`** - Migration instructions
 
-### Geometry Platform Data
-- **`config.php`** - Complete curriculum (12 chapters, 3 grades)
-- Chapters I-IV: Grade 7
-- Chapters V-VIII: Grade 8
-- Chapters IX-XII: Grade 9
+### Key Files
+- **`zarplata/config/db.php`** - Database abstraction layer
+  - `dbQuery($sql, $params)` - SELECT queries
+  - `dbQueryOne($sql, $params)` - Single row SELECT
+  - `dbExecute($sql, $params)` - INSERT/UPDATE/DELETE
 
-### Database Schema
-- **`crm/database.sql`** - Complete schema with triggers and views
+- **`zarplata/config/auth.php`** - Authentication
+  - `requireAuth()` - Enforce login
+  - `getCurrentUser()` - Get current user data
+  - `isLoggedIn()` - Check authentication status
 
-### Important Functions
+- **`zarplata/config/helpers.php`** - Helper functions
+  - `e($string)` - Escape HTML (htmlspecialchars wrapper)
+  - `jsonSuccess($data)` - Send JSON success response
+  - `jsonError($message, $code)` - Send JSON error response
+  - `logAudit($action, $entity, $id, ...)` - Write audit log
 
-**Database** (`crm/config/db.php`):
-- `dbQuery($sql, $params)` - Execute SELECT query, return all rows
-- `dbQueryOne($sql, $params)` - Execute SELECT query, return first row
-- `dbExecute($sql, $params)` - Execute INSERT/UPDATE/DELETE, return lastInsertId
-- `dbBeginTransaction()`, `dbCommit()`, `dbRollback()` - Transaction control
-
-**Authentication** (`crm/config/auth.php`):
-- `isLoggedIn()` - Check if user is authenticated
-- `getCurrentUserId()`, `getCurrentUserRole()`, `getCurrentUserName()` - Get session data
-- `isSuperAdmin()`, `isTeacher()` - Role checks
-- `login($username, $password)` - Authenticate user
-- `logout()` - End session
-- `generateAPIToken($adminId)` - Create new API token
-- `validateAPIToken($token)` - Verify API token
-- `checkResourceOwner($teacherId)` - Verify user owns resource
+### Material Design Resources
+- **Color Palette**: #BB86FC (Primary), #03DAC6 (Secondary), #121212 (Background)
+- **Font**: Montserrat (Google Fonts)
+- **Icons**: Material Icons (Google)
+- **Theme**: `zarplata/assets/css/material-dark.css`
 
 ---
 
-## 🎯 AI Assistant Guidelines
+## 🎯 AI Assistant Guidelines (Updated for Zarplata)
 
-### When Working on This Project
+### Zarplata-Specific Patterns
 
-1. **Always Read First**
-   - Read relevant PHP files before editing
-   - Check database schema before writing queries
-   - Review existing API patterns before adding endpoints
+1. **Always use Material Design components**
+   - Cards with elevation shadows
+   - Material Icons instead of Font Awesome
+   - Dark theme colors from `material-dark.css`
+   - Montserrat font
 
-2. **Follow Existing Patterns**
-   - Use `dbQuery()`/`dbExecute()` for database access
-   - Use `isLoggedIn()` for authentication checks
-   - Use `checkResourceOwner()` for authorization
-   - Follow existing API response format
+2. **Follow the schedule table layout**
+   - Grid system: `60px (time) + repeat(3, 120px) (rooms)`
+   - Fixed sidebar at 280px width
+   - Main content: `calc(100vw - 280px)` max-width
 
-3. **Security First**
-   - Never concatenate user input into SQL queries
-   - Always escape output with `htmlspecialchars()`
-   - Always validate input (type, length, format)
-   - Always check authentication AND authorization
+3. **Handle NULL foreign keys correctly**
+   - Always check for NULL/0/false when dealing with `formula_id`
+   - Use explicit NULL instead of 0 for optional foreign keys
 
-4. **Test Before Committing**
-   - Test CRUD operations manually
-   - Test with different roles (teacher vs superadmin)
-   - Test error cases (invalid input, unauthorized access)
-   - Verify database triggers work correctly
+4. **Maintain backwards compatibility**
+   - Try-catch for database queries with new fields
+   - Fallback to minimal field set if new columns don't exist
 
-5. **Commit Properly**
-   - Use conventional commit messages
-   - Make atomic commits (one logical change)
-   - Push to `claude/*` branch only
-   - Let auto-merge handle main branch
+5. **Use JSON for array storage**
+   - Students list stored as JSON in TEXT field
+   - Parse with try-catch for robustness
 
-6. **Document Changes**
-   - Update CLAUDE.md if architecture changes
-   - Add comments for complex logic
-   - Update API documentation if endpoints change
-   - Keep database schema documentation current
+### Common Zarplata Patterns
 
-### Common Mistakes to Avoid
+**API Error Handling**:
+```php
+function handleAddTemplate() {
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
 
-❌ **DON'T**:
-- Push directly to `main` branch
-- Concatenate SQL queries
-- Forget to check authorization
-- Use `var_dump()` in production code
-- Hard-code credentials
-- Skip input validation
-- Forget to handle errors
-- Create SQL injection vulnerabilities
+    if (!$data) {
+        $data = $_POST;  // Fallback to form data
+    }
 
-✅ **DO**:
-- Work on `claude/*` branches
-- Use prepared statements
-- Check both authentication and authorization
-- Use proper error handling
-- Use environment-based configuration
-- Validate all inputs
-- Return meaningful error messages
-- Follow security best practices
+    // ... validation and processing
+}
+```
+
+**Audit Logging**:
+```php
+logAudit('template_created', 'template', $templateId, null, [
+    'teacher_id' => $teacherId,
+    'day_of_week' => $dayOfWeek,
+    'time' => "$timeStart-$timeEnd"
+], 'Создан шаблон урока');
+```
 
 ---
 
-## 📞 Support & Contact
-
-**For Questions About**:
-- **Architecture**: Read this CLAUDE.md file
-- **Database**: Check `crm/database.sql`
-- **API**: Check `crm/api/students.php` as example
-- **Deployment**: Check `.github/workflows/deploy-timeweb.yml`
-- **Russian Docs**: Check `docs/claude.md` and `crm/README.md`
-
-**Default Credentials** (change in production!):
-- Username: `admin`
-- Password: `admin123`
-- Role: `superadmin`
-
----
-
-**End of CLAUDE.md** - Last updated: 2025-11-15
+**End of CLAUDE.md** - Last updated: 2025-11-17
