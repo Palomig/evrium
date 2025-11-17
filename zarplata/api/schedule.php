@@ -100,12 +100,16 @@ function handleAddTemplate() {
     // Валидация
     $teacherId = filter_var($data['teacher_id'] ?? 0, FILTER_VALIDATE_INT);
     $dayOfWeek = filter_var($data['day_of_week'] ?? 0, FILTER_VALIDATE_INT);
+    $room = filter_var($data['room'] ?? 1, FILTER_VALIDATE_INT);
     $timeStart = $data['time_start'] ?? '';
     $timeEnd = $data['time_end'] ?? '';
     $lessonType = $data['lesson_type'] ?? 'group';
     $subject = trim($data['subject'] ?? '');
     $expectedStudents = filter_var($data['expected_students'] ?? 1, FILTER_VALIDATE_INT);
     $formulaId = filter_var($data['formula_id'] ?? null, FILTER_VALIDATE_INT);
+    $tier = trim($data['tier'] ?? 'C');
+    $grades = trim($data['grades'] ?? '');
+    $students = $data['students'] ?? '';
 
     if (!$teacherId) {
         jsonError('Выберите преподавателя', 400);
@@ -113,6 +117,10 @@ function handleAddTemplate() {
 
     if ($dayOfWeek < 1 || $dayOfWeek > 7) {
         jsonError('Неверный день недели', 400);
+    }
+
+    if ($room < 1 || $room > 3) {
+        jsonError('Неверный номер кабинета', 400);
     }
 
     if (!$timeStart || !$timeEnd) {
@@ -127,11 +135,11 @@ function handleAddTemplate() {
     try {
         $templateId = dbExecute(
             "INSERT INTO lessons_template
-             (teacher_id, day_of_week, time_start, time_end, lesson_type,
-              subject, expected_students, formula_id, active)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)",
-            [$teacherId, $dayOfWeek, $timeStart, $timeEnd, $lessonType,
-             $subject ?: null, $expectedStudents, $formulaId]
+             (teacher_id, day_of_week, room, time_start, time_end, lesson_type,
+              subject, expected_students, formula_id, tier, grades, students, active)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
+            [$teacherId, $dayOfWeek, $room, $timeStart, $timeEnd, $lessonType,
+             $subject ?: null, $expectedStudents, $formulaId, $tier, $grades ?: null, $students ?: null]
         );
 
         if ($templateId) {
@@ -179,12 +187,16 @@ function handleUpdateTemplate() {
     // Валидация
     $teacherId = filter_var($data['teacher_id'] ?? 0, FILTER_VALIDATE_INT);
     $dayOfWeek = filter_var($data['day_of_week'] ?? 0, FILTER_VALIDATE_INT);
+    $room = filter_var($data['room'] ?? 1, FILTER_VALIDATE_INT);
     $timeStart = $data['time_start'] ?? '';
     $timeEnd = $data['time_end'] ?? '';
     $lessonType = $data['lesson_type'] ?? 'group';
     $subject = trim($data['subject'] ?? '');
     $expectedStudents = filter_var($data['expected_students'] ?? 1, FILTER_VALIDATE_INT);
     $formulaId = filter_var($data['formula_id'] ?? null, FILTER_VALIDATE_INT);
+    $tier = trim($data['tier'] ?? 'C');
+    $grades = trim($data['grades'] ?? '');
+    $students = $data['students'] ?? '';
 
     if (!$teacherId) {
         jsonError('Выберите преподавателя', 400);
@@ -192,6 +204,10 @@ function handleUpdateTemplate() {
 
     if ($dayOfWeek < 1 || $dayOfWeek > 7) {
         jsonError('Неверный день недели', 400);
+    }
+
+    if ($room < 1 || $room > 3) {
+        jsonError('Неверный номер кабинета', 400);
     }
 
     if ($expectedStudents < 1) {
@@ -202,12 +218,12 @@ function handleUpdateTemplate() {
     try {
         $result = dbExecute(
             "UPDATE lessons_template
-             SET teacher_id = ?, day_of_week = ?, time_start = ?, time_end = ?,
+             SET teacher_id = ?, day_of_week = ?, room = ?, time_start = ?, time_end = ?,
                  lesson_type = ?, subject = ?, expected_students = ?,
-                 formula_id = ?, updated_at = NOW()
+                 formula_id = ?, tier = ?, grades = ?, students = ?, updated_at = NOW()
              WHERE id = ?",
-            [$teacherId, $dayOfWeek, $timeStart, $timeEnd, $lessonType,
-             $subject ?: null, $expectedStudents, $formulaId, $id]
+            [$teacherId, $dayOfWeek, $room, $timeStart, $timeEnd, $lessonType,
+             $subject ?: null, $expectedStudents, $formulaId, $tier, $grades ?: null, $students ?: null, $id]
         );
 
         if ($result !== false) {

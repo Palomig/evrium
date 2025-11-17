@@ -90,6 +90,11 @@ async function loadTemplateData(templateId) {
                 document.getElementById('template-student-list').value = studentsText;
             }
 
+            // Установить кабинет
+            if (template.room) {
+                document.getElementById('template-room').value = template.room;
+            }
+
             // Подставить формулу из преподавателя (автоматически)
             if (template.teacher_id && typeof teachersData !== 'undefined') {
                 const teacher = teachersData.find(t => t.id === parseInt(template.teacher_id));
@@ -157,6 +162,7 @@ async function saveTemplate(event) {
     // Конвертируем числа
     data.teacher_id = parseInt(data.teacher_id);
     data.day_of_week = parseInt(data.day_of_week);
+    data.room = parseInt(data.room);
     data.expected_students = parseInt(data.expected_students);
     if (data.formula_id) {
         data.formula_id = parseInt(data.formula_id);
