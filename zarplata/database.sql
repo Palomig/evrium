@@ -178,7 +178,8 @@ CREATE TABLE IF NOT EXISTS `attendance_log` (
 CREATE TABLE IF NOT EXISTS `payments` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `teacher_id` INT NOT NULL,
-    `lesson_instance_id` INT NULL, -- NULL для разовых начислений
+    `lesson_instance_id` INT NULL, -- NULL для разовых начислений (старая система)
+    `lesson_template_id` INT NULL, -- ⭐ Привязка к шаблону урока (для Telegram bot)
     `amount` INT NOT NULL, -- В рублях, без копеек
     `payment_type` ENUM('lesson', 'bonus', 'penalty', 'adjustment') DEFAULT 'lesson',
     `calculation_method` TEXT, -- Описание как рассчитано
@@ -191,8 +192,10 @@ CREATE TABLE IF NOT EXISTS `payments` (
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`teacher_id`) REFERENCES `teachers`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`lesson_instance_id`) REFERENCES `lessons_instance`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`lesson_template_id`) REFERENCES `lessons_template`(`id`) ON DELETE SET NULL,
     INDEX `idx_teacher_status` (`teacher_id`, `status`),
-    INDEX `idx_period` (`period_start`, `period_end`)
+    INDEX `idx_period` (`period_start`, `period_end`),
+    INDEX `idx_lesson_template_id` (`lesson_template_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================================
