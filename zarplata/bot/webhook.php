@@ -87,7 +87,8 @@ function handleMessage($message) {
     }
 
     // Обычные сообщения
-    sendTelegramMessage($chatId, "Используйте кнопки меню или команды:\n/start - Регистрация\n/today - Заработок сегодня\n/week - Заработок за неделю", getMainMenuKeyboard());
+    $keyboard = function_exists('getMainMenuKeyboard') ? getMainMenuKeyboard() : null;
+    sendTelegramMessage($chatId, "Используйте кнопки меню или команды:\n/start - Регистрация\n/today - Заработок сегодня\n/week - Заработок за неделю", $keyboard);
 }
 
 /**
@@ -141,6 +142,7 @@ function handleCommand($chatId, $telegramId, $username, $text) {
             break;
 
         case '/help':
+            $keyboard = function_exists('getMainMenuKeyboard') ? getMainMenuKeyboard() : null;
             sendTelegramMessage($chatId,
                 "📚 <b>Доступные команды:</b>\n\n" .
                 "📅 <b>Сегодня</b> - Заработок за сегодня\n" .
@@ -148,7 +150,7 @@ function handleCommand($chatId, $telegramId, $username, $text) {
                 "🗓 <b>Расписание</b> - Расписание на сегодня\n" .
                 "ℹ️ <b>Помощь</b> - Эта справка\n\n" .
                 "Используйте кнопки меню ниже для быстрого доступа к командам.",
-                getMainMenuKeyboard()
+                $keyboard
             );
             break;
 

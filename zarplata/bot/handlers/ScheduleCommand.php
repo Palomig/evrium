@@ -80,5 +80,6 @@ function handleScheduleCommand($chatId, $telegramId) {
 
     $message .= "💡 <i>Через 15 минут после начала урока бот спросит о посещаемости</i>";
 
-    sendTelegramMessage($chatId, $message, getMainMenuKeyboard());
+    $keyboard = function_exists('getMainMenuKeyboard') ? getMainMenuKeyboard() : null;
+    sendTelegramMessage($chatId, $message, $keyboard);
 }

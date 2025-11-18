@@ -7,13 +7,16 @@ function handleStartCommand($chatId, $telegramId, $username) {
     // Проверяем, привязан ли уже этот Telegram ID
     $teacher = getTeacherByTelegramId($telegramId);
 
+    // Получаем клавиатуру меню
+    $keyboard = function_exists('getMainMenuKeyboard') ? getMainMenuKeyboard() : null;
+
     if ($teacher) {
         sendTelegramMessage($chatId,
             "✅ Ваш аккаунт уже привязан!\n\n" .
             "👤 <b>Преподаватель:</b> {$teacher['name']}\n" .
             "📱 <b>Telegram:</b> @{$username}\n\n" .
             "Используйте кнопки меню ниже для навигации.",
-            getMainMenuKeyboard()
+            $keyboard
         );
         return;
     }
@@ -27,7 +30,7 @@ function handleStartCommand($chatId, $telegramId, $username) {
         "2. Открыть раздел \"Преподаватели\"\n" .
         "3. Найти ваш профиль и указать Telegram ID: <code>{$telegramId}</code>\n\n" .
         "После привязки вы сможете получать уведомления об уроках и видеть статистику заработка.",
-        getMainMenuKeyboard()
+        $keyboard
     );
 
     // Логируем попытку регистрации
