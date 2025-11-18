@@ -114,10 +114,13 @@ function handleGet() {
 
     $payment = dbQueryOne(
         "SELECT p.*, t.name as teacher_name,
-         li.lesson_date, li.time_start, li.time_end, li.subject, li.expected_students, li.actual_students
+         li.lesson_date, li.time_start, li.time_end, li.subject, li.lesson_type,
+         li.expected_students, li.actual_students,
+         lt.room, lt.students
          FROM payments p
          LEFT JOIN teachers t ON p.teacher_id = t.id
          LEFT JOIN lessons_instance li ON p.lesson_instance_id = li.id
+         LEFT JOIN lessons_template lt ON li.template_id = lt.id
          WHERE p.id = ?",
         [$id]
     );
