@@ -13,6 +13,11 @@ ADD CONSTRAINT `fk_students_teacher`
 ALTER TABLE `students`
 ADD COLUMN `tier` ENUM('S', 'A', 'B', 'C', 'D') DEFAULT 'C' AFTER `class`;
 
+-- Добавляем мессенджеры ученика
+ALTER TABLE `students`
+ADD COLUMN `student_telegram` VARCHAR(50) NULL AFTER `tier`,
+ADD COLUMN `student_whatsapp` VARCHAR(20) NULL AFTER `student_telegram`;
+
 -- Удаляем телефон ученика (не нужен)
 ALTER TABLE `students`
 DROP COLUMN `phone`;

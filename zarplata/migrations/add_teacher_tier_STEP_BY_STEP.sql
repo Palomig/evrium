@@ -55,15 +55,24 @@ CHANGE COLUMN `parent_phone` `parent_name` VARCHAR(100) NULL;
 -- ПОСЛЕ ВЫПОЛНЕНИЯ БЛОКА 6, ВЫПОЛНИТЕ БЛОК 7:
 -- ========================================
 
--- БЛОК 7: Добавляем индексы
+-- БЛОК 7: Добавляем мессенджеры ученика (если их еще нет)
 ALTER TABLE `students`
-ADD INDEX `idx_teacher_id` (`teacher_id`);
+ADD COLUMN `student_telegram` VARCHAR(50) NULL AFTER `tier`,
+ADD COLUMN `student_whatsapp` VARCHAR(20) NULL AFTER `student_telegram`;
 
 -- ========================================
 -- ПОСЛЕ ВЫПОЛНЕНИЯ БЛОКА 7, ВЫПОЛНИТЕ БЛОК 8:
 -- ========================================
 
--- БЛОК 8: Добавляем индекс для tier
+-- БЛОК 8: Добавляем индексы
+ALTER TABLE `students`
+ADD INDEX `idx_teacher_id` (`teacher_id`);
+
+-- ========================================
+-- ПОСЛЕ ВЫПОЛНЕНИЯ БЛОКА 8, ВЫПОЛНИТЕ БЛОК 9:
+-- ========================================
+
+-- БЛОК 9: Добавляем индекс для tier
 ALTER TABLE `students`
 ADD INDEX `idx_tier` (`tier`);
 

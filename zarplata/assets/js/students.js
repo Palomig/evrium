@@ -165,6 +165,8 @@ async function saveStudent(event) {
         payment_type_group: formData.get('payment_type_group'),
         payment_type_individual: formData.get('payment_type_individual'),
         schedule: JSON.stringify(schedule),
+        student_telegram: formData.get('student_telegram') || null,
+        student_whatsapp: formData.get('student_whatsapp') || null,
         parent_name: formData.get('parent_name') || null,
         parent_telegram: formData.get('parent_telegram') || null,
         parent_whatsapp: formData.get('parent_whatsapp') || null,
@@ -220,6 +222,8 @@ async function editStudent(id) {
             document.getElementById('student-teacher').value = student.teacher_id || '';
             document.getElementById('student-class').value = student.class || '';
             document.getElementById('student-parent-name').value = student.parent_name || '';
+            document.getElementById('student-telegram').value = student.student_telegram || '';
+            document.getElementById('student-whatsapp').value = student.student_whatsapp || '';
             document.getElementById('parent-telegram').value = student.parent_telegram || '';
             document.getElementById('parent-whatsapp').value = student.parent_whatsapp || '';
             document.getElementById('student-notes').value = student.notes || '';
