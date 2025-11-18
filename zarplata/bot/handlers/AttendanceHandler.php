@@ -35,8 +35,29 @@ function handleAllPresent($chatId, $messageId, $telegramId, $lessonTemplateId, $
     // Все ученики пришли = expected_students
     $attendedCount = $lesson['expected_students'];
 
+    // Определяем формулу расчета (сначала урока, затем преподавателя)
+    $formulaId = $lesson['formula_id'] ?? $teacher['formula_id'] ?? null;
+
+    if (!$formulaId) {
+        error_log("[Telegram Bot] No formula_id for lesson {$lessonTemplateId} or teacher {$teacher['id']}");
+        answerCallbackQuery($callbackQueryId, "Ошибка: не настроена формула расчета", true);
+        return;
+    }
+
+    // Получаем формулу
+    $formula = dbQueryOne(
+        "SELECT * FROM payment_formulas WHERE id = ? AND active = 1",
+        [$formulaId]
+    );
+
+    if (!$formula) {
+        error_log("[Telegram Bot] Formula {$formulaId} not found or inactive");
+        answerCallbackQuery($callbackQueryId, "Ошибка: формула расчета не найдена", true);
+        return;
+    }
+
     // Рассчитываем зарплату
-    $paymentAmount = calculatePayment($lesson, $teacher, $attendedCount);
+    $paymentAmount = calculatePayment($formula, $attendedCount);
 
     // Создаём запись о выплате
     $paymentId = dbExecute(
@@ -184,10 +205,32 @@ function handleAttendanceCount($chatId, $messageId, $telegramId, $lessonTemplate
     }
 
     error_log("[Telegram Bot] Lesson found: {$lesson['subject']} (expected: {$lesson['expected_students']})");
-    error_log("[Telegram Bot] Calling calculatePayment with attended: {$attendedCount}");
+
+    // Определяем формулу расчета (сначала урока, затем преподавателя)
+    $formulaId = $lesson['formula_id'] ?? $teacher['formula_id'] ?? null;
+
+    if (!$formulaId) {
+        error_log("[Telegram Bot] No formula_id for lesson {$lessonTemplateId} or teacher {$teacher['id']}");
+        answerCallbackQuery($callbackQueryId, "Ошибка: не настроена формула расчета", true);
+        return;
+    }
+
+    // Получаем формулу
+    $formula = dbQueryOne(
+        "SELECT * FROM payment_formulas WHERE id = ? AND active = 1",
+        [$formulaId]
+    );
+
+    if (!$formula) {
+        error_log("[Telegram Bot] Formula {$formulaId} not found or inactive");
+        answerCallbackQuery($callbackQueryId, "Ошибка: формула расчета не найдена", true);
+        return;
+    }
+
+    error_log("[Telegram Bot] Calling calculatePayment with formula type: {$formula['type']}, attended: {$attendedCount}");
 
     // Рассчитываем зарплату
-    $paymentAmount = calculatePayment($lesson, $teacher, $attendedCount);
+    $paymentAmount = calculatePayment($formula, $attendedCount);
 
     error_log("[Telegram Bot] Payment calculated: {$paymentAmount} RUB");
 

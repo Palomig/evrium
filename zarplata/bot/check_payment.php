@@ -105,15 +105,28 @@ $testCounts = [0, 1, 2, 3, 4, 5, 6];
 echo "Тестовые расчеты для разного количества учеников:\n\n";
 
 foreach ($testCounts as $count) {
-    $amount = calculatePayment($lesson, $teacher, $count);
+    $amount = calculatePayment($formula, $count);
     echo "  Пришло {$count} учеников → Зарплата: <strong>{$amount} ₽</strong>\n";
 
     if ($formula['type'] === 'min_plus_per') {
         $threshold = $formula['threshold'] ?? 2;
         $minPayment = $formula['min_payment'] ?? 0;
         $perStudent = $formula['per_student'] ?? 0;
-        $expected = $minPayment + (max(0, $count - $threshold) * $perStudent);
-        echo "    Расчет: {$minPayment} + max(0, {$count} - {$threshold}) * {$perStudent} = {$expected} ₽\n";
+
+        // Правильная формула: если пришло >= threshold, то min + (count - threshold + 1) * per
+        if ($count >= $threshold) {
+            $expected = $minPayment + (($count - $threshold + 1) * $perStudent);
+        } else {
+            $expected = $minPayment;
+        }
+
+        echo "    Расчет: ";
+        if ($count >= $threshold) {
+            echo "{$minPayment} + ({$count} - {$threshold} + 1) * {$perStudent} = {$expected} ₽\n";
+        } else {
+            echo "{$minPayment} (меньше порога {$threshold})\n";
+        }
+
         if ($amount != $expected) {
             echo "    <span class='error'>⚠️ Ожидалось {$expected} ₽, получено {$amount} ₽</span>\n";
         }
