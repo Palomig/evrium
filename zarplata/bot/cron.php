@@ -1,7 +1,8 @@
 <?php
 /**
  * Cron задача для автоматического опроса посещаемости
- * Запускать каждые 5 минут: */5 * * * * php /path/to/zarplata/bot/cron.php
+ * Запускать каждые 5 минут через crontab
+ * Команда: php /home/c/cw95865/PALOMATIKA/public_html/zarplata/bot/cron.php
  */
 
 require_once __DIR__ . '/config.php';
