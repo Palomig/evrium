@@ -159,12 +159,17 @@ function handleSomeAbsent($chatId, $messageId, $telegramId, $lessonTemplateId, $
  * Указано количество присутствующих
  */
 function handleAttendanceCount($chatId, $messageId, $telegramId, $lessonTemplateId, $attendedCount, $callbackQueryId) {
+    error_log("[Telegram Bot] handleAttendanceCount called for lesson {$lessonTemplateId}, attended: {$attendedCount}");
+
     $teacher = getTeacherByTelegramId($telegramId);
 
     if (!$teacher) {
+        error_log("[Telegram Bot] Teacher not found for telegram_id {$telegramId}");
         answerCallbackQuery($callbackQueryId, "Ошибка: преподаватель не найден", true);
         return;
     }
+
+    error_log("[Telegram Bot] Teacher found: {$teacher['name']} (ID: {$teacher['id']})");
 
     // Получаем данные урока
     $lesson = dbQueryOne(
@@ -173,12 +178,18 @@ function handleAttendanceCount($chatId, $messageId, $telegramId, $lessonTemplate
     );
 
     if (!$lesson) {
+        error_log("[Telegram Bot] Lesson not found: {$lessonTemplateId}");
         answerCallbackQuery($callbackQueryId, "Ошибка: урок не найден", true);
         return;
     }
 
+    error_log("[Telegram Bot] Lesson found: {$lesson['subject']} (expected: {$lesson['expected_students']})");
+    error_log("[Telegram Bot] Calling calculatePayment with attended: {$attendedCount}");
+
     // Рассчитываем зарплату
     $paymentAmount = calculatePayment($lesson, $teacher, $attendedCount);
+
+    error_log("[Telegram Bot] Payment calculated: {$paymentAmount} RUB");
 
     // Создаём запись о выплате
     $paymentId = dbExecute(
