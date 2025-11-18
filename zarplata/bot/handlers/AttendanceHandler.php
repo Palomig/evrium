@@ -79,9 +79,12 @@ function handleAllPresent($chatId, $messageId, $telegramId, $lessonTemplateId, $
  * Некоторые ученики отсутствуют
  */
 function handleSomeAbsent($chatId, $messageId, $telegramId, $lessonTemplateId, $callbackQueryId) {
+    error_log("[Telegram Bot] handleSomeAbsent called for lesson {$lessonTemplateId}");
+
     $teacher = getTeacherByTelegramId($telegramId);
 
     if (!$teacher) {
+        error_log("[Telegram Bot] Teacher not found for telegram_id {$telegramId}");
         answerCallbackQuery($callbackQueryId, "Ошибка: преподаватель не найден", true);
         return;
     }
@@ -93,15 +96,18 @@ function handleSomeAbsent($chatId, $messageId, $telegramId, $lessonTemplateId, $
     );
 
     if (!$lesson) {
+        error_log("[Telegram Bot] Lesson not found: {$lessonTemplateId}");
         answerCallbackQuery($callbackQueryId, "Ошибка: урок не найден", true);
         return;
     }
 
-    // Создаём клавиатуру с выбором количества присутствующих
+    error_log("[Telegram Bot] Creating keyboard for {$lesson['expected_students']} students");
+
+    // Создаём клавиатуру с выбором количества присутствующих (от 1 до N)
     $keyboard = [];
     $row = [];
 
-    for ($i = 0; $i < $lesson['expected_students']; $i++) {
+    for ($i = 1; $i <= $lesson['expected_students']; $i++) {
         $row[] = [
             'text' => (string)$i,
             'callback_data' => "attendance_count:{$lessonTemplateId}:{$i}"
@@ -114,9 +120,17 @@ function handleSomeAbsent($chatId, $messageId, $telegramId, $lessonTemplateId, $
         }
     }
 
+    // Добавляем кнопку "0" (никто не пришел) в отдельный ряд
     if (!empty($row)) {
         $keyboard[] = $row;
     }
+
+    $keyboard[] = [
+        [
+            'text' => '0 (никто не пришел)',
+            'callback_data' => "attendance_count:{$lessonTemplateId}:0"
+        ]
+    ];
 
     // Обновляем сообщение
     $subject = $lesson['subject'] ? "{$lesson['subject']}" : "Урок";
