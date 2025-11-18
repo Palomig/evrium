@@ -116,6 +116,10 @@ function handleAdd() {
     $parentName = trim($data['parent_name'] ?? '');
     $notes = trim($data['notes'] ?? '');
 
+    // Мессенджеры ученика
+    $studentTelegram = trim($data['student_telegram'] ?? '');
+    $studentWhatsapp = trim($data['student_whatsapp'] ?? '');
+
     // Мессенджеры родителя
     $parentTelegram = trim($data['parent_telegram'] ?? '');
     $parentWhatsapp = trim($data['parent_whatsapp'] ?? '');
@@ -169,9 +173,9 @@ function handleAdd() {
         // Пробуем вставить с новыми полями
         try {
             $studentId = dbExecute(
-                "INSERT INTO students (name, teacher_id, tier, parent_name, parent_telegram, parent_whatsapp, class, lesson_type, price_group, price_individual, payment_type_group, payment_type_individual, schedule, notes, active)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
-                [$name, $teacherId, $tier, $parentName ?: null, $parentTelegram ?: null, $parentWhatsapp ?: null, $class, $lessonType, $priceGroup, $priceIndividual, $paymentTypeGroup, $paymentTypeIndividual, $schedule, $notes ?: null]
+                "INSERT INTO students (name, teacher_id, tier, student_telegram, student_whatsapp, parent_name, parent_telegram, parent_whatsapp, class, lesson_type, price_group, price_individual, payment_type_group, payment_type_individual, schedule, notes, active)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
+                [$name, $teacherId, $tier, $studentTelegram ?: null, $studentWhatsapp ?: null, $parentName ?: null, $parentTelegram ?: null, $parentWhatsapp ?: null, $class, $lessonType, $priceGroup, $priceIndividual, $paymentTypeGroup, $paymentTypeIndividual, $schedule, $notes ?: null]
             );
         } catch (PDOException $e) {
             // Если новых полей еще нет в базе, используем минимальный набор
@@ -298,6 +302,10 @@ function handleUpdate() {
     $parentName = trim($data['parent_name'] ?? '');
     $notes = trim($data['notes'] ?? '');
 
+    // Мессенджеры ученика
+    $studentTelegram = trim($data['student_telegram'] ?? '');
+    $studentWhatsapp = trim($data['student_whatsapp'] ?? '');
+
     // Мессенджеры родителя
     $parentTelegram = trim($data['parent_telegram'] ?? '');
     $parentWhatsapp = trim($data['parent_whatsapp'] ?? '');
@@ -352,9 +360,9 @@ function handleUpdate() {
         try {
             $result = dbExecute(
                 "UPDATE students
-                 SET name = ?, teacher_id = ?, tier = ?, parent_name = ?, parent_telegram = ?, parent_whatsapp = ?, class = ?, lesson_type = ?, price_group = ?, price_individual = ?, payment_type_group = ?, payment_type_individual = ?, schedule = ?, notes = ?, updated_at = NOW()
+                 SET name = ?, teacher_id = ?, tier = ?, student_telegram = ?, student_whatsapp = ?, parent_name = ?, parent_telegram = ?, parent_whatsapp = ?, class = ?, lesson_type = ?, price_group = ?, price_individual = ?, payment_type_group = ?, payment_type_individual = ?, schedule = ?, notes = ?, updated_at = NOW()
                  WHERE id = ?",
-                [$name, $teacherId, $tier, $parentName ?: null, $parentTelegram ?: null, $parentWhatsapp ?: null, $class, $lessonType, $priceGroup, $priceIndividual, $paymentTypeGroup, $paymentTypeIndividual, $schedule, $notes ?: null, $id]
+                [$name, $teacherId, $tier, $studentTelegram ?: null, $studentWhatsapp ?: null, $parentName ?: null, $parentTelegram ?: null, $parentWhatsapp ?: null, $class, $lessonType, $priceGroup, $priceIndividual, $paymentTypeGroup, $paymentTypeIndividual, $schedule, $notes ?: null, $id]
             );
         } catch (PDOException $e) {
             // Если новых полей еще нет в базе, используем минимальный набор

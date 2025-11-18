@@ -27,6 +27,11 @@ ADD CONSTRAINT `fk_students_teacher`
 ALTER TABLE `students`
 ADD COLUMN `tier` ENUM('S', 'A', 'B', 'C', 'D') DEFAULT 'C' AFTER `class`;
 
+-- Шаг 5.5: Добавляем мессенджеры ученика
+ALTER TABLE `students`
+ADD COLUMN `student_telegram` VARCHAR(50) NULL AFTER `tier`,
+ADD COLUMN `student_whatsapp` VARCHAR(20) NULL AFTER `student_telegram`;
+
 -- Шаг 6: Удаляем телефон ученика (если существует)
 -- Проверяем наличие колонки перед удалением
 SET @dbname = DATABASE();
