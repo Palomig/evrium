@@ -93,6 +93,7 @@ function handleAdd() {
     $name = trim($data['name'] ?? '');
     $phone = trim($data['phone'] ?? '');
     $email = trim($data['email'] ?? '');
+    $telegramId = trim($data['telegram_id'] ?? '');
     $telegram_username = trim($data['telegram_username'] ?? '');
     $notes = trim($data['notes'] ?? '');
 
@@ -108,12 +109,17 @@ function handleAdd() {
         jsonError('Неверный формат email', 400);
     }
 
+    // Валидация telegram_id (должен быть числовым)
+    if ($telegramId && !is_numeric($telegramId)) {
+        jsonError('Telegram ID должен быть числом', 400);
+    }
+
     // Создаем преподавателя
     try {
         $teacherId = dbExecute(
-            "INSERT INTO teachers (name, phone, email, telegram_username, notes, active)
-             VALUES (?, ?, ?, ?, ?, 1)",
-            [$name, $phone ?: null, $email ?: null, $telegram_username ?: null, $notes ?: null]
+            "INSERT INTO teachers (name, phone, email, telegram_id, telegram_username, notes, active)
+             VALUES (?, ?, ?, ?, ?, ?, 1)",
+            [$name, $phone ?: null, $email ?: null, $telegramId ?: null, $telegram_username ?: null, $notes ?: null]
         );
 
         if ($teacherId) {
@@ -164,6 +170,7 @@ function handleUpdate() {
     $name = trim($data['name'] ?? '');
     $phone = trim($data['phone'] ?? '');
     $email = trim($data['email'] ?? '');
+    $telegramId = trim($data['telegram_id'] ?? '');
     $telegram_username = trim($data['telegram_username'] ?? '');
     $notes = trim($data['notes'] ?? '');
 
@@ -179,13 +186,18 @@ function handleUpdate() {
         jsonError('Неверный формат email', 400);
     }
 
+    // Валидация telegram_id (должен быть числовым)
+    if ($telegramId && !is_numeric($telegramId)) {
+        jsonError('Telegram ID должен быть числом', 400);
+    }
+
     // Обновляем преподавателя
     try {
         $result = dbExecute(
             "UPDATE teachers
-             SET name = ?, phone = ?, email = ?, telegram_username = ?, notes = ?, updated_at = NOW()
+             SET name = ?, phone = ?, email = ?, telegram_id = ?, telegram_username = ?, notes = ?, updated_at = NOW()
              WHERE id = ?",
-            [$name, $phone ?: null, $email ?: null, $telegram_username ?: null, $notes ?: null, $id]
+            [$name, $phone ?: null, $email ?: null, $telegramId ?: null, $telegram_username ?: null, $notes ?: null, $id]
         );
 
         if ($result !== false) {

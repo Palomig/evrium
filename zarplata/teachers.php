@@ -177,6 +177,24 @@ require_once __DIR__ . '/templates/header.php';
                 </div>
 
                 <div class="form-group">
+                    <label class="form-label" for="teacher-telegram-id">
+                        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">tag</span>
+                        Telegram ID
+                    </label>
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="teacher-telegram-id"
+                        name="telegram_id"
+                        placeholder="245710727"
+                        pattern="[0-9]+"
+                    >
+                    <small style="color: var(--text-medium-emphasis); display: block; margin-top: 8px;">
+                        Преподаватель получит этот ID после команды /start в боте
+                    </small>
+                </div>
+
+                <div class="form-group">
                     <label class="form-label" for="teacher-telegram">
                         <span class="material-icons" style="font-size: 16px; vertical-align: middle;">telegram</span>
                         Telegram username
@@ -186,10 +204,10 @@ require_once __DIR__ . '/templates/header.php';
                         class="form-control"
                         id="teacher-telegram"
                         name="telegram_username"
-                        placeholder="@username (без @)"
+                        placeholder="username (без @)"
                     >
                     <small style="color: var(--text-medium-emphasis); display: block; margin-top: 8px;">
-                        Преподаватель должен написать боту для активации
+                        Опционально. Автоматически обновляется при первом контакте с ботом.
                     </small>
                 </div>
 
@@ -383,6 +401,7 @@ async function loadTeacherData(teacherId) {
             document.getElementById('teacher-name').value = teacher.name || '';
             document.getElementById('teacher-phone').value = teacher.phone || '';
             document.getElementById('teacher-email').value = teacher.email || '';
+            document.getElementById('teacher-telegram-id').value = teacher.telegram_id || '';
             document.getElementById('teacher-telegram').value = teacher.telegram_username || '';
             document.getElementById('teacher-notes').value = teacher.notes || '';
         } else {
