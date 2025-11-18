@@ -8,12 +8,23 @@ require_once __DIR__ . '/../config/helpers.php';
 
 // Получить токен бота из настроек
 function getBotToken() {
-    $setting = dbQueryOne(
-        "SELECT setting_value FROM settings WHERE setting_key = 'telegram_bot_token'",
-        []
-    );
+    try {
+        $setting = dbQueryOne(
+            "SELECT setting_value FROM settings WHERE setting_key = 'telegram_bot_token'",
+            []
+        );
 
-    return $setting['setting_value'] ?? '';
+        $token = $setting['setting_value'] ?? '';
+
+        if (empty($token)) {
+            error_log("[Telegram Bot] Bot token is empty in database!");
+        }
+
+        return $token;
+    } catch (Exception $e) {
+        error_log("[Telegram Bot] Failed to get bot token: " . $e->getMessage());
+        return '';
+    }
 }
 
 // API URL Telegram
@@ -24,6 +35,13 @@ function getTelegramApiUrl($method) {
 
 // Отправить сообщение в Telegram
 function sendTelegramMessage($chatId, $text, $replyMarkup = null) {
+    $token = getBotToken();
+
+    if (empty($token)) {
+        error_log("[Telegram Bot] Cannot send message: bot token is empty");
+        return false;
+    }
+
     $url = getTelegramApiUrl('sendMessage');
 
     $data = [
@@ -44,13 +62,20 @@ function sendTelegramMessage($chatId, $text, $replyMarkup = null) {
 
     $result = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
     curl_close($ch);
 
-    if ($httpCode !== 200) {
-        error_log("Telegram API error: $result");
+    if ($curlError) {
+        error_log("[Telegram Bot] cURL error: $curlError");
         return false;
     }
 
+    if ($httpCode !== 200) {
+        error_log("[Telegram Bot] API error (HTTP $httpCode): $result");
+        return false;
+    }
+
+    error_log("[Telegram Bot] Message sent successfully to chat $chatId");
     return json_decode($result, true);
 }
 
@@ -105,17 +130,27 @@ function editTelegramMessage($chatId, $messageId, $text, $replyMarkup = null) {
 
 // Найти преподавателя по telegram_id
 function getTeacherByTelegramId($telegramId) {
-    return dbQueryOne(
-        "SELECT * FROM teachers WHERE telegram_id = ? AND active = 1",
-        [$telegramId]
-    );
+    try {
+        return dbQueryOne(
+            "SELECT * FROM teachers WHERE telegram_id = ? AND active = 1",
+            [$telegramId]
+        );
+    } catch (Exception $e) {
+        error_log("[Telegram Bot] Failed to get teacher: " . $e->getMessage());
+        return null;
+    }
 }
 
 // Установить telegram_id для преподавателя
 function setTeacherTelegramId($teacherId, $telegramId, $telegramUsername) {
-    return dbExecute(
-        "UPDATE teachers SET telegram_id = ?, telegram_username = ?, updated_at = NOW()
-         WHERE id = ?",
-        [$telegramId, $telegramUsername, $teacherId]
-    );
+    try {
+        return dbExecute(
+            "UPDATE teachers SET telegram_id = ?, telegram_username = ?, updated_at = NOW()
+             WHERE id = ?",
+            [$telegramId, $telegramUsername, $teacherId]
+        );
+    } catch (Exception $e) {
+        error_log("[Telegram Bot] Failed to set telegram_id: " . $e->getMessage());
+        return false;
+    }
 }
