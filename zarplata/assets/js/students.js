@@ -1,174 +1,159 @@
 /**
- * JavaScript для управления учениками
+ * Скрипт управления учениками
  */
 
+// Глобальная переменная для хранения расписания
+let schedule = {};
 let currentStudentId = null;
-let currentViewStudentId = null;
-
-// Фильтрация по классам
-function toggleClassFilter(button) {
-    const selectedClass = button.dataset.class;
-
-    if (selectedClass === 'all') {
-        // Если нажали "Все" - включаем все классы
-        document.querySelectorAll('.class-filter-btn').forEach(btn => {
-            btn.classList.add('active');
-        });
-    } else {
-        // Если нажали конкретный класс - переключаем его
-        button.classList.toggle('active');
-        // Снимаем "Все"
-        document.querySelector('.class-filter-btn[data-class="all"]').classList.remove('active');
-    }
-
-    updateVisibleStudents();
-}
-
-// Фильтрация по типу занятий
-function toggleTypeFilter(button) {
-    const selectedType = button.dataset.type;
-
-    if (selectedType === 'all') {
-        // Если нажали "Все" - включаем все типы
-        document.querySelectorAll('.type-filter-btn').forEach(btn => {
-            btn.classList.add('active');
-        });
-    } else {
-        // Если нажали конкретный тип - переключаем его
-        button.classList.toggle('active');
-        // Снимаем "Все"
-        document.querySelector('.type-filter-btn[data-type="all"]').classList.remove('active');
-    }
-
-    updateVisibleStudents();
-}
-
-// Поиск по имени
-function filterByName() {
-    updateVisibleStudents();
-}
-
-// Обновление видимости учеников
-function updateVisibleStudents() {
-    const activeClasses = Array.from(document.querySelectorAll('.class-filter-btn.active'))
-        .map(btn => btn.dataset.class);
-
-    const activeTypes = Array.from(document.querySelectorAll('.type-filter-btn.active'))
-        .map(btn => btn.dataset.type);
-
-    const searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
-
-    document.querySelectorAll('.student-row').forEach(row => {
-        const studentClass = row.getAttribute('data-class');
-        const studentType = row.getAttribute('data-type');
-        const studentName = row.getAttribute('data-name');
-
-        // Проверка класса
-        const classMatch = activeClasses.includes('all') || activeClasses.includes(studentClass);
-
-        // Проверка типа
-        const typeMatch = activeTypes.includes('all') || activeTypes.includes(studentType);
-
-        // Проверка поиска
-        const searchMatch = !searchQuery || studentName.includes(searchQuery);
-
-        // Показываем строку только если все фильтры совпадают
-        if (classMatch && typeMatch && searchMatch) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
-    });
-}
-
-// Автообновление цены при смене типа занятий
-function updatePrice() {
-    const lessonType = document.getElementById('student-lesson-type').value;
-    const priceInput = document.getElementById('student-monthly-price');
-
-    if (lessonType === 'individual') {
-        priceInput.value = 1500;
-    } else {
-        priceInput.value = 5000;
-    }
-}
 
 // Открыть модальное окно добавления ученика
-function openStudentModal(studentId = null) {
-    currentStudentId = studentId;
-    const modal = document.getElementById('student-modal');
-    const form = document.getElementById('student-form');
-    const title = document.getElementById('modal-title');
+function openStudentModal() {
+    document.getElementById('student-modal').classList.add('active');
+    document.getElementById('modal-title').textContent = 'Добавить ученика';
+    document.getElementById('student-form').reset();
+    document.getElementById('student-id').value = '';
+    currentStudentId = null;
 
-    form.reset();
+    // Сброс расписания
+    schedule = {};
+    renderSchedule();
 
-    if (studentId) {
-        // Режим редактирования
-        title.textContent = 'Редактировать ученика';
-        loadStudentData(studentId);
-    } else {
-        // Режим создания
-        title.textContent = 'Добавить ученика';
-        document.getElementById('student-id').value = '';
-        // Устанавливаем цену по умолчанию
-        document.getElementById('student-monthly-price').value = 5000;
-    }
+    // Сброс активных кнопок дней
+    document.querySelectorAll('.btn-day').forEach(btn => btn.classList.remove('active'));
 
-    modal.classList.add('active');
-}
-
-// Загрузить данные ученика для редактирования
-async function loadStudentData(studentId) {
-    try {
-        const response = await fetch(`/zarplata/api/students.php?action=get&id=${studentId}`);
-        const result = await response.json();
-
-        if (result.success) {
-            const student = result.data;
-            document.getElementById('student-id').value = student.id;
-            document.getElementById('student-name').value = student.name || '';
-            document.getElementById('student-class').value = student.class || '';
-            document.getElementById('student-lesson-type').value = student.lesson_type || 'group';
-            document.getElementById('student-lesson-day').value = student.lesson_day || '';
-            document.getElementById('student-lesson-time').value = student.lesson_time || '';
-            document.getElementById('student-monthly-price').value = student.monthly_price || 5000;
-            document.getElementById('student-phone').value = student.phone || '';
-            document.getElementById('student-parent-phone').value = student.parent_phone || '';
-            document.getElementById('student-email').value = student.email || '';
-            document.getElementById('student-notes').value = student.notes || '';
+    // Активировать "Группа" по умолчанию
+    document.querySelectorAll('.btn-toggle').forEach(btn => {
+        if (btn.dataset.value === 'group') {
+            btn.classList.add('active');
         } else {
-            showNotification(result.error || 'Ошибка загрузки данных', 'error');
+            btn.classList.remove('active');
         }
-    } catch (error) {
-        console.error('Error loading student:', error);
-        showNotification('Ошибка загрузки данных ученика', 'error');
-    }
+    });
+    document.getElementById('student-lesson-type').value = 'group';
 }
 
 // Закрыть модальное окно
 function closeStudentModal() {
     document.getElementById('student-modal').classList.remove('active');
-    currentStudentId = null;
+    schedule = {};
+}
+
+// Выбрать тип занятий
+function selectLessonType(button) {
+    // Убрать active у всех кнопок
+    button.parentElement.querySelectorAll('.btn-toggle').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    // Добавить active к выбранной
+    button.classList.add('active');
+
+    // Обновить скрытое поле
+    document.getElementById('student-lesson-type').value = button.dataset.value;
+}
+
+// Переключить день недели
+function toggleDay(button) {
+    const day = button.dataset.day;
+    const isActive = button.classList.contains('active');
+
+    if (isActive) {
+        // Удалить день из расписания
+        button.classList.remove('active');
+        delete schedule[day];
+    } else {
+        // Добавить день в расписание с временем по умолчанию
+        button.classList.add('active');
+        schedule[day] = '15:00'; // Время по умолчанию
+    }
+
+    renderSchedule();
+}
+
+// Отрисовать список расписания
+function renderSchedule() {
+    const scheduleList = document.getElementById('schedule-list');
+    scheduleList.innerHTML = '';
+
+    const dayNames = {
+        '1': 'Понедельник',
+        '2': 'Вторник',
+        '3': 'Среда',
+        '4': 'Четверг',
+        '5': 'Пятница',
+        '6': 'Суббота',
+        '7': 'Воскресенье'
+    };
+
+    // Отсортировать дни по порядку
+    const sortedDays = Object.keys(schedule).sort((a, b) => parseInt(a) - parseInt(b));
+
+    sortedDays.forEach(day => {
+        const time = schedule[day];
+        const dayName = dayNames[day];
+
+        const item = document.createElement('div');
+        item.className = 'schedule-item';
+        item.innerHTML = `
+            <div class="schedule-item-day">${dayName}</div>
+            <input
+                type="time"
+                class="form-control schedule-item-time"
+                value="${time}"
+                onchange="updateScheduleTime(${day}, this.value)"
+            >
+            <button type="button" class="schedule-item-remove" onclick="removeScheduleDay(${day})" title="Удалить">
+                <span class="material-icons" style="font-size: 18px;">close</span>
+            </button>
+        `;
+        scheduleList.appendChild(item);
+    });
+}
+
+// Обновить время для дня
+function updateScheduleTime(day, time) {
+    schedule[day] = time;
+}
+
+// Удалить день из расписания
+function removeScheduleDay(day) {
+    delete schedule[day];
+
+    // Убрать active у кнопки
+    document.querySelector(`.btn-day[data-day="${day}"]`).classList.remove('active');
+
+    renderSchedule();
 }
 
 // Сохранить ученика
 async function saveStudent(event) {
     event.preventDefault();
 
-    const form = event.target;
-    const formData = new FormData(form);
-    const data = Object.fromEntries(formData.entries());
+    const formData = new FormData(event.target);
+    const data = {
+        name: formData.get('name'),
+        class: formData.get('class') || null,
+        lesson_type: formData.get('lesson_type'),
+        price_group: parseInt(formData.get('price_group')) || 5000,
+        price_individual: parseInt(formData.get('price_individual')) || 1500,
+        payment_type_group: formData.get('payment_type_group'),
+        payment_type_individual: formData.get('payment_type_individual'),
+        schedule: JSON.stringify(schedule),
+        phone: formData.get('phone') || null,
+        student_telegram: formData.get('student_telegram') || null,
+        student_whatsapp: formData.get('student_whatsapp') || null,
+        parent_phone: formData.get('parent_phone') || null,
+        parent_telegram: formData.get('parent_telegram') || null,
+        parent_whatsapp: formData.get('parent_whatsapp') || null,
+        notes: formData.get('notes') || null
+    };
 
     const studentId = document.getElementById('student-id').value;
     const action = studentId ? 'update' : 'add';
 
     if (studentId) {
-        data.id = studentId;
+        data.id = parseInt(studentId);
     }
-
-    const saveBtn = document.getElementById('save-student-btn');
-    saveBtn.disabled = true;
-    saveBtn.innerHTML = '<span class="material-icons rotating" style="margin-right: 8px; font-size: 18px;">sync</span>Сохранение...';
 
     try {
         const response = await fetch(`/zarplata/api/students.php?action=${action}`, {
@@ -182,130 +167,223 @@ async function saveStudent(event) {
         const result = await response.json();
 
         if (result.success) {
-            showNotification(studentId ? 'Ученик обновлён' : 'Ученик добавлен', 'success');
+            showNotification(studentId ? 'Ученик успешно обновлен!' : 'Ученик успешно добавлен!', 'success');
             closeStudentModal();
-            setTimeout(() => location.reload(), 500);
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
         } else {
-            showNotification(result.error || 'Ошибка сохранения', 'error');
+            showNotification(result.error || 'Ошибка при сохранении ученика', 'error');
         }
     } catch (error) {
-        console.error('Error saving student:', error);
-        showNotification('Ошибка сохранения данных', 'error');
-    } finally {
-        saveBtn.disabled = false;
-        saveBtn.innerHTML = '<span class="material-icons" style="margin-right: 8px; font-size: 18px;">save</span>Сохранить';
+        console.error('Error:', error);
+        showNotification('Ошибка при сохранении ученика', 'error');
     }
 }
 
 // Редактировать ученика
-function editStudent(studentId) {
-    openStudentModal(studentId);
-}
-
-// Просмотр ученика
-async function viewStudent(studentId) {
-    currentViewStudentId = studentId;
-    const modal = document.getElementById('view-student-modal');
-    const content = document.getElementById('view-student-content');
-
-    content.innerHTML = '<p style="text-align: center;">Загрузка...</p>';
-    modal.classList.add('active');
-
+async function editStudent(id) {
     try {
-        const response = await fetch(`/zarplata/api/students.php?action=get&id=${studentId}`);
+        const response = await fetch(`/zarplata/api/students.php?action=get&id=${id}`);
         const result = await response.json();
 
         if (result.success) {
             const student = result.data;
-            const days = ['', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
-            const dayName = student.lesson_day ? days[student.lesson_day] : null;
-            const lessonTypeLabel = student.lesson_type === 'individual' ? 'Индивидуальные' : 'Групповые';
+            currentStudentId = id;
 
-            content.innerHTML = `
-                <div style="display: grid; gap: 16px;">
-                    <div>
-                        <strong style="color: var(--text-medium-emphasis);">ФИО:</strong><br>
-                        <span style="font-size: 1.25rem;">${escapeHtml(student.name)}</span>
-                    </div>
-                    ${student.class ? `
-                    <div>
-                        <strong style="color: var(--text-medium-emphasis);">Класс:</strong><br>
-                        <span>${student.class} класс</span>
-                    </div>
-                    ` : ''}
-                    <div>
-                        <strong style="color: var(--text-medium-emphasis);">Тип занятий:</strong><br>
-                        <span>${lessonTypeLabel}</span>
-                    </div>
-                    ${dayName && student.lesson_time ? `
-                    <div>
-                        <strong style="color: var(--text-medium-emphasis);">Расписание:</strong><br>
-                        <span>${dayName} в ${formatTime(student.lesson_time)}</span>
-                    </div>
-                    ` : ''}
-                    <div>
-                        <strong style="color: var(--text-medium-emphasis);">Цена за месяц:</strong><br>
-                        <span style="font-size: 1.5rem; font-weight: 500;">${formatMoney(student.monthly_price || 0)}</span>
-                    </div>
-                    ${student.phone ? `
-                    <div>
-                        <strong style="color: var(--text-medium-emphasis);">Телефон:</strong><br>
-                        <span>${escapeHtml(student.phone)}</span>
-                    </div>
-                    ` : ''}
-                    ${student.parent_phone ? `
-                    <div>
-                        <strong style="color: var(--text-medium-emphasis);">Телефон родителя:</strong><br>
-                        <span>${escapeHtml(student.parent_phone)}</span>
-                    </div>
-                    ` : ''}
-                    ${student.email ? `
-                    <div>
-                        <strong style="color: var(--text-medium-emphasis);">Email:</strong><br>
-                        <span>${escapeHtml(student.email)}</span>
-                    </div>
-                    ` : ''}
-                    ${student.notes ? `
-                    <div>
-                        <strong style="color: var(--text-medium-emphasis);">Примечания:</strong><br>
-                        <span>${escapeHtml(student.notes)}</span>
-                    </div>
-                    ` : ''}
-                    <div>
-                        <strong style="color: var(--text-medium-emphasis);">Статус:</strong><br>
-                        <span class="badge badge-${student.active ? 'success' : 'danger'}">
-                            ${student.active ? 'Активен' : 'Неактивен'}
-                        </span>
-                    </div>
-                    <div>
-                        <strong style="color: var(--text-medium-emphasis);">Дата добавления:</strong><br>
-                        <span>${formatDate(student.created_at)}</span>
-                    </div>
-                </div>
-            `;
+            // Заполнить форму
+            document.getElementById('student-id').value = student.id;
+            document.getElementById('student-name').value = student.name || '';
+            document.getElementById('student-class').value = student.class || '';
+            document.getElementById('student-phone').value = student.phone || '';
+            document.getElementById('student-telegram').value = student.student_telegram || '';
+            document.getElementById('student-whatsapp').value = student.student_whatsapp || '';
+            document.getElementById('student-parent-phone').value = student.parent_phone || '';
+            document.getElementById('parent-telegram').value = student.parent_telegram || '';
+            document.getElementById('parent-whatsapp').value = student.parent_whatsapp || '';
+            document.getElementById('student-notes').value = student.notes || '';
+            document.getElementById('price-group').value = student.price_group || 5000;
+            document.getElementById('price-individual').value = student.price_individual || 1500;
+            document.getElementById('payment-type-group').value = student.payment_type_group || 'monthly';
+            document.getElementById('payment-type-individual').value = student.payment_type_individual || 'per_lesson';
+
+            // Тип занятий
+            const lessonType = student.lesson_type || 'group';
+            document.getElementById('student-lesson-type').value = lessonType;
+            document.querySelectorAll('.btn-toggle').forEach(btn => {
+                if (btn.dataset.value === lessonType) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            // Расписание
+            schedule = {};
+            if (student.schedule) {
+                try {
+                    schedule = JSON.parse(student.schedule);
+                } catch (e) {
+                    console.error('Error parsing schedule:', e);
+                }
+            }
+
+            // Активировать кнопки дней
+            document.querySelectorAll('.btn-day').forEach(btn => {
+                const day = btn.dataset.day;
+                if (schedule[day]) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            renderSchedule();
+
+            // Открыть модалку
+            document.getElementById('modal-title').textContent = 'Редактировать ученика';
+            document.getElementById('student-modal').classList.add('active');
         } else {
-            content.innerHTML = `<p style="color: var(--md-error);">${escapeHtml(result.error || 'Ошибка загрузки')}</p>`;
+            showNotification(result.error || 'Ошибка при загрузке ученика', 'error');
         }
     } catch (error) {
-        console.error('Error viewing student:', error);
-        content.innerHTML = '<p style="color: var(--md-error);">Ошибка загрузки данных</p>';
+        console.error('Error:', error);
+        showNotification('Ошибка при загрузке ученика', 'error');
     }
 }
 
-// Закрыть модальное окно просмотра
+// Просмотр ученика
+async function viewStudent(id) {
+    try {
+        const response = await fetch(`/zarplata/api/students.php?action=get&id=${id}`);
+        const result = await response.json();
+
+        if (result.success) {
+            const student = result.data;
+            currentStudentId = id;
+
+            // Парсинг расписания
+            let scheduleHTML = '<span style="color: var(--text-medium-emphasis);">Не указано</span>';
+            if (student.schedule) {
+                try {
+                    const scheduleData = JSON.parse(student.schedule);
+                    const dayNames = ['', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+                    const scheduleItems = [];
+
+                    Object.keys(scheduleData).sort((a, b) => parseInt(a) - parseInt(b)).forEach(day => {
+                        const dayName = dayNames[parseInt(day)];
+                        const time = scheduleData[day];
+                        scheduleItems.push(`<div><strong>${dayName}</strong>: ${time}</div>`);
+                    });
+
+                    if (scheduleItems.length > 0) {
+                        scheduleHTML = scheduleItems.join('');
+                    }
+                } catch (e) {
+                    console.error('Error parsing schedule:', e);
+                }
+            }
+
+            // Определить цену и тип оплаты
+            const lessonType = student.lesson_type || 'group';
+            let price, paymentType, paymentLabel;
+
+            if (lessonType === 'group') {
+                price = student.price_group || 5000;
+                paymentType = student.payment_type_group || 'monthly';
+            } else {
+                price = student.price_individual || 1500;
+                paymentType = student.payment_type_individual || 'per_lesson';
+            }
+
+            paymentLabel = paymentType === 'monthly' ? 'за месяц' : 'за урок';
+
+            const content = `
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">ФИО:</span>
+                        <span class="info-value">${student.name}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Класс:</span>
+                        <span class="info-value">${student.class ? student.class + ' класс' : '—'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Тип занятий:</span>
+                        <span class="info-value">${lessonType === 'individual' ? 'Соло' : 'Группа'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Цена:</span>
+                        <span class="info-value">${price.toLocaleString('ru-RU')} ₽ ${paymentLabel}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Расписание:</span>
+                        <span class="info-value">${scheduleHTML}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Телефон ученика:</span>
+                        <span class="info-value">${student.phone || '—'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Telegram ученика:</span>
+                        <span class="info-value">${student.student_telegram ? '@' + student.student_telegram : '—'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">WhatsApp ученика:</span>
+                        <span class="info-value">${student.student_whatsapp || '—'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Телефон родителя:</span>
+                        <span class="info-value">${student.parent_phone || '—'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Telegram родителя:</span>
+                        <span class="info-value">${student.parent_telegram ? '@' + student.parent_telegram : '—'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">WhatsApp родителя:</span>
+                        <span class="info-value">${student.parent_whatsapp || '—'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Примечания:</span>
+                        <span class="info-value">${student.notes || '—'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Статус:</span>
+                        <span class="info-value">
+                            ${student.active ? '<span class="badge badge-success">Активен</span>' : '<span class="badge badge-danger">Неактивен</span>'}
+                        </span>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('view-student-content').innerHTML = content;
+            document.getElementById('view-student-modal').classList.add('active');
+        } else {
+            showNotification(result.error || 'Ошибка при загрузке ученика', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification('Ошибка при загрузке ученика', 'error');
+    }
+}
+
+// Закрыть модалку просмотра
 function closeViewModal() {
     document.getElementById('view-student-modal').classList.remove('active');
-    currentViewStudentId = null;
+    currentStudentId = null;
 }
 
 // Редактировать из просмотра
 function editStudentFromView() {
     closeViewModal();
-    editStudent(currentViewStudentId);
+    if (currentStudentId) {
+        editStudent(currentStudentId);
+    }
 }
 
 // Переключить активность ученика
-async function toggleStudentActive(studentId) {
+async function toggleStudentActive(id) {
     if (!confirm('Изменить статус ученика?')) {
         return;
     }
@@ -316,73 +394,138 @@ async function toggleStudentActive(studentId) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ id: studentId })
+            body: JSON.stringify({ id: id })
         });
 
         const result = await response.json();
 
         if (result.success) {
-            showNotification('Статус ученика изменён', 'success');
-            setTimeout(() => location.reload(), 500);
+            showNotification('Статус ученика изменен!', 'success');
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
         } else {
-            showNotification(result.error || 'Ошибка изменения статуса', 'error');
+            showNotification(result.error || 'Ошибка при изменении статуса', 'error');
         }
     } catch (error) {
-        console.error('Error toggling student status:', error);
-        showNotification('Ошибка изменения статуса', 'error');
+        console.error('Error:', error);
+        showNotification('Ошибка при изменении статуса', 'error');
     }
 }
 
-// Утилиты
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+// Фильтрация
+function toggleClassFilter(button) {
+    if (button.dataset.class === 'all') {
+        // Если нажата "Все", активировать все кнопки
+        document.querySelectorAll('.class-filter-btn').forEach(btn => {
+            btn.classList.add('active');
+        });
+    } else {
+        // Иначе убрать "Все" и переключить выбранную
+        const allBtn = document.querySelector('.class-filter-btn[data-class="all"]');
+        allBtn.classList.remove('active');
+        button.classList.toggle('active');
+
+        // Если все остальные активны, активировать "Все"
+        const otherBtns = Array.from(document.querySelectorAll('.class-filter-btn:not([data-class="all"])'));
+        const allActive = otherBtns.every(btn => btn.classList.contains('active'));
+        if (allActive) {
+            allBtn.classList.add('active');
+        }
+    }
+
+    updateVisibleStudents();
 }
 
-function formatDate(dateStr) {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('ru-RU');
+function toggleTypeFilter(button) {
+    if (button.dataset.type === 'all') {
+        // Если нажата "Все", активировать все кнопки
+        document.querySelectorAll('.type-filter-btn').forEach(btn => {
+            btn.classList.add('active');
+        });
+    } else {
+        // Иначе убрать "Все" и переключить выбранную
+        const allBtn = document.querySelector('.type-filter-btn[data-type="all"]');
+        allBtn.classList.remove('active');
+        button.classList.toggle('active');
+
+        // Если все остальные активны, активировать "Все"
+        const otherBtns = Array.from(document.querySelectorAll('.type-filter-btn:not([data-type="all"])'));
+        const allActive = otherBtns.every(btn => btn.classList.contains('active'));
+        if (allActive) {
+            allBtn.classList.add('active');
+        }
+    }
+
+    updateVisibleStudents();
 }
 
-function formatTime(timeStr) {
-    if (!timeStr) return '';
-    const parts = timeStr.split(':');
-    return `${parts[0]}:${parts[1]}`;
+function filterByName() {
+    updateVisibleStudents();
 }
 
-function formatMoney(amount) {
-    if (!amount && amount !== 0) return '0 ₽';
-    return new Intl.NumberFormat('ru-RU', {
-        style: 'currency',
-        currency: 'RUB',
-        minimumFractionDigits: 0
-    }).format(amount);
+function updateVisibleStudents() {
+    const activeClasses = Array.from(document.querySelectorAll('.class-filter-btn.active:not([data-class="all"])'))
+        .map(btn => btn.dataset.class);
+    const activeTypes = Array.from(document.querySelectorAll('.type-filter-btn.active:not([data-type="all"])'))
+        .map(btn => btn.dataset.type);
+    const searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
+
+    const allClassesActive = document.querySelector('.class-filter-btn[data-class="all"]').classList.contains('active');
+    const allTypesActive = document.querySelector('.type-filter-btn[data-type="all"]').classList.contains('active');
+
+    document.querySelectorAll('.student-row').forEach(row => {
+        const studentClass = row.getAttribute('data-class');
+        const studentType = row.getAttribute('data-type');
+        const studentName = row.getAttribute('data-name');
+
+        const classMatch = allClassesActive || activeClasses.includes(studentClass);
+        const typeMatch = allTypesActive || activeTypes.includes(studentType);
+        const searchMatch = !searchQuery || studentName.includes(searchQuery);
+
+        if (classMatch && typeMatch && searchMatch) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
 }
 
+// Показать уведомление
 function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
-    notification.innerHTML = `
-        <span class="material-icons">${type === 'success' ? 'check_circle' : type === 'error' ? 'error' : 'info'}</span>
-        <span>${escapeHtml(message)}</span>
-    `;
-
-    document.body.appendChild(notification);
-
-    setTimeout(() => notification.classList.add('show'), 10);
-
-    setTimeout(() => {
-        notification.classList.remove('show');
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
+    // Простая реализация уведомлений
+    alert(message);
 }
 
-// Закрытие модального окна по клику вне его
-document.addEventListener('click', (e) => {
-    if (e.target.classList.contains('modal')) {
-        e.target.classList.remove('active');
+// Вспомогательные функции для форматирования
+function formatMoney(amount) {
+    return parseInt(amount).toLocaleString('ru-RU') + ' ₽';
+}
+
+function formatPhone(phone) {
+    return phone;
+}
+
+function formatTime(time) {
+    return time.substring(0, 5);
+}
+
+function truncate(text, length) {
+    if (text.length > length) {
+        return text.substring(0, length) + '...';
     }
-});
+    return text;
+}
+
+// Закрыть модалку при клике вне её
+window.onclick = function(event) {
+    const studentModal = document.getElementById('student-modal');
+    const viewModal = document.getElementById('view-student-modal');
+
+    if (event.target === studentModal) {
+        closeStudentModal();
+    }
+    if (event.target === viewModal) {
+        closeViewModal();
+    }
+}
