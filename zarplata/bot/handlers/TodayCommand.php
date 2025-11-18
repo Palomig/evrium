@@ -61,5 +61,5 @@ function handleTodayCommand($chatId, $telegramId) {
     $message .= "\n━━━━━━━━━━━━━━━━━━\n";
     $message .= "💵 <b>Итого:</b> <b>" . number_format($total, 0, ',', ' ') . " ₽</b>";
 
-    sendTelegramMessage($chatId, $message);
+    sendTelegramMessage($chatId, $message, getMainMenuKeyboard());
 }
