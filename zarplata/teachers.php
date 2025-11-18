@@ -293,7 +293,7 @@ require_once __DIR__ . '/templates/header.php';
         border-radius: 12px;
         max-width: 600px;
         width: 90%;
-        max-height: 90vh;
+        max-height: 85vh;
         overflow: hidden;
         display: flex;
         flex-direction: column;
