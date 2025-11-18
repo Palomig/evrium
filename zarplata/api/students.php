@@ -100,14 +100,23 @@ function handleAdd() {
         jsonError('ФИО слишком длинное (максимум 100 символов)', 400);
     }
 
+    // Преподаватель (обязательно)
+    $teacherId = filter_var($data['teacher_id'] ?? 0, FILTER_VALIDATE_INT);
+    if (!$teacherId) {
+        jsonError('Выберите преподавателя', 400);
+    }
+
+    // Проверяем существование преподавателя
+    $teacher = dbQueryOne("SELECT id FROM teachers WHERE id = ? AND active = 1", [$teacherId]);
+    if (!$teacher) {
+        jsonError('Преподаватель не найден или неактивен', 404);
+    }
+
     // Остальные поля
-    $phone = trim($data['phone'] ?? '');
-    $parentPhone = trim($data['parent_phone'] ?? '');
+    $parentName = trim($data['parent_name'] ?? '');
     $notes = trim($data['notes'] ?? '');
 
-    // Мессенджеры
-    $studentTelegram = trim($data['student_telegram'] ?? '');
-    $studentWhatsapp = trim($data['student_whatsapp'] ?? '');
+    // Мессенджеры родителя
     $parentTelegram = trim($data['parent_telegram'] ?? '');
     $parentWhatsapp = trim($data['parent_whatsapp'] ?? '');
 
@@ -118,6 +127,12 @@ function handleAdd() {
         if ($class === false) {
             jsonError('Неверный формат класса', 400);
         }
+    }
+
+    // Тир (уровень ученика)
+    $tier = $data['tier'] ?? 'C';
+    if (!in_array($tier, ['S', 'A', 'B', 'C', 'D'])) {
+        jsonError('Неверный тир (должен быть S, A, B, C или D)', 400);
     }
 
     // Тип занятия
@@ -154,17 +169,17 @@ function handleAdd() {
         // Пробуем вставить с новыми полями
         try {
             $studentId = dbExecute(
-                "INSERT INTO students (name, phone, student_telegram, student_whatsapp, parent_phone, parent_telegram, parent_whatsapp, class, lesson_type, price_group, price_individual, payment_type_group, payment_type_individual, schedule, notes, active)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
-                [$name, $phone ?: null, $studentTelegram ?: null, $studentWhatsapp ?: null, $parentPhone ?: null, $parentTelegram ?: null, $parentWhatsapp ?: null, $class, $lessonType, $priceGroup, $priceIndividual, $paymentTypeGroup, $paymentTypeIndividual, $schedule, $notes ?: null]
+                "INSERT INTO students (name, teacher_id, tier, parent_name, parent_telegram, parent_whatsapp, class, lesson_type, price_group, price_individual, payment_type_group, payment_type_individual, schedule, notes, active)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
+                [$name, $teacherId, $tier, $parentName ?: null, $parentTelegram ?: null, $parentWhatsapp ?: null, $class, $lessonType, $priceGroup, $priceIndividual, $paymentTypeGroup, $paymentTypeIndividual, $schedule, $notes ?: null]
             );
         } catch (PDOException $e) {
-            // Если новых полей еще нет в базе, используем старые
+            // Если новых полей еще нет в базе, используем минимальный набор
             if (strpos($e->getMessage(), 'Unknown column') !== false) {
                 $studentId = dbExecute(
-                    "INSERT INTO students (name, phone, parent_phone, class, notes, active)
+                    "INSERT INTO students (name, teacher_id, tier, class, notes, active)
                      VALUES (?, ?, ?, ?, ?, 1)",
-                    [$name, $phone ?: null, $parentPhone ?: null, $class, $notes ?: null]
+                    [$name, $teacherId, $tier, $class, $notes ?: null]
                 );
             } else {
                 throw $e;
@@ -176,8 +191,49 @@ function handleAdd() {
             logAudit('student_created', 'student', $studentId, null, [
                 'name' => $name,
                 'class' => $class,
-                'lesson_type' => $lessonType
+                'lesson_type' => $lessonType,
+                'tier' => $tier
             ], 'Создан новый ученик');
+
+            // Автоматически добавляем в расписание
+            if ($schedule) {
+                $scheduleData = json_decode($schedule, true);
+                if ($scheduleData && is_array($scheduleData)) {
+                    foreach ($scheduleData as $dayOfWeek => $time) {
+                        if ($time && is_numeric($dayOfWeek)) {
+                            // Разбираем время на start и end (предполагаем 1.5 часа урок)
+                            $timeStart = $time;
+                            $timeEnd = date('H:i', strtotime($time) + 5400); // +1.5 часа
+
+                            // Получаем текущий список учеников для этого шаблона (если есть)
+                            $existingTemplate = dbQueryOne(
+                                "SELECT id, students FROM lessons_template
+                                 WHERE teacher_id = ? AND day_of_week = ? AND time_start = ? AND lesson_type = ? AND tier = ? AND active = 1",
+                                [$teacherId, $dayOfWeek, $timeStart, $lessonType, $tier]
+                            );
+
+                            if ($existingTemplate) {
+                                // Шаблон уже существует - добавляем ученика в список
+                                $studentsList = $existingTemplate['students'] ? json_decode($existingTemplate['students'], true) : [];
+                                if (!in_array($name, $studentsList)) {
+                                    $studentsList[] = $name;
+                                    dbExecute(
+                                        "UPDATE lessons_template SET students = ?, updated_at = NOW() WHERE id = ?",
+                                        [json_encode($studentsList), $existingTemplate['id']]
+                                    );
+                                }
+                            } else {
+                                // Создаем новый шаблон
+                                dbExecute(
+                                    "INSERT INTO lessons_template (teacher_id, day_of_week, time_start, time_end, lesson_type, tier, expected_students, students, active)
+                                     VALUES (?, ?, ?, ?, ?, ?, 1, ?, 1)",
+                                    [$teacherId, $dayOfWeek, $timeStart, $timeEnd, $lessonType, $tier, json_encode([$name])]
+                                );
+                            }
+                        }
+                    }
+                }
+            }
 
             // Возвращаем созданного ученика
             $student = dbQueryOne("SELECT * FROM students WHERE id = ?", [$studentId]);
@@ -226,14 +282,23 @@ function handleUpdate() {
         jsonError('ФИО слишком длинное (максимум 100 символов)', 400);
     }
 
+    // Преподаватель (обязательно)
+    $teacherId = filter_var($data['teacher_id'] ?? 0, FILTER_VALIDATE_INT);
+    if (!$teacherId) {
+        jsonError('Выберите преподавателя', 400);
+    }
+
+    // Проверяем существование преподавателя
+    $teacher = dbQueryOne("SELECT id FROM teachers WHERE id = ? AND active = 1", [$teacherId]);
+    if (!$teacher) {
+        jsonError('Преподаватель не найден или неактивен', 404);
+    }
+
     // Остальные поля
-    $phone = trim($data['phone'] ?? '');
-    $parentPhone = trim($data['parent_phone'] ?? '');
+    $parentName = trim($data['parent_name'] ?? '');
     $notes = trim($data['notes'] ?? '');
 
-    // Мессенджеры
-    $studentTelegram = trim($data['student_telegram'] ?? '');
-    $studentWhatsapp = trim($data['student_whatsapp'] ?? '');
+    // Мессенджеры родителя
     $parentTelegram = trim($data['parent_telegram'] ?? '');
     $parentWhatsapp = trim($data['parent_whatsapp'] ?? '');
 
@@ -244,6 +309,12 @@ function handleUpdate() {
         if ($class === false) {
             jsonError('Неверный формат класса', 400);
         }
+    }
+
+    // Тир (уровень ученика)
+    $tier = $data['tier'] ?? 'C';
+    if (!in_array($tier, ['S', 'A', 'B', 'C', 'D'])) {
+        jsonError('Неверный тир (должен быть S, A, B, C или D)', 400);
     }
 
     // Тип занятия
@@ -281,18 +352,18 @@ function handleUpdate() {
         try {
             $result = dbExecute(
                 "UPDATE students
-                 SET name = ?, phone = ?, student_telegram = ?, student_whatsapp = ?, parent_phone = ?, parent_telegram = ?, parent_whatsapp = ?, class = ?, lesson_type = ?, price_group = ?, price_individual = ?, payment_type_group = ?, payment_type_individual = ?, schedule = ?, notes = ?, updated_at = NOW()
+                 SET name = ?, teacher_id = ?, tier = ?, parent_name = ?, parent_telegram = ?, parent_whatsapp = ?, class = ?, lesson_type = ?, price_group = ?, price_individual = ?, payment_type_group = ?, payment_type_individual = ?, schedule = ?, notes = ?, updated_at = NOW()
                  WHERE id = ?",
-                [$name, $phone ?: null, $studentTelegram ?: null, $studentWhatsapp ?: null, $parentPhone ?: null, $parentTelegram ?: null, $parentWhatsapp ?: null, $class, $lessonType, $priceGroup, $priceIndividual, $paymentTypeGroup, $paymentTypeIndividual, $schedule, $notes ?: null, $id]
+                [$name, $teacherId, $tier, $parentName ?: null, $parentTelegram ?: null, $parentWhatsapp ?: null, $class, $lessonType, $priceGroup, $priceIndividual, $paymentTypeGroup, $paymentTypeIndividual, $schedule, $notes ?: null, $id]
             );
         } catch (PDOException $e) {
-            // Если новых полей еще нет в базе, используем старые
+            // Если новых полей еще нет в базе, используем минимальный набор
             if (strpos($e->getMessage(), 'Unknown column') !== false) {
                 $result = dbExecute(
                     "UPDATE students
-                     SET name = ?, phone = ?, parent_phone = ?, class = ?, notes = ?, updated_at = NOW()
+                     SET name = ?, teacher_id = ?, tier = ?, class = ?, notes = ?, updated_at = NOW()
                      WHERE id = ?",
-                    [$name, $phone ?: null, $parentPhone ?: null, $class, $notes ?: null, $id]
+                    [$name, $teacherId, $tier, $class, $notes ?: null, $id]
                 );
             } else {
                 throw $e;
@@ -303,6 +374,8 @@ function handleUpdate() {
             // Логируем изменение
             logAudit('student_updated', 'student', $id, $existing, [
                 'name' => $name,
+                'teacher_id' => $teacherId,
+                'tier' => $tier,
                 'class' => $class,
                 'lesson_type' => $lessonType
             ], 'Обновлены данные ученика');

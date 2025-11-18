@@ -30,6 +30,16 @@ function openStudentModal() {
         }
     });
     document.getElementById('student-lesson-type').value = 'group';
+
+    // Активировать "C" по умолчанию
+    document.querySelectorAll('.btn-tier').forEach(btn => {
+        if (btn.dataset.tier === 'C') {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    document.getElementById('student-tier').value = 'C';
 }
 
 // Закрыть модальное окно
@@ -50,6 +60,20 @@ function selectLessonType(button) {
 
     // Обновить скрытое поле
     document.getElementById('student-lesson-type').value = button.dataset.value;
+}
+
+// Выбрать тир
+function selectTier(button) {
+    // Убрать active у всех кнопок тира
+    button.parentElement.querySelectorAll('.btn-tier').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    // Добавить active к выбранной
+    button.classList.add('active');
+
+    // Обновить скрытое поле
+    document.getElementById('student-tier').value = button.dataset.tier;
 }
 
 // Переключить день недели
@@ -132,17 +156,16 @@ async function saveStudent(event) {
     const formData = new FormData(event.target);
     const data = {
         name: formData.get('name'),
+        teacher_id: parseInt(formData.get('teacher_id')),
         class: formData.get('class') || null,
+        tier: formData.get('tier'),
         lesson_type: formData.get('lesson_type'),
         price_group: parseInt(formData.get('price_group')) || 5000,
         price_individual: parseInt(formData.get('price_individual')) || 1500,
         payment_type_group: formData.get('payment_type_group'),
         payment_type_individual: formData.get('payment_type_individual'),
         schedule: JSON.stringify(schedule),
-        phone: formData.get('phone') || null,
-        student_telegram: formData.get('student_telegram') || null,
-        student_whatsapp: formData.get('student_whatsapp') || null,
-        parent_phone: formData.get('parent_phone') || null,
+        parent_name: formData.get('parent_name') || null,
         parent_telegram: formData.get('parent_telegram') || null,
         parent_whatsapp: formData.get('parent_whatsapp') || null,
         notes: formData.get('notes') || null
@@ -194,11 +217,9 @@ async function editStudent(id) {
             // Заполнить форму
             document.getElementById('student-id').value = student.id;
             document.getElementById('student-name').value = student.name || '';
+            document.getElementById('student-teacher').value = student.teacher_id || '';
             document.getElementById('student-class').value = student.class || '';
-            document.getElementById('student-phone').value = student.phone || '';
-            document.getElementById('student-telegram').value = student.student_telegram || '';
-            document.getElementById('student-whatsapp').value = student.student_whatsapp || '';
-            document.getElementById('student-parent-phone').value = student.parent_phone || '';
+            document.getElementById('student-parent-name').value = student.parent_name || '';
             document.getElementById('parent-telegram').value = student.parent_telegram || '';
             document.getElementById('parent-whatsapp').value = student.parent_whatsapp || '';
             document.getElementById('student-notes').value = student.notes || '';
@@ -212,6 +233,17 @@ async function editStudent(id) {
             document.getElementById('student-lesson-type').value = lessonType;
             document.querySelectorAll('.btn-toggle').forEach(btn => {
                 if (btn.dataset.value === lessonType) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            // Тир
+            const tier = student.tier || 'C';
+            document.getElementById('student-tier').value = tier;
+            document.querySelectorAll('.btn-tier').forEach(btn => {
+                if (btn.dataset.tier === tier) {
                     btn.classList.add('active');
                 } else {
                     btn.classList.remove('active');
