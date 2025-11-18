@@ -169,30 +169,44 @@ function handleCallbackQuery($callbackQuery) {
     $data = $callbackQuery['data'];
     $callbackQueryId = $callbackQuery['id'];
 
+    error_log("[Telegram Bot] Callback query received: $data from user $telegramId");
+
     // Парсим данные кнопки: action:param1:param2
     $parts = explode(':', $data);
     $action = $parts[0];
 
-    switch ($action) {
-        case 'attendance_all_present':
-            // Все пришли
-            require_once __DIR__ . '/handlers/AttendanceHandler.php';
-            handleAllPresent($chatId, $messageId, $telegramId, $parts[1], $callbackQueryId);
-            break;
+    error_log("[Telegram Bot] Callback action: $action");
 
-        case 'attendance_some_absent':
-            // Некоторые отсутствуют
-            require_once __DIR__ . '/handlers/AttendanceHandler.php';
-            handleSomeAbsent($chatId, $messageId, $telegramId, $parts[1], $callbackQueryId);
-            break;
+    try {
+        switch ($action) {
+            case 'attendance_all_present':
+                // Все пришли
+                error_log("[Telegram Bot] Handling attendance_all_present");
+                require_once __DIR__ . '/handlers/AttendanceHandler.php';
+                handleAllPresent($chatId, $messageId, $telegramId, $parts[1], $callbackQueryId);
+                break;
 
-        case 'attendance_count':
-            // Указано количество присутствующих
-            require_once __DIR__ . '/handlers/AttendanceHandler.php';
-            handleAttendanceCount($chatId, $messageId, $telegramId, $parts[1], $parts[2], $callbackQueryId);
-            break;
+            case 'attendance_some_absent':
+                // Некоторые отсутствуют
+                error_log("[Telegram Bot] Handling attendance_some_absent");
+                require_once __DIR__ . '/handlers/AttendanceHandler.php';
+                handleSomeAbsent($chatId, $messageId, $telegramId, $parts[1], $callbackQueryId);
+                break;
 
-        default:
-            answerCallbackQuery($callbackQueryId, "Неизвестное действие");
+            case 'attendance_count':
+                // Указано количество присутствующих
+                error_log("[Telegram Bot] Handling attendance_count");
+                require_once __DIR__ . '/handlers/AttendanceHandler.php';
+                handleAttendanceCount($chatId, $messageId, $telegramId, $parts[1], $parts[2], $callbackQueryId);
+                break;
+
+            default:
+                error_log("[Telegram Bot] Unknown callback action: $action");
+                answerCallbackQuery($callbackQueryId, "Неизвестное действие");
+        }
+    } catch (Exception $e) {
+        error_log("[Telegram Bot] Error in callback query handler: " . $e->getMessage());
+        error_log("[Telegram Bot] Stack trace: " . $e->getTraceAsString());
+        answerCallbackQuery($callbackQueryId, "Произошла ошибка", true);
     }
 }
