@@ -12,7 +12,19 @@ $user = getCurrentUser();
 
 // Получить всех преподавателей
 $teachers = dbQuery(
-    "SELECT * FROM teachers ORDER BY active DESC, name ASC",
+    "SELECT t.*,
+            fg.name as formula_group_name,
+            fi.name as formula_individual_name
+     FROM teachers t
+     LEFT JOIN payment_formulas fg ON t.formula_id_group = fg.id
+     LEFT JOIN payment_formulas fi ON t.formula_id_individual = fi.id
+     ORDER BY t.active DESC, t.name ASC",
+    []
+);
+
+// Получить все активные формулы для селектов
+$formulas = dbQuery(
+    "SELECT id, name, type FROM payment_formulas WHERE active = 1 ORDER BY name ASC",
     []
 );
 
@@ -208,6 +220,50 @@ require_once __DIR__ . '/templates/header.php';
                     >
                     <small style="color: var(--text-medium-emphasis); display: block; margin-top: 8px;">
                         Опционально. Автоматически обновляется при первом контакте с ботом.
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="teacher-formula-group">
+                        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">calculate</span>
+                        Формула для групповых уроков
+                    </label>
+                    <select
+                        class="form-control"
+                        id="teacher-formula-group"
+                        name="formula_id_group"
+                    >
+                        <option value="">Не выбрано</option>
+                        <?php foreach ($formulas as $formula): ?>
+                            <option value="<?= $formula['id'] ?>">
+                                <?= e($formula['name']) ?> (<?= $formula['type'] ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small style="color: var(--text-medium-emphasis); display: block; margin-top: 8px;">
+                        Используется для расчета зарплаты за групповые занятия
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="teacher-formula-individual">
+                        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">calculate</span>
+                        Формула для индивидуальных уроков
+                    </label>
+                    <select
+                        class="form-control"
+                        id="teacher-formula-individual"
+                        name="formula_id_individual"
+                    >
+                        <option value="">Не выбрано</option>
+                        <?php foreach ($formulas as $formula): ?>
+                            <option value="<?= $formula['id'] ?>">
+                                <?= e($formula['name']) ?> (<?= $formula['type'] ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small style="color: var(--text-medium-emphasis); display: block; margin-top: 8px;">
+                        Используется для расчета зарплаты за индивидуальные занятия
                     </small>
                 </div>
 
@@ -409,6 +465,8 @@ async function loadTeacherData(teacherId) {
             document.getElementById('teacher-email').value = teacher.email || '';
             document.getElementById('teacher-telegram-id').value = teacher.telegram_id || '';
             document.getElementById('teacher-telegram').value = teacher.telegram_username || '';
+            document.getElementById('teacher-formula-group').value = teacher.formula_id_group || '';
+            document.getElementById('teacher-formula-individual').value = teacher.formula_id_individual || '';
             document.getElementById('teacher-notes').value = teacher.notes || '';
         } else {
             showNotification(result.error || 'Ошибка загрузки данных', 'error');
