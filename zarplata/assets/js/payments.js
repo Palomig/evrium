@@ -3,6 +3,57 @@
  */
 
 let currentViewPaymentId = null;
+let visibleSections = ['pending', 'approved', 'paid', 'all']; // Все секции видимы по умолчанию
+
+// Переключение видимости секции выплат
+function togglePaymentSection(section) {
+    const card = document.querySelector(`.stat-card[data-section="${section}"]`);
+
+    if (visibleSections.includes(section)) {
+        // Скрываем секцию
+        visibleSections = visibleSections.filter(s => s !== section);
+        card.classList.remove('active');
+    } else {
+        // Показываем секцию
+        visibleSections.push(section);
+        card.classList.add('active');
+    }
+
+    // Обновляем видимость строк
+    filterPaymentRows();
+}
+
+// Фильтрация строк таблицы по видимым секциям
+function filterPaymentRows() {
+    const rows = document.querySelectorAll('.payment-row');
+
+    rows.forEach(row => {
+        const status = row.getAttribute('data-status');
+
+        // Если выбран фильтр "all", показываем все
+        if (visibleSections.includes('all')) {
+            row.style.display = '';
+        } else if (visibleSections.length === 0) {
+            // Если ничего не выбрано, скрываем все
+            row.style.display = 'none';
+        } else {
+            // Показываем только выбранные статусы
+            if (visibleSections.includes(status)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        }
+    });
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', () => {
+    // Отмечаем все карточки как активные
+    document.querySelectorAll('.stat-card[data-section]').forEach(card => {
+        card.classList.add('active');
+    });
+});
 
 // Открыть модальное окно добавления разовой выплаты
 function openPaymentModal() {
@@ -86,6 +137,23 @@ async function viewPayment(paymentId) {
                 'adjustment': 'Корректировка'
             };
 
+            // Парсим список студентов если есть
+            let studentsList = '';
+            if (payment.students) {
+                try {
+                    const students = JSON.parse(payment.students);
+                    if (Array.isArray(students) && students.length > 0) {
+                        studentsList = students.join(', ');
+                    }
+                } catch (e) {
+                    console.error('Error parsing students:', e);
+                }
+            }
+
+            // Определяем тип урока
+            const lessonTypeLabel = payment.lesson_type === 'group' ? 'Групповое' :
+                                   payment.lesson_type === 'individual' ? 'Индивидуальное' : '';
+
             content.innerHTML = `
                 <div style="display: grid; gap: 16px;">
                     <div>
@@ -101,11 +169,52 @@ async function viewPayment(paymentId) {
                         <span>${typeLabels[payment.payment_type] || payment.payment_type}</span>
                     </div>
                     ${payment.lesson_date ? `
-                    <div>
-                        <strong style="color: var(--text-medium-emphasis);">Урок:</strong><br>
-                        <span>${formatDate(payment.lesson_date)} ${formatTime(payment.time_start)}</span>
-                        ${payment.subject ? `<br><small>${escapeHtml(payment.subject)}</small>` : ''}
-                        ${payment.actual_students ? `<br><small>Учеников: ${payment.actual_students}</small>` : ''}
+                    <div style="background: var(--md-surface-variant); padding: 16px; border-radius: 8px; margin: 8px 0;">
+                        <strong style="color: var(--text-medium-emphasis); font-size: 0.9rem;">📚 ИНФОРМАЦИЯ ОБ УРОКЕ</strong>
+                        <div style="margin-top: 12px; display: grid; gap: 8px;">
+                            <div>
+                                <strong>Дата:</strong> ${formatDate(payment.lesson_date)}
+                            </div>
+                            <div>
+                                <strong>Время:</strong> ${formatTime(payment.time_start)}${payment.time_end ? ' - ' + formatTime(payment.time_end) : ''}
+                            </div>
+                            ${payment.subject ? `
+                            <div>
+                                <strong>Предмет:</strong> ${escapeHtml(payment.subject)}
+                            </div>
+                            ` : ''}
+                            ${lessonTypeLabel ? `
+                            <div>
+                                <strong>Тип урока:</strong> ${lessonTypeLabel}
+                            </div>
+                            ` : ''}
+                            ${payment.room ? `
+                            <div>
+                                <strong>Кабинет:</strong> ${payment.room}
+                            </div>
+                            ` : ''}
+                            ${payment.expected_students || payment.actual_students ? `
+                            <div>
+                                <strong>Количество учеников:</strong>
+                                ${payment.actual_students ? payment.actual_students : payment.expected_students}
+                                ${payment.expected_students && payment.actual_students !== payment.expected_students
+                                    ? ` из ${payment.expected_students} (ожидалось)`
+                                    : ''}
+                            </div>
+                            ` : ''}
+                            ${studentsList ? `
+                            <div>
+                                <strong>Ученики:</strong><br>
+                                <span style="color: var(--text-medium-emphasis);">${escapeHtml(studentsList)}</span>
+                            </div>
+                            ` : ''}
+                            ${payment.calculation_method ? `
+                            <div>
+                                <strong>Метод расчета:</strong><br>
+                                <span style="color: var(--text-medium-emphasis); font-size: 0.9rem;">${escapeHtml(payment.calculation_method)}</span>
+                            </div>
+                            ` : ''}
+                        </div>
                     </div>
                     ` : ''}
                     <div>

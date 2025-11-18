@@ -13,10 +13,12 @@ $user = getCurrentUser();
 // Получить все выплаты
 $payments = dbQuery(
     "SELECT p.*, t.name as teacher_name,
-            li.lesson_date, li.time_start, li.subject
+            li.lesson_date, li.time_start, li.time_end, li.subject, li.lesson_type,
+            lt.room, lt.students
      FROM payments p
      LEFT JOIN teachers t ON p.teacher_id = t.id
      LEFT JOIN lessons_instance li ON p.lesson_instance_id = li.id
+     LEFT JOIN lessons_template lt ON li.template_id = lt.id
      ORDER BY p.created_at DESC
      LIMIT 100",
     []
@@ -45,7 +47,7 @@ require_once __DIR__ . '/templates/header.php';
 
 <!-- Статистика -->
 <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 24px;">
-    <div class="stat-card">
+    <div class="stat-card clickable" onclick="togglePaymentSection('pending')" data-section="pending">
         <div class="stat-card-header">
             <div>
                 <div class="stat-card-value"><?= formatMoney($stats['pending_total'] ?? 0) ?></div>
@@ -55,9 +57,12 @@ require_once __DIR__ . '/templates/header.php';
                 <span class="material-icons">pending</span>
             </div>
         </div>
+        <div class="stat-card-toggle">
+            <span class="material-icons">expand_more</span>
+        </div>
     </div>
 
-    <div class="stat-card">
+    <div class="stat-card clickable" onclick="togglePaymentSection('approved')" data-section="approved">
         <div class="stat-card-header">
             <div>
                 <div class="stat-card-value"><?= formatMoney($stats['approved_total'] ?? 0) ?></div>
@@ -67,9 +72,12 @@ require_once __DIR__ . '/templates/header.php';
                 <span class="material-icons">thumb_up</span>
             </div>
         </div>
+        <div class="stat-card-toggle">
+            <span class="material-icons">expand_more</span>
+        </div>
     </div>
 
-    <div class="stat-card">
+    <div class="stat-card clickable" onclick="togglePaymentSection('paid')" data-section="paid">
         <div class="stat-card-header">
             <div>
                 <div class="stat-card-value"><?= formatMoney($stats['paid_total'] ?? 0) ?></div>
@@ -79,9 +87,12 @@ require_once __DIR__ . '/templates/header.php';
                 <span class="material-icons">check_circle</span>
             </div>
         </div>
+        <div class="stat-card-toggle">
+            <span class="material-icons">expand_more</span>
+        </div>
     </div>
 
-    <div class="stat-card">
+    <div class="stat-card clickable" onclick="togglePaymentSection('all')" data-section="all">
         <div class="stat-card-header">
             <div>
                 <div class="stat-card-value"><?= formatMoney($stats['total_amount'] ?? 0) ?></div>
@@ -90,6 +101,9 @@ require_once __DIR__ . '/templates/header.php';
             <div class="stat-card-icon secondary">
                 <span class="material-icons">account_balance</span>
             </div>
+        </div>
+        <div class="stat-card-toggle">
+            <span class="material-icons">expand_more</span>
         </div>
     </div>
 </div>
@@ -107,17 +121,39 @@ require_once __DIR__ . '/templates/header.php';
         border-radius: 12px;
         box-shadow: var(--elevation-2);
         transition: transform 0.2s, box-shadow 0.2s;
+        position: relative;
     }
 
-    .stat-card:hover {
+    .stat-card.clickable {
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .stat-card.clickable:hover {
         transform: translateY(-4px);
         box-shadow: var(--elevation-3);
+    }
+
+    .stat-card.active .stat-card-toggle .material-icons {
+        transform: rotate(180deg);
     }
 
     .stat-card-header {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
+    }
+
+    .stat-card-toggle {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        color: var(--text-medium-emphasis);
+    }
+
+    .stat-card-toggle .material-icons {
+        font-size: 24px;
+        transition: transform 0.3s;
     }
 
     .stat-card-icon {
@@ -183,7 +219,7 @@ require_once __DIR__ . '/templates/header.php';
                     <th>Дата</th>
                     <th>Преподаватель</th>
                     <th>Тип</th>
-                    <th>Урок</th>
+                    <th>Время</th>
                     <th>Сумма</th>
                     <th>Статус</th>
                     <th>Действия</th>
@@ -192,7 +228,7 @@ require_once __DIR__ . '/templates/header.php';
             <tbody>
                 <?php foreach ($payments as $payment): ?>
                     <?php $statusBadge = getPaymentStatusBadge($payment['status']); ?>
-                    <tr>
+                    <tr data-status="<?= $payment['status'] ?>" class="payment-row clickable-row" onclick="viewPayment(<?= $payment['id'] ?>)" style="cursor: pointer;">
                         <td><?= $payment['id'] ?></td>
                         <td><?= formatDate($payment['created_at']) ?></td>
                         <td><?= e($payment['teacher_name']) ?></td>
@@ -205,13 +241,22 @@ require_once __DIR__ . '/templates/header.php';
                                 'adjustment' => 'Корректировка'
                             ];
                             echo $typeLabels[$payment['payment_type']] ?? $payment['payment_type'];
+
+                            // Добавляем тип урока (групповое/индивидуальное)
+                            if ($payment['payment_type'] === 'lesson' && !empty($payment['lesson_type'])) {
+                                $lessonTypeShort = $payment['lesson_type'] === 'group' ? 'групп.' : 'индив.';
+                                echo '<br><small style="color: var(--text-medium-emphasis);">' . $lessonTypeShort . '</small>';
+                            }
                             ?>
                         </td>
                         <td>
-                            <?php if ($payment['lesson_date']): ?>
-                                <?= formatDate($payment['lesson_date']) ?> <?= formatTime($payment['time_start']) ?>
+                            <?php if ($payment['time_start']): ?>
+                                <strong><?= formatTime($payment['time_start']) ?></strong>
+                                <?php if ($payment['time_end']): ?>
+                                    - <?= formatTime($payment['time_end']) ?>
+                                <?php endif; ?>
                                 <?php if ($payment['subject']): ?>
-                                    <br><small><?= e($payment['subject']) ?></small>
+                                    <br><small style="color: var(--text-medium-emphasis);"><?= e($payment['subject']) ?></small>
                                 <?php endif; ?>
                             <?php else: ?>
                                 —
@@ -224,7 +269,7 @@ require_once __DIR__ . '/templates/header.php';
                                 <?= $statusBadge['text'] ?>
                             </span>
                         </td>
-                        <td>
+                        <td onclick="event.stopPropagation();">
                             <?php if ($payment['status'] === 'pending'): ?>
                                 <button class="btn btn-text" onclick="approvePayment(<?= $payment['id'] ?>)" title="Одобрить">
                                     <span class="material-icons" style="font-size: 18px;">thumb_up</span>

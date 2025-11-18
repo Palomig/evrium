@@ -92,15 +92,17 @@ function handleAllPresent($chatId, $messageId, $telegramId, $lessonTemplateId, $
     $subject = $lesson['subject'] ? "{$lesson['subject']}" : "Урок";
     $time = date('H:i', strtotime($lesson['time_start']));
 
-    editTelegramMessage($chatId, $messageId,
-        "✅ <b>Посещаемость отмечена</b>\n\n" .
-        "📚 {$subject} ({$time})\n" .
-        "👥 Присутствовало: <b>{$attendedCount} из {$lesson['expected_students']}</b>\n\n" .
+    $confirmationText =
+        "✅ <b>Посещаемость отмечена!</b>\n\n" .
+        "📚 <b>{$subject}</b> ({$time})\n" .
+        "👥 Присутствовало: <b>{$attendedCount} из {$lesson['expected_students']}</b> (все пришли)\n\n" .
         "💰 Начислено: <b>" . number_format($paymentAmount, 0, ',', ' ') . " ₽</b>\n\n" .
-        "✨ Выплата добавлена в систему со статусом \"Ожидает одобрения\""
-    );
+        "✨ Выплата добавлена в систему со статусом \"Ожидает одобрения\"";
 
-    answerCallbackQuery($callbackQueryId, "Посещаемость сохранена!");
+    editTelegramMessage($chatId, $messageId, $confirmationText);
+
+    // Уведомление в виде всплывающего сообщения
+    answerCallbackQuery($callbackQueryId, "✅ Сохранено! Начислено " . number_format($paymentAmount, 0, ',', ' ') . " ₽", false);
 }
 
 /**
@@ -267,15 +269,17 @@ function handleAttendanceCount($chatId, $messageId, $telegramId, $lessonTemplate
     $subject = $lesson['subject'] ? "{$lesson['subject']}" : "Урок";
     $time = date('H:i', strtotime($lesson['time_start']));
 
-    editTelegramMessage($chatId, $messageId,
-        "✅ <b>Посещаемость отмечена</b>\n\n" .
-        "📚 {$subject} ({$time})\n" .
+    $confirmationText =
+        "✅ <b>Посещаемость отмечена!</b>\n\n" .
+        "📚 <b>{$subject}</b> ({$time})\n" .
         "👥 Присутствовало: <b>{$attendedCount} из {$lesson['expected_students']}</b>\n\n" .
         "💰 Начислено: <b>" . number_format($paymentAmount, 0, ',', ' ') . " ₽</b>\n\n" .
-        "✨ Выплата добавлена в систему со статусом \"Ожидает одобрения\""
-    );
+        "✨ Выплата добавлена в систему со статусом \"Ожидает одобрения\"";
 
-    answerCallbackQuery($callbackQueryId, "Посещаемость сохранена!");
+    editTelegramMessage($chatId, $messageId, $confirmationText);
+
+    // Уведомление в виде всплывающего сообщения
+    answerCallbackQuery($callbackQueryId, "✅ Сохранено! Начислено " . number_format($paymentAmount, 0, ',', ' ') . " ₽", false);
 }
 
 // Функция calculatePayment() уже определена в /config/helpers.php
