@@ -103,8 +103,13 @@ function handleAdd() {
     // Остальные поля
     $phone = trim($data['phone'] ?? '');
     $parentPhone = trim($data['parent_phone'] ?? '');
-    $email = trim($data['email'] ?? '');
     $notes = trim($data['notes'] ?? '');
+
+    // Мессенджеры
+    $studentTelegram = trim($data['student_telegram'] ?? '');
+    $studentWhatsapp = trim($data['student_whatsapp'] ?? '');
+    $parentTelegram = trim($data['parent_telegram'] ?? '');
+    $parentWhatsapp = trim($data['parent_whatsapp'] ?? '');
 
     // Класс (может быть NULL)
     $class = null;
@@ -121,45 +126,45 @@ function handleAdd() {
         jsonError('Неверный тип занятия', 400);
     }
 
-    // Цена за месяц
-    $monthlyPrice = filter_var($data['monthly_price'] ?? 5000, FILTER_VALIDATE_INT);
-    if ($monthlyPrice === false || $monthlyPrice < 0) {
-        jsonError('Неверная цена', 400);
+    // Цены
+    $priceGroup = filter_var($data['price_group'] ?? 5000, FILTER_VALIDATE_INT);
+    $priceIndividual = filter_var($data['price_individual'] ?? 1500, FILTER_VALIDATE_INT);
+    if ($priceGroup === false || $priceGroup < 0) {
+        jsonError('Неверная цена для групповых занятий', 400);
+    }
+    if ($priceIndividual === false || $priceIndividual < 0) {
+        jsonError('Неверная цена для индивидуальных занятий', 400);
     }
 
-    // День недели (может быть NULL)
-    $lessonDay = null;
-    if (isset($data['lesson_day']) && $data['lesson_day'] !== '') {
-        $lessonDay = filter_var($data['lesson_day'], FILTER_VALIDATE_INT);
-        if ($lessonDay === false || $lessonDay < 1 || $lessonDay > 7) {
-            jsonError('Неверный день недели (должен быть от 1 до 7)', 400);
-        }
+    // Типы оплаты
+    $paymentTypeGroup = $data['payment_type_group'] ?? 'monthly';
+    $paymentTypeIndividual = $data['payment_type_individual'] ?? 'per_lesson';
+    if (!in_array($paymentTypeGroup, ['monthly', 'per_lesson'])) {
+        jsonError('Неверный тип оплаты для групповых занятий', 400);
+    }
+    if (!in_array($paymentTypeIndividual, ['monthly', 'per_lesson'])) {
+        jsonError('Неверный тип оплаты для индивидуальных занятий', 400);
     }
 
-    // Время занятия (может быть NULL)
-    $lessonTime = isset($data['lesson_time']) && $data['lesson_time'] !== '' ? $data['lesson_time'] : null;
-
-    // Валидация email
-    if ($email && !isValidEmail($email)) {
-        jsonError('Неверный формат email', 400);
-    }
+    // Расписание (JSON)
+    $schedule = $data['schedule'] ?? null;
 
     // Создаем ученика
     try {
         // Пробуем вставить с новыми полями
         try {
             $studentId = dbExecute(
-                "INSERT INTO students (name, phone, parent_phone, email, class, lesson_type, monthly_price, lesson_day, lesson_time, notes, active)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
-                [$name, $phone ?: null, $parentPhone ?: null, $email ?: null, $class, $lessonType, $monthlyPrice, $lessonDay, $lessonTime, $notes ?: null]
+                "INSERT INTO students (name, phone, student_telegram, student_whatsapp, parent_phone, parent_telegram, parent_whatsapp, class, lesson_type, price_group, price_individual, payment_type_group, payment_type_individual, schedule, notes, active)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
+                [$name, $phone ?: null, $studentTelegram ?: null, $studentWhatsapp ?: null, $parentPhone ?: null, $parentTelegram ?: null, $parentWhatsapp ?: null, $class, $lessonType, $priceGroup, $priceIndividual, $paymentTypeGroup, $paymentTypeIndividual, $schedule, $notes ?: null]
             );
         } catch (PDOException $e) {
             // Если новых полей еще нет в базе, используем старые
             if (strpos($e->getMessage(), 'Unknown column') !== false) {
                 $studentId = dbExecute(
-                    "INSERT INTO students (name, phone, parent_phone, email, class, notes, active)
-                     VALUES (?, ?, ?, ?, ?, ?, 1)",
-                    [$name, $phone ?: null, $parentPhone ?: null, $email ?: null, $class, $notes ?: null]
+                    "INSERT INTO students (name, phone, parent_phone, class, notes, active)
+                     VALUES (?, ?, ?, ?, ?, 1)",
+                    [$name, $phone ?: null, $parentPhone ?: null, $class, $notes ?: null]
                 );
             } else {
                 throw $e;
@@ -224,8 +229,13 @@ function handleUpdate() {
     // Остальные поля
     $phone = trim($data['phone'] ?? '');
     $parentPhone = trim($data['parent_phone'] ?? '');
-    $email = trim($data['email'] ?? '');
     $notes = trim($data['notes'] ?? '');
+
+    // Мессенджеры
+    $studentTelegram = trim($data['student_telegram'] ?? '');
+    $studentWhatsapp = trim($data['student_whatsapp'] ?? '');
+    $parentTelegram = trim($data['parent_telegram'] ?? '');
+    $parentWhatsapp = trim($data['parent_whatsapp'] ?? '');
 
     // Класс (может быть NULL)
     $class = null;
@@ -242,28 +252,28 @@ function handleUpdate() {
         jsonError('Неверный тип занятия', 400);
     }
 
-    // Цена за месяц
-    $monthlyPrice = filter_var($data['monthly_price'] ?? 5000, FILTER_VALIDATE_INT);
-    if ($monthlyPrice === false || $monthlyPrice < 0) {
-        jsonError('Неверная цена', 400);
+    // Цены
+    $priceGroup = filter_var($data['price_group'] ?? 5000, FILTER_VALIDATE_INT);
+    $priceIndividual = filter_var($data['price_individual'] ?? 1500, FILTER_VALIDATE_INT);
+    if ($priceGroup === false || $priceGroup < 0) {
+        jsonError('Неверная цена для групповых занятий', 400);
+    }
+    if ($priceIndividual === false || $priceIndividual < 0) {
+        jsonError('Неверная цена для индивидуальных занятий', 400);
     }
 
-    // День недели (может быть NULL)
-    $lessonDay = null;
-    if (isset($data['lesson_day']) && $data['lesson_day'] !== '') {
-        $lessonDay = filter_var($data['lesson_day'], FILTER_VALIDATE_INT);
-        if ($lessonDay === false || $lessonDay < 1 || $lessonDay > 7) {
-            jsonError('Неверный день недели (должен быть от 1 до 7)', 400);
-        }
+    // Типы оплаты
+    $paymentTypeGroup = $data['payment_type_group'] ?? 'monthly';
+    $paymentTypeIndividual = $data['payment_type_individual'] ?? 'per_lesson';
+    if (!in_array($paymentTypeGroup, ['monthly', 'per_lesson'])) {
+        jsonError('Неверный тип оплаты для групповых занятий', 400);
+    }
+    if (!in_array($paymentTypeIndividual, ['monthly', 'per_lesson'])) {
+        jsonError('Неверный тип оплаты для индивидуальных занятий', 400);
     }
 
-    // Время занятия (может быть NULL)
-    $lessonTime = isset($data['lesson_time']) && $data['lesson_time'] !== '' ? $data['lesson_time'] : null;
-
-    // Валидация email
-    if ($email && !isValidEmail($email)) {
-        jsonError('Неверный формат email', 400);
-    }
+    // Расписание (JSON)
+    $schedule = $data['schedule'] ?? null;
 
     // Обновляем ученика
     try {
@@ -271,18 +281,18 @@ function handleUpdate() {
         try {
             $result = dbExecute(
                 "UPDATE students
-                 SET name = ?, phone = ?, parent_phone = ?, email = ?, class = ?, lesson_type = ?, monthly_price = ?, lesson_day = ?, lesson_time = ?, notes = ?, updated_at = NOW()
+                 SET name = ?, phone = ?, student_telegram = ?, student_whatsapp = ?, parent_phone = ?, parent_telegram = ?, parent_whatsapp = ?, class = ?, lesson_type = ?, price_group = ?, price_individual = ?, payment_type_group = ?, payment_type_individual = ?, schedule = ?, notes = ?, updated_at = NOW()
                  WHERE id = ?",
-                [$name, $phone ?: null, $parentPhone ?: null, $email ?: null, $class, $lessonType, $monthlyPrice, $lessonDay, $lessonTime, $notes ?: null, $id]
+                [$name, $phone ?: null, $studentTelegram ?: null, $studentWhatsapp ?: null, $parentPhone ?: null, $parentTelegram ?: null, $parentWhatsapp ?: null, $class, $lessonType, $priceGroup, $priceIndividual, $paymentTypeGroup, $paymentTypeIndividual, $schedule, $notes ?: null, $id]
             );
         } catch (PDOException $e) {
             // Если новых полей еще нет в базе, используем старые
             if (strpos($e->getMessage(), 'Unknown column') !== false) {
                 $result = dbExecute(
                     "UPDATE students
-                     SET name = ?, phone = ?, parent_phone = ?, email = ?, class = ?, notes = ?, updated_at = NOW()
+                     SET name = ?, phone = ?, parent_phone = ?, class = ?, notes = ?, updated_at = NOW()
                      WHERE id = ?",
-                    [$name, $phone ?: null, $parentPhone ?: null, $email ?: null, $class, $notes ?: null, $id]
+                    [$name, $phone ?: null, $parentPhone ?: null, $class, $notes ?: null, $id]
                 );
             } else {
                 throw $e;

@@ -29,7 +29,7 @@ require_once __DIR__ . '/templates/header.php';
         <div class="filter-group">
             <span class="legend-label">Класс:</span>
             <button class="class-filter-btn active" data-class="all" onclick="toggleClassFilter(this)">Все</button>
-            <?php for ($i = 7; $i <= 11; $i++): ?>
+            <?php for ($i = 2; $i <= 11; $i++): ?>
                 <button class="class-filter-btn active" data-class="<?= $i ?>" onclick="toggleClassFilter(this)"><?= $i ?></button>
             <?php endfor; ?>
         </div>
@@ -77,16 +77,22 @@ require_once __DIR__ . '/templates/header.php';
                     <th>ID</th>
                     <th>ФИО</th>
                     <th>Класс</th>
-                    <th>Тип занятий</th>
+                    <th>Тип</th>
                     <th>Расписание</th>
-                    <th>Цена/месяц</th>
-                    <th>Телефон</th>
+                    <th>Цена</th>
+                    <th>Контакты</th>
                     <th>Статус</th>
                     <th>Действия</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach ($students as $student): ?>
+                    <?php
+                    $schedule = null;
+                    if (isset($student['schedule']) && $student['schedule']) {
+                        $schedule = json_decode($student['schedule'], true);
+                    }
+                    ?>
                     <tr data-student-id="<?= $student['id'] ?>"
                         data-class="<?= $student['class'] ?? 'none' ?>"
                         data-type="<?= $student['lesson_type'] ?? 'group' ?>"
@@ -116,7 +122,7 @@ require_once __DIR__ . '/templates/header.php';
                             ?>
                                 <span class="badge badge-warning">
                                     <span class="material-icons" style="font-size: 14px;">person</span>
-                                    Индивид.
+                                    Соло
                                 </span>
                             <?php else: ?>
                                 <span class="badge badge-success">
@@ -126,24 +132,78 @@ require_once __DIR__ . '/templates/header.php';
                             <?php endif; ?>
                         </td>
                         <td>
-                            <?php if ($student['lesson_day'] && $student['lesson_time']): ?>
+                            <?php if ($schedule && !empty($schedule)): ?>
                                 <?php
                                 $days = ['', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-                                $dayName = $days[$student['lesson_day']] ?? '—';
+                                $scheduleItems = [];
+                                foreach ($schedule as $day => $time) {
+                                    $dayName = $days[$day] ?? '';
+                                    $scheduleItems[] = "$dayName $time";
+                                }
+                                echo e(implode(', ', $scheduleItems));
                                 ?>
-                                <strong><?= $dayName ?></strong> в <?= formatTime($student['lesson_time']) ?>
                             <?php else: ?>
                                 <span style="color: var(--text-medium-emphasis);">Не указано</span>
                             <?php endif; ?>
                         </td>
                         <td>
-                            <strong><?= formatMoney($student['monthly_price'] ?? 0) ?></strong>
+                            <?php
+                            $lessonType = $student['lesson_type'] ?? 'group';
+                            if ($lessonType === 'group') {
+                                $price = $student['price_group'] ?? 5000;
+                                $paymentType = $student['payment_type_group'] ?? 'monthly';
+                            } else {
+                                $price = $student['price_individual'] ?? 1500;
+                                $paymentType = $student['payment_type_individual'] ?? 'per_lesson';
+                            }
+                            $paymentLabel = $paymentType === 'monthly' ? '/мес' : '/урок';
+                            ?>
+                            <strong><?= formatMoney($price) ?><?= $paymentLabel ?></strong>
                         </td>
                         <td>
-                            <?= $student['phone'] ? formatPhone($student['phone']) : '—' ?>
-                            <?php if ($student['parent_phone']): ?>
-                                <br><small style="color: var(--text-medium-emphasis);">Родитель: <?= formatPhone($student['parent_phone']) ?></small>
-                            <?php endif; ?>
+                            <!-- Контакты ученика -->
+                            <div style="margin-bottom: 8px;">
+                                <small style="color: var(--text-medium-emphasis); display: block; margin-bottom: 4px;">Ученик:</small>
+                                <?php if ($student['student_telegram']): ?>
+                                    <a href="https://t.me/<?= e($student['student_telegram']) ?>" target="_blank" class="messenger-btn messenger-telegram" title="Telegram ученика">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161l-1.84 8.673c-.139.623-.5.775-.99.483l-2.738-2.018-1.32 1.27c-.146.146-.27.27-.552.27l.197-2.8 5.094-4.602c.222-.197-.048-.307-.344-.11l-6.3 3.965-2.71-.85c-.59-.185-.602-.59.124-.874l10.6-4.086c.49-.183.92.11.76.874z"/>
+                                        </svg>
+                                    </a>
+                                <?php endif; ?>
+                                <?php if ($student['student_whatsapp']): ?>
+                                    <a href="https://wa.me/<?= e(preg_replace('/[^0-9]/', '', $student['student_whatsapp'])) ?>" target="_blank" class="messenger-btn messenger-whatsapp" title="WhatsApp ученика">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                                        </svg>
+                                    </a>
+                                <?php endif; ?>
+                                <?php if (!$student['student_telegram'] && !$student['student_whatsapp']): ?>
+                                    <span style="color: var(--text-medium-emphasis);">—</span>
+                                <?php endif; ?>
+                            </div>
+
+                            <!-- Контакты родителя -->
+                            <div>
+                                <small style="color: var(--text-medium-emphasis); display: block; margin-bottom: 4px;">Родитель:</small>
+                                <?php if ($student['parent_telegram']): ?>
+                                    <a href="https://t.me/<?= e($student['parent_telegram']) ?>" target="_blank" class="messenger-btn messenger-telegram" title="Telegram родителя">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161l-1.84 8.673c-.139.623-.5.775-.99.483l-2.738-2.018-1.32 1.27c-.146.146-.27.27-.552.27l.197-2.8 5.094-4.602c.222-.197-.048-.307-.344-.11l-6.3 3.965-2.71-.85c-.59-.185-.602-.59.124-.874l10.6-4.086c.49-.183.92.11.76.874z"/>
+                                        </svg>
+                                    </a>
+                                <?php endif; ?>
+                                <?php if ($student['parent_whatsapp']): ?>
+                                    <a href="https://wa.me/<?= e(preg_replace('/[^0-9]/', '', $student['parent_whatsapp'])) ?>" target="_blank" class="messenger-btn messenger-whatsapp" title="WhatsApp родителя">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                                        </svg>
+                                    </a>
+                                <?php endif; ?>
+                                <?php if (!$student['parent_telegram'] && !$student['parent_whatsapp']): ?>
+                                    <span style="color: var(--text-medium-emphasis);">—</span>
+                                <?php endif; ?>
+                            </div>
                         </td>
                         <td>
                             <?php if ($student['active']): ?>
@@ -191,6 +251,7 @@ require_once __DIR__ . '/templates/header.php';
             <input type="hidden" id="student-id" name="id">
 
             <div class="modal-body">
+                <!-- ФИО -->
                 <div class="form-group">
                     <label class="form-label" for="student-name">
                         <span class="material-icons" style="font-size: 16px; vertical-align: middle;">person</span>
@@ -207,84 +268,110 @@ require_once __DIR__ . '/templates/header.php';
                     >
                 </div>
 
-                <div class="form-row">
-                    <div class="form-group" style="flex: 1;">
-                        <label class="form-label" for="student-class">
-                            <span class="material-icons" style="font-size: 16px; vertical-align: middle;">school</span>
-                            Класс
-                        </label>
-                        <select class="form-control" id="student-class" name="class">
-                            <option value="">Не указан</option>
-                            <?php for ($i = 7; $i <= 11; $i++): ?>
-                                <option value="<?= $i ?>"><?= $i ?> класс</option>
-                            <?php endfor; ?>
-                        </select>
-                    </div>
-
-                    <div class="form-group" style="flex: 1;">
-                        <label class="form-label" for="student-lesson-type">
-                            <span class="material-icons" style="font-size: 16px; vertical-align: middle;">groups</span>
-                            Тип занятий *
-                        </label>
-                        <select class="form-control" id="student-lesson-type" name="lesson_type" required onchange="updatePrice()">
-                            <option value="group">Групповые (5000₽/мес)</option>
-                            <option value="individual">Индивидуальные (1500₽/мес)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group" style="flex: 1;">
-                        <label class="form-label" for="student-lesson-day">
-                            <span class="material-icons" style="font-size: 16px; vertical-align: middle;">calendar_today</span>
-                            День недели
-                        </label>
-                        <select class="form-control" id="student-lesson-day" name="lesson_day">
-                            <option value="">Не указан</option>
-                            <option value="1">Понедельник</option>
-                            <option value="2">Вторник</option>
-                            <option value="3">Среда</option>
-                            <option value="4">Четверг</option>
-                            <option value="5">Пятница</option>
-                            <option value="6">Суббота</option>
-                            <option value="7">Воскресенье</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group" style="flex: 1;">
-                        <label class="form-label" for="student-lesson-time">
-                            <span class="material-icons" style="font-size: 16px; vertical-align: middle;">schedule</span>
-                            Время
-                        </label>
-                        <input
-                            type="time"
-                            class="form-control"
-                            id="student-lesson-time"
-                            name="lesson_time"
-                        >
-                    </div>
-                </div>
-
+                <!-- Класс -->
                 <div class="form-group">
-                    <label class="form-label" for="student-monthly-price">
-                        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">payments</span>
-                        Цена за месяц (₽) *
+                    <label class="form-label" for="student-class">
+                        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">school</span>
+                        Класс
                     </label>
-                    <input
-                        type="number"
-                        class="form-control"
-                        id="student-monthly-price"
-                        name="monthly_price"
-                        placeholder="5000"
-                        required
-                        min="0"
-                        step="100"
-                    >
-                    <small style="color: var(--text-medium-emphasis); display: block; margin-top: 8px;">
-                        Стандартные цены: групповые — 5000₽, индивидуальные — 1500₽ (8 занятий/месяц)
-                    </small>
+                    <select class="form-control" id="student-class" name="class">
+                        <option value="">Не указан</option>
+                        <?php for ($i = 2; $i <= 11; $i++): ?>
+                            <option value="<?= $i ?>"><?= $i ?> класс</option>
+                        <?php endfor; ?>
+                    </select>
                 </div>
 
+                <!-- Тип занятий (кнопки) -->
+                <div class="form-group">
+                    <label class="form-label">
+                        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">groups</span>
+                        Тип занятий *
+                    </label>
+                    <div class="button-group">
+                        <button type="button" class="btn-toggle active" data-value="group" onclick="selectLessonType(this)">
+                            <span class="material-icons" style="font-size: 18px;">group</span>
+                            Группа
+                        </button>
+                        <button type="button" class="btn-toggle" data-value="individual" onclick="selectLessonType(this)">
+                            <span class="material-icons" style="font-size: 18px;">person</span>
+                            Соло
+                        </button>
+                    </div>
+                    <input type="hidden" id="student-lesson-type" name="lesson_type" value="group" required>
+                </div>
+
+                <!-- Цены и тип оплаты для групповых -->
+                <div class="form-group price-group" id="price-group-section">
+                    <label class="form-label">
+                        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">payments</span>
+                        Цена групповых занятий *
+                    </label>
+                    <div class="price-row">
+                        <input
+                            type="number"
+                            class="form-control"
+                            id="price-group"
+                            name="price_group"
+                            placeholder="5000"
+                            min="0"
+                            step="100"
+                            value="5000"
+                        >
+                        <select class="form-control" id="payment-type-group" name="payment_type_group">
+                            <option value="monthly">За месяц</option>
+                            <option value="per_lesson">За урок</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Цены и тип оплаты для индивидуальных -->
+                <div class="form-group price-group" id="price-individual-section">
+                    <label class="form-label">
+                        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">payments</span>
+                        Цена индивидуальных занятий *
+                    </label>
+                    <div class="price-row">
+                        <input
+                            type="number"
+                            class="form-control"
+                            id="price-individual"
+                            name="price_individual"
+                            placeholder="1500"
+                            min="0"
+                            step="100"
+                            value="1500"
+                        >
+                        <select class="form-control" id="payment-type-individual" name="payment_type_individual">
+                            <option value="per_lesson">За урок</option>
+                            <option value="monthly">За месяц</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Выбор дней недели -->
+                <div class="form-group">
+                    <label class="form-label">
+                        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">calendar_today</span>
+                        Дни недели
+                    </label>
+                    <div class="days-group">
+                        <button type="button" class="btn-day" data-day="1" onclick="toggleDay(this)">Пн</button>
+                        <button type="button" class="btn-day" data-day="2" onclick="toggleDay(this)">Вт</button>
+                        <button type="button" class="btn-day" data-day="3" onclick="toggleDay(this)">Ср</button>
+                        <button type="button" class="btn-day" data-day="4" onclick="toggleDay(this)">Чт</button>
+                        <button type="button" class="btn-day" data-day="5" onclick="toggleDay(this)">Пт</button>
+                        <button type="button" class="btn-day" data-day="6" onclick="toggleDay(this)">Сб</button>
+                        <button type="button" class="btn-day" data-day="7" onclick="toggleDay(this)">Вс</button>
+                    </div>
+                </div>
+
+                <!-- Список выбранных дней с временем -->
+                <div id="schedule-list" class="schedule-list">
+                    <!-- Динамически добавляются строки расписания -->
+                </div>
+
+                <!-- Телефон ученика -->
                 <div class="form-group">
                     <label class="form-label" for="student-phone">
                         <span class="material-icons" style="font-size: 16px; vertical-align: middle;">phone</span>
@@ -299,6 +386,42 @@ require_once __DIR__ . '/templates/header.php';
                     >
                 </div>
 
+                <!-- Мессенджеры ученика -->
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label" for="student-telegram">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;">
+                                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161l-1.84 8.673c-.139.623-.5.775-.99.483l-2.738-2.018-1.32 1.27c-.146.146-.27.27-.552.27l.197-2.8 5.094-4.602c.222-.197-.048-.307-.344-.11l-6.3 3.965-2.71-.85c-.59-.185-.602-.59.124-.874l10.6-4.086c.49-.183.92.11.76.874z"/>
+                            </svg>
+                            Telegram ученика
+                        </label>
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="student-telegram"
+                            name="student_telegram"
+                            placeholder="username"
+                        >
+                    </div>
+
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label" for="student-whatsapp">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                            </svg>
+                            WhatsApp ученика
+                        </label>
+                        <input
+                            type="tel"
+                            class="form-control"
+                            id="student-whatsapp"
+                            name="student_whatsapp"
+                            placeholder="+7 (999) 123-45-67"
+                        >
+                    </div>
+                </div>
+
+                <!-- Телефон родителя -->
                 <div class="form-group">
                     <label class="form-label" for="student-parent-phone">
                         <span class="material-icons" style="font-size: 16px; vertical-align: middle;">phone</span>
@@ -313,20 +436,42 @@ require_once __DIR__ . '/templates/header.php';
                     >
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label" for="student-email">
-                        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">email</span>
-                        Email
-                    </label>
-                    <input
-                        type="email"
-                        class="form-control"
-                        id="student-email"
-                        name="email"
-                        placeholder="student@example.com"
-                    >
+                <!-- Мессенджеры родителя -->
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label" for="parent-telegram">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;">
+                                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161l-1.84 8.673c-.139.623-.5.775-.99.483l-2.738-2.018-1.32 1.27c-.146.146-.27.27-.552.27l.197-2.8 5.094-4.602c.222-.197-.048-.307-.344-.11l-6.3 3.965-2.71-.85c-.59-.185-.602-.59.124-.874l10.6-4.086c.49-.183.92.11.76.874z"/>
+                            </svg>
+                            Telegram родителя
+                        </label>
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="parent-telegram"
+                            name="parent_telegram"
+                            placeholder="username"
+                        >
+                    </div>
+
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label" for="parent-whatsapp">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                            </svg>
+                            WhatsApp родителя
+                        </label>
+                        <input
+                            type="tel"
+                            class="form-control"
+                            id="parent-whatsapp"
+                            name="parent_whatsapp"
+                            placeholder="+7 (999) 123-45-67"
+                        >
+                    </div>
                 </div>
 
+                <!-- Примечания -->
                 <div class="form-group">
                     <label class="form-label" for="student-notes">
                         <span class="material-icons" style="font-size: 16px; vertical-align: middle;">notes</span>
@@ -407,9 +552,9 @@ require_once __DIR__ . '/templates/header.php';
     .modal-content {
         background-color: var(--md-surface);
         border-radius: 12px;
-        max-width: 600px;
+        max-width: 700px;
         width: 90%;
-        max-height: 85vh;
+        max-height: 90vh;
         overflow: hidden;
         display: flex;
         flex-direction: column;
@@ -491,6 +636,162 @@ require_once __DIR__ . '/templates/header.php';
     .form-row {
         display: flex;
         gap: 16px;
+    }
+
+    /* Кнопки-переключатели */
+    .button-group {
+        display: flex;
+        gap: 12px;
+    }
+
+    .btn-toggle {
+        flex: 1;
+        padding: 12px 20px;
+        border: 2px solid rgba(255, 255, 255, 0.12);
+        border-radius: 8px;
+        background-color: var(--md-surface-3);
+        color: var(--text-medium-emphasis);
+        cursor: pointer;
+        font-size: 0.875rem;
+        font-weight: 600;
+        font-family: 'Montserrat', sans-serif;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .btn-toggle:hover {
+        border-color: var(--md-primary);
+        background-color: var(--md-surface-4);
+    }
+
+    .btn-toggle.active {
+        background-color: rgba(187, 134, 252, 0.15);
+        border-color: var(--md-primary);
+        color: var(--md-primary);
+    }
+
+    /* Цены */
+    .price-row {
+        display: flex;
+        gap: 12px;
+    }
+
+    .price-row input {
+        flex: 2;
+    }
+
+    .price-row select {
+        flex: 1;
+    }
+
+    /* Кнопки дней недели */
+    .days-group {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .btn-day {
+        padding: 10px 16px;
+        border: 2px solid rgba(255, 255, 255, 0.12);
+        border-radius: 8px;
+        background-color: var(--md-surface-3);
+        color: var(--text-medium-emphasis);
+        cursor: pointer;
+        font-size: 0.875rem;
+        font-weight: 600;
+        font-family: 'Montserrat', sans-serif;
+        transition: all 0.2s;
+        min-width: 50px;
+    }
+
+    .btn-day:hover {
+        border-color: var(--md-primary);
+        background-color: var(--md-surface-4);
+    }
+
+    .btn-day.active {
+        background-color: rgba(187, 134, 252, 0.15);
+        border-color: var(--md-primary);
+        color: var(--md-primary);
+    }
+
+    /* Список расписания */
+    .schedule-list {
+        margin-top: 16px;
+    }
+
+    .schedule-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        background-color: var(--md-surface-3);
+        border-radius: 8px;
+        margin-bottom: 8px;
+    }
+
+    .schedule-item-day {
+        font-weight: 600;
+        color: var(--md-primary);
+        min-width: 120px;
+    }
+
+    .schedule-item-time {
+        flex: 1;
+    }
+
+    .schedule-item-remove {
+        background: none;
+        border: none;
+        color: var(--md-error);
+        cursor: pointer;
+        padding: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: background-color 0.2s;
+    }
+
+    .schedule-item-remove:hover {
+        background-color: rgba(207, 102, 121, 0.12);
+    }
+
+    /* Кнопки мессенджеров */
+    .messenger-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        margin-right: 4px;
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+
+    .messenger-telegram {
+        background-color: rgba(0, 136, 204, 0.15);
+        color: #0088cc;
+    }
+
+    .messenger-telegram:hover {
+        background-color: rgba(0, 136, 204, 0.25);
+        transform: scale(1.1);
+    }
+
+    .messenger-whatsapp {
+        background-color: rgba(37, 211, 102, 0.15);
+        color: #25d366;
+    }
+
+    .messenger-whatsapp:hover {
+        background-color: rgba(37, 211, 102, 0.25);
+        transform: scale(1.1);
     }
 
     /* Панель фильтров */
