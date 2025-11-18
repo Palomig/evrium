@@ -35,11 +35,32 @@ require_once __DIR__ . '/templates/header.php';
         </h3>
     </div>
     <div class="card-body">
+        <!-- Статус webhook -->
+        <div id="webhook-status" style="margin-bottom: 24px; padding: 16px; border-radius: 8px; background-color: var(--md-surface-3);">
+            <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                <span class="material-icons" style="margin-right: 8px;">info</span>
+                <strong>Статус Webhook</strong>
+            </div>
+            <div id="webhook-status-content">
+                <p style="margin: 0; color: var(--text-medium-emphasis);">Нажмите "Проверить статус" после сохранения токена</p>
+            </div>
+            <div style="margin-top: 12px;">
+                <button type="button" class="btn btn-text" onclick="checkWebhookStatus()">
+                    <span class="material-icons" style="margin-right: 8px; font-size: 18px;">refresh</span>
+                    Проверить статус
+                </button>
+                <button type="button" class="btn btn-text" onclick="setupWebhook()">
+                    <span class="material-icons" style="margin-right: 8px; font-size: 18px;">settings</span>
+                    Настроить webhook
+                </button>
+            </div>
+        </div>
+
         <form id="bot-settings-form" onsubmit="saveBotSettings(event)">
             <div class="form-group">
                 <label class="form-label" for="bot_token">
                     <span class="material-icons" style="font-size: 16px; vertical-align: middle;">vpn_key</span>
-                    Bot Token
+                    Bot Token *
                 </label>
                 <input
                     type="text"
@@ -48,6 +69,7 @@ require_once __DIR__ . '/templates/header.php';
                     name="bot_token"
                     value="<?= e($settingsMap['bot_token'] ?? '') ?>"
                     placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+                    required
                 >
                 <small style="color: var(--text-medium-emphasis); display: block; margin-top: 8px;">
                     Получите токен у <a href="https://t.me/BotFather" target="_blank" style="color: var(--md-primary);">@BotFather</a>

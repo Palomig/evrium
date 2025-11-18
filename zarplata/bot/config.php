@@ -10,7 +10,7 @@ require_once __DIR__ . '/../config/helpers.php';
 function getBotToken() {
     try {
         $setting = dbQueryOne(
-            "SELECT setting_value FROM settings WHERE setting_key = 'telegram_bot_token'",
+            "SELECT setting_value FROM settings WHERE setting_key = 'bot_token'",
             []
         );
 

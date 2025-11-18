@@ -2,6 +2,81 @@
  * JavaScript для управления настройками
  */
 
+// Проверить статус webhook
+async function checkWebhookStatus() {
+    const statusContent = document.getElementById('webhook-status-content');
+    statusContent.innerHTML = '<p style="margin: 0; color: var(--text-medium-emphasis);">Проверка...</p>';
+
+    try {
+        const response = await fetch('/zarplata/api/telegram.php?action=check_webhook');
+        const result = await response.json();
+
+        if (result.success) {
+            const info = result.data;
+            let html = '<div style="font-size: 0.875rem;">';
+
+            if (info.url) {
+                html += `<p style="margin-bottom: 8px;"><strong>URL:</strong> ${escapeHtml(info.url)}</p>`;
+            } else {
+                html += `<p style="margin-bottom: 8px; color: var(--md-warning);">⚠️ Webhook не настроен</p>`;
+            }
+
+            if (info.pending_update_count !== undefined) {
+                html += `<p style="margin-bottom: 8px;"><strong>Необработанных сообщений:</strong> ${info.pending_update_count}</p>`;
+            }
+
+            if (info.last_error_message) {
+                html += `<p style="margin-bottom: 8px; color: var(--md-error);"><strong>Последняя ошибка:</strong><br>${escapeHtml(info.last_error_message)}</p>`;
+
+                if (info.last_error_message.includes('SSL')) {
+                    html += `<p style="margin-top: 12px; padding: 12px; background-color: var(--md-error-container); border-radius: 8px; font-size: 0.875rem;">
+                        <strong>⚠️ Проблема с SSL сертификатом</strong><br>
+                        Telegram не может подключиться к вашему серверу из-за проблем с SSL.<br><br>
+                        <strong>Решение:</strong> Убедитесь, что ваш сервер использует действительный SSL сертификат (Let's Encrypt, Cloudflare и т.д.)
+                    </p>`;
+                }
+            } else if (info.url) {
+                html += `<p style="margin-bottom: 0; color: var(--md-success);">✅ Webhook работает нормально</p>`;
+            }
+
+            html += '</div>';
+            statusContent.innerHTML = html;
+        } else {
+            statusContent.innerHTML = `<p style="margin: 0; color: var(--md-error);">${escapeHtml(result.error || 'Ошибка проверки')}</p>`;
+        }
+    } catch (error) {
+        console.error('Error checking webhook:', error);
+        statusContent.innerHTML = '<p style="margin: 0; color: var(--md-error);">Ошибка проверки статуса</p>';
+    }
+}
+
+// Настроить webhook
+async function setupWebhook() {
+    const statusContent = document.getElementById('webhook-status-content');
+    statusContent.innerHTML = '<p style="margin: 0; color: var(--text-medium-emphasis);">Настройка webhook...</p>';
+
+    try {
+        const response = await fetch('/zarplata/api/telegram.php?action=setup_webhook', {
+            method: 'POST'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showNotification('Webhook настроен успешно!', 'success');
+            // Автоматически проверяем статус после настройки
+            setTimeout(() => checkWebhookStatus(), 1000);
+        } else {
+            showNotification(result.error || 'Ошибка настройки webhook', 'error');
+            statusContent.innerHTML = `<p style="margin: 0; color: var(--md-error);">${escapeHtml(result.error)}</p>`;
+        }
+    } catch (error) {
+        console.error('Error setting up webhook:', error);
+        showNotification('Ошибка настройки webhook', 'error');
+        statusContent.innerHTML = '<p style="margin: 0; color: var(--md-error);">Ошибка настройки webhook</p>';
+    }
+}
+
 // Сохранить настройки Telegram бота
 async function saveBotSettings(event) {
     event.preventDefault();
@@ -30,7 +105,9 @@ async function saveBotSettings(event) {
         const result = await response.json();
 
         if (result.success) {
-            showNotification('Настройки бота сохранены', 'success');
+            showNotification('Настройки бота сохранены. Теперь настройте webhook.', 'success');
+            // Автоматически проверяем статус после сохранения
+            setTimeout(() => checkWebhookStatus(), 500);
         } else {
             showNotification(result.error || 'Ошибка сохранения', 'error');
         }
