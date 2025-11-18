@@ -4,8 +4,15 @@
 --
 -- Хост: localhost
 -- Время создания: Ноя 18 2025 г., 15:35
+-- Обновлено: Ноя 18 2025 г., 17:30 (автоматическая очистка структуры)
 -- Версия сервера: 5.7.44-48
 -- Версия PHP: 7.4.33
+--
+-- ИЗМЕНЕНИЯ В ЭТОЙ ВЕРСИИ:
+-- 1. Таблица students: удалены устаревшие поля (phone, email, monthly_price, lesson_day, lesson_time)
+-- 2. Таблица students: добавлен foreign key constraint на teacher_id
+-- 3. Таблица lessons_template: объединены дублирующиеся шаблоны (ID 14+16, 15+17)
+-- 4. Ученики с разными тирами теперь объединены в одну группу
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 SET time_zone = "+00:00";
@@ -343,10 +350,10 @@ INSERT INTO `lessons_template` (`id`, `teacher_id`, `day_of_week`, `room`, `time
 (11, 1, 1, 1, '16:00:00', '17:00:00', 'individual', 'Математика', 'D', '9', '[\"Влада\"]', 1, NULL, 0, '2025-11-17 05:07:57', '2025-11-18 12:34:12'),
 (12, 1, 2, 1, '08:00:00', '09:00:00', 'group', 'Математика', 'C', '6, 7, 8', '[\"Вика\",\"Вика\",\"Вика\",\"Вика\"]', 6, NULL, 0, '2025-11-18 07:24:37', '2025-11-18 12:34:03'),
 (13, 1, 2, 1, '09:00:00', '10:00:00', 'group', 'Математика', 'C', NULL, '[\"Вика\",\"Вика\",\"Вика\",\"Вика\"]', 6, NULL, 0, '2025-11-18 08:49:06', '2025-11-18 12:34:07'),
-(14, 1, 2, 1, '18:00:00', '19:30:00', 'group', NULL, 'A', NULL, '[\"\\u0410\\u0440\\u0438\\u043d\\u0430\"]', 1, NULL, 1, '2025-11-18 15:33:30', '2025-11-18 15:33:30'),
-(15, 1, 6, 1, '15:00:00', '16:30:00', 'group', NULL, 'A', NULL, '[\"\\u0410\\u0440\\u0438\\u043d\\u0430\"]', 1, NULL, 1, '2025-11-18 15:33:30', '2025-11-18 15:33:30'),
-(16, 1, 2, 1, '18:00:00', '19:30:00', 'group', NULL, 'C', NULL, '[\"\\u0412\\u0430\\u043d\\u044f\"]', 1, NULL, 1, '2025-11-18 15:34:42', '2025-11-18 15:34:42'),
-(17, 1, 6, 1, '15:00:00', '16:30:00', 'group', NULL, 'C', NULL, '[\"\\u0412\\u0430\\u043d\\u044f\"]', 1, NULL, 1, '2025-11-18 15:34:42', '2025-11-18 15:34:42');
+(14, 1, 2, 1, '18:00:00', '19:30:00', 'group', NULL, 'C', NULL, '[\"Арина\",\"Ваня\"]', 2, NULL, 1, '2025-11-18 15:33:30', '2025-11-18 15:33:30'),
+(15, 1, 6, 1, '15:00:00', '16:30:00', 'group', NULL, 'C', NULL, '[\"Арина\",\"Ваня\"]', 2, NULL, 1, '2025-11-18 15:33:30', '2025-11-18 15:33:30'),
+(16, 1, 2, 1, '18:00:00', '19:30:00', 'group', NULL, 'C', NULL, '[\"Ваня\"]', 1, NULL, 0, '2025-11-18 15:34:42', '2025-11-18 15:34:42'),
+(17, 1, 6, 1, '15:00:00', '16:30:00', 'group', NULL, 'C', NULL, '[\"Ваня\"]', 1, NULL, 0, '2025-11-18 15:34:42', '2025-11-18 15:34:42');
 
 -- --------------------------------------------------------
 
@@ -531,13 +538,11 @@ CREATE TABLE IF NOT EXISTS `students` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `teacher_id` int(11) NOT NULL,
   `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `phone` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `student_telegram` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `student_whatsapp` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `parent_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `parent_telegram` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `parent_whatsapp` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `email` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `class` int(11) DEFAULT NULL,
   `tier` enum('S','A','B','C','D') COLLATE utf8mb4_unicode_ci DEFAULT 'C',
   `lesson_type` enum('group','individual') COLLATE utf8mb4_unicode_ci DEFAULT 'group',
@@ -546,9 +551,6 @@ CREATE TABLE IF NOT EXISTS `students` (
   `price_group` int(11) DEFAULT '5000',
   `price_individual` int(11) DEFAULT '1500',
   `schedule` json DEFAULT NULL,
-  `monthly_price` int(11) DEFAULT '5000',
-  `lesson_day` tinyint(4) DEFAULT NULL,
-  `lesson_time` time DEFAULT NULL,
   `notes` text COLLATE utf8mb4_unicode_ci,
   `active` tinyint(1) DEFAULT '1',
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
@@ -560,18 +562,19 @@ CREATE TABLE IF NOT EXISTS `students` (
   KEY `idx_payment_type_group` (`payment_type_group`),
   KEY `idx_payment_type_individual` (`payment_type_individual`),
   KEY `idx_teacher_id` (`teacher_id`),
-  KEY `idx_tier` (`tier`)
+  KEY `idx_tier` (`tier`),
+  CONSTRAINT `fk_students_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `teachers` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Дамп данных таблицы `students`
 --
 
-INSERT INTO `students` (`id`, `teacher_id`, `name`, `phone`, `student_telegram`, `student_whatsapp`, `parent_name`, `parent_telegram`, `parent_whatsapp`, `email`, `class`, `tier`, `lesson_type`, `payment_type_group`, `payment_type_individual`, `price_group`, `price_individual`, `schedule`, `monthly_price`, `lesson_day`, `lesson_time`, `notes`, `active`, `created_at`, `updated_at`) VALUES
-(1, 1, 'Влада', NULL, NULL, NULL, NULL, NULL, '79096645362', NULL, 9, 'C', 'individual', 'monthly', 'per_lesson', 5000, 1500, '{\"1\": \"16:00\", \"2\": \"16:00\", \"5\": \"17:00\"}', 5000, NULL, NULL, NULL, 1, '2025-11-18 14:40:35', '2025-11-18 15:20:29'),
-(2, 1, 'Настя', NULL, 'nastch1', NULL, NULL, NULL, '79060815386', NULL, 9, 'C', 'individual', 'monthly', 'per_lesson', 5000, 1500, '{\"2\": \"17:00\", \"4\": \"17:00\"}', 5000, NULL, NULL, NULL, 1, '2025-11-18 14:43:34', '2025-11-18 15:20:29'),
-(3, 1, 'Арина', NULL, 'Arinali20', NULL, 'Наталья', NULL, '79268390696', NULL, 8, 'A', 'group', 'monthly', 'per_lesson', 5000, 1500, '{\"2\": \"18:00\", \"6\": \"15:00\"}', 5000, NULL, NULL, NULL, 1, '2025-11-18 15:33:30', '2025-11-18 15:33:30'),
-(4, 1, 'Ваня', NULL, NULL, NULL, 'Юлия', NULL, '79060452561', NULL, 8, 'C', 'group', 'monthly', 'per_lesson', 5000, 1500, '{\"2\": \"18:00\", \"6\": \"15:00\"}', 5000, NULL, NULL, NULL, 1, '2025-11-18 15:34:42', '2025-11-18 15:34:42');
+INSERT INTO `students` (`id`, `teacher_id`, `name`, `student_telegram`, `student_whatsapp`, `parent_name`, `parent_telegram`, `parent_whatsapp`, `class`, `tier`, `lesson_type`, `payment_type_group`, `payment_type_individual`, `price_group`, `price_individual`, `schedule`, `notes`, `active`, `created_at`, `updated_at`) VALUES
+(1, 1, 'Влада', NULL, NULL, NULL, NULL, '79096645362', 9, 'C', 'individual', 'monthly', 'per_lesson', 5000, 1500, '{\"1\": \"16:00\", \"2\": \"16:00\", \"5\": \"17:00\"}', NULL, 1, '2025-11-18 14:40:35', '2025-11-18 15:20:29'),
+(2, 1, 'Настя', 'nastch1', NULL, NULL, NULL, '79060815386', 9, 'C', 'individual', 'monthly', 'per_lesson', 5000, 1500, '{\"2\": \"17:00\", \"4\": \"17:00\"}', NULL, 1, '2025-11-18 14:43:34', '2025-11-18 15:20:29'),
+(3, 1, 'Арина', 'Arinali20', NULL, 'Наталья', NULL, '79268390696', 8, 'A', 'group', 'monthly', 'per_lesson', 5000, 1500, '{\"2\": \"18:00\", \"6\": \"15:00\"}', NULL, 1, '2025-11-18 15:33:30', '2025-11-18 15:33:30'),
+(4, 1, 'Ваня', NULL, NULL, 'Юлия', NULL, '79060452561', 8, 'C', 'group', 'monthly', 'per_lesson', 5000, 1500, '{\"2\": \"18:00\", \"6\": \"15:00\"}', NULL, 1, '2025-11-18 15:34:42', '2025-11-18 15:34:42');
 
 -- --------------------------------------------------------
 
