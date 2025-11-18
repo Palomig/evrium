@@ -4,7 +4,7 @@
 --
 -- Хост: localhost
 -- Время создания: Ноя 18 2025 г., 15:35
--- Обновлено: Ноя 18 2025 г., 18:00 (исправление триггеров)
+-- Обновлено: Ноя 18 2025 г., 18:15 (исправление импорта)
 -- Версия сервера: 5.7.44-48
 -- Версия PHP: 7.4.33
 --
@@ -14,9 +14,12 @@
 -- 3. Таблица lessons_template: объединены дублирующиеся шаблоны (ID 14+16, 15+17)
 -- 4. Ученики с разными тирами теперь объединены в одну группу
 -- 5. Триггеры: добавлен DROP TRIGGER IF EXISTS для предотвращения ошибки при повторном импорте
+-- 6. Таблицы: добавлен DROP TABLE IF EXISTS перед каждым CREATE TABLE для безопасного переимпорта
+-- 7. Foreign keys: отключены на время импорта (SET FOREIGN_KEY_CHECKS = 0/1)
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 SET time_zone = "+00:00";
+SET FOREIGN_KEY_CHECKS = 0;
 
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
@@ -33,8 +36,9 @@ SET time_zone = "+00:00";
 --
 -- Структура таблицы `attendance_log`
 --
+DROP TABLE IF EXISTS `attendance_log`;
 
-CREATE TABLE IF NOT EXISTS `attendance_log` (
+CREATE TABLE `attendance_log` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `lesson_instance_id` int(11) NOT NULL,
   `student_id` int(11) NOT NULL,
@@ -75,8 +79,9 @@ DELIMITER ;
 --
 -- Структура таблицы `audit_log`
 --
+DROP TABLE IF EXISTS `audit_log`;
 
-CREATE TABLE IF NOT EXISTS `audit_log` (
+CREATE TABLE `audit_log` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `action_type` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `entity_type` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -181,8 +186,9 @@ INSERT INTO `audit_log` (`id`, `action_type`, `entity_type`, `entity_id`, `user_
 --
 -- Структура таблицы `bot_states`
 --
+DROP TABLE IF EXISTS `bot_states`;
 
-CREATE TABLE IF NOT EXISTS `bot_states` (
+CREATE TABLE `bot_states` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `telegram_id` bigint(20) NOT NULL,
   `state` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -199,8 +205,9 @@ CREATE TABLE IF NOT EXISTS `bot_states` (
 --
 -- Структура таблицы `lessons_instance`
 --
+DROP TABLE IF EXISTS `lessons_instance`;
 
-CREATE TABLE IF NOT EXISTS `lessons_instance` (
+CREATE TABLE `lessons_instance` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `template_id` int(11) DEFAULT NULL,
   `teacher_id` int(11) NOT NULL,
@@ -299,7 +306,9 @@ DELIMITER ;
 -- Дублирующая структура для представления `lessons_stats`
 -- (См. Ниже фактическое представление)
 --
-CREATE TABLE IF NOT EXISTS `lessons_stats` (
+DROP TABLE IF EXISTS `lessons_stats`;
+
+CREATE TABLE `lessons_stats` (
 `lesson_id` int(11)
 ,`lesson_date` date
 ,`teacher_name` varchar(100)
@@ -316,8 +325,9 @@ CREATE TABLE IF NOT EXISTS `lessons_stats` (
 --
 -- Структура таблицы `lessons_template`
 --
+DROP TABLE IF EXISTS `lessons_template`;
 
-CREATE TABLE IF NOT EXISTS `lessons_template` (
+CREATE TABLE `lessons_template` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `teacher_id` int(11) NOT NULL,
   `day_of_week` tinyint(4) NOT NULL,
@@ -363,8 +373,9 @@ INSERT INTO `lessons_template` (`id`, `teacher_id`, `day_of_week`, `room`, `time
 --
 -- Структура таблицы `lesson_students`
 --
+DROP TABLE IF EXISTS `lesson_students`;
 
-CREATE TABLE IF NOT EXISTS `lesson_students` (
+CREATE TABLE `lesson_students` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `lesson_instance_id` int(11) NOT NULL,
   `student_id` int(11) NOT NULL,
@@ -380,8 +391,9 @@ CREATE TABLE IF NOT EXISTS `lesson_students` (
 --
 -- Структура таблицы `payments`
 --
+DROP TABLE IF EXISTS `payments`;
 
-CREATE TABLE IF NOT EXISTS `payments` (
+CREATE TABLE `payments` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `teacher_id` int(11) NOT NULL,
   `lesson_instance_id` int(11) DEFAULT NULL,
@@ -438,8 +450,9 @@ INSERT INTO `payments` (`id`, `teacher_id`, `lesson_instance_id`, `lesson_templa
 --
 -- Структура таблицы `payment_formulas`
 --
+DROP TABLE IF EXISTS `payment_formulas`;
 
-CREATE TABLE IF NOT EXISTS `payment_formulas` (
+CREATE TABLE `payment_formulas` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `type` enum('min_plus_per','fixed','expression') COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -469,8 +482,9 @@ INSERT INTO `payment_formulas` (`id`, `name`, `type`, `description`, `min_paymen
 --
 -- Структура таблицы `payout_cycles`
 --
+DROP TABLE IF EXISTS `payout_cycles`;
 
-CREATE TABLE IF NOT EXISTS `payout_cycles` (
+CREATE TABLE `payout_cycles` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `period_start` date NOT NULL,
@@ -491,8 +505,9 @@ CREATE TABLE IF NOT EXISTS `payout_cycles` (
 --
 -- Структура таблицы `payout_cycle_payments`
 --
+DROP TABLE IF EXISTS `payout_cycle_payments`;
 
-CREATE TABLE IF NOT EXISTS `payout_cycle_payments` (
+CREATE TABLE `payout_cycle_payments` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `cycle_id` int(11) NOT NULL,
   `payment_id` int(11) NOT NULL,
@@ -507,8 +522,9 @@ CREATE TABLE IF NOT EXISTS `payout_cycle_payments` (
 --
 -- Структура таблицы `settings`
 --
+DROP TABLE IF EXISTS `settings`;
 
-CREATE TABLE IF NOT EXISTS `settings` (
+CREATE TABLE `settings` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `setting_key` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `setting_value` text COLLATE utf8mb4_unicode_ci,
@@ -536,8 +552,9 @@ INSERT INTO `settings` (`id`, `setting_key`, `setting_value`, `description`, `up
 --
 -- Структура таблицы `students`
 --
+DROP TABLE IF EXISTS `students`;
 
-CREATE TABLE IF NOT EXISTS `students` (
+CREATE TABLE `students` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `teacher_id` int(11) NOT NULL,
   `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -584,8 +601,9 @@ INSERT INTO `students` (`id`, `teacher_id`, `name`, `student_telegram`, `student
 --
 -- Структура таблицы `teachers`
 --
+DROP TABLE IF EXISTS `teachers`;
 
-CREATE TABLE IF NOT EXISTS `teachers` (
+CREATE TABLE `teachers` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `telegram_id` bigint(20) DEFAULT NULL,
@@ -621,7 +639,9 @@ INSERT INTO `teachers` (`id`, `name`, `telegram_id`, `telegram_username`, `phone
 -- Дублирующая структура для представления `teacher_stats`
 -- (См. Ниже фактическое представление)
 --
-CREATE TABLE IF NOT EXISTS `teacher_stats` (
+DROP TABLE IF EXISTS `teacher_stats`;
+
+CREATE TABLE `teacher_stats` (
 `teacher_id` int(11)
 ,`teacher_name` varchar(100)
 ,`total_lessons` bigint(21)
@@ -636,8 +656,9 @@ CREATE TABLE IF NOT EXISTS `teacher_stats` (
 --
 -- Структура таблицы `users`
 --
+DROP TABLE IF EXISTS `users`;
 
-CREATE TABLE IF NOT EXISTS `users` (
+CREATE TABLE `users` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `username` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `password_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -677,6 +698,8 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`cw95865_admin`@`localhost` SQL SECURITY DEFI
 DROP TABLE IF EXISTS `teacher_stats`;
 
 CREATE ALGORITHM=UNDEFINED DEFINER=`cw95865_admin`@`localhost` SQL SECURITY DEFINER VIEW `teacher_stats`  AS SELECT `t`.`id` AS `teacher_id`, `t`.`name` AS `teacher_name`, count(distinct `li`.`id`) AS `total_lessons`, count(distinct (case when (`li`.`status` = 'completed') then `li`.`id` end)) AS `completed_lessons`, coalesce(sum((case when (`p`.`status` <> 'cancelled') then `p`.`amount` else 0 end)),0) AS `total_earned`, coalesce(sum((case when (`p`.`status` = 'paid') then `p`.`amount` else 0 end)),0) AS `total_paid`, coalesce(sum((case when (`p`.`status` = 'pending') then `p`.`amount` else 0 end)),0) AS `pending_amount` FROM ((`teachers` `t` left join `lessons_instance` `li` on(((`t`.`id` = `li`.`teacher_id`) or (`t`.`id` = `li`.`substitute_teacher_id`)))) left join `payments` `p` on((`t`.`id` = `p`.`teacher_id`))) WHERE (`t`.`active` = 1) GROUP BY `t`.`id` ;
+
+SET FOREIGN_KEY_CHECKS = 1;
 
 --
 -- Ограничения внешнего ключа сохраненных таблиц
