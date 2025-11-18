@@ -346,7 +346,10 @@ require_once __DIR__ . '/templates/header.php';
     .modal-body {
         padding: 24px;
         overflow-y: auto;
-        flex: 1;
+        overflow-x: hidden;
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: calc(85vh - 150px);
     }
 
     .modal-footer {
@@ -355,6 +358,8 @@ require_once __DIR__ . '/templates/header.php';
         display: flex;
         justify-content: flex-end;
         gap: 12px;
+        flex-shrink: 0;
+        background-color: var(--md-surface);
     }
 
     /* Кнопки действий */
