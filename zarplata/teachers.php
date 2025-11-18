@@ -401,6 +401,15 @@ require_once __DIR__ . '/templates/header.php';
         background-color: rgba(255, 255, 255, 0.08);
     }
 
+    /* Форма внутри модального окна */
+    #teacher-form {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+    }
+
     .modal-body {
         padding: 24px;
         overflow-y: auto;
