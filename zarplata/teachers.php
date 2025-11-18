@@ -318,6 +318,8 @@ require_once __DIR__ . '/templates/header.php';
         display: flex;
         justify-content: space-between;
         align-items: center;
+        flex-shrink: 0;
+        background-color: var(--md-surface);
     }
 
     .modal-header h2 {
@@ -349,7 +351,6 @@ require_once __DIR__ . '/templates/header.php';
         overflow-x: hidden;
         flex: 1 1 auto;
         min-height: 0;
-        max-height: calc(85vh - 150px);
     }
 
     .modal-footer {
