@@ -3,10 +3,17 @@
  * Обработчик посещаемости уроков
  */
 
+// Подключаем зависимости
+if (!function_exists('getTeacherByTelegramId')) {
+    require_once __DIR__ . '/../config.php';
+}
+
 /**
  * Все ученики пришли
  */
 function handleAllPresent($chatId, $messageId, $telegramId, $lessonTemplateId, $callbackQueryId) {
+    error_log("[Telegram Bot] handleAllPresent called for lesson {$lessonTemplateId}");
+
     $teacher = getTeacherByTelegramId($telegramId);
 
     if (!$teacher) {
