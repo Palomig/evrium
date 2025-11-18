@@ -27,8 +27,9 @@ echo "<style>
 if (isset($_GET['send']) && isset($_GET['lesson_id'])) {
     $lessonId = filter_var($_GET['lesson_id'], FILTER_VALIDATE_INT);
 
-    echo "<h2>Отправка опроса</h2><pre>";
+    echo "<h2>Отправка опроса - Детальная диагностика</h2><pre>";
 
+    echo "=== Шаг 1: Получение данных урока ===\n";
     $lesson = dbQueryOne(
         "SELECT lt.*, t.name as teacher_name, t.telegram_id
          FROM lessons_template lt
@@ -38,21 +39,99 @@ if (isset($_GET['send']) && isset($_GET['lesson_id'])) {
     );
 
     if (!$lesson) {
-        echo "<span class='error'>❌ Урок не найден</span>\n";
-    } elseif (!$lesson['telegram_id']) {
-        echo "<span class='error'>❌ У преподавателя {$lesson['teacher_name']} нет Telegram ID</span>\n";
-        echo "\nДобавьте Telegram ID на странице: https://эвриум.рф/zarplata/teachers.php\n";
-    } else {
-        // Отправляем опрос
-        require_once __DIR__ . '/cron.php';
-        sendAttendanceQuery($lesson);
+        echo "<span class='error'>❌ Урок не найден (ID: $lessonId)</span>\n";
+        echo "</pre>";
+        echo "<a class='btn btn-secondary' href='quick_test.php'>← Назад</a>";
+        exit;
+    }
 
-        echo "<span class='success'>✅ Опрос отправлен!</span>\n\n";
-        echo "📱 Telegram ID: {$lesson['telegram_id']}\n";
-        echo "👤 Преподаватель: {$lesson['teacher_name']}\n";
-        echo "📚 Предмет: " . ($lesson['subject'] ?: '-') . "\n";
-        echo "🕐 Время: " . date('H:i', strtotime($lesson['time_start'])) . " - " . date('H:i', strtotime($lesson['time_end'])) . "\n\n";
-        echo "✨ <strong>Проверьте Telegram - должно прийти сообщение с кнопками!</strong>\n";
+    echo "<span class='success'>✅ Урок найден</span>\n";
+    echo "  ID: {$lesson['id']}\n";
+    echo "  Преподаватель: {$lesson['teacher_name']}\n";
+    echo "  Telegram ID: " . ($lesson['telegram_id'] ?: 'НЕТ') . "\n";
+    echo "  Предмет: " . ($lesson['subject'] ?: '-') . "\n";
+    echo "  Время: " . date('H:i', strtotime($lesson['time_start'])) . " - " . date('H:i', strtotime($lesson['time_end'])) . "\n";
+    echo "  Ожидается учеников: {$lesson['expected_students']}\n\n";
+
+    if (!$lesson['telegram_id']) {
+        echo "<span class='error'>❌ У преподавателя нет Telegram ID</span>\n";
+        echo "\nДобавьте Telegram ID на странице: https://эвриум.рф/zarplata/teachers.php\n";
+        echo "</pre>";
+        echo "<a class='btn btn-secondary' href='quick_test.php'>← Назад</a>";
+        exit;
+    }
+
+    echo "=== Шаг 2: Проверка токена бота ===\n";
+    $token = getBotToken();
+    if ($token) {
+        echo "<span class='success'>✅ Токен найден: " . substr($token, 0, 10) . "...</span>\n\n";
+    } else {
+        echo "<span class='error'>❌ Токен бота не найден в БД</span>\n";
+        echo "</pre>";
+        echo "<a class='btn btn-secondary' href='quick_test.php'>← Назад</a>";
+        exit;
+    }
+
+    echo "=== Шаг 3: Формирование сообщения ===\n";
+    $subject = $lesson['subject'] ? "<b>{$lesson['subject']}</b>" : "<b>Урок</b>";
+    $timeStart = date('H:i', strtotime($lesson['time_start']));
+    $timeEnd = date('H:i', strtotime($lesson['time_end']));
+    $expected = $lesson['expected_students'];
+    $room = $lesson['room'] ?? '-';
+    $tier = $lesson['tier'] ?? '';
+
+    $message = "📊 <b>Отметка посещаемости</b>\n\n";
+    $message .= "📚 {$subject}";
+    if ($tier) {
+        $message .= " [Tier {$tier}]";
+    }
+    $message .= "\n";
+    $message .= "🕐 <b>{$timeStart} - {$timeEnd}</b>\n";
+    if ($room) {
+        $message .= "🏫 Кабинет {$room}\n";
+    }
+    $message .= "👥 Ожидалось: <b>{$expected}</b> " . plural($expected, 'ученик', 'ученика', 'учеников') . "\n\n";
+    $message .= "❓ <b>Все ученики пришли на урок?</b>";
+
+    echo "<span class='success'>✅ Сообщение сформировано</span>\n";
+    echo "Длина: " . strlen($message) . " символов\n\n";
+
+    echo "=== Шаг 4: Отправка в Telegram ===\n";
+    $chatId = $lesson['telegram_id'];
+
+    $keyboard = [
+        'inline_keyboard' => [
+            [
+                [
+                    'text' => '✅ Да, все пришли',
+                    'callback_data' => "attendance_all_present:{$lesson['id']}"
+                ]
+            ],
+            [
+                [
+                    'text' => '❌ Нет, есть отсутствующие',
+                    'callback_data' => "attendance_some_absent:{$lesson['id']}"
+                ]
+            ]
+        ]
+    ];
+
+    try {
+        $result = sendTelegramMessage($chatId, $message, $keyboard);
+
+        if ($result && isset($result['ok']) && $result['ok']) {
+            echo "<span class='success'>✅ Сообщение отправлено успешно!</span>\n\n";
+            echo "Детали ответа:\n";
+            echo "  Message ID: " . ($result['result']['message_id'] ?? 'N/A') . "\n";
+            echo "  Chat ID: " . ($result['result']['chat']['id'] ?? 'N/A') . "\n\n";
+            echo "🎉 <strong style='color: #4caf50;'>ПРОВЕРЬТЕ TELEGRAM - должно прийти сообщение!</strong>\n\n";
+        } else {
+            echo "<span class='error'>❌ Ошибка при отправке</span>\n";
+            echo "Ответ от Telegram API:\n";
+            print_r($result);
+        }
+    } catch (Exception $e) {
+        echo "<span class='error'>❌ Исключение: {$e->getMessage()}</span>\n";
     }
 
     echo "</pre>";
