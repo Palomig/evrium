@@ -4,7 +4,7 @@
 --
 -- Хост: localhost
 -- Время создания: Ноя 18 2025 г., 15:35
--- Обновлено: Ноя 18 2025 г., 17:30 (автоматическая очистка структуры)
+-- Обновлено: Ноя 18 2025 г., 18:00 (исправление триггеров)
 -- Версия сервера: 5.7.44-48
 -- Версия PHP: 7.4.33
 --
@@ -13,6 +13,7 @@
 -- 2. Таблица students: добавлен foreign key constraint на teacher_id
 -- 3. Таблица lessons_template: объединены дублирующиеся шаблоны (ID 14+16, 15+17)
 -- 4. Ученики с разными тирами теперь объединены в одну группу
+-- 5. Триггеры: добавлен DROP TRIGGER IF EXISTS для предотвращения ошибки при повторном импорте
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 SET time_zone = "+00:00";
@@ -50,6 +51,7 @@ CREATE TABLE IF NOT EXISTS `attendance_log` (
 -- Триггеры `attendance_log`
 --
 DELIMITER $$
+DROP TRIGGER IF EXISTS `audit_attendance_log`$$
 CREATE TRIGGER `audit_attendance_log` AFTER INSERT ON `attendance_log` FOR EACH ROW BEGIN
     INSERT INTO audit_log (
         action_type,
@@ -228,6 +230,7 @@ CREATE TABLE IF NOT EXISTS `lessons_instance` (
 -- Триггеры `lessons_instance`
 --
 DELIMITER $$
+DROP TRIGGER IF EXISTS `calculate_payment_after_lesson_complete`$$
 CREATE TRIGGER `calculate_payment_after_lesson_complete` AFTER UPDATE ON `lessons_instance` FOR EACH ROW BEGIN
     DECLARE calculated_amount INT DEFAULT 0;
     DECLARE formula_type VARCHAR(20);
