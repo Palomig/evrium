@@ -301,9 +301,9 @@ if (!defined('ACTIVE_PAGE')) {
                     <span class="material-icons">event</span>
                     <span>Расписание</span>
                 </a>
-                <a href="/zarplata/lessons.php" class="sidebar-nav-item <?= ACTIVE_PAGE === 'lessons' ? 'active' : '' ?>">
-                    <span class="material-icons">school</span>
-                    <span>Уроки</span>
+                <a href="/zarplata/students.php" class="sidebar-nav-item <?= ACTIVE_PAGE === 'students' ? 'active' : '' ?>">
+                    <span class="material-icons">groups</span>
+                    <span>Ученики</span>
                 </a>
                 <a href="/zarplata/payments.php" class="sidebar-nav-item <?= ACTIVE_PAGE === 'payments' ? 'active' : '' ?>">
                     <span class="material-icons">payments</span>
