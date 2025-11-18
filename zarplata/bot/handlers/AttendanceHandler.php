@@ -35,12 +35,23 @@ function handleAllPresent($chatId, $messageId, $telegramId, $lessonTemplateId, $
     // Все ученики пришли = expected_students
     $attendedCount = $lesson['expected_students'];
 
-    // Определяем формулу расчета (сначала урока, затем преподавателя)
-    $formulaId = $lesson['formula_id'] ?? $teacher['formula_id'] ?? null;
+    // Определяем формулу расчета в зависимости от типа урока
+    $lessonType = $lesson['lesson_type'] ?? 'group';
+    $formulaId = null;
+
+    if ($lessonType === 'individual') {
+        // Для индивидуальных уроков используем formula_id_individual
+        $formulaId = $teacher['formula_id_individual'] ?? null;
+        error_log("[Telegram Bot] Using individual formula for teacher {$teacher['id']}: {$formulaId}");
+    } else {
+        // Для групповых уроков используем formula_id_group
+        $formulaId = $teacher['formula_id_group'] ?? null;
+        error_log("[Telegram Bot] Using group formula for teacher {$teacher['id']}: {$formulaId}");
+    }
 
     if (!$formulaId) {
-        error_log("[Telegram Bot] No formula_id for lesson {$lessonTemplateId} or teacher {$teacher['id']}");
-        answerCallbackQuery($callbackQueryId, "Ошибка: не настроена формула расчета", true);
+        error_log("[Telegram Bot] No formula_id for {$lessonType} lessons, teacher {$teacher['id']}");
+        answerCallbackQuery($callbackQueryId, "Ошибка: не настроена формула расчета для " . ($lessonType === 'individual' ? 'индивидуальных' : 'групповых') . " уроков", true);
         return;
     }
 
@@ -55,6 +66,8 @@ function handleAllPresent($chatId, $messageId, $telegramId, $lessonTemplateId, $
         answerCallbackQuery($callbackQueryId, "Ошибка: формула расчета не найдена", true);
         return;
     }
+
+    error_log("[Telegram Bot] Using formula '{$formula['name']}' (type: {$formula['type']}) for {$lessonType} lesson");
 
     // Рассчитываем зарплату
     $paymentAmount = calculatePayment($formula, $attendedCount);
@@ -208,12 +221,23 @@ function handleAttendanceCount($chatId, $messageId, $telegramId, $lessonTemplate
 
     error_log("[Telegram Bot] Lesson found: {$lesson['subject']} (expected: {$lesson['expected_students']})");
 
-    // Определяем формулу расчета (сначала урока, затем преподавателя)
-    $formulaId = $lesson['formula_id'] ?? $teacher['formula_id'] ?? null;
+    // Определяем формулу расчета в зависимости от типа урока
+    $lessonType = $lesson['lesson_type'] ?? 'group';
+    $formulaId = null;
+
+    if ($lessonType === 'individual') {
+        // Для индивидуальных уроков используем formula_id_individual
+        $formulaId = $teacher['formula_id_individual'] ?? null;
+        error_log("[Telegram Bot] Using individual formula for teacher {$teacher['id']}: {$formulaId}");
+    } else {
+        // Для групповых уроков используем formula_id_group
+        $formulaId = $teacher['formula_id_group'] ?? null;
+        error_log("[Telegram Bot] Using group formula for teacher {$teacher['id']}: {$formulaId}");
+    }
 
     if (!$formulaId) {
-        error_log("[Telegram Bot] No formula_id for lesson {$lessonTemplateId} or teacher {$teacher['id']}");
-        answerCallbackQuery($callbackQueryId, "Ошибка: не настроена формула расчета", true);
+        error_log("[Telegram Bot] No formula_id for {$lessonType} lessons, teacher {$teacher['id']}");
+        answerCallbackQuery($callbackQueryId, "Ошибка: не настроена формула расчета для " . ($lessonType === 'individual' ? 'индивидуальных' : 'групповых') . " уроков", true);
         return;
     }
 

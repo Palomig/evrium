@@ -97,6 +97,23 @@ function handleAdd() {
     $telegram_username = trim($data['telegram_username'] ?? '');
     $notes = trim($data['notes'] ?? '');
 
+    // Формулы (могут быть NULL)
+    $formulaIdGroup = null;
+    if (isset($data['formula_id_group']) && $data['formula_id_group'] !== '') {
+        $formulaIdGroup = filter_var($data['formula_id_group'], FILTER_VALIDATE_INT);
+        if ($formulaIdGroup === false || $formulaIdGroup === 0) {
+            $formulaIdGroup = null;
+        }
+    }
+
+    $formulaIdIndividual = null;
+    if (isset($data['formula_id_individual']) && $data['formula_id_individual'] !== '') {
+        $formulaIdIndividual = filter_var($data['formula_id_individual'], FILTER_VALIDATE_INT);
+        if ($formulaIdIndividual === false || $formulaIdIndividual === 0) {
+            $formulaIdIndividual = null;
+        }
+    }
+
     if (empty($name)) {
         jsonError('ФИО преподавателя обязательно', 400);
     }
@@ -117,9 +134,9 @@ function handleAdd() {
     // Создаем преподавателя
     try {
         $teacherId = dbExecute(
-            "INSERT INTO teachers (name, phone, email, telegram_id, telegram_username, notes, active)
-             VALUES (?, ?, ?, ?, ?, ?, 1)",
-            [$name, $phone ?: null, $email ?: null, $telegramId ?: null, $telegram_username ?: null, $notes ?: null]
+            "INSERT INTO teachers (name, phone, email, telegram_id, telegram_username, formula_id_group, formula_id_individual, notes, active)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)",
+            [$name, $phone ?: null, $email ?: null, $telegramId ?: null, $telegram_username ?: null, $formulaIdGroup, $formulaIdIndividual, $notes ?: null]
         );
 
         if ($teacherId) {
@@ -174,6 +191,23 @@ function handleUpdate() {
     $telegram_username = trim($data['telegram_username'] ?? '');
     $notes = trim($data['notes'] ?? '');
 
+    // Формулы (могут быть NULL)
+    $formulaIdGroup = null;
+    if (isset($data['formula_id_group']) && $data['formula_id_group'] !== '') {
+        $formulaIdGroup = filter_var($data['formula_id_group'], FILTER_VALIDATE_INT);
+        if ($formulaIdGroup === false || $formulaIdGroup === 0) {
+            $formulaIdGroup = null;
+        }
+    }
+
+    $formulaIdIndividual = null;
+    if (isset($data['formula_id_individual']) && $data['formula_id_individual'] !== '') {
+        $formulaIdIndividual = filter_var($data['formula_id_individual'], FILTER_VALIDATE_INT);
+        if ($formulaIdIndividual === false || $formulaIdIndividual === 0) {
+            $formulaIdIndividual = null;
+        }
+    }
+
     if (empty($name)) {
         jsonError('ФИО преподавателя обязательно', 400);
     }
@@ -195,9 +229,9 @@ function handleUpdate() {
     try {
         $result = dbExecute(
             "UPDATE teachers
-             SET name = ?, phone = ?, email = ?, telegram_id = ?, telegram_username = ?, notes = ?, updated_at = NOW()
+             SET name = ?, phone = ?, email = ?, telegram_id = ?, telegram_username = ?, formula_id_group = ?, formula_id_individual = ?, notes = ?, updated_at = NOW()
              WHERE id = ?",
-            [$name, $phone ?: null, $email ?: null, $telegramId ?: null, $telegram_username ?: null, $notes ?: null, $id]
+            [$name, $phone ?: null, $email ?: null, $telegramId ?: null, $telegram_username ?: null, $formulaIdGroup, $formulaIdIndividual, $notes ?: null, $id]
         );
 
         if ($result !== false) {
