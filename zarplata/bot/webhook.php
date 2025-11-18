@@ -189,8 +189,12 @@ function handleCallbackQuery($callbackQuery) {
             case 'attendance_some_absent':
                 // Некоторые отсутствуют
                 error_log("[Telegram Bot] Handling attendance_some_absent");
+                error_log("[Telegram Bot] About to require AttendanceHandler.php");
                 require_once __DIR__ . '/handlers/AttendanceHandler.php';
+                error_log("[Telegram Bot] AttendanceHandler.php loaded");
+                error_log("[Telegram Bot] Calling handleSomeAbsent with params: chatId=$chatId, messageId=$messageId, telegramId=$telegramId, lessonId={$parts[1]}");
                 handleSomeAbsent($chatId, $messageId, $telegramId, $parts[1], $callbackQueryId);
+                error_log("[Telegram Bot] handleSomeAbsent returned");
                 break;
 
             case 'attendance_count':
