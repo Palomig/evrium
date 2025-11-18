@@ -47,7 +47,7 @@ require_once __DIR__ . '/templates/header.php';
 
 <!-- Статистика -->
 <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 24px;">
-    <div class="stat-card clickable" onclick="togglePaymentSection('pending')" data-section="pending">
+    <div class="stat-card">
         <div class="stat-card-header">
             <div>
                 <div class="stat-card-value"><?= formatMoney($stats['pending_total'] ?? 0) ?></div>
@@ -57,12 +57,9 @@ require_once __DIR__ . '/templates/header.php';
                 <span class="material-icons">pending</span>
             </div>
         </div>
-        <div class="stat-card-toggle">
-            <span class="material-icons">expand_more</span>
-        </div>
     </div>
 
-    <div class="stat-card clickable" onclick="togglePaymentSection('approved')" data-section="approved">
+    <div class="stat-card">
         <div class="stat-card-header">
             <div>
                 <div class="stat-card-value"><?= formatMoney($stats['approved_total'] ?? 0) ?></div>
@@ -72,12 +69,9 @@ require_once __DIR__ . '/templates/header.php';
                 <span class="material-icons">thumb_up</span>
             </div>
         </div>
-        <div class="stat-card-toggle">
-            <span class="material-icons">expand_more</span>
-        </div>
     </div>
 
-    <div class="stat-card clickable" onclick="togglePaymentSection('paid')" data-section="paid">
+    <div class="stat-card">
         <div class="stat-card-header">
             <div>
                 <div class="stat-card-value"><?= formatMoney($stats['paid_total'] ?? 0) ?></div>
@@ -87,12 +81,9 @@ require_once __DIR__ . '/templates/header.php';
                 <span class="material-icons">check_circle</span>
             </div>
         </div>
-        <div class="stat-card-toggle">
-            <span class="material-icons">expand_more</span>
-        </div>
     </div>
 
-    <div class="stat-card clickable" onclick="togglePaymentSection('all')" data-section="all">
+    <div class="stat-card">
         <div class="stat-card-header">
             <div>
                 <div class="stat-card-value"><?= formatMoney($stats['total_amount'] ?? 0) ?></div>
@@ -102,8 +93,18 @@ require_once __DIR__ . '/templates/header.php';
                 <span class="material-icons">account_balance</span>
             </div>
         </div>
-        <div class="stat-card-toggle">
-            <span class="material-icons">expand_more</span>
+    </div>
+</div>
+
+<!-- Панель фильтров -->
+<div class="filters-panel">
+    <div class="filters-content">
+        <div class="filter-group">
+            <span class="legend-label">Фильтры:</span>
+            <button class="status-filter-btn active" data-status="pending" onclick="toggleStatusFilter(this)">Ожидают</button>
+            <button class="status-filter-btn active" data-status="approved" onclick="toggleStatusFilter(this)">Одобрено</button>
+            <button class="status-filter-btn active" data-status="paid" onclick="toggleStatusFilter(this)">Выплачено</button>
+            <button class="status-filter-btn active" data-status="cancelled" onclick="toggleStatusFilter(this)">Отменено</button>
         </div>
     </div>
 </div>
@@ -121,21 +122,11 @@ require_once __DIR__ . '/templates/header.php';
         border-radius: 12px;
         box-shadow: var(--elevation-2);
         transition: transform 0.2s, box-shadow 0.2s;
-        position: relative;
     }
 
-    .stat-card.clickable {
-        cursor: pointer;
-        user-select: none;
-    }
-
-    .stat-card.clickable:hover {
+    .stat-card:hover {
         transform: translateY(-4px);
         box-shadow: var(--elevation-3);
-    }
-
-    .stat-card.active .stat-card-toggle .material-icons {
-        transform: rotate(180deg);
     }
 
     .stat-card-header {
@@ -144,16 +135,57 @@ require_once __DIR__ . '/templates/header.php';
         align-items: flex-start;
     }
 
-    .stat-card-toggle {
-        position: absolute;
-        top: 8px;
-        right: 8px;
-        color: var(--text-medium-emphasis);
+    /* Панель фильтров */
+    .filters-panel {
+        background-color: var(--md-surface);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 24px;
+        box-shadow: var(--elevation-2);
     }
 
-    .stat-card-toggle .material-icons {
-        font-size: 24px;
-        transition: transform 0.3s;
+    .filters-content {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .filter-group {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .legend-label {
+        font-size: 0.875rem;
+        color: var(--text-medium-emphasis);
+        font-weight: 500;
+    }
+
+    .status-filter-btn {
+        padding: 10px 16px;
+        border: 2px solid rgba(255, 255, 255, 0.12);
+        border-radius: 8px;
+        background-color: var(--md-surface-3);
+        color: var(--text-medium-emphasis);
+        cursor: pointer;
+        font-size: 0.875rem;
+        font-weight: 600;
+        font-family: 'Montserrat', sans-serif;
+        transition: all 0.2s var(--transition-standard);
+        user-select: none;
+    }
+
+    .status-filter-btn:hover {
+        border-color: var(--md-primary);
+        background-color: var(--md-surface-4);
+    }
+
+    .status-filter-btn.active {
+        background-color: rgba(187, 134, 252, 0.15);
+        border-color: var(--md-primary);
+        color: var(--md-primary);
     }
 
     .stat-card-icon {

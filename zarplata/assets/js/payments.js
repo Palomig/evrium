@@ -3,57 +3,28 @@
  */
 
 let currentViewPaymentId = null;
-let visibleSections = ['pending', 'approved', 'paid', 'all']; // Все секции видимы по умолчанию
 
-// Переключение видимости секции выплат
-function togglePaymentSection(section) {
-    const card = document.querySelector(`.stat-card[data-section="${section}"]`);
-
-    if (visibleSections.includes(section)) {
-        // Скрываем секцию
-        visibleSections = visibleSections.filter(s => s !== section);
-        card.classList.remove('active');
-    } else {
-        // Показываем секцию
-        visibleSections.push(section);
-        card.classList.add('active');
-    }
-
-    // Обновляем видимость строк
-    filterPaymentRows();
+// Переключение фильтра статусов
+function toggleStatusFilter(button) {
+    button.classList.toggle('active');
+    updateVisiblePayments();
 }
 
-// Фильтрация строк таблицы по видимым секциям
-function filterPaymentRows() {
-    const rows = document.querySelectorAll('.payment-row');
+// Обновление видимости выплат
+function updateVisiblePayments() {
+    const activeStatuses = Array.from(document.querySelectorAll('.status-filter-btn.active'))
+        .map(btn => btn.dataset.status);
 
-    rows.forEach(row => {
+    document.querySelectorAll('.payment-row').forEach(row => {
         const status = row.getAttribute('data-status');
 
-        // Если выбран фильтр "all", показываем все
-        if (visibleSections.includes('all')) {
+        if (activeStatuses.length === 0 || activeStatuses.includes(status)) {
             row.style.display = '';
-        } else if (visibleSections.length === 0) {
-            // Если ничего не выбрано, скрываем все
-            row.style.display = 'none';
         } else {
-            // Показываем только выбранные статусы
-            if (visibleSections.includes(status)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
+            row.style.display = 'none';
         }
     });
 }
-
-// Инициализация при загрузке страницы
-document.addEventListener('DOMContentLoaded', () => {
-    // Отмечаем все карточки как активные
-    document.querySelectorAll('.stat-card[data-section]').forEach(card => {
-        card.classList.add('active');
-    });
-});
 
 // Открыть модальное окно добавления разовой выплаты
 function openPaymentModal() {
