@@ -4,34 +4,47 @@
  * Принимает обновления от Telegram и обрабатывает команды
  */
 
-require_once __DIR__ . '/config.php';
+error_log("[Telegram Bot] Webhook called at " . date('Y-m-d H:i:s'));
+
+try {
+    require_once __DIR__ . '/config.php';
+} catch (Exception $e) {
+    error_log("[Telegram Bot] Failed to load config: " . $e->getMessage());
+    http_response_code(200);
+    exit;
+}
 
 // Логирование входящих запросов
 $input = file_get_contents('php://input');
-error_log("Telegram webhook received: " . $input);
+error_log("[Telegram Bot] Received data: " . substr($input, 0, 500));
 
 // Парсим JSON от Telegram
 $update = json_decode($input, true);
 
 if (!$update) {
-    error_log("Invalid JSON from Telegram");
+    error_log("[Telegram Bot] Invalid JSON from Telegram");
     http_response_code(200);
     exit;
 }
 
+error_log("[Telegram Bot] Update parsed successfully");
+
 try {
     // Обработка текстовых сообщений
     if (isset($update['message'])) {
+        error_log("[Telegram Bot] Processing message from chat " . $update['message']['chat']['id']);
         handleMessage($update['message']);
     }
 
     // Обработка callback query (inline кнопки)
     if (isset($update['callback_query'])) {
+        error_log("[Telegram Bot] Processing callback query");
         handleCallbackQuery($update['callback_query']);
     }
 
 } catch (Exception $e) {
-    error_log("Telegram bot error: " . $e->getMessage());
+    error_log("[Telegram Bot] Error: " . $e->getMessage());
+    error_log("[Telegram Bot] Stack trace: " . $e->getTraceAsString());
 }
 
 http_response_code(200);
@@ -45,6 +58,8 @@ function handleMessage($message) {
     $text = $message['text'] ?? '';
     $telegramId = $message['from']['id'];
     $username = $message['from']['username'] ?? '';
+
+    error_log("[Telegram Bot] Message text: $text from user $telegramId");
 
     // Команды начинаются с /
     if (strpos($text, '/') === 0) {
@@ -63,25 +78,47 @@ function handleCommand($chatId, $telegramId, $username, $text) {
     $parts = explode(' ', $text);
     $command = strtolower($parts[0]);
 
+    error_log("[Telegram Bot] Handling command: $command");
+
     switch ($command) {
         case '/start':
-            require_once __DIR__ . '/handlers/StartCommand.php';
-            handleStartCommand($chatId, $telegramId, $username);
+            try {
+                require_once __DIR__ . '/handlers/StartCommand.php';
+                handleStartCommand($chatId, $telegramId, $username);
+            } catch (Exception $e) {
+                error_log("[Telegram Bot] Error in /start: " . $e->getMessage());
+                sendTelegramMessage($chatId, "Произошла ошибка. Попробуйте позже.");
+            }
             break;
 
         case '/today':
-            require_once __DIR__ . '/handlers/TodayCommand.php';
-            handleTodayCommand($chatId, $telegramId);
+            try {
+                require_once __DIR__ . '/handlers/TodayCommand.php';
+                handleTodayCommand($chatId, $telegramId);
+            } catch (Exception $e) {
+                error_log("[Telegram Bot] Error in /today: " . $e->getMessage());
+                sendTelegramMessage($chatId, "Произошла ошибка. Попробуйте позже.");
+            }
             break;
 
         case '/week':
-            require_once __DIR__ . '/handlers/WeekCommand.php';
-            handleWeekCommand($chatId, $telegramId);
+            try {
+                require_once __DIR__ . '/handlers/WeekCommand.php';
+                handleWeekCommand($chatId, $telegramId);
+            } catch (Exception $e) {
+                error_log("[Telegram Bot] Error in /week: " . $e->getMessage());
+                sendTelegramMessage($chatId, "Произошла ошибка. Попробуйте позже.");
+            }
             break;
 
         case '/schedule':
-            require_once __DIR__ . '/handlers/ScheduleCommand.php';
-            handleScheduleCommand($chatId, $telegramId);
+            try {
+                require_once __DIR__ . '/handlers/ScheduleCommand.php';
+                handleScheduleCommand($chatId, $telegramId);
+            } catch (Exception $e) {
+                error_log("[Telegram Bot] Error in /schedule: " . $e->getMessage());
+                sendTelegramMessage($chatId, "Произошла ошибка. Попробуйте позже.");
+            }
             break;
 
         case '/help':

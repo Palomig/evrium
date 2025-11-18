@@ -29,12 +29,17 @@ function handleStartCommand($chatId, $telegramId, $username) {
     );
 
     // Логируем попытку регистрации
-    logAudit(
-        'bot_registration_attempt',
-        'teacher',
-        null,
-        null,
-        ['telegram_id' => $telegramId, 'username' => $username],
-        "Попытка регистрации в боте"
-    );
+    try {
+        logAudit(
+            'bot_registration_attempt',
+            'teacher',
+            null,
+            null,
+            ['telegram_id' => $telegramId, 'username' => $username],
+            "Попытка регистрации в боте"
+        );
+    } catch (Exception $e) {
+        // Игнорируем ошибки логирования
+        error_log("Failed to log audit: " . $e->getMessage());
+    }
 }
