@@ -210,10 +210,11 @@ function handleAdd() {
                             $timeEnd = date('H:i', strtotime($time) + 5400); // +1.5 часа
 
                             // Получаем текущий список учеников для этого шаблона (если есть)
+                            // Тир ученика НЕ влияет на выбор группы - группируем только по времени и типу занятий
                             $existingTemplate = dbQueryOne(
-                                "SELECT id, students FROM lessons_template
-                                 WHERE teacher_id = ? AND day_of_week = ? AND time_start = ? AND lesson_type = ? AND tier = ? AND active = 1",
-                                [$teacherId, $dayOfWeek, $timeStart, $lessonType, $tier]
+                                "SELECT id, students, tier FROM lessons_template
+                                 WHERE teacher_id = ? AND day_of_week = ? AND time_start = ? AND lesson_type = ? AND active = 1",
+                                [$teacherId, $dayOfWeek, $timeStart, $lessonType]
                             );
 
                             if ($existingTemplate) {
@@ -226,16 +227,17 @@ function handleAdd() {
                                         "UPDATE lessons_template SET students = ?, expected_students = ?, updated_at = NOW() WHERE id = ?",
                                         [json_encode($studentsList), $newExpectedStudents, $existingTemplate['id']]
                                     );
-                                    error_log("Added student '$name' to existing template ID {$existingTemplate['id']}, now has $newExpectedStudents students");
+                                    error_log("Added student '$name' (tier $tier) to existing template ID {$existingTemplate['id']} (group tier {$existingTemplate['tier']}), now has $newExpectedStudents students");
                                 }
                             } else {
                                 // Создаем новый шаблон с размером группы 6 человек
+                                // Tier группы по умолчанию 'C', не зависит от tier ученика
                                 dbExecute(
                                     "INSERT INTO lessons_template (teacher_id, day_of_week, time_start, time_end, lesson_type, tier, expected_students, students, active)
-                                     VALUES (?, ?, ?, ?, ?, ?, 6, ?, 1)",
-                                    [$teacherId, $dayOfWeek, $timeStart, $timeEnd, $lessonType, $tier, json_encode([$name])]
+                                     VALUES (?, ?, ?, ?, ?, 'C', 6, ?, 1)",
+                                    [$teacherId, $dayOfWeek, $timeStart, $timeEnd, $lessonType, json_encode([$name])]
                                 );
-                                error_log("Created new template for teacher $teacherId, day $dayOfWeek, time $timeStart, tier $tier with student '$name'");
+                                error_log("Created new template for teacher $teacherId, day $dayOfWeek, time $timeStart with student '$name' (tier $tier)");
                             }
                         }
                     }
