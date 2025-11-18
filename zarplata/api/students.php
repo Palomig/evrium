@@ -221,18 +221,21 @@ function handleAdd() {
                                 $studentsList = $existingTemplate['students'] ? json_decode($existingTemplate['students'], true) : [];
                                 if (!in_array($name, $studentsList)) {
                                     $studentsList[] = $name;
+                                    $newExpectedStudents = count($studentsList);
                                     dbExecute(
-                                        "UPDATE lessons_template SET students = ?, updated_at = NOW() WHERE id = ?",
-                                        [json_encode($studentsList), $existingTemplate['id']]
+                                        "UPDATE lessons_template SET students = ?, expected_students = ?, updated_at = NOW() WHERE id = ?",
+                                        [json_encode($studentsList), $newExpectedStudents, $existingTemplate['id']]
                                     );
+                                    error_log("Added student '$name' to existing template ID {$existingTemplate['id']}, now has $newExpectedStudents students");
                                 }
                             } else {
-                                // Создаем новый шаблон
+                                // Создаем новый шаблон с размером группы 6 человек
                                 dbExecute(
                                     "INSERT INTO lessons_template (teacher_id, day_of_week, time_start, time_end, lesson_type, tier, expected_students, students, active)
-                                     VALUES (?, ?, ?, ?, ?, ?, 1, ?, 1)",
+                                     VALUES (?, ?, ?, ?, ?, ?, 6, ?, 1)",
                                     [$teacherId, $dayOfWeek, $timeStart, $timeEnd, $lessonType, $tier, json_encode([$name])]
                                 );
+                                error_log("Created new template for teacher $teacherId, day $dayOfWeek, time $timeStart, tier $tier with student '$name'");
                             }
                         }
                     }

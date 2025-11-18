@@ -109,6 +109,20 @@ require_once __DIR__ . '/templates/header.php';
                         class="student-row">
                         <td><?= $student['id'] ?></td>
                         <td>
+                            <?php
+                            $tier = $student['tier'] ?? 'C';
+                            $tierColors = [
+                                'S' => '#FF6B6B',
+                                'A' => '#4ECDC4',
+                                'B' => '#95E1D3',
+                                'C' => '#FFA502',
+                                'D' => '#A29BFE'
+                            ];
+                            $tierColor = $tierColors[$tier] ?? '#FFA502';
+                            ?>
+                            <span class="tier-badge" style="background-color: <?= $tierColor ?>; color: #121212; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 8px;">
+                                <?= $tier ?>
+                            </span>
                             <strong><?= e($student['name']) ?></strong>
                             <?php if ($student['notes']): ?>
                                 <br>
