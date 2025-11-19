@@ -4,7 +4,7 @@
 --
 -- Хост: localhost
 -- Время создания: Ноя 18 2025 г., 15:35
--- Обновлено: Ноя 19 2025 г., 00:20 (исправление VIEW)
+-- Обновлено: Ноя 19 2025 г., 00:25 (окончательное исправление VIEW)
 -- Версия сервера: 5.7.44-48
 -- Версия PHP: 7.4.33
 --
@@ -13,10 +13,10 @@
 -- 2. Таблица students: добавлен foreign key constraint на teacher_id
 -- 3. Таблица lessons_template: объединены дублирующиеся шаблоны (ID 14+16, 15+17)
 -- 4. Ученики с разными тирами теперь объединены в одну группу
--- 5. Триггеры: добавлен DROP TRIGGER IF EXISTS для предотвращения ошибки при повторном импорте
--- 6. Таблицы: добавлен DROP TABLE IF EXISTS перед каждым CREATE TABLE для безопасного переимпорта
+-- 5. Триггеры: добавлен DROP TRIGGER IF EXISTS для предотвращения ошибки при импорте
+-- 6. Таблицы: добавлен DROP TABLE IF EXISTS перед каждым CREATE TABLE
 -- 7. Foreign keys: отключены на время импорта (SET FOREIGN_KEY_CHECKS = 0/1)
--- 8. VIEW: добавлен DROP VIEW IF EXISTS для lessons_stats и teacher_stats (исправляет ошибку #1050)
+-- 8. VIEW: добавлен DROP TABLE + DROP VIEW перед созданием представлений (полностью исправляет #1050)
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 SET time_zone = "+00:00";
@@ -689,6 +689,7 @@ INSERT INTO `users` (`id`, `username`, `password_hash`, `name`, `email`, `role`,
 --
 -- Структура для представления `lessons_stats`
 --
+DROP TABLE IF EXISTS `lessons_stats`;
 DROP VIEW IF EXISTS `lessons_stats`;
 
 CREATE ALGORITHM=UNDEFINED DEFINER=`cw95865_admin`@`localhost` SQL SECURITY DEFINER VIEW `lessons_stats`  AS SELECT `li`.`id` AS `lesson_id`, `li`.`lesson_date` AS `lesson_date`, `t`.`name` AS `teacher_name`, `li`.`lesson_type` AS `lesson_type`, `li`.`expected_students` AS `expected_students`, `li`.`actual_students` AS `actual_students`, `li`.`status` AS `status`, coalesce(`p`.`amount`,0) AS `payment_amount`, `p`.`status` AS `payment_status` FROM ((`lessons_instance` `li` left join `teachers` `t` on((`li`.`teacher_id` = `t`.`id`))) left join `payments` `p` on((`li`.`id` = `p`.`lesson_instance_id`))) ORDER BY `li`.`lesson_date` DESC, `li`.`time_start` ASC ;
@@ -698,6 +699,7 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`cw95865_admin`@`localhost` SQL SECURITY DEFI
 --
 -- Структура для представления `teacher_stats`
 --
+DROP TABLE IF EXISTS `teacher_stats`;
 DROP VIEW IF EXISTS `teacher_stats`;
 
 CREATE ALGORITHM=UNDEFINED DEFINER=`cw95865_admin`@`localhost` SQL SECURITY DEFINER VIEW `teacher_stats`  AS SELECT `t`.`id` AS `teacher_id`, `t`.`name` AS `teacher_name`, count(distinct `li`.`id`) AS `total_lessons`, count(distinct (case when (`li`.`status` = 'completed') then `li`.`id` end)) AS `completed_lessons`, coalesce(sum((case when (`p`.`status` <> 'cancelled') then `p`.`amount` else 0 end)),0) AS `total_earned`, coalesce(sum((case when (`p`.`status` = 'paid') then `p`.`amount` else 0 end)),0) AS `total_paid`, coalesce(sum((case when (`p`.`status` = 'pending') then `p`.`amount` else 0 end)),0) AS `pending_amount` FROM ((`teachers` `t` left join `lessons_instance` `li` on(((`t`.`id` = `li`.`teacher_id`) or (`t`.`id` = `li`.`substitute_teacher_id`)))) left join `payments` `p` on((`t`.`id` = `p`.`teacher_id`))) WHERE (`t`.`active` = 1) GROUP BY `t`.`id` ;
