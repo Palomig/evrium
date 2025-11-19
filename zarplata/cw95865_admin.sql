@@ -10,13 +10,12 @@
 --
 -- ИЗМЕНЕНИЯ В ЭТОЙ ВЕРСИИ:
 -- 1. Таблица students: удалены устаревшие поля (phone, email, monthly_price, lesson_day, lesson_time)
--- 2. Таблица students: добавлен foreign key constraint на teacher_id
--- 3. Таблица lessons_template: объединены дублирующиеся шаблоны (ID 14+16, 15+17)
--- 4. Ученики с разными тирами теперь объединены в одну группу
--- 5. Триггеры: добавлен DROP TRIGGER IF EXISTS для предотвращения ошибки при импорте
--- 6. Таблицы: добавлен DROP TABLE IF EXISTS перед каждым CREATE TABLE
--- 7. Foreign keys: отключены на время импорта (SET FOREIGN_KEY_CHECKS = 0/1)
--- 8. VIEW: добавлен DROP TABLE + DROP VIEW перед созданием представлений (полностью исправляет #1050)
+-- 2. Таблица lessons_template: объединены дублирующиеся шаблоны (ID 14+16, 15+17)
+-- 3. Ученики с разными тирами теперь объединены в одну группу
+-- 4. Триггеры: добавлен DROP TRIGGER IF EXISTS для предотвращения ошибки при импорте
+-- 5. Таблицы: добавлен DROP TABLE IF EXISTS перед каждым CREATE TABLE
+-- 6. Foreign keys: отключены на время импорта (SET FOREIGN_KEY_CHECKS = 0/1)
+-- 7. VIEW: добавлен DROP TABLE + DROP VIEW перед созданием представлений (полностью исправляет #1050)
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 SET time_zone = "+00:00";
@@ -584,8 +583,7 @@ CREATE TABLE `students` (
   KEY `idx_payment_type_group` (`payment_type_group`),
   KEY `idx_payment_type_individual` (`payment_type_individual`),
   KEY `idx_teacher_id` (`teacher_id`),
-  KEY `idx_tier` (`tier`),
-  CONSTRAINT `fk_students_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `teachers` (`id`) ON DELETE CASCADE
+  KEY `idx_tier` (`tier`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -761,12 +759,6 @@ ALTER TABLE `payments`
 ALTER TABLE `payout_cycle_payments`
   ADD CONSTRAINT `payout_cycle_payments_ibfk_1` FOREIGN KEY (`cycle_id`) REFERENCES `payout_cycles` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `payout_cycle_payments_ibfk_2` FOREIGN KEY (`payment_id`) REFERENCES `payments` (`id`) ON DELETE CASCADE;
-
---
--- Ограничения внешнего ключа таблицы `students`
---
-ALTER TABLE `students`
-  ADD CONSTRAINT `fk_students_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `teachers` (`id`) ON DELETE CASCADE;
 
 --
 -- Ограничения внешнего ключа таблицы `teachers`
