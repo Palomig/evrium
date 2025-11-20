@@ -64,14 +64,19 @@ foreach ($templates as &$template) {
     }
 }
 
-define('PAGE_TITLE', 'Расписание');
-define('PAGE_SUBTITLE', 'Таблица расписания по дням и кабинетам');
+define('PAGE_TITLE', '');
+define('PAGE_SUBTITLE', '');
 define('ACTIVE_PAGE', 'schedule');
 
 require_once __DIR__ . '/templates/header.php';
 ?>
 
 <style>
+/* Скрыть пустой page-header */
+.page-header {
+    display: none;
+}
+
 /* Заголовок */
 .schedule-header {
     background-color: var(--md-surface);
