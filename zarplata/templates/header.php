@@ -321,6 +321,10 @@ if (!defined('ACTIVE_PAGE')) {
                     <span class="material-icons">settings</span>
                     <span>Настройки</span>
                 </a>
+                <a href="/zarplata/tests.php" class="sidebar-nav-item <?= ACTIVE_PAGE === 'tests' ? 'active' : '' ?>">
+                    <span class="material-icons">bug_report</span>
+                    <span>Тесты</span>
+                </a>
                 <a href="/zarplata/logout.php" class="sidebar-nav-item">
                     <span class="material-icons">logout</span>
                     <span>Выход</span>
