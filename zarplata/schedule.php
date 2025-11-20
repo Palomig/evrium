@@ -58,10 +58,38 @@ try {
 }
 
 // Добавляем поле room (кабинет) если его нет
+// И определяем классы учеников для каждого урока
 foreach ($templates as &$template) {
     if (!isset($template['room'])) {
         $template['room'] = 1; // По умолчанию кабинет 1
     }
+
+    // Получаем классы учеников из базы данных
+    $studentClasses = [];
+    if ($template['students']) {
+        $studentsNames = json_decode($template['students'], true);
+        if (is_array($studentsNames) && !empty($studentsNames)) {
+            // Получаем классы учеников по именам
+            $placeholders = str_repeat('?,', count($studentsNames) - 1) . '?';
+            $params = array_merge([$template['teacher_id']], $studentsNames);
+
+            $classesResult = dbQuery(
+                "SELECT DISTINCT class FROM students
+                 WHERE teacher_id = ? AND name IN ($placeholders) AND class IS NOT NULL AND active = 1
+                 ORDER BY class ASC",
+                $params
+            );
+
+            foreach ($classesResult as $row) {
+                if ($row['class']) {
+                    $studentClasses[] = $row['class'];
+                }
+            }
+        }
+    }
+
+    // Добавляем строку с классами (уникальные, через запятую)
+    $template['student_classes'] = !empty($studentClasses) ? implode(', ', array_unique($studentClasses)) : '';
 }
 
 define('PAGE_TITLE', '');
@@ -978,7 +1006,8 @@ function createLessonCard(lesson) {
     const isFull = currentStudents >= maxStudents;
     const capacityClass = isFull ? 'full' : 'available';
     const tier = lesson.tier || 'C';
-    const grades = lesson.grades || '';
+    // Используем student_classes из базы данных (классы реальных учеников)
+    const studentClasses = lesson.student_classes || '';
 
     card.innerHTML = `
         <div class="card-body">
@@ -991,9 +1020,9 @@ function createLessonCard(lesson) {
                         ${currentStudents}/${maxStudents}
                     </div>
                 </div>
-                ${grades ? `
+                ${studentClasses ? `
                 <div class="card-row-info">
-                    <div class="card-cell grades">${escapeHtml(grades)} кл.</div>
+                    <div class="card-cell grades">${escapeHtml(studentClasses)} кл.</div>
                 </div>
                 ` : ''}
                 <div class="card-row-info">

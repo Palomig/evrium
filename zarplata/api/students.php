@@ -230,14 +230,16 @@ function handleAdd() {
                                     error_log("Added student '$name' (tier $tier) to existing template ID {$existingTemplate['id']} (group tier {$existingTemplate['tier']}), expected_students remains {$existingTemplate['expected_students']}, now has " . count($studentsList) . " students");
                                 }
                             } else {
-                                // Создаем новый шаблон с размером группы 6 человек
+                                // Создаем новый шаблон
+                                // Для групповых занятий - 6 мест, для индивидуальных - 1 место
+                                $expectedStudents = ($lessonType === 'group') ? 6 : 1;
                                 // Tier группы по умолчанию 'C', не зависит от tier ученика
                                 dbExecute(
                                     "INSERT INTO lessons_template (teacher_id, day_of_week, time_start, time_end, lesson_type, tier, expected_students, students, active)
-                                     VALUES (?, ?, ?, ?, ?, 'C', 6, ?, 1)",
-                                    [$teacherId, $dayOfWeek, $timeStart, $timeEnd, $lessonType, json_encode([$name])]
+                                     VALUES (?, ?, ?, ?, ?, 'C', ?, ?, 1)",
+                                    [$teacherId, $dayOfWeek, $timeStart, $timeEnd, $lessonType, $expectedStudents, json_encode([$name])]
                                 );
-                                error_log("Created new template for teacher $teacherId, day $dayOfWeek, time $timeStart with student '$name' (tier $tier)");
+                                error_log("Created new template for teacher $teacherId, day $dayOfWeek, time $timeStart, type $lessonType with student '$name' (tier $tier), expected_students=$expectedStudents");
                             }
                         }
                     }
