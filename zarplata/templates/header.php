@@ -22,7 +22,7 @@ if (!defined('ACTIVE_PAGE')) {
     <!-- Material Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
-    <!-- Material Dark Theme CSS (includes Klavika font) -->
+    <!-- Material Dark Theme CSS (includes Jost font from Google Fonts) -->
     <link rel="stylesheet" href="/zarplata/assets/css/material-dark.css">
 
     <style>
