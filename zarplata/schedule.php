@@ -85,7 +85,7 @@ require_once __DIR__ . '/templates/header.php';
 
 .schedule-header-top {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     margin-bottom: 20px;
     gap: 16px;
@@ -565,7 +565,6 @@ require_once __DIR__ . '/templates/header.php';
 <!-- Заголовок -->
 <div class="schedule-header">
     <div class="schedule-header-top">
-        <h2 style="margin: 0; font-size: 1.5rem;">📅 Расписание занятий</h2>
         <button class="btn btn-primary" onclick="openTemplateModal()">
             <span class="material-icons" style="margin-right: 8px; font-size: 18px;">add</span>
             Добавить занятие
