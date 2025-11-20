@@ -10,7 +10,6 @@ require_once __DIR__ . '/../config/helpers.php';
 // Подключаем функции бота
 require_once __DIR__ . '/../bot/config.php';
 
-session_start();
 requireAuth();
 
 header('Content-Type: application/json; charset=utf-8');
