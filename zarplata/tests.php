@@ -5,17 +5,16 @@
 
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/config/auth.php';
+require_once __DIR__ . '/config/helpers.php';
 
-session_start();
 requireAuth();
+$user = getCurrentUser();
 
 define('PAGE_TITLE', 'Тесты');
 define('PAGE_SUBTITLE', 'Запуск тестовых скриптов и проверка функционала');
 define('ACTIVE_PAGE', 'tests');
 
 require_once __DIR__ . '/templates/header.php';
-
-$user = getCurrentUser();
 ?>
 
 <div class="page-header">
