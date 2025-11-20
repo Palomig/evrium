@@ -618,6 +618,18 @@ require_once __DIR__ . '/templates/header.php';
         <div class="filter-divider"></div>
 
         <div class="filter-group">
+            <span class="legend-label">Преподаватель:</span>
+            <select id="teacherFilter" class="time-filter-select" onchange="applyTeacherFilter()" style="min-width: 200px;">
+                <option value="">Все преподаватели</option>
+                <?php foreach ($teachers as $teacher): ?>
+                    <option value="<?= $teacher['id'] ?>"><?= e($teacher['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <div class="filter-divider"></div>
+
+        <div class="filter-group">
             <span class="legend-label">Кабинеты:</span>
             <button class="room-filter-btn active" data-room="1" onclick="toggleRoomFilter(this)">1</button>
             <button class="room-filter-btn active" data-room="2" onclick="toggleRoomFilter(this)">2</button>
@@ -944,6 +956,7 @@ function renderSchedule() {
 function createLessonCard(lesson) {
     const card = document.createElement('div');
     card.className = `lesson-card ${lesson.subject || ''}`;
+    card.dataset.teacherId = lesson.teacher_id;
     card.onclick = () => editTemplate(lesson.id);
 
     // Парсим учеников
@@ -1001,6 +1014,7 @@ function createLessonCard(lesson) {
 function toggleDayFilter(button) {
     button.classList.toggle('active');
     updateVisibleDays();
+    saveFilters();
 }
 
 function updateVisibleDays() {
@@ -1020,6 +1034,7 @@ function updateVisibleDays() {
 function toggleRoomFilter(button) {
     button.classList.toggle('active');
     updateVisibleRooms();
+    saveFilters();
 }
 
 function updateVisibleRooms() {
@@ -1076,6 +1091,24 @@ function applyTimeRange() {
 
         row.style.display = shouldShow ? 'grid' : 'none';
     });
+
+    saveFilters();
+}
+
+function applyTeacherFilter() {
+    const selectedTeacherId = document.getElementById('teacherFilter').value;
+
+    document.querySelectorAll('.lesson-card').forEach(card => {
+        const teacherId = card.dataset.teacherId;
+
+        if (!selectedTeacherId || teacherId === selectedTeacherId) {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+
+    saveFilters();
 }
 
 function resetFilters() {
@@ -1087,9 +1120,88 @@ function resetFilters() {
 
     document.getElementById('timeFrom').value = '';
     document.getElementById('timeTo').value = '';
+    document.getElementById('teacherFilter').value = '';
+
     document.querySelectorAll('.time-row').forEach(row => {
         row.style.display = 'grid';
     });
+
+    document.querySelectorAll('.lesson-card').forEach(card => {
+        card.style.display = 'block';
+    });
+
+    saveFilters();
+}
+
+// ========== СОХРАНЕНИЕ И ВОССТАНОВЛЕНИЕ ФИЛЬТРОВ ==========
+
+function saveFilters() {
+    const filters = {
+        days: Array.from(document.querySelectorAll('.day-filter-btn.active'))
+            .map(btn => btn.dataset.day),
+        rooms: Array.from(document.querySelectorAll('.room-filter-btn.active'))
+            .map(btn => btn.dataset.room),
+        timeFrom: document.getElementById('timeFrom').value,
+        timeTo: document.getElementById('timeTo').value,
+        teacher: document.getElementById('teacherFilter').value
+    };
+
+    localStorage.setItem('scheduleFilters', JSON.stringify(filters));
+}
+
+function restoreFilters() {
+    const savedFilters = localStorage.getItem('scheduleFilters');
+
+    if (!savedFilters) {
+        return; // Нет сохраненных фильтров
+    }
+
+    try {
+        const filters = JSON.parse(savedFilters);
+
+        // Восстанавливаем дни
+        if (filters.days && filters.days.length > 0) {
+            document.querySelectorAll('.day-filter-btn').forEach(btn => {
+                if (filters.days.includes(btn.dataset.day)) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            updateVisibleDays();
+        }
+
+        // Восстанавливаем кабинеты
+        if (filters.rooms && filters.rooms.length > 0) {
+            document.querySelectorAll('.room-filter-btn').forEach(btn => {
+                if (filters.rooms.includes(btn.dataset.room)) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            updateVisibleRooms();
+        }
+
+        // Восстанавливаем время
+        if (filters.timeFrom) {
+            document.getElementById('timeFrom').value = filters.timeFrom;
+        }
+        if (filters.timeTo) {
+            document.getElementById('timeTo').value = filters.timeTo;
+        }
+        applyTimeRange();
+
+        // Восстанавливаем преподавателя
+        if (filters.teacher) {
+            document.getElementById('teacherFilter').value = filters.teacher;
+            applyTeacherFilter();
+        }
+
+    } catch (e) {
+        console.error('Ошибка восстановления фильтров:', e);
+        localStorage.removeItem('scheduleFilters');
+    }
 }
 
 function toggleStudents(button, lessonId) {
@@ -1113,6 +1225,8 @@ function escapeHtml(text) {
 // Инициализация
 document.addEventListener('DOMContentLoaded', () => {
     renderSchedule();
+    // Восстанавливаем сохраненные фильтры после рендеринга
+    restoreFilters();
 });
 </script>
 
