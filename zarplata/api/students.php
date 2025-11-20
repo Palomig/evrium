@@ -212,7 +212,7 @@ function handleAdd() {
                             // Получаем текущий список учеников для этого шаблона (если есть)
                             // Тир ученика НЕ влияет на выбор группы - группируем только по времени и типу занятий
                             $existingTemplate = dbQueryOne(
-                                "SELECT id, students, tier FROM lessons_template
+                                "SELECT id, students, tier, expected_students FROM lessons_template
                                  WHERE teacher_id = ? AND day_of_week = ? AND time_start = ? AND lesson_type = ? AND active = 1",
                                 [$teacherId, $dayOfWeek, $timeStart, $lessonType]
                             );
@@ -222,12 +222,12 @@ function handleAdd() {
                                 $studentsList = $existingTemplate['students'] ? json_decode($existingTemplate['students'], true) : [];
                                 if (!in_array($name, $studentsList)) {
                                     $studentsList[] = $name;
-                                    $newExpectedStudents = count($studentsList);
+                                    // НЕ меняем expected_students - он остается 6 (или каким был установлен)
                                     dbExecute(
-                                        "UPDATE lessons_template SET students = ?, expected_students = ?, updated_at = NOW() WHERE id = ?",
-                                        [json_encode($studentsList), $newExpectedStudents, $existingTemplate['id']]
+                                        "UPDATE lessons_template SET students = ?, updated_at = NOW() WHERE id = ?",
+                                        [json_encode($studentsList), $existingTemplate['id']]
                                     );
-                                    error_log("Added student '$name' (tier $tier) to existing template ID {$existingTemplate['id']} (group tier {$existingTemplate['tier']}), now has $newExpectedStudents students");
+                                    error_log("Added student '$name' (tier $tier) to existing template ID {$existingTemplate['id']} (group tier {$existingTemplate['tier']}), expected_students remains {$existingTemplate['expected_students']}, now has " . count($studentsList) . " students");
                                 }
                             } else {
                                 // Создаем новый шаблон с размером группы 6 человек
