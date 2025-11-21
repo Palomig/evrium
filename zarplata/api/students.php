@@ -65,16 +65,30 @@ function handleGet() {
         jsonError('Неверный ID ученика', 400);
     }
 
-    $student = dbQueryOne(
-        "SELECT * FROM students WHERE id = ?",
-        [$id]
-    );
+    try {
+        $student = dbQueryOne(
+            "SELECT * FROM students WHERE id = ?",
+            [$id]
+        );
 
-    if (!$student) {
-        jsonError('Ученик не найден', 404);
+        if (!$student) {
+            jsonError('Ученик не найден', 404);
+        }
+
+        // Убеждаемся, что schedule - это валидный JSON или NULL
+        if (isset($student['schedule']) && $student['schedule']) {
+            $testDecode = json_decode($student['schedule'], true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                error_log("Student {$id} has invalid schedule JSON: {$student['schedule']}");
+                $student['schedule'] = null;
+            }
+        }
+
+        jsonSuccess($student);
+    } catch (Exception $e) {
+        error_log("Error in handleGet for student {$id}: " . $e->getMessage());
+        jsonError('Ошибка при загрузке ученика: ' . $e->getMessage(), 500);
     }
-
-    jsonSuccess($student);
 }
 
 /**

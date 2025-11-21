@@ -10,11 +10,23 @@ require_once __DIR__ . '/config/helpers.php';
 requireAuth();
 $user = getCurrentUser();
 
-// Получить всех преподавателей
-$teachers = dbQuery(
-    "SELECT id, name FROM teachers WHERE active = 1 ORDER BY name ASC",
-    []
-);
+// Получить всех преподавателей (с display_name если есть)
+try {
+    $teachers = dbQuery(
+        "SELECT id, name, display_name FROM teachers WHERE active = 1 ORDER BY name ASC",
+        []
+    );
+} catch (PDOException $e) {
+    // Если поля display_name нет в БД, используем только name
+    if (strpos($e->getMessage(), 'display_name') !== false) {
+        $teachers = dbQuery(
+            "SELECT id, name, NULL as display_name FROM teachers WHERE active = 1 ORDER BY name ASC",
+            []
+        );
+    } else {
+        throw $e;
+    }
+}
 
 // Получить всех учеников с именами преподавателей
 $students = dbQuery(
@@ -158,37 +170,47 @@ require_once __DIR__ . '/templates/header.php';
                             <?php if ($schedule && !empty($schedule)): ?>
                                 <?php
                                 $days = ['', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-                                $scheduleItems = [];
+                                $scheduleByDay = []; // Группируем по дням
 
                                 foreach ($schedule as $day => $lessons) {
                                     $dayName = $days[$day] ?? '';
+                                    if (!isset($scheduleByDay[$dayName])) {
+                                        $scheduleByDay[$dayName] = [];
+                                    }
 
                                     // Новый формат: массив объектов с time и teacher_id
                                     if (is_array($lessons)) {
                                         foreach ($lessons as $lesson) {
                                             if (is_array($lesson) && isset($lesson['time'])) {
-                                                // Найти имя преподавателя
+                                                // Найти display_name или name преподавателя
                                                 $teacherName = '';
                                                 if (isset($lesson['teacher_id'])) {
                                                     foreach ($teachers as $t) {
                                                         if ($t['id'] == $lesson['teacher_id']) {
-                                                            $teacherName = $t['name'];
+                                                            // Используем display_name если есть, иначе name
+                                                            $teacherName = !empty($t['display_name']) ? $t['display_name'] : $t['name'];
                                                             break;
                                                         }
                                                     }
                                                 }
-                                                $scheduleItems[] = "$dayName {$lesson['time']}" . ($teacherName ? " ({$teacherName})" : "");
+                                                $scheduleByDay[$dayName][] = "{$lesson['time']}" . ($teacherName ? " ({$teacherName})" : "");
                                             } else {
                                                 // Старый формат (обратная совместимость): просто время
-                                                $scheduleItems[] = "$dayName $lesson";
+                                                $scheduleByDay[$dayName][] = $lesson;
                                             }
                                         }
                                     } else {
                                         // Старый формат: $lessons это просто время (строка)
-                                        $scheduleItems[] = "$dayName $lessons";
+                                        $scheduleByDay[$dayName][] = $lessons;
                                     }
                                 }
-                                echo e(implode(', ', $scheduleItems));
+
+                                // Выводим расписание: каждый день на отдельной строке
+                                $dayLines = [];
+                                foreach ($scheduleByDay as $dayName => $dayLessons) {
+                                    $dayLines[] = '<strong>' . e($dayName) . ':</strong> ' . e(implode(', ', $dayLessons));
+                                }
+                                echo implode('<br>', $dayLines);
                                 ?>
                             <?php else: ?>
                                 <span style="color: var(--text-medium-emphasis);">Не указано</span>
