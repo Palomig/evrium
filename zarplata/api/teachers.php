@@ -91,6 +91,7 @@ function handleAdd() {
 
     // Валидация
     $name = trim($data['name'] ?? '');
+    $displayName = trim($data['display_name'] ?? '');
     $phone = trim($data['phone'] ?? '');
     $email = trim($data['email'] ?? '');
     $telegramId = trim($data['telegram_id'] ?? '');
@@ -134,9 +135,9 @@ function handleAdd() {
     // Создаем преподавателя
     try {
         $teacherId = dbExecute(
-            "INSERT INTO teachers (name, phone, email, telegram_id, telegram_username, formula_id_group, formula_id_individual, notes, active)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)",
-            [$name, $phone ?: null, $email ?: null, $telegramId ?: null, $telegram_username ?: null, $formulaIdGroup, $formulaIdIndividual, $notes ?: null]
+            "INSERT INTO teachers (name, display_name, phone, email, telegram_id, telegram_username, formula_id_group, formula_id_individual, notes, active)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
+            [$name, $displayName ?: null, $phone ?: null, $email ?: null, $telegramId ?: null, $telegram_username ?: null, $formulaIdGroup, $formulaIdIndividual, $notes ?: null]
         );
 
         if ($teacherId) {
@@ -185,6 +186,7 @@ function handleUpdate() {
 
     // Валидация
     $name = trim($data['name'] ?? '');
+    $displayName = trim($data['display_name'] ?? '');
     $phone = trim($data['phone'] ?? '');
     $email = trim($data['email'] ?? '');
     $telegramId = trim($data['telegram_id'] ?? '');
@@ -229,9 +231,9 @@ function handleUpdate() {
     try {
         $result = dbExecute(
             "UPDATE teachers
-             SET name = ?, phone = ?, email = ?, telegram_id = ?, telegram_username = ?, formula_id_group = ?, formula_id_individual = ?, notes = ?, updated_at = NOW()
+             SET name = ?, display_name = ?, phone = ?, email = ?, telegram_id = ?, telegram_username = ?, formula_id_group = ?, formula_id_individual = ?, notes = ?, updated_at = NOW()
              WHERE id = ?",
-            [$name, $phone ?: null, $email ?: null, $telegramId ?: null, $telegram_username ?: null, $formulaIdGroup, $formulaIdIndividual, $notes ?: null, $id]
+            [$name, $displayName ?: null, $phone ?: null, $email ?: null, $telegramId ?: null, $telegram_username ?: null, $formulaIdGroup, $formulaIdIndividual, $notes ?: null, $id]
         );
 
         if ($result !== false) {
