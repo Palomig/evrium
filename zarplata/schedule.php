@@ -35,11 +35,11 @@ try {
 // Получить все активные шаблоны расписания с кабинетами
 try {
     $templates = dbQuery(
-        "SELECT lt.*, t.name as teacher_name,
+        "SELECT lt.*, COALESCE(t.display_name, t.name) as teacher_name,
                 COALESCE(t_pf.name, lt_pf.name) as formula_name
          FROM lessons_template lt
          LEFT JOIN teachers t ON lt.teacher_id = t.id
-         LEFT JOIN payment_formulas t_pf ON t.formula_id = t_pf.id
+         LEFT JOIN payment_formulas t_pf ON t.formula_id_group = t_pf.id
          LEFT JOIN payment_formulas lt_pf ON lt.formula_id = lt_pf.id
          WHERE lt.active = 1
          ORDER BY lt.day_of_week ASC, lt.time_start ASC",
@@ -47,7 +47,7 @@ try {
     );
 } catch (PDOException $e) {
     $templates = dbQuery(
-        "SELECT lt.*, t.name as teacher_name, pf.name as formula_name
+        "SELECT lt.*, COALESCE(t.display_name, t.name) as teacher_name, pf.name as formula_name
          FROM lessons_template lt
          LEFT JOIN teachers t ON lt.teacher_id = t.id
          LEFT JOIN payment_formulas pf ON lt.formula_id = pf.id

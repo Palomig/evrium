@@ -161,6 +161,24 @@ require_once __DIR__ . '/templates/header.php';
                 </div>
 
                 <div class="form-group">
+                    <label class="form-label" for="teacher-display-name">
+                        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">badge</span>
+                        Короткое имя (для расписания)
+                    </label>
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="teacher-display-name"
+                        name="display_name"
+                        placeholder="Иван"
+                        maxlength="50"
+                    >
+                    <small style="color: var(--text-medium-emphasis); display: block; margin-top: 8px;">
+                        Краткое имя для отображения в расписании (например, "Иван" или "Иванов И.")
+                    </small>
+                </div>
+
+                <div class="form-group">
                     <label class="form-label" for="teacher-phone">
                         <span class="material-icons" style="font-size: 16px; vertical-align: middle;">phone</span>
                         Телефон
@@ -470,6 +488,7 @@ async function loadTeacherData(teacherId) {
             const teacher = result.data;
             document.getElementById('teacher-id').value = teacher.id;
             document.getElementById('teacher-name').value = teacher.name || '';
+            document.getElementById('teacher-display-name').value = teacher.display_name || '';
             document.getElementById('teacher-phone').value = teacher.phone || '';
             document.getElementById('teacher-email').value = teacher.email || '';
             document.getElementById('teacher-telegram-id').value = teacher.telegram_id || '';
