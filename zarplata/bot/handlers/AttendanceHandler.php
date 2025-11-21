@@ -127,12 +127,16 @@ function handleAllPresent($chatId, $messageId, $telegramId, $lessonTemplateId, $
         "💰 Начислено: <b>" . number_format($paymentAmount, 0, ',', ' ') . " ₽</b>\n\n" .
         "✨ Выплата добавлена в систему со статусом \"Ожидает одобрения\"";
 
-    // ВАЖНО: Сначала отвечаем на callback query (чтобы пользователь сразу получил обратную связь)
-    $answerResult = answerCallbackQuery($callbackQueryId, "✅ Сохранено! Начислено " . number_format($paymentAmount, 0, ',', ' ') . " ₽", false);
+    // ВАЖНО: Сначала отвечаем на callback query с ALERT (большое всплывающее окно)
+    $alertText = "✅ Посещаемость отмечена!\n\n" .
+                 "💰 Начислено: " . number_format($paymentAmount, 0, ',', ' ') . " ₽\n" .
+                 "Выплата добавлена в систему";
+
+    $answerResult = answerCallbackQuery($callbackQueryId, $alertText, true); // true = show_alert
     error_log("[Telegram Bot] answerCallbackQuery result: " . json_encode($answerResult));
 
-    // Затем пробуем обновить сообщение
-    $editResult = editTelegramMessage($chatId, $messageId, $confirmationText);
+    // Затем пробуем обновить сообщение (убираем кнопки)
+    $editResult = editTelegramMessage($chatId, $messageId, $confirmationText, ['inline_keyboard' => []]);
     error_log("[Telegram Bot] editTelegramMessage result: " . json_encode($editResult));
 
     // Если редактирование не удалось, отправляем новое сообщение
@@ -339,12 +343,17 @@ function handleAttendanceCount($chatId, $messageId, $telegramId, $lessonTemplate
         "💰 Начислено: <b>" . number_format($paymentAmount, 0, ',', ' ') . " ₽</b>\n\n" .
         "✨ Выплата добавлена в систему со статусом \"Ожидает одобрения\"";
 
-    // ВАЖНО: Сначала отвечаем на callback query (чтобы пользователь сразу получил обратную связь)
-    $answerResult = answerCallbackQuery($callbackQueryId, "✅ Сохранено! Начислено " . number_format($paymentAmount, 0, ',', ' ') . " ₽", false);
+    // ВАЖНО: Сначала отвечаем на callback query с ALERT (большое всплывающее окно)
+    $alertText = "✅ Посещаемость отмечена!\n\n" .
+                 "👥 Пришло: {$attendedCount} из {$lesson['expected_students']}\n" .
+                 "💰 Начислено: " . number_format($paymentAmount, 0, ',', ' ') . " ₽\n" .
+                 "Выплата добавлена в систему";
+
+    $answerResult = answerCallbackQuery($callbackQueryId, $alertText, true); // true = show_alert
     error_log("[Telegram Bot] answerCallbackQuery result: " . json_encode($answerResult));
 
-    // Затем пробуем обновить сообщение
-    $editResult = editTelegramMessage($chatId, $messageId, $confirmationText);
+    // Затем пробуем обновить сообщение (убираем кнопки)
+    $editResult = editTelegramMessage($chatId, $messageId, $confirmationText, ['inline_keyboard' => []]);
     error_log("[Telegram Bot] editTelegramMessage result: " . json_encode($editResult));
 
     // Если редактирование не удалось, отправляем новое сообщение
