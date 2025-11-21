@@ -375,3 +375,90 @@ document.addEventListener('click', (e) => {
         e.target.classList.remove('active');
     }
 });
+
+// Просмотр урока (модальное окно со списком учеников)
+function viewTemplate(lesson) {
+    // Парсим учеников
+    let students = [];
+    if (lesson.students) {
+        try {
+            students = typeof lesson.students === 'string' ? JSON.parse(lesson.students) : lesson.students;
+        } catch (e) {
+            students = lesson.students.split('\n').filter(s => s.trim());
+        }
+    }
+
+    // Создаём модальное окно
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.style.zIndex = '10001';
+
+    const daysMap = ['', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+    const dayName = daysMap[lesson.day_of_week] || 'День ' + lesson.day_of_week;
+    const time = lesson.time_start ? lesson.time_start.substring(0, 5) : '';
+
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 class="modal-title">${escapeHtml(lesson.subject || 'Урок')}</h2>
+                <button class="modal-close" onclick="this.closest('.modal').remove()">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 16px; color: var(--text-medium-emphasis);">
+                    <div style="margin-bottom: 8px;">
+                        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">event</span>
+                        ${dayName}, ${time}
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">person</span>
+                        ${escapeHtml(lesson.teacher_name || '—')}
+                    </div>
+                    <div>
+                        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">meeting_room</span>
+                        Кабинет ${lesson.room || 1}
+                    </div>
+                </div>
+
+                <div style="margin-top: 24px;">
+                    <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 12px; color: var(--md-primary);">
+                        👥 Ученики (${students.length}/${lesson.expected_students || 6})
+                    </h3>
+                    ${students.length > 0 ? `
+                        <div style="max-height: 300px; overflow-y: auto;">
+                            ${students.map(s => `
+                                <div style="padding: 8px 12px; background-color: var(--md-surface-3); border-radius: 6px; margin-bottom: 6px;">
+                                    • ${escapeHtml(s)}
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : `
+                        <div style="text-align: center; padding: 32px; color: var(--text-medium-emphasis);">
+                            <span class="material-icons" style="font-size: 48px; opacity: 0.3;">person_outline</span>
+                            <div style="margin-top: 8px;">Нет учеников</div>
+                        </div>
+                    `}
+                </div>
+            </div>
+            <div class="modal-footer" style="justify-content: space-between;">
+                <button type="button" class="btn btn-outline" onclick="this.closest('.modal').remove()">
+                    Закрыть
+                </button>
+                <button type="button" class="btn btn-primary" onclick="this.closest('.modal').remove(); editTemplate(${lesson.id})">
+                    <span class="material-icons" style="margin-right: 8px; font-size: 18px;">edit</span>
+                    Редактировать
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Закрытие по клику вне модального окна
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+}
