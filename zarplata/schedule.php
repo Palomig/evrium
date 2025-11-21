@@ -69,15 +69,15 @@ foreach ($templates as &$template) {
     if ($template['students']) {
         $studentsNames = json_decode($template['students'], true);
         if (is_array($studentsNames) && !empty($studentsNames)) {
-            // Получаем классы учеников по именам
+            // Получаем классы учеников по именам (БЕЗ фильтра по teacher_id,
+            // так как теперь у ученика может быть несколько преподавателей)
             $placeholders = str_repeat('?,', count($studentsNames) - 1) . '?';
-            $params = array_merge([$template['teacher_id']], $studentsNames);
 
             $classesResult = dbQuery(
                 "SELECT DISTINCT class FROM students
-                 WHERE teacher_id = ? AND name IN ($placeholders) AND class IS NOT NULL AND active = 1
+                 WHERE name IN ($placeholders) AND class IS NOT NULL AND active = 1
                  ORDER BY class ASC",
-                $params
+                $studentsNames
             );
 
             foreach ($classesResult as $row) {
