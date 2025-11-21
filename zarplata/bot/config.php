@@ -89,6 +89,8 @@ function answerCallbackQuery($callbackQueryId, $text = '', $showAlert = false) {
         'show_alert' => $showAlert
     ];
 
+    error_log("[Telegram Bot] answerCallbackQuery: " . json_encode($data));
+
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_POST, 1);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
@@ -96,9 +98,16 @@ function answerCallbackQuery($callbackQueryId, $text = '', $showAlert = false) {
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
 
     $result = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    return json_decode($result, true);
+    $decoded = json_decode($result, true);
+
+    if ($httpCode !== 200 || !$decoded || !isset($decoded['ok']) || !$decoded['ok']) {
+        error_log("[Telegram Bot] answerCallbackQuery FAILED: HTTP $httpCode, Response: $result");
+    }
+
+    return $decoded;
 }
 
 // Редактировать сообщение
@@ -116,6 +125,8 @@ function editTelegramMessage($chatId, $messageId, $text, $replyMarkup = null) {
         $data['reply_markup'] = json_encode($replyMarkup);
     }
 
+    error_log("[Telegram Bot] editTelegramMessage: chat=$chatId, message=$messageId, text_length=" . strlen($text));
+
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_POST, 1);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
@@ -123,9 +134,16 @@ function editTelegramMessage($chatId, $messageId, $text, $replyMarkup = null) {
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
 
     $result = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    return json_decode($result, true);
+    $decoded = json_decode($result, true);
+
+    if ($httpCode !== 200 || !$decoded || !isset($decoded['ok']) || !$decoded['ok']) {
+        error_log("[Telegram Bot] editTelegramMessage FAILED: HTTP $httpCode, Response: $result");
+    }
+
+    return $decoded;
 }
 
 // Найти преподавателя по telegram_id

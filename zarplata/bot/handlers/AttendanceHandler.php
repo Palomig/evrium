@@ -69,6 +69,21 @@ function handleAllPresent($chatId, $messageId, $telegramId, $lessonTemplateId, $
 
     error_log("[Telegram Bot] Using formula '{$formula['name']}' (type: {$formula['type']}) for {$lessonType} lesson");
 
+    // Проверяем, не создана ли уже выплата за этот урок сегодня
+    $today = date('Y-m-d');
+    $existingPayment = dbQueryOne(
+        "SELECT id FROM payments
+         WHERE teacher_id = ? AND lesson_template_id = ? AND DATE(created_at) = ?
+         ORDER BY created_at DESC LIMIT 1",
+        [$teacher['id'], $lessonTemplateId, $today]
+    );
+
+    if ($existingPayment) {
+        error_log("[Telegram Bot] Payment already exists for lesson {$lessonTemplateId} today, payment_id: {$existingPayment['id']}");
+        answerCallbackQuery($callbackQueryId, "⚠️ Выплата за этот урок уже создана сегодня", true);
+        return;
+    }
+
     // Рассчитываем зарплату
     $paymentAmount = calculatePayment($formula, $attendedCount);
 
@@ -112,10 +127,19 @@ function handleAllPresent($chatId, $messageId, $telegramId, $lessonTemplateId, $
         "💰 Начислено: <b>" . number_format($paymentAmount, 0, ',', ' ') . " ₽</b>\n\n" .
         "✨ Выплата добавлена в систему со статусом \"Ожидает одобрения\"";
 
-    editTelegramMessage($chatId, $messageId, $confirmationText);
+    // ВАЖНО: Сначала отвечаем на callback query (чтобы пользователь сразу получил обратную связь)
+    $answerResult = answerCallbackQuery($callbackQueryId, "✅ Сохранено! Начислено " . number_format($paymentAmount, 0, ',', ' ') . " ₽", false);
+    error_log("[Telegram Bot] answerCallbackQuery result: " . json_encode($answerResult));
 
-    // Уведомление в виде всплывающего сообщения
-    answerCallbackQuery($callbackQueryId, "✅ Сохранено! Начислено " . number_format($paymentAmount, 0, ',', ' ') . " ₽", false);
+    // Затем пробуем обновить сообщение
+    $editResult = editTelegramMessage($chatId, $messageId, $confirmationText);
+    error_log("[Telegram Bot] editTelegramMessage result: " . json_encode($editResult));
+
+    // Если редактирование не удалось, отправляем новое сообщение
+    if (!$editResult || !isset($editResult['ok']) || !$editResult['ok']) {
+        error_log("[Telegram Bot] editTelegramMessage failed, sending new message");
+        sendTelegramMessage($chatId, $confirmationText);
+    }
 }
 
 /**
@@ -255,6 +279,21 @@ function handleAttendanceCount($chatId, $messageId, $telegramId, $lessonTemplate
 
     error_log("[Telegram Bot] Calling calculatePayment with formula type: {$formula['type']}, attended: {$attendedCount}");
 
+    // Проверяем, не создана ли уже выплата за этот урок сегодня
+    $today = date('Y-m-d');
+    $existingPayment = dbQueryOne(
+        "SELECT id FROM payments
+         WHERE teacher_id = ? AND lesson_template_id = ? AND DATE(created_at) = ?
+         ORDER BY created_at DESC LIMIT 1",
+        [$teacher['id'], $lessonTemplateId, $today]
+    );
+
+    if ($existingPayment) {
+        error_log("[Telegram Bot] Payment already exists for lesson {$lessonTemplateId} today, payment_id: {$existingPayment['id']}");
+        answerCallbackQuery($callbackQueryId, "⚠️ Выплата за этот урок уже создана сегодня", true);
+        return;
+    }
+
     // Рассчитываем зарплату
     $paymentAmount = calculatePayment($formula, $attendedCount);
 
@@ -300,10 +339,19 @@ function handleAttendanceCount($chatId, $messageId, $telegramId, $lessonTemplate
         "💰 Начислено: <b>" . number_format($paymentAmount, 0, ',', ' ') . " ₽</b>\n\n" .
         "✨ Выплата добавлена в систему со статусом \"Ожидает одобрения\"";
 
-    editTelegramMessage($chatId, $messageId, $confirmationText);
+    // ВАЖНО: Сначала отвечаем на callback query (чтобы пользователь сразу получил обратную связь)
+    $answerResult = answerCallbackQuery($callbackQueryId, "✅ Сохранено! Начислено " . number_format($paymentAmount, 0, ',', ' ') . " ₽", false);
+    error_log("[Telegram Bot] answerCallbackQuery result: " . json_encode($answerResult));
 
-    // Уведомление в виде всплывающего сообщения
-    answerCallbackQuery($callbackQueryId, "✅ Сохранено! Начислено " . number_format($paymentAmount, 0, ',', ' ') . " ₽", false);
+    // Затем пробуем обновить сообщение
+    $editResult = editTelegramMessage($chatId, $messageId, $confirmationText);
+    error_log("[Telegram Bot] editTelegramMessage result: " . json_encode($editResult));
+
+    // Если редактирование не удалось, отправляем новое сообщение
+    if (!$editResult || !isset($editResult['ok']) || !$editResult['ok']) {
+        error_log("[Telegram Bot] editTelegramMessage failed, sending new message");
+        sendTelegramMessage($chatId, $confirmationText);
+    }
 }
 
 // Функция calculatePayment() уже определена в /config/helpers.php
