@@ -353,6 +353,143 @@ try {
             $testResult = ['status' => 'success', 'count' => count($students)];
             break;
 
+        case 'bot_get_teachers':
+            addLog('Получение списка преподавателей с Telegram');
+
+            $teachers = dbQuery(
+                "SELECT id, name, telegram_id, telegram_username
+                 FROM teachers
+                 WHERE active = 1 AND telegram_id IS NOT NULL
+                 ORDER BY name"
+            );
+
+            addLog('Найдено преподавателей: ' . count($teachers), 'success');
+
+            $testResult = $teachers;
+            break;
+
+        case 'bot_send_test_lesson':
+            addLog('Отправка тестового урока');
+
+            $teacherId = $data['teacher_id'] ?? 0;
+            $lessonType = $data['lesson_type'] ?? 'random';
+
+            if (!$teacherId) {
+                throw new Exception('Не указан ID преподавателя');
+            }
+
+            // Получаем преподавателя
+            $teacher = dbQueryOne(
+                "SELECT * FROM teachers WHERE id = ? AND active = 1",
+                [$teacherId]
+            );
+
+            if (!$teacher) {
+                throw new Exception('Преподаватель не найден');
+            }
+
+            if (!$teacher['telegram_id']) {
+                throw new Exception('У преподавателя не указан Telegram ID');
+            }
+
+            addLog("Преподаватель: {$teacher['name']} (Telegram: {$teacher['telegram_id']})", 'info');
+
+            // Получаем урок
+            if ($lessonType === 'random') {
+                // Берём случайный урок из расписания
+                $lesson = dbQueryOne(
+                    "SELECT * FROM lessons_template
+                     WHERE teacher_id = ? AND active = 1
+                     ORDER BY RAND() LIMIT 1",
+                    [$teacherId]
+                );
+
+                if (!$lesson) {
+                    addLog('У преподавателя нет уроков в расписании, создаём фейковый', 'warning');
+                    $lessonType = 'mock';
+                }
+            }
+
+            if ($lessonType === 'mock' || !$lesson) {
+                // Создаём фейковый урок для теста
+                $lesson = [
+                    'id' => 999999,
+                    'teacher_id' => $teacherId,
+                    'subject' => 'Тестовый урок',
+                    'time_start' => date('H:i'),
+                    'time_end' => date('H:i', strtotime('+1 hour')),
+                    'expected_students' => 6,
+                    'lesson_type' => 'group',
+                    'room' => 1,
+                    'tier' => 'A'
+                ];
+                addLog('Используется фейковый урок для теста', 'info');
+            } else {
+                addLog("Используется урок из расписания: {$lesson['subject']}", 'success');
+            }
+
+            // Формируем сообщение (копируем логику из cron.php)
+            $subject = $lesson['subject'] ? "<b>{$lesson['subject']}</b>" : "<b>Урок</b>";
+            $timeStart = date('H:i', strtotime($lesson['time_start']));
+            $timeEnd = date('H:i', strtotime($lesson['time_end']));
+            $expected = $lesson['expected_students'];
+            $room = $lesson['room'] ?? '-';
+            $tier = $lesson['tier'] ?? '';
+
+            $message = "📊 <b>🧪 ТЕСТОВОЕ УВЕДОМЛЕНИЕ</b>\n\n";
+            $message .= "📚 {$subject}";
+
+            if ($tier) {
+                $message .= " [Tier {$tier}]";
+            }
+
+            $message .= "\n";
+            $message .= "🕐 <b>{$timeStart} - {$timeEnd}</b>\n";
+
+            if ($room) {
+                $message .= "🏫 Кабинет {$room}\n";
+            }
+
+            $message .= "👥 Ожидалось: <b>{$expected}</b> " . ($expected == 1 ? 'ученик' : ($expected < 5 ? 'ученика' : 'учеников')) . "\n\n";
+            $message .= "❓ <b>Все ученики пришли на урок?</b>";
+
+            // Inline кнопки
+            $keyboard = [
+                'inline_keyboard' => [
+                    [
+                        [
+                            'text' => '✅ Все пришли',
+                            'callback_data' => "attendance_all_present:{$lesson['id']}"
+                        ],
+                        [
+                            'text' => '❌ Не все явились',
+                            'callback_data' => "attendance_some_absent:{$lesson['id']}"
+                        ]
+                    ]
+                ]
+            ];
+
+            // Отправляем сообщение
+            addLog('Отправка сообщения в Telegram...', 'info');
+            $result = sendTelegramMessage($teacher['telegram_id'], $message, $keyboard);
+
+            if ($result && isset($result['ok']) && $result['ok']) {
+                addLog('✓ Сообщение успешно отправлено!', 'success');
+                addLog('Преподаватель может ответить на уведомление', 'info');
+                $testResult = [
+                    'status' => 'success',
+                    'teacher' => $teacher['name'],
+                    'telegram_id' => $teacher['telegram_id'],
+                    'lesson' => $lesson['subject'],
+                    'lesson_id' => $lesson['id'],
+                    'message_id' => $result['result']['message_id'] ?? null
+                ];
+            } else {
+                $errorDesc = isset($result['description']) ? $result['description'] : 'Неизвестная ошибка';
+                throw new Exception("Не удалось отправить сообщение: {$errorDesc}");
+            }
+            break;
+
         default:
             throw new Exception('Неизвестный тест: ' . $testName);
     }
