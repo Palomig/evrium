@@ -174,12 +174,12 @@ function renderSchedule() {
                     <select
                         class="form-control"
                         onchange="updateLessonRoom(${day}, ${index}, this.value)"
-                        style="width: 100px;"
+                        style="width: 80px;"
                         title="Кабинет"
                     >
-                        <option value="1" ${(lesson.room == 1 || !lesson.room) ? 'selected' : ''}>Кабинет 1</option>
-                        <option value="2" ${lesson.room == 2 ? 'selected' : ''}>Кабинет 2</option>
-                        <option value="3" ${lesson.room == 3 ? 'selected' : ''}>Кабинет 3</option>
+                        <option value="1" ${(lesson.room == 1 || !lesson.room) ? 'selected' : ''}>Каб 1</option>
+                        <option value="2" ${lesson.room == 2 ? 'selected' : ''}>Каб 2</option>
+                        <option value="3" ${lesson.room == 3 ? 'selected' : ''}>Каб 3</option>
                     </select>
                 </div>
                 ${lessons.length > 1 ? `
