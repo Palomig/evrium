@@ -860,6 +860,10 @@ require_once __DIR__ . '/templates/header.php';
 const templatesData = <?= json_encode($templates, JSON_UNESCAPED_UNICODE) ?>;
 const teachersData = <?= json_encode($teachers, JSON_UNESCAPED_UNICODE) ?>;
 
+console.log('=== SCHEDULE PAGE LOADED ===');
+console.log('Total templates loaded:', templatesData.length);
+console.log('Templates data:', templatesData);
+
 const daysOfWeek = [
     { id: 1, name: 'Понедельник', short: 'Пн' },
     { id: 2, name: 'Вторник', short: 'Вт' },
@@ -877,8 +881,12 @@ function getTimeSlots(dayLessons) {
     if (dayLessons.length === 0) return [];
 
     const times = dayLessons.map(l => l.time_start.substring(0, 5)).sort();
-    const firstTime = times[0];
-    const lastTime = times[times.length - 1];
+    const uniqueTimes = [...new Set(times)]; // Убираем дубликаты
+    console.log('getTimeSlots - all times:', times, 'unique:', uniqueTimes);
+
+    const firstTime = uniqueTimes[0];
+    const lastTime = uniqueTimes[uniqueTimes.length - 1];
+    console.log('getTimeSlots - range:', firstTime, 'to', lastTime);
 
     const allTimes = [];
     for (let h = 8; h <= 21; h++) {
@@ -888,6 +896,7 @@ function getTimeSlots(dayLessons) {
         }
     }
 
+    console.log('getTimeSlots - generated slots:', allTimes);
     return allTimes;
 }
 
@@ -922,6 +931,7 @@ function renderSchedule() {
 
         // Получить уроки для этого дня
         const dayLessons = templatesData.filter(t => parseInt(t.day_of_week) === day.id);
+        console.log(`Day ${day.name} (${day.id}): found ${dayLessons.length} lessons`, dayLessons.map(l => `${l.time_start} teacher:${l.teacher_id} room:${l.room}`));
         const timeSlots = getTimeSlots(dayLessons);
 
         if (timeSlots.length > 0) {
@@ -950,6 +960,7 @@ function renderSchedule() {
                     const lessonInRoom = dayLessons.find(l =>
                         l.time_start.substring(0, 5) === time && parseInt(l.room) === roomNum
                     );
+                    console.log(`  Time ${time}, Room ${roomNum}: ${lessonInRoom ? 'found lesson teacher:' + lessonInRoom.teacher_id : 'empty'}`);
 
                     if (lessonInRoom) {
                         const card = createLessonCard(lessonInRoom);
