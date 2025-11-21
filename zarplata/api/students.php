@@ -101,10 +101,37 @@ function handleAdd() {
     }
 
     // Примечание: teacher_id теперь указывается в расписании для каждого урока,
-    // но для обратной совместимости оставляем поле в базе (может быть NULL)
+    // но для обратной совместимости оставляем поле в базе (поле NOT NULL в БД)
     $teacherId = null;
     if (isset($data['teacher_id']) && $data['teacher_id']) {
         $teacherId = filter_var($data['teacher_id'], FILTER_VALIDATE_INT);
+    }
+
+    // Если teacher_id не указан, пытаемся извлечь из расписания
+    if (!$teacherId && isset($data['schedule']) && $data['schedule']) {
+        $scheduleData = json_decode($data['schedule'], true);
+        if ($scheduleData && is_array($scheduleData)) {
+            foreach ($scheduleData as $day => $lessons) {
+                if (is_array($lessons)) {
+                    foreach ($lessons as $lesson) {
+                        if (isset($lesson['teacher_id']) && $lesson['teacher_id']) {
+                            $teacherId = intval($lesson['teacher_id']);
+                            break 2;  // Выходим из обоих циклов
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Если всё ещё NULL, берём первого активного преподавателя
+    if (!$teacherId) {
+        $firstTeacher = dbQueryOne("SELECT id FROM teachers WHERE active = 1 ORDER BY id LIMIT 1");
+        if ($firstTeacher) {
+            $teacherId = $firstTeacher['id'];
+        } else {
+            jsonError('Не найдено активных преподавателей в системе', 400);
+        }
     }
 
     // Остальные поля
@@ -334,10 +361,37 @@ function handleUpdate() {
     }
 
     // Примечание: teacher_id теперь указывается в расписании для каждого урока,
-    // но для обратной совместимости оставляем поле в базе (может быть NULL)
+    // но для обратной совместимости оставляем поле в базе (поле NOT NULL в БД)
     $teacherId = null;
     if (isset($data['teacher_id']) && $data['teacher_id']) {
         $teacherId = filter_var($data['teacher_id'], FILTER_VALIDATE_INT);
+    }
+
+    // Если teacher_id не указан, пытаемся извлечь из расписания
+    if (!$teacherId && isset($data['schedule']) && $data['schedule']) {
+        $scheduleData = json_decode($data['schedule'], true);
+        if ($scheduleData && is_array($scheduleData)) {
+            foreach ($scheduleData as $day => $lessons) {
+                if (is_array($lessons)) {
+                    foreach ($lessons as $lesson) {
+                        if (isset($lesson['teacher_id']) && $lesson['teacher_id']) {
+                            $teacherId = intval($lesson['teacher_id']);
+                            break 2;  // Выходим из обоих циклов
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Если всё ещё NULL, берём первого активного преподавателя
+    if (!$teacherId) {
+        $firstTeacher = dbQueryOne("SELECT id FROM teachers WHERE active = 1 ORDER BY id LIMIT 1");
+        if ($firstTeacher) {
+            $teacherId = $firstTeacher['id'];
+        } else {
+            jsonError('Не найдено активных преподавателей в системе', 400);
+        }
     }
 
     // Остальные поля
