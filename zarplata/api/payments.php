@@ -112,21 +112,47 @@ function handleGet() {
         jsonError('Неверный ID выплаты', 400);
     }
 
+    // Запрос с поддержкой как lesson_instance_id, так и lesson_template_id
+    // Если выплата создана из instance - берём данные из li + lt
+    // Если выплата создана напрямую из template (бот) - берём данные из lt_direct
     $payment = dbQueryOne(
         "SELECT p.*, t.name as teacher_name,
-         li.lesson_date, li.time_start, li.time_end, li.subject, li.lesson_type,
-         li.expected_students, li.actual_students,
-         lt.room, lt.students
+         -- Данные из lessons_instance (если есть)
+         COALESCE(li.lesson_date, DATE(p.created_at)) as lesson_date,
+         COALESCE(li.time_start, lt_direct.time_start) as time_start,
+         COALESCE(li.time_end, lt_direct.time_end) as time_end,
+         COALESCE(li.subject, lt_direct.subject) as subject,
+         COALESCE(li.lesson_type, lt_direct.lesson_type) as lesson_type,
+         COALESCE(li.expected_students, lt_direct.expected_students) as expected_students,
+         li.actual_students,
+         -- Данные из lessons_template
+         COALESCE(lt.room, lt_direct.room) as room,
+         COALESCE(lt.students, lt_direct.students) as students,
+         COALESCE(lt.tier, lt_direct.tier) as tier,
+         COALESCE(lt.grades, lt_direct.grades) as grades
          FROM payments p
          LEFT JOIN teachers t ON p.teacher_id = t.id
+         -- JOIN через lesson_instance
          LEFT JOIN lessons_instance li ON p.lesson_instance_id = li.id
          LEFT JOIN lessons_template lt ON li.template_id = lt.id
+         -- Прямой JOIN через lesson_template_id (для выплат из бота)
+         LEFT JOIN lessons_template lt_direct ON p.lesson_template_id = lt_direct.id
          WHERE p.id = ?",
         [$id]
     );
 
     if (!$payment) {
         jsonError('Выплата не найдена', 404);
+    }
+
+    // Парсим calculation_method чтобы извлечь actual_students для выплат из бота
+    // Формат: "Пришло X из Y" или "Все пришли (X из Y)"
+    if (!$payment['actual_students'] && $payment['calculation_method']) {
+        if (preg_match('/пришло (\d+) из (\d+)/iu', $payment['calculation_method'], $matches)) {
+            $payment['actual_students'] = intval($matches[1]);
+        } elseif (preg_match('/все пришли \((\d+) из (\d+)\)/iu', $payment['calculation_method'], $matches)) {
+            $payment['actual_students'] = intval($matches[1]);
+        }
     }
 
     jsonSuccess($payment);

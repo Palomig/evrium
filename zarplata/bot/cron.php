@@ -45,9 +45,26 @@ error_log("Found " . count($lessons) . " lessons for attendance polling");
 
 // Для каждого урока проверяем, не спрашивали ли уже сегодня
 foreach ($lessons as $lesson) {
-    // Проверяем, есть ли уже запись о посещаемости за сегодня для этого урока
     $today = date('Y-m-d');
 
+    // ВАЖНО: Проверяем, не отправляли ли уже сообщение сегодня (через audit_log)
+    // Это предотвращает дубликаты, даже если преподаватель ещё не ответил
+    $existingQuery = dbQueryOne(
+        "SELECT id FROM audit_log
+         WHERE action_type = 'attendance_query_sent'
+           AND entity_type = 'lesson_template'
+           AND entity_id = ?
+           AND DATE(created_at) = ?
+         LIMIT 1",
+        [$lesson['id'], $today]
+    );
+
+    if ($existingQuery) {
+        error_log("Lesson {$lesson['id']} - query already sent today (audit_log ID: {$existingQuery['id']}), skipping");
+        continue;
+    }
+
+    // Дополнительная проверка: есть ли уже payment за сегодня
     $existingPayment = dbQueryOne(
         "SELECT id FROM payments
          WHERE teacher_id = ? AND lesson_template_id = ?
@@ -57,7 +74,7 @@ foreach ($lessons as $lesson) {
     );
 
     if ($existingPayment) {
-        error_log("Lesson {$lesson['id']} already has payment for today, skipping");
+        error_log("Lesson {$lesson['id']} already has payment for today (ID: {$existingPayment['id']}), skipping");
         continue;
     }
 
