@@ -13,12 +13,18 @@ $user = getCurrentUser();
 // Получить все выплаты
 $payments = dbQuery(
     "SELECT p.*, t.name as teacher_name,
-            li.lesson_date, li.time_start, li.time_end, li.subject, li.lesson_type,
-            lt.room, lt.students
+            COALESCE(li.lesson_date, DATE(p.created_at)) as lesson_date,
+            COALESCE(li.time_start, lt_direct.time_start) as time_start,
+            COALESCE(li.time_end, lt_direct.time_end) as time_end,
+            COALESCE(li.subject, lt_direct.subject) as subject,
+            COALESCE(li.lesson_type, lt_direct.lesson_type) as lesson_type,
+            COALESCE(lt.room, lt_direct.room) as room,
+            COALESCE(lt.students, lt_direct.students) as students
      FROM payments p
      LEFT JOIN teachers t ON p.teacher_id = t.id
      LEFT JOIN lessons_instance li ON p.lesson_instance_id = li.id
      LEFT JOIN lessons_template lt ON li.template_id = lt.id
+     LEFT JOIN lessons_template lt_direct ON p.lesson_template_id = lt_direct.id
      ORDER BY p.created_at DESC
      LIMIT 100",
     []

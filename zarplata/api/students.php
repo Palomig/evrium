@@ -205,9 +205,9 @@ function handleAdd() {
                 if ($scheduleData && is_array($scheduleData)) {
                     foreach ($scheduleData as $dayOfWeek => $time) {
                         if ($time && is_numeric($dayOfWeek)) {
-                            // Разбираем время на start и end (предполагаем 1.5 часа урок)
+                            // Разбираем время на start и end (предполагаем 1 час урок)
                             $timeStart = $time;
-                            $timeEnd = date('H:i', strtotime($time) + 5400); // +1.5 часа
+                            $timeEnd = date('H:i', strtotime($time) + 3600); // +1 час
 
                             // Получаем текущий список учеников для этого шаблона (если есть)
                             // Тир ученика НЕ влияет на выбор группы - группируем только по времени и типу занятий
