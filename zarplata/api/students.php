@@ -498,6 +498,98 @@ function handleUpdate() {
                 'lesson_type' => $lessonType
             ], 'Обновлены данные ученика');
 
+            // ВАЖНО: Синхронизируем расписание с шаблонами
+            // Если имя ученика изменилось, обновляем его во всех шаблонах
+            $oldName = $existing['name'];
+            if ($oldName !== $name) {
+                error_log("Student name changed from '$oldName' to '$name', updating templates");
+                // Обновляем имя во всех шаблонах
+                $templates = dbQuery("SELECT id, students FROM lessons_template WHERE active = 1");
+                foreach ($templates as $template) {
+                    if (!$template['students']) continue;
+
+                    try {
+                        $studentsList = json_decode($template['students'], true);
+                        if (!is_array($studentsList)) continue;
+
+                        $index = array_search($oldName, $studentsList);
+                        if ($index !== false) {
+                            $studentsList[$index] = $name;
+                            dbExecute(
+                                "UPDATE lessons_template SET students = ?, updated_at = NOW() WHERE id = ?",
+                                [json_encode($studentsList), $template['id']]
+                            );
+                            error_log("Updated student name in template ID {$template['id']}");
+                        }
+                    } catch (Exception $e) {
+                        error_log("Failed to update student name in template ID {$template['id']}: " . $e->getMessage());
+                    }
+                }
+            }
+
+            // Синхронизируем расписание
+            // 1. Удаляем ученика из всех шаблонов (где он был раньше)
+            // 2. Добавляем в новые шаблоны (согласно новому расписанию)
+
+            // Удаляем из всех шаблонов
+            removeStudentFromTemplates($name);
+
+            // Добавляем в новые шаблоны согласно расписанию
+            if ($schedule) {
+                $scheduleData = json_decode($schedule, true);
+                error_log("Syncing schedule for updated student '$name': " . json_encode($scheduleData));
+
+                if ($scheduleData && is_array($scheduleData)) {
+                    foreach ($scheduleData as $dayOfWeek => $lessons) {
+                        if (!is_numeric($dayOfWeek)) continue;
+
+                        if (is_array($lessons)) {
+                            foreach ($lessons as $lessonIndex => $lesson) {
+                                if (!is_array($lesson) || !isset($lesson['time']) || !isset($lesson['teacher_id'])) {
+                                    continue;
+                                }
+
+                                $timeStart = $lesson['time'];
+                                $lessonTeacherId = filter_var($lesson['teacher_id'], FILTER_VALIDATE_INT);
+
+                                if (!$lessonTeacherId || !$timeStart) continue;
+
+                                $timeEnd = date('H:i', strtotime($timeStart) + 3600);
+
+                                // Ищем или создаём шаблон
+                                $existingTemplate = dbQueryOne(
+                                    "SELECT id, students FROM lessons_template
+                                     WHERE teacher_id = ? AND day_of_week = ? AND time_start = ? AND lesson_type = ? AND active = 1",
+                                    [$lessonTeacherId, $dayOfWeek, $timeStart, $lessonType]
+                                );
+
+                                if ($existingTemplate) {
+                                    // Добавляем в существующий шаблон
+                                    $studentsList = $existingTemplate['students'] ? json_decode($existingTemplate['students'], true) : [];
+                                    if (!in_array($name, $studentsList)) {
+                                        $studentsList[] = $name;
+                                        dbExecute(
+                                            "UPDATE lessons_template SET students = ?, updated_at = NOW() WHERE id = ?",
+                                            [json_encode($studentsList), $existingTemplate['id']]
+                                        );
+                                        error_log("Added updated student '$name' to existing template ID {$existingTemplate['id']}");
+                                    }
+                                } else {
+                                    // Создаём новый шаблон
+                                    $expectedStudents = ($lessonType === 'group') ? 6 : 1;
+                                    dbExecute(
+                                        "INSERT INTO lessons_template (teacher_id, day_of_week, time_start, time_end, lesson_type, tier, expected_students, students, active)
+                                         VALUES (?, ?, ?, ?, ?, 'C', ?, ?, 1)",
+                                        [$lessonTeacherId, $dayOfWeek, $timeStart, $timeEnd, $lessonType, $expectedStudents, json_encode([$name])]
+                                    );
+                                    error_log("Created new template for updated student '$name', teacher $lessonTeacherId, day $dayOfWeek, time $timeStart");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Возвращаем обновленного ученика
             $student = dbQueryOne("SELECT * FROM students WHERE id = ?", [$id]);
             jsonSuccess($student);
