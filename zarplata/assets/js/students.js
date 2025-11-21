@@ -271,7 +271,7 @@ async function saveStudent(event) {
     const formData = new FormData(event.target);
     const data = {
         name: formData.get('name'),
-        teacher_id: parseInt(formData.get('teacher_id')),
+        // teacher_id больше не в форме, извлекается из расписания на бэкенде
         class: formData.get('class') || null,
         tier: formData.get('tier'),
         lesson_type: formData.get('lesson_type'),
@@ -339,7 +339,7 @@ async function editStudent(id) {
             // Заполнить форму
             document.getElementById('student-id').value = student.id;
             document.getElementById('student-name').value = student.name || '';
-            document.getElementById('student-teacher').value = student.teacher_id || '';
+            // Примечание: поле student-teacher удалено, преподаватель выбирается для каждого урока
             document.getElementById('student-class').value = student.class || '';
             document.getElementById('student-parent-name').value = student.parent_name || '';
             document.getElementById('student-telegram').value = student.student_telegram || '';
