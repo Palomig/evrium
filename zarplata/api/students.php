@@ -262,23 +262,24 @@ function handleAdd() {
 
                                 $timeStart = $lesson['time'];
                                 $lessonTeacherId = filter_var($lesson['teacher_id'], FILTER_VALIDATE_INT);
+                                $room = isset($lesson['room']) ? filter_var($lesson['room'], FILTER_VALIDATE_INT) : 1;
 
                                 if (!$lessonTeacherId || !$timeStart) {
                                     error_log("Skipping lesson $lessonIndex - invalid teacher_id ($lessonTeacherId) or time ($timeStart)");
                                     continue;
                                 }
 
-                                error_log("Valid lesson: day=$dayOfWeek, time=$timeStart, teacher_id=$lessonTeacherId, lesson_type=$lessonType");
+                                error_log("Valid lesson: day=$dayOfWeek, time=$timeStart, teacher_id=$lessonTeacherId, room=$room, lesson_type=$lessonType");
 
                                 // Разбираем время на start и end (предполагаем 1 час урок)
                                 $timeEnd = date('H:i', strtotime($timeStart) + 3600); // +1 час
 
                                 // Получаем текущий список учеников для этого шаблона (если есть)
-                                // Тир ученика НЕ влияет на выбор группы - группируем по времени, типу и преподавателю
+                                // Группируем по времени, типу, преподавателю И кабинету
                                 $existingTemplate = dbQueryOne(
                                     "SELECT id, students, tier, expected_students FROM lessons_template
-                                     WHERE teacher_id = ? AND day_of_week = ? AND time_start = ? AND lesson_type = ? AND active = 1",
-                                    [$lessonTeacherId, $dayOfWeek, $timeStart, $lessonType]
+                                     WHERE teacher_id = ? AND day_of_week = ? AND time_start = ? AND room = ? AND lesson_type = ? AND active = 1",
+                                    [$lessonTeacherId, $dayOfWeek, $timeStart, $room, $lessonType]
                                 );
 
                                 if ($existingTemplate) {
@@ -299,11 +300,11 @@ function handleAdd() {
                                     $expectedStudents = ($lessonType === 'group') ? 6 : 1;
                                     // Tier группы по умолчанию 'C', не зависит от tier ученика
                                     dbExecute(
-                                        "INSERT INTO lessons_template (teacher_id, day_of_week, time_start, time_end, lesson_type, tier, expected_students, students, active)
-                                         VALUES (?, ?, ?, ?, ?, 'C', ?, ?, 1)",
-                                        [$lessonTeacherId, $dayOfWeek, $timeStart, $timeEnd, $lessonType, $expectedStudents, json_encode([$name])]
+                                        "INSERT INTO lessons_template (teacher_id, day_of_week, room, time_start, time_end, lesson_type, tier, expected_students, students, active)
+                                         VALUES (?, ?, ?, ?, ?, ?, 'C', ?, ?, 1)",
+                                        [$lessonTeacherId, $dayOfWeek, $room, $timeStart, $timeEnd, $lessonType, $expectedStudents, json_encode([$name])]
                                     );
-                                    error_log("Created new template for teacher $lessonTeacherId, day $dayOfWeek, time $timeStart, type $lessonType with student '$name' (tier $tier), expected_students=$expectedStudents");
+                                    error_log("Created new template for teacher $lessonTeacherId, day $dayOfWeek, room $room, time $timeStart, type $lessonType with student '$name' (tier $tier), expected_students=$expectedStudents");
                                 }
                             }
                         } else {
@@ -565,16 +566,17 @@ function handleUpdate() {
 
                                 $timeStart = $lesson['time'];
                                 $lessonTeacherId = filter_var($lesson['teacher_id'], FILTER_VALIDATE_INT);
+                                $room = isset($lesson['room']) ? filter_var($lesson['room'], FILTER_VALIDATE_INT) : 1;
 
                                 if (!$lessonTeacherId || !$timeStart) continue;
 
                                 $timeEnd = date('H:i', strtotime($timeStart) + 3600);
 
-                                // Ищем или создаём шаблон
+                                // Ищем или создаём шаблон (с учетом кабинета)
                                 $existingTemplate = dbQueryOne(
                                     "SELECT id, students FROM lessons_template
-                                     WHERE teacher_id = ? AND day_of_week = ? AND time_start = ? AND lesson_type = ? AND active = 1",
-                                    [$lessonTeacherId, $dayOfWeek, $timeStart, $lessonType]
+                                     WHERE teacher_id = ? AND day_of_week = ? AND time_start = ? AND room = ? AND lesson_type = ? AND active = 1",
+                                    [$lessonTeacherId, $dayOfWeek, $timeStart, $room, $lessonType]
                                 );
 
                                 if ($existingTemplate) {
@@ -586,17 +588,17 @@ function handleUpdate() {
                                             "UPDATE lessons_template SET students = ?, updated_at = NOW() WHERE id = ?",
                                             [json_encode($studentsList), $existingTemplate['id']]
                                         );
-                                        error_log("Added updated student '$name' to existing template ID {$existingTemplate['id']}");
+                                        error_log("Added updated student '$name' to existing template ID {$existingTemplate['id']} (room $room)");
                                     }
                                 } else {
                                     // Создаём новый шаблон
                                     $expectedStudents = ($lessonType === 'group') ? 6 : 1;
                                     dbExecute(
-                                        "INSERT INTO lessons_template (teacher_id, day_of_week, time_start, time_end, lesson_type, tier, expected_students, students, active)
-                                         VALUES (?, ?, ?, ?, ?, 'C', ?, ?, 1)",
-                                        [$lessonTeacherId, $dayOfWeek, $timeStart, $timeEnd, $lessonType, $expectedStudents, json_encode([$name])]
+                                        "INSERT INTO lessons_template (teacher_id, day_of_week, room, time_start, time_end, lesson_type, tier, expected_students, students, active)
+                                         VALUES (?, ?, ?, ?, ?, ?, 'C', ?, ?, 1)",
+                                        [$lessonTeacherId, $dayOfWeek, $room, $timeStart, $timeEnd, $lessonType, $expectedStudents, json_encode([$name])]
                                     );
-                                    error_log("Created new template for updated student '$name', teacher $lessonTeacherId, day $dayOfWeek, time $timeStart");
+                                    error_log("Created new template for updated student '$name', teacher $lessonTeacherId, day $dayOfWeek, room $room, time $timeStart");
                                 }
                             }
                         }

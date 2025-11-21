@@ -89,7 +89,7 @@ function toggleDay(button) {
         // Добавить день в расписание с одним уроком по умолчанию
         button.classList.add('active');
         schedule[day] = [
-            { time: '15:00', teacher_id: '' } // Первый урок
+            { time: '15:00', teacher_id: '', room: 1 } // Первый урок с кабинетом
         ];
     }
 
@@ -171,6 +171,16 @@ function renderSchedule() {
                             </option>
                         `).join('')}
                     </select>
+                    <select
+                        class="form-control"
+                        onchange="updateLessonRoom(${day}, ${index}, this.value)"
+                        style="width: 100px;"
+                        title="Кабинет"
+                    >
+                        <option value="1" ${(lesson.room == 1 || !lesson.room) ? 'selected' : ''}>Кабинет 1</option>
+                        <option value="2" ${lesson.room == 2 ? 'selected' : ''}>Кабинет 2</option>
+                        <option value="3" ${lesson.room == 3 ? 'selected' : ''}>Кабинет 3</option>
+                    </select>
                 </div>
                 ${lessons.length > 1 ? `
                     <button type="button" class="schedule-item-remove" onclick="removeLessonFromDay(${day}, ${index})" title="Удалить урок">
@@ -199,6 +209,13 @@ function updateLessonTeacher(day, index, teacherId) {
     }
 }
 
+// Обновить кабинет урока
+function updateLessonRoom(day, index, room) {
+    if (schedule[day] && schedule[day][index]) {
+        schedule[day][index].room = room ? parseInt(room) : 1;
+    }
+}
+
 // Добавить урок в день
 function addLessonToDay(day) {
     if (!schedule[day]) {
@@ -208,13 +225,15 @@ function addLessonToDay(day) {
     // Добавляем новый урок на час позже последнего
     const lastLesson = schedule[day][schedule[day].length - 1];
     const lastTime = lastLesson ? lastLesson.time : '15:00';
+    const lastRoom = lastLesson ? lastLesson.room : 1;
     const [hours, minutes] = lastTime.split(':').map(Number);
     const newHours = (hours + 1) % 24;
     const newTime = String(newHours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
 
     schedule[day].push({
         time: newTime,
-        teacher_id: ''
+        teacher_id: '',
+        room: lastRoom // Используем тот же кабинет, что и в предыдущем уроке
     });
 
     renderSchedule();
@@ -305,11 +324,16 @@ async function saveStudent(event) {
 // Редактировать ученика
 async function editStudent(id) {
     try {
+        console.log('Fetching student data for ID:', id);
         const response = await fetch(`/zarplata/api/students.php?action=get&id=${id}`);
+
+        console.log('Response status:', response.status);
         const result = await response.json();
+        console.log('API result:', result);
 
         if (result.success) {
             const student = result.data;
+            console.log('Student data:', student);
             currentStudentId = id;
 
             // Заполнить форму
@@ -354,9 +378,11 @@ async function editStudent(id) {
             schedule = {};
             if (student.schedule) {
                 try {
+                    console.log('Parsing schedule:', student.schedule);
                     schedule = JSON.parse(student.schedule);
+                    console.log('Parsed schedule:', schedule);
                 } catch (e) {
-                    console.error('Error parsing schedule:', e);
+                    console.error('Error parsing schedule:', e, 'Raw schedule:', student.schedule);
                 }
             }
 
@@ -376,11 +402,12 @@ async function editStudent(id) {
             document.getElementById('modal-title').textContent = 'Редактировать ученика';
             document.getElementById('student-modal').classList.add('active');
         } else {
+            console.error('API returned error:', result.error);
             showNotification(result.error || 'Ошибка при загрузке ученика', 'error');
         }
     } catch (error) {
-        console.error('Error:', error);
-        showNotification('Ошибка при загрузке ученика', 'error');
+        console.error('Error in editStudent:', error);
+        showNotification('Ошибка при загрузке ученика: ' + error.message, 'error');
     }
 }
 
