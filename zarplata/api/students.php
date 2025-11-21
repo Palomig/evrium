@@ -497,6 +497,54 @@ function handleUpdate() {
 }
 
 /**
+ * Удалить ученика из всех шаблонов уроков
+ */
+function removeStudentFromTemplates($studentName) {
+    // Получаем все шаблоны
+    $templates = dbQuery("SELECT id, students FROM lessons_template WHERE active = 1");
+
+    $removedCount = 0;
+    $deletedTemplates = 0;
+
+    foreach ($templates as $template) {
+        if (!$template['students']) continue;
+
+        // Парсим список учеников
+        try {
+            $studentsList = json_decode($template['students'], true);
+            if (!is_array($studentsList)) continue;
+
+            // Проверяем, есть ли этот ученик в списке
+            $index = array_search($studentName, $studentsList);
+            if ($index !== false) {
+                // Удаляем ученика из списка
+                array_splice($studentsList, $index, 1);
+                $removedCount++;
+
+                if (empty($studentsList)) {
+                    // Если учеников не осталось, удаляем весь шаблон
+                    dbExecute("DELETE FROM lessons_template WHERE id = ?", [$template['id']]);
+                    $deletedTemplates++;
+                    error_log("Deleted empty template ID {$template['id']} after removing student '{$studentName}'");
+                } else {
+                    // Обновляем список учеников
+                    dbExecute(
+                        "UPDATE lessons_template SET students = ?, updated_at = NOW() WHERE id = ?",
+                        [json_encode($studentsList), $template['id']]
+                    );
+                    error_log("Removed student '{$studentName}' from template ID {$template['id']}, {count($studentsList)} students remaining");
+                }
+            }
+        } catch (Exception $e) {
+            error_log("Failed to process template ID {$template['id']}: " . $e->getMessage());
+        }
+    }
+
+    error_log("Removed student '{$studentName}' from {$removedCount} templates, deleted {$deletedTemplates} empty templates");
+    return ['removed_from' => $removedCount, 'deleted_templates' => $deletedTemplates];
+}
+
+/**
  * Удалить ученика (на самом деле деактивировать)
  */
 function handleDelete() {
@@ -526,6 +574,9 @@ function handleDelete() {
         [$id]
     );
 
+    // Удаляем ученика из всех шаблонов уроков
+    $templateStats = removeStudentFromTemplates($existing['name']);
+
     if ($attendanceCount['count'] > 0) {
         // Если есть записи посещаемости - деактивируем, а не удаляем
         $result = dbExecute(
@@ -535,7 +586,11 @@ function handleDelete() {
 
         if ($result !== false) {
             logAudit('student_deactivated', 'student', $id, $existing, ['active' => 0], 'Ученик деактивирован');
-            jsonSuccess(['message' => 'Ученик деактивирован (есть связанные записи посещаемости)']);
+            jsonSuccess([
+                'message' => 'Ученик деактивирован (есть связанные записи посещаемости)',
+                'removed_from_templates' => $templateStats['removed_from'],
+                'deleted_templates' => $templateStats['deleted_templates']
+            ]);
         } else {
             jsonError('Не удалось деактивировать ученика', 500);
         }
@@ -545,7 +600,11 @@ function handleDelete() {
 
         if ($result) {
             logAudit('student_deleted', 'student', $id, $existing, null, 'Ученик удалён');
-            jsonSuccess(['message' => 'Ученик удалён']);
+            jsonSuccess([
+                'message' => 'Ученик удалён',
+                'removed_from_templates' => $templateStats['removed_from'],
+                'deleted_templates' => $templateStats['deleted_templates']
+            ]);
         } else {
             jsonError('Не удалось удалить ученика', 500);
         }
@@ -578,6 +637,13 @@ function handleToggleActive() {
 
     // Переключаем активность
     $newActive = $existing['active'] ? 0 : 1;
+
+    // Если деактивируем ученика, удаляем его из шаблонов уроков
+    $templateStats = null;
+    if ($newActive == 0) {
+        $templateStats = removeStudentFromTemplates($existing['name']);
+    }
+
     $result = dbExecute(
         "UPDATE students SET active = ?, updated_at = NOW() WHERE id = ?",
         [$newActive, $id]
@@ -594,6 +660,13 @@ function handleToggleActive() {
         );
 
         $student = dbQueryOne("SELECT * FROM students WHERE id = ?", [$id]);
+
+        // Добавляем информацию о шаблонах, если деактивировали
+        if ($templateStats) {
+            $student['removed_from_templates'] = $templateStats['removed_from'];
+            $student['deleted_templates'] = $templateStats['deleted_templates'];
+        }
+
         jsonSuccess($student);
     } else {
         jsonError('Не удалось изменить статус ученика', 500);
