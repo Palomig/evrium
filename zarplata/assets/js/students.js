@@ -157,12 +157,12 @@ function renderSchedule() {
                         class="form-control"
                         value="${lesson.time}"
                         onchange="updateLessonTime(${day}, ${index}, this.value)"
-                        style="width: 120px;"
+                        style="width: 110px;"
                     >
                     <select
                         class="form-control"
                         onchange="updateLessonTeacher(${day}, ${index}, this.value)"
-                        style="flex: 1; min-width: 200px;"
+                        style="flex: 1; min-width: 180px;"
                     >
                         <option value="">Выберите преподавателя</option>
                         ${teachersData.map(t => `
@@ -174,7 +174,7 @@ function renderSchedule() {
                     <select
                         class="form-control"
                         onchange="updateLessonRoom(${day}, ${index}, this.value)"
-                        style="width: 80px;"
+                        style="width: 95px;"
                         title="Кабинет"
                     >
                         <option value="1" ${(lesson.room == 1 || !lesson.room) ? 'selected' : ''}>Каб 1</option>
