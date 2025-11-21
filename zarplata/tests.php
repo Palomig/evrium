@@ -41,6 +41,10 @@ require_once __DIR__ . '/templates/header.php';
                 <span class="material-icons">functions</span>
                 Проверка формул
             </button>
+            <button class="btn btn-primary" onclick="openSendTestLessonModal()">
+                <span class="material-icons">send</span>
+                Отправить тестовый урок
+            </button>
         </div>
     </div>
 </div>
@@ -209,6 +213,156 @@ async function runTest(testName) {
     }
 
     log('─'.repeat(80), 'info');
+}
+
+// Модальное окно для отправки тестового урока
+let testLessonModal = null;
+
+async function openSendTestLessonModal() {
+    log('▶ Загрузка списка преподавателей...', 'info');
+
+    try {
+        // Получаем список преподавателей с telegram_id
+        const response = await fetch('/zarplata/api/tests.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ test: 'bot_get_teachers' })
+        });
+
+        const result = await response.json();
+
+        if (!result.success || !result.data || result.data.length === 0) {
+            log('✗ Нет преподавателей с привязанным Telegram', 'error');
+            return;
+        }
+
+        const teachers = result.data;
+        log(`✓ Найдено ${teachers.length} преподавателей`, 'success');
+
+        // Создаём модальное окно
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h2 class="modal-title">Отправить тестовый урок</h2>
+                    <button class="modal-close" onclick="closeTestLessonModal()">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Преподаватель</label>
+                        <select id="testTeacherId" class="form-control">
+                            <option value="">Выберите преподавателя</option>
+                            ${teachers.map(t => `
+                                <option value="${t.id}">
+                                    ${t.name} (ID: ${t.telegram_id})
+                                </option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Тип теста</label>
+                        <select id="testLessonType" class="form-control">
+                            <option value="random">Случайный урок из расписания</option>
+                            <option value="mock">Тестовый урок (фейковый)</option>
+                        </select>
+                    </div>
+                    <div style="margin-top: 16px; padding: 12px; background: rgba(255, 152, 0, 0.1); border-radius: 8px; color: var(--md-warning);">
+                        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">info</span>
+                        <span style="font-size: 0.875rem; margin-left: 8px;">
+                            Преподавателю будет отправлено уведомление о посещаемости урока
+                        </span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeTestLessonModal()">Отмена</button>
+                    <button class="btn btn-primary" onclick="sendTestLesson()">
+                        <span class="material-icons" style="margin-right: 8px; font-size: 18px;">send</span>
+                        Отправить
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        testLessonModal = modal;
+
+        // Анимация появления
+        setTimeout(() => modal.classList.add('active'), 10);
+
+    } catch (error) {
+        log(`✗ Ошибка загрузки преподавателей: ${error.message}`, 'error');
+    }
+}
+
+function closeTestLessonModal() {
+    if (testLessonModal) {
+        testLessonModal.classList.remove('active');
+        setTimeout(() => {
+            testLessonModal.remove();
+            testLessonModal = null;
+        }, 300);
+    }
+}
+
+async function sendTestLesson() {
+    const teacherId = document.getElementById('testTeacherId').value;
+    const lessonType = document.getElementById('testLessonType').value;
+
+    if (!teacherId) {
+        log('✗ Выберите преподавателя', 'error');
+        return;
+    }
+
+    log(`▶ Отправка тестового урока преподавателю ID ${teacherId}...`, 'info');
+
+    try {
+        const response = await fetch('/zarplata/api/tests.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                test: 'bot_send_test_lesson',
+                teacher_id: parseInt(teacherId),
+                lesson_type: lessonType
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            log(`✓ Тестовое уведомление отправлено!`, 'success');
+
+            // Выводим логи
+            if (result.logs && result.logs.length > 0) {
+                result.logs.forEach(logEntry => {
+                    log(logEntry.message, logEntry.type || 'info');
+                });
+            }
+
+            // Выводим результаты
+            if (result.data) {
+                log(`Результат: ${JSON.stringify(result.data, null, 2)}`, 'success');
+            }
+
+            closeTestLessonModal();
+        } else {
+            log(`✗ Ошибка: ${result.error}`, 'error');
+
+            // Выводим логи даже при ошибке
+            if (result.logs && result.logs.length > 0) {
+                result.logs.forEach(logEntry => {
+                    log(logEntry.message, logEntry.type || 'error');
+                });
+            }
+        }
+
+        log('─'.repeat(80), 'info');
+
+    } catch (error) {
+        log(`✗ Ошибка отправки: ${error.message}`, 'error');
+    }
 }
 </script>
 
