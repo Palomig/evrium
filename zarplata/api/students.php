@@ -224,23 +224,37 @@ function handleAdd() {
             // Автоматически добавляем в расписание
             if ($schedule) {
                 $scheduleData = json_decode($schedule, true);
+                error_log("Processing schedule for new student '$name': " . json_encode($scheduleData));
+
                 if ($scheduleData && is_array($scheduleData)) {
                     foreach ($scheduleData as $dayOfWeek => $lessons) {
                         if (!is_numeric($dayOfWeek)) continue;
 
+                        error_log("Processing day $dayOfWeek, lessons: " . json_encode($lessons));
+
                         // Новый формат: lessons - это массив объектов { time, teacher_id }
                         if (is_array($lessons)) {
-                            foreach ($lessons as $lesson) {
+                            error_log("Day $dayOfWeek has " . count($lessons) . " lessons");
+
+                            foreach ($lessons as $lessonIndex => $lesson) {
+                                error_log("Processing lesson index $lessonIndex: " . json_encode($lesson));
+
                                 // Проверяем формат
                                 if (!is_array($lesson) || !isset($lesson['time']) || !isset($lesson['teacher_id'])) {
                                     // Старый формат или некорректные данные - пропускаем
+                                    error_log("Skipping lesson $lessonIndex - invalid format or missing fields");
                                     continue;
                                 }
 
                                 $timeStart = $lesson['time'];
                                 $lessonTeacherId = filter_var($lesson['teacher_id'], FILTER_VALIDATE_INT);
 
-                                if (!$lessonTeacherId || !$timeStart) continue;
+                                if (!$lessonTeacherId || !$timeStart) {
+                                    error_log("Skipping lesson $lessonIndex - invalid teacher_id ($lessonTeacherId) or time ($timeStart)");
+                                    continue;
+                                }
+
+                                error_log("Valid lesson: day=$dayOfWeek, time=$timeStart, teacher_id=$lessonTeacherId, lesson_type=$lessonType");
 
                                 // Разбираем время на start и end (предполагаем 1 час урок)
                                 $timeEnd = date('H:i', strtotime($timeStart) + 3600); // +1 час
