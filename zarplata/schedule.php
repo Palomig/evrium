@@ -989,7 +989,7 @@ function createLessonCard(lesson) {
     const card = document.createElement('div');
     card.className = `lesson-card ${lesson.subject || ''}`;
     card.dataset.teacherId = lesson.teacher_id;
-    card.onclick = () => editTemplate(lesson.id);
+    card.onclick = () => viewTemplate(lesson);
 
     // Парсим учеников
     let students = [];
@@ -1030,14 +1030,6 @@ function createLessonCard(lesson) {
                 </div>
             </div>
         </div>
-        ${students.length > 0 ? `
-        <button class="spoiler-btn" onclick="event.stopPropagation(); toggleStudents(this, ${lesson.id})">
-            👥 (${students.length})
-        </button>
-        <div class="students-list" id="students-${lesson.id}">
-            ${students.map(s => `<div class="student-name">• ${escapeHtml(s)}</div>`).join('')}
-        </div>
-        ` : ''}
     `;
 
     return card;
