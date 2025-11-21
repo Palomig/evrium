@@ -490,6 +490,72 @@ try {
             }
             break;
 
+        // ==================== ОЧИСТКА БАЗЫ ДАННЫХ ====================
+
+        case 'clear_students':
+            addLog('⚠️ ОЧИСТКА БАЗЫ ДАННЫХ: Удаление всех учеников', 'warning');
+
+            // Считаем текущее количество
+            $countBefore = dbQueryOne("SELECT COUNT(*) as cnt FROM students")['cnt'];
+            addLog("Учеников в БД: {$countBefore}", 'info');
+
+            if ($countBefore === 0) {
+                addLog('База данных учеников уже пустая', 'info');
+                $testResult = ['status' => 'success', 'count' => 0];
+                break;
+            }
+
+            // Удаляем всех учеников
+            dbExecute("DELETE FROM students");
+
+            $countAfter = dbQueryOne("SELECT COUNT(*) as cnt FROM students")['cnt'];
+            addLog("Удалено учеников: {$countBefore}", 'success');
+            addLog("Осталось в БД: {$countAfter}", 'success');
+
+            // Логируем в audit
+            logAudit('clear_students', 'students', null, null, [
+                'count_deleted' => $countBefore
+            ], 'Очищена таблица учеников через тесты');
+
+            $testResult = [
+                'status' => 'success',
+                'count' => $countBefore
+            ];
+            break;
+
+        case 'clear_teachers':
+            addLog('⚠️ ОЧИСТКА БАЗЫ ДАННЫХ: Удаление всех преподавателей', 'warning');
+
+            // Считаем текущее количество
+            $countBefore = dbQueryOne("SELECT COUNT(*) as cnt FROM teachers")['cnt'];
+            addLog("Преподавателей в БД: {$countBefore}", 'info');
+
+            if ($countBefore === 0) {
+                addLog('База данных преподавателей уже пустая', 'info');
+                $testResult = ['status' => 'success', 'count' => 0];
+                break;
+            }
+
+            // Удаляем всех преподавателей
+            // ВАЖНО: Это также удалит связанные записи из lessons_template (CASCADE)
+            addLog('⚠️ Это также удалит все связанные шаблоны уроков (CASCADE)', 'warning');
+            dbExecute("DELETE FROM teachers");
+
+            $countAfter = dbQueryOne("SELECT COUNT(*) as cnt FROM teachers")['cnt'];
+            addLog("Удалено преподавателей: {$countBefore}", 'success');
+            addLog("Осталось в БД: {$countAfter}", 'success');
+
+            // Логируем в audit
+            logAudit('clear_teachers', 'teachers', null, null, [
+                'count_deleted' => $countBefore
+            ], 'Очищена таблица преподавателей через тесты');
+
+            $testResult = [
+                'status' => 'success',
+                'count' => $countBefore
+            ];
+            break;
+
         default:
             throw new Exception('Неизвестный тест: ' . $testName);
     }

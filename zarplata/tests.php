@@ -91,6 +91,35 @@ require_once __DIR__ . '/templates/header.php';
     </div>
 </div>
 
+<!-- Очистка базы данных -->
+<div class="table-container">
+    <div class="table-header">
+        <h2 class="table-title" style="color: var(--md-error);">⚠️ Очистка базы данных</h2>
+    </div>
+    <div style="padding: 24px;">
+        <div style="margin-bottom: 20px; padding: 16px; background: rgba(207, 102, 121, 0.1); border-radius: 8px; color: var(--md-error);">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span class="material-icons">warning</span>
+                <strong>ВНИМАНИЕ!</strong>
+            </div>
+            <div style="font-size: 0.875rem; line-height: 1.5;">
+                Эти операции необратимы! Все данные будут безвозвратно удалены из базы данных.
+                <br>Используйте только для тестирования на развёрнутой системе.
+            </div>
+        </div>
+        <div class="test-buttons">
+            <button class="btn" style="background-color: var(--md-error); border-color: var(--md-error);" onclick="clearStudents()">
+                <span class="material-icons">delete_forever</span>
+                Удалить всех учеников
+            </button>
+            <button class="btn" style="background-color: var(--md-error); border-color: var(--md-error);" onclick="clearTeachers()">
+                <span class="material-icons">delete_forever</span>
+                Удалить всех преподавателей
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Логи тестов -->
 <div class="table-container">
     <div class="table-header">
@@ -467,6 +496,74 @@ async function sendTestLesson() {
 
     } catch (error) {
         log(`✗ Ошибка отправки: ${error.message}`, 'error');
+    }
+}
+
+// Очистка учеников
+async function clearStudents() {
+    if (!confirm('⚠️ ВЫ УВЕРЕНЫ? Все ученики будут удалены из базы данных!')) {
+        return;
+    }
+
+    if (!confirm('⚠️ ПОСЛЕДНЕЕ ПРЕДУПРЕЖДЕНИЕ! Это действие НЕОБРАТИМО! Удалить всех учеников?')) {
+        return;
+    }
+
+    log('⚠️ Запуск удаления всех учеников...', 'warning');
+
+    try {
+        const response = await fetch('/zarplata/api/tests.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ test: 'clear_students' })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            log(`✓ Удалено учеников: ${result.data.count}`, 'success');
+            log('✓ База данных учеников очищена', 'success');
+        } else {
+            log(`✗ Ошибка: ${result.error}`, 'error');
+        }
+
+        log('─'.repeat(80), 'info');
+    } catch (error) {
+        log(`✗ Ошибка выполнения: ${error.message}`, 'error');
+    }
+}
+
+// Очистка преподавателей
+async function clearTeachers() {
+    if (!confirm('⚠️ ВЫ УВЕРЕНЫ? Все преподаватели будут удалены из базы данных!')) {
+        return;
+    }
+
+    if (!confirm('⚠️ ПОСЛЕДНЕЕ ПРЕДУПРЕЖДЕНИЕ! Это действие НЕОБРАТИМО! Удалить всех преподавателей?')) {
+        return;
+    }
+
+    log('⚠️ Запуск удаления всех преподавателей...', 'warning');
+
+    try {
+        const response = await fetch('/zarplata/api/tests.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ test: 'clear_teachers' })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            log(`✓ Удалено преподавателей: ${result.data.count}`, 'success');
+            log('✓ База данных преподавателей очищена', 'success');
+        } else {
+            log(`✗ Ошибка: ${result.error}`, 'error');
+        }
+
+        log('─'.repeat(80), 'info');
+    } catch (error) {
+        log(`✗ Ошибка выполнения: ${error.message}`, 'error');
     }
 }
 </script>
