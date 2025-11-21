@@ -29,6 +29,15 @@ if (!$update) {
 
 error_log("[Telegram Bot] Update parsed successfully");
 
+// ВАЖНО: Отправляем HTTP 200 СРАЗУ, чтобы Telegram не переотправлял запрос
+http_response_code(200);
+
+// Для PHP-FPM: завершаем соединение с клиентом немедленно
+if (function_exists('fastcgi_finish_request')) {
+    fastcgi_finish_request();
+}
+
+// Теперь можем спокойно обрабатывать команду (даже если это займёт время)
 try {
     // Обработка текстовых сообщений
     if (isset($update['message'])) {
@@ -47,7 +56,6 @@ try {
     error_log("[Telegram Bot] Stack trace: " . $e->getTraceAsString());
 }
 
-http_response_code(200);
 exit;
 
 /**
