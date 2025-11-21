@@ -100,16 +100,11 @@ function handleAdd() {
         jsonError('ФИО слишком длинное (максимум 100 символов)', 400);
     }
 
-    // Преподаватель (обязательно)
-    $teacherId = filter_var($data['teacher_id'] ?? 0, FILTER_VALIDATE_INT);
-    if (!$teacherId) {
-        jsonError('Выберите преподавателя', 400);
-    }
-
-    // Проверяем существование преподавателя
-    $teacher = dbQueryOne("SELECT id FROM teachers WHERE id = ? AND active = 1", [$teacherId]);
-    if (!$teacher) {
-        jsonError('Преподаватель не найден или неактивен', 404);
+    // Примечание: teacher_id теперь указывается в расписании для каждого урока,
+    // но для обратной совместимости оставляем поле в базе (может быть NULL)
+    $teacherId = null;
+    if (isset($data['teacher_id']) && $data['teacher_id']) {
+        $teacherId = filter_var($data['teacher_id'], FILTER_VALIDATE_INT);
     }
 
     // Остальные поля
@@ -203,43 +198,88 @@ function handleAdd() {
             if ($schedule) {
                 $scheduleData = json_decode($schedule, true);
                 if ($scheduleData && is_array($scheduleData)) {
-                    foreach ($scheduleData as $dayOfWeek => $time) {
-                        if ($time && is_numeric($dayOfWeek)) {
-                            // Разбираем время на start и end (предполагаем 1 час урок)
-                            $timeStart = $time;
-                            $timeEnd = date('H:i', strtotime($time) + 3600); // +1 час
+                    foreach ($scheduleData as $dayOfWeek => $lessons) {
+                        if (!is_numeric($dayOfWeek)) continue;
 
-                            // Получаем текущий список учеников для этого шаблона (если есть)
-                            // Тир ученика НЕ влияет на выбор группы - группируем только по времени и типу занятий
-                            $existingTemplate = dbQueryOne(
-                                "SELECT id, students, tier, expected_students FROM lessons_template
-                                 WHERE teacher_id = ? AND day_of_week = ? AND time_start = ? AND lesson_type = ? AND active = 1",
-                                [$teacherId, $dayOfWeek, $timeStart, $lessonType]
-                            );
-
-                            if ($existingTemplate) {
-                                // Шаблон уже существует - добавляем ученика в список
-                                $studentsList = $existingTemplate['students'] ? json_decode($existingTemplate['students'], true) : [];
-                                if (!in_array($name, $studentsList)) {
-                                    $studentsList[] = $name;
-                                    // НЕ меняем expected_students - он остается 6 (или каким был установлен)
-                                    dbExecute(
-                                        "UPDATE lessons_template SET students = ?, updated_at = NOW() WHERE id = ?",
-                                        [json_encode($studentsList), $existingTemplate['id']]
-                                    );
-                                    error_log("Added student '$name' (tier $tier) to existing template ID {$existingTemplate['id']} (group tier {$existingTemplate['tier']}), expected_students remains {$existingTemplate['expected_students']}, now has " . count($studentsList) . " students");
+                        // Новый формат: lessons - это массив объектов { time, teacher_id }
+                        if (is_array($lessons)) {
+                            foreach ($lessons as $lesson) {
+                                // Проверяем формат
+                                if (!is_array($lesson) || !isset($lesson['time']) || !isset($lesson['teacher_id'])) {
+                                    // Старый формат или некорректные данные - пропускаем
+                                    continue;
                                 }
-                            } else {
-                                // Создаем новый шаблон
-                                // Для групповых занятий - 6 мест, для индивидуальных - 1 место
-                                $expectedStudents = ($lessonType === 'group') ? 6 : 1;
-                                // Tier группы по умолчанию 'C', не зависит от tier ученика
-                                dbExecute(
-                                    "INSERT INTO lessons_template (teacher_id, day_of_week, time_start, time_end, lesson_type, tier, expected_students, students, active)
-                                     VALUES (?, ?, ?, ?, ?, 'C', ?, ?, 1)",
-                                    [$teacherId, $dayOfWeek, $timeStart, $timeEnd, $lessonType, $expectedStudents, json_encode([$name])]
+
+                                $timeStart = $lesson['time'];
+                                $lessonTeacherId = filter_var($lesson['teacher_id'], FILTER_VALIDATE_INT);
+
+                                if (!$lessonTeacherId || !$timeStart) continue;
+
+                                // Разбираем время на start и end (предполагаем 1 час урок)
+                                $timeEnd = date('H:i', strtotime($timeStart) + 3600); // +1 час
+
+                                // Получаем текущий список учеников для этого шаблона (если есть)
+                                // Тир ученика НЕ влияет на выбор группы - группируем по времени, типу и преподавателю
+                                $existingTemplate = dbQueryOne(
+                                    "SELECT id, students, tier, expected_students FROM lessons_template
+                                     WHERE teacher_id = ? AND day_of_week = ? AND time_start = ? AND lesson_type = ? AND active = 1",
+                                    [$lessonTeacherId, $dayOfWeek, $timeStart, $lessonType]
                                 );
-                                error_log("Created new template for teacher $teacherId, day $dayOfWeek, time $timeStart, type $lessonType with student '$name' (tier $tier), expected_students=$expectedStudents");
+
+                                if ($existingTemplate) {
+                                    // Шаблон уже существует - добавляем ученика в список
+                                    $studentsList = $existingTemplate['students'] ? json_decode($existingTemplate['students'], true) : [];
+                                    if (!in_array($name, $studentsList)) {
+                                        $studentsList[] = $name;
+                                        // НЕ меняем expected_students - он остается 6 (или каким был установлен)
+                                        dbExecute(
+                                            "UPDATE lessons_template SET students = ?, updated_at = NOW() WHERE id = ?",
+                                            [json_encode($studentsList), $existingTemplate['id']]
+                                        );
+                                        error_log("Added student '$name' (tier $tier) to existing template ID {$existingTemplate['id']} for teacher $lessonTeacherId, expected_students remains {$existingTemplate['expected_students']}, now has " . count($studentsList) . " students");
+                                    }
+                                } else {
+                                    // Создаем новый шаблон
+                                    // Для групповых занятий - 6 мест, для индивидуальных - 1 место
+                                    $expectedStudents = ($lessonType === 'group') ? 6 : 1;
+                                    // Tier группы по умолчанию 'C', не зависит от tier ученика
+                                    dbExecute(
+                                        "INSERT INTO lessons_template (teacher_id, day_of_week, time_start, time_end, lesson_type, tier, expected_students, students, active)
+                                         VALUES (?, ?, ?, ?, ?, 'C', ?, ?, 1)",
+                                        [$lessonTeacherId, $dayOfWeek, $timeStart, $timeEnd, $lessonType, $expectedStudents, json_encode([$name])]
+                                    );
+                                    error_log("Created new template for teacher $lessonTeacherId, day $dayOfWeek, time $timeStart, type $lessonType with student '$name' (tier $tier), expected_students=$expectedStudents");
+                                }
+                            }
+                        } else {
+                            // Старый формат: lessons это просто время (строка) - обратная совместимость
+                            if ($teacherId && $lessons) {
+                                $timeStart = $lessons;
+                                $timeEnd = date('H:i', strtotime($timeStart) + 3600);
+
+                                $existingTemplate = dbQueryOne(
+                                    "SELECT id, students, tier, expected_students FROM lessons_template
+                                     WHERE teacher_id = ? AND day_of_week = ? AND time_start = ? AND lesson_type = ? AND active = 1",
+                                    [$teacherId, $dayOfWeek, $timeStart, $lessonType]
+                                );
+
+                                if ($existingTemplate) {
+                                    $studentsList = $existingTemplate['students'] ? json_decode($existingTemplate['students'], true) : [];
+                                    if (!in_array($name, $studentsList)) {
+                                        $studentsList[] = $name;
+                                        dbExecute(
+                                            "UPDATE lessons_template SET students = ?, updated_at = NOW() WHERE id = ?",
+                                            [json_encode($studentsList), $existingTemplate['id']]
+                                        );
+                                    }
+                                } else {
+                                    $expectedStudents = ($lessonType === 'group') ? 6 : 1;
+                                    dbExecute(
+                                        "INSERT INTO lessons_template (teacher_id, day_of_week, time_start, time_end, lesson_type, tier, expected_students, students, active)
+                                         VALUES (?, ?, ?, ?, ?, 'C', ?, ?, 1)",
+                                        [$teacherId, $dayOfWeek, $timeStart, $timeEnd, $lessonType, $expectedStudents, json_encode([$name])]
+                                    );
+                                }
                             }
                         }
                     }
@@ -293,16 +333,11 @@ function handleUpdate() {
         jsonError('ФИО слишком длинное (максимум 100 символов)', 400);
     }
 
-    // Преподаватель (обязательно)
-    $teacherId = filter_var($data['teacher_id'] ?? 0, FILTER_VALIDATE_INT);
-    if (!$teacherId) {
-        jsonError('Выберите преподавателя', 400);
-    }
-
-    // Проверяем существование преподавателя
-    $teacher = dbQueryOne("SELECT id FROM teachers WHERE id = ? AND active = 1", [$teacherId]);
-    if (!$teacher) {
-        jsonError('Преподаватель не найден или неактивен', 404);
+    // Примечание: teacher_id теперь указывается в расписании для каждого урока,
+    // но для обратной совместимости оставляем поле в базе (может быть NULL)
+    $teacherId = null;
+    if (isset($data['teacher_id']) && $data['teacher_id']) {
+        $teacherId = filter_var($data['teacher_id'], FILTER_VALIDATE_INT);
     }
 
     // Остальные поля

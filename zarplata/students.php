@@ -159,9 +159,34 @@ require_once __DIR__ . '/templates/header.php';
                                 <?php
                                 $days = ['', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
                                 $scheduleItems = [];
-                                foreach ($schedule as $day => $time) {
+
+                                foreach ($schedule as $day => $lessons) {
                                     $dayName = $days[$day] ?? '';
-                                    $scheduleItems[] = "$dayName $time";
+
+                                    // Новый формат: массив объектов с time и teacher_id
+                                    if (is_array($lessons)) {
+                                        foreach ($lessons as $lesson) {
+                                            if (is_array($lesson) && isset($lesson['time'])) {
+                                                // Найти имя преподавателя
+                                                $teacherName = '';
+                                                if (isset($lesson['teacher_id'])) {
+                                                    foreach ($teachers as $t) {
+                                                        if ($t['id'] == $lesson['teacher_id']) {
+                                                            $teacherName = $t['name'];
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+                                                $scheduleItems[] = "$dayName {$lesson['time']}" . ($teacherName ? " ({$teacherName})" : "");
+                                            } else {
+                                                // Старый формат (обратная совместимость): просто время
+                                                $scheduleItems[] = "$dayName $lesson";
+                                            }
+                                        }
+                                    } else {
+                                        // Старый формат: $lessons это просто время (строка)
+                                        $scheduleItems[] = "$dayName $lessons";
+                                    }
                                 }
                                 echo e(implode(', ', $scheduleItems));
                                 ?>
@@ -289,20 +314,6 @@ require_once __DIR__ . '/templates/header.php';
                         required
                         maxlength="100"
                     >
-                </div>
-
-                <!-- Преподаватель -->
-                <div class="form-group">
-                    <label class="form-label" for="student-teacher">
-                        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">person_pin</span>
-                        Преподаватель *
-                    </label>
-                    <select class="form-control" id="student-teacher" name="teacher_id" required>
-                        <option value="">Выберите преподавателя</option>
-                        <?php foreach ($teachers as $teacher): ?>
-                            <option value="<?= $teacher['id'] ?>"><?= e($teacher['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
                 </div>
 
                 <!-- Класс -->
@@ -951,6 +962,10 @@ require_once __DIR__ . '/templates/header.php';
     }
 </style>
 
+<script>
+    // Данные преподавателей для выбора в расписании
+    const teachersData = <?= json_encode($teachers) ?>;
+</script>
 <script src="/zarplata/assets/js/students.js"></script>
 
 <?php require_once __DIR__ . '/templates/footer.php'; ?>
