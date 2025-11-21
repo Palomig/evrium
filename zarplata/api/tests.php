@@ -501,25 +501,39 @@ try {
 
             if ($countBefore === 0) {
                 addLog('База данных учеников уже пустая', 'info');
-                $testResult = ['status' => 'success', 'count' => 0];
+                $testResult = ['status' => 'success', 'count' => 0, 'templates_deleted' => 0];
                 break;
             }
+
+            // Считаем шаблоны уроков
+            $templatesCountBefore = dbQueryOne("SELECT COUNT(*) as cnt FROM lessons_template")['cnt'];
+            addLog("Шаблонов уроков в БД: {$templatesCountBefore}", 'info');
 
             // Удаляем всех учеников
             dbExecute("DELETE FROM students");
 
             $countAfter = dbQueryOne("SELECT COUNT(*) as cnt FROM students")['cnt'];
             addLog("Удалено учеников: {$countBefore}", 'success');
-            addLog("Осталось в БД: {$countAfter}", 'success');
+            addLog("Осталось учеников в БД: {$countAfter}", 'success');
+
+            // Также удаляем все шаблоны уроков (т.к. ученики были в них привязаны)
+            addLog('⚠️ Удаление всех шаблонов уроков...', 'warning');
+            dbExecute("DELETE FROM lessons_template");
+
+            $templatesCountAfter = dbQueryOne("SELECT COUNT(*) as cnt FROM lessons_template")['cnt'];
+            addLog("Удалено шаблонов уроков: {$templatesCountBefore}", 'success');
+            addLog("Осталось шаблонов в БД: {$templatesCountAfter}", 'success');
 
             // Логируем в audit
             logAudit('clear_students', 'students', null, null, [
-                'count_deleted' => $countBefore
-            ], 'Очищена таблица учеников через тесты');
+                'students_deleted' => $countBefore,
+                'templates_deleted' => $templatesCountBefore
+            ], 'Очищена таблица учеников и шаблонов уроков через тесты');
 
             $testResult = [
                 'status' => 'success',
-                'count' => $countBefore
+                'count' => $countBefore,
+                'templates_deleted' => $templatesCountBefore
             ];
             break;
 
