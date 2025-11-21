@@ -86,9 +86,11 @@ function toggleDay(button) {
         button.classList.remove('active');
         delete schedule[day];
     } else {
-        // Добавить день в расписание с временем по умолчанию
+        // Добавить день в расписание с одним уроком по умолчанию
         button.classList.add('active');
-        schedule[day] = '15:00'; // Время по умолчанию
+        schedule[day] = [
+            { time: '15:00', teacher_id: '' } // Первый урок
+        ];
     }
 
     renderSchedule();
@@ -113,30 +115,124 @@ function renderSchedule() {
     const sortedDays = Object.keys(schedule).sort((a, b) => parseInt(a) - parseInt(b));
 
     sortedDays.forEach(day => {
-        const time = schedule[day];
+        const lessons = schedule[day];
         const dayName = dayNames[day];
 
-        const item = document.createElement('div');
-        item.className = 'schedule-item';
-        item.innerHTML = `
-            <div class="schedule-item-day">${dayName}</div>
-            <input
-                type="time"
-                class="form-control schedule-item-time"
-                value="${time}"
-                onchange="updateScheduleTime(${day}, this.value)"
-            >
-            <button type="button" class="schedule-item-remove" onclick="removeScheduleDay(${day})" title="Удалить">
+        // Контейнер для дня
+        const dayContainer = document.createElement('div');
+        dayContainer.style.marginBottom = '20px';
+        dayContainer.style.padding = '16px';
+        dayContainer.style.backgroundColor = 'var(--md-surface-2)';
+        dayContainer.style.borderRadius = '12px';
+
+        // Заголовок дня с кнопкой удаления
+        const dayHeader = document.createElement('div');
+        dayHeader.style.display = 'flex';
+        dayHeader.style.justifyContent = 'space-between';
+        dayHeader.style.alignItems = 'center';
+        dayHeader.style.marginBottom = '12px';
+        dayHeader.innerHTML = `
+            <div style="font-weight: 600; color: var(--md-primary); font-size: 1rem;">${dayName}</div>
+            <button type="button" class="schedule-item-remove" onclick="removeScheduleDay(${day})" title="Удалить день" style="position: static;">
                 <span class="material-icons" style="font-size: 18px;">close</span>
             </button>
         `;
-        scheduleList.appendChild(item);
+        dayContainer.appendChild(dayHeader);
+
+        // Список уроков для этого дня
+        lessons.forEach((lesson, index) => {
+            const lessonItem = document.createElement('div');
+            lessonItem.className = 'schedule-item';
+            lessonItem.style.marginBottom = index < lessons.length - 1 ? '8px' : '0';
+            lessonItem.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                    <button type="button"
+                            style="background: none; border: none; color: var(--md-primary); cursor: pointer; padding: 4px; display: flex; align-items: center;"
+                            onclick="addLessonToDay(${day})"
+                            title="Добавить ещё урок в этот день">
+                        <span class="material-icons" style="font-size: 20px;">arrow_downward</span>
+                    </button>
+                    <input
+                        type="time"
+                        class="form-control"
+                        value="${lesson.time}"
+                        onchange="updateLessonTime(${day}, ${index}, this.value)"
+                        style="width: 120px;"
+                    >
+                    <select
+                        class="form-control"
+                        onchange="updateLessonTeacher(${day}, ${index}, this.value)"
+                        style="flex: 1; min-width: 200px;"
+                    >
+                        <option value="">Выберите преподавателя</option>
+                        ${teachersData.map(t => `
+                            <option value="${t.id}" ${lesson.teacher_id == t.id ? 'selected' : ''}>
+                                ${t.name}
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+                ${lessons.length > 1 ? `
+                    <button type="button" class="schedule-item-remove" onclick="removeLessonFromDay(${day}, ${index})" title="Удалить урок">
+                        <span class="material-icons" style="font-size: 18px;">close</span>
+                    </button>
+                ` : ''}
+            `;
+            dayContainer.appendChild(lessonItem);
+        });
+
+        scheduleList.appendChild(dayContainer);
     });
 }
 
-// Обновить время для дня
-function updateScheduleTime(day, time) {
-    schedule[day] = time;
+// Обновить время урока
+function updateLessonTime(day, index, time) {
+    if (schedule[day] && schedule[day][index]) {
+        schedule[day][index].time = time;
+    }
+}
+
+// Обновить преподавателя урока
+function updateLessonTeacher(day, index, teacherId) {
+    if (schedule[day] && schedule[day][index]) {
+        schedule[day][index].teacher_id = teacherId ? parseInt(teacherId) : '';
+    }
+}
+
+// Добавить урок в день
+function addLessonToDay(day) {
+    if (!schedule[day]) {
+        schedule[day] = [];
+    }
+
+    // Добавляем новый урок на час позже последнего
+    const lastLesson = schedule[day][schedule[day].length - 1];
+    const lastTime = lastLesson ? lastLesson.time : '15:00';
+    const [hours, minutes] = lastTime.split(':').map(Number);
+    const newHours = (hours + 1) % 24;
+    const newTime = String(newHours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+
+    schedule[day].push({
+        time: newTime,
+        teacher_id: ''
+    });
+
+    renderSchedule();
+}
+
+// Удалить урок из дня
+function removeLessonFromDay(day, index) {
+    if (schedule[day]) {
+        schedule[day].splice(index, 1);
+
+        // Если уроков не осталось, удалить день
+        if (schedule[day].length === 0) {
+            delete schedule[day];
+            document.querySelector(`.btn-day[data-day="${day}"]`).classList.remove('active');
+        }
+
+        renderSchedule();
+    }
 }
 
 // Удалить день из расписания
