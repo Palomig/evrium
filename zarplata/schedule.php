@@ -1344,8 +1344,6 @@ document.addEventListener('DOMContentLoaded', () => {
     renderSchedule();
     // Восстанавливаем сохраненные фильтры после рендеринга
     restoreFilters();
-    // Инициализируем drag and drop
-    initDragAndDrop();
 });
 </script>
 
