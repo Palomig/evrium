@@ -389,7 +389,8 @@ require_once __DIR__ . '/templates/header.php';
     background-color: var(--md-surface);
     border-radius: 6px;
     overflow: hidden;
-    cursor: pointer;
+    cursor: move;
+    cursor: grab;
     transition: all 0.3s var(--transition-standard);
     box-shadow: var(--elevation-1);
     border-left: 4px solid;
@@ -401,6 +402,29 @@ require_once __DIR__ . '/templates/header.php';
 .lesson-card:hover {
     transform: translateY(-1px);
     box-shadow: var(--elevation-2);
+}
+
+.lesson-card:active {
+    cursor: grabbing;
+}
+
+/* Визуальные эффекты для drag and drop */
+.lesson-card.dragging {
+    opacity: 0.4;
+    cursor: grabbing;
+    transform: rotate(2deg);
+}
+
+.room-cell.drag-over {
+    background-color: rgba(187, 134, 252, 0.15);
+    border: 2px solid var(--md-primary);
+    border-radius: 6px;
+}
+
+.empty-slot.drag-over {
+    background-color: rgba(187, 134, 252, 0.2);
+    border-color: var(--md-primary);
+    border-style: solid;
 }
 
 .lesson-card.Математика {
@@ -590,6 +614,58 @@ require_once __DIR__ . '/templates/header.php';
 .day-content::-webkit-scrollbar-thumb:hover,
 .students-list::-webkit-scrollbar-thumb:hover {
     background: var(--md-surface-5);
+}
+
+/* Уведомления */
+.notification {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background-color: var(--md-surface);
+    color: var(--text-high-emphasis);
+    padding: 16px 24px;
+    border-radius: 8px;
+    box-shadow: var(--elevation-3);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 10000;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s var(--transition-standard);
+}
+
+.notification.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.notification-success {
+    border-left: 4px solid #55cc77;
+}
+
+.notification-error {
+    border-left: 4px solid #ff5555;
+}
+
+.notification-info {
+    border-left: 4px solid var(--md-primary);
+}
+
+.notification .material-icons {
+    font-size: 24px;
+}
+
+.notification-success .material-icons {
+    color: #55cc77;
+}
+
+.notification-error .material-icons {
+    color: #ff5555;
+}
+
+.notification-info .material-icons {
+    color: var(--md-primary);
 }
 
 }
@@ -1263,6 +1339,8 @@ document.addEventListener('DOMContentLoaded', () => {
     renderSchedule();
     // Восстанавливаем сохраненные фильтры после рендеринга
     restoreFilters();
+    // Инициализируем drag and drop
+    initDragAndDrop();
 });
 </script>
 
