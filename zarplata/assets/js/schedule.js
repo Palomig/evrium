@@ -385,16 +385,23 @@ let draggedLessonData = null;
  * Инициализировать drag and drop для карточек уроков
  */
 function initDragAndDrop() {
+    console.log('Initializing drag and drop...');
+
     // Делаем все карточки уроков перетаскиваемыми
-    document.querySelectorAll('.lesson-card').forEach(card => {
+    const cards = document.querySelectorAll('.lesson-card');
+    console.log('Found lesson cards:', cards.length);
+    cards.forEach(card => {
         card.setAttribute('draggable', 'true');
         card.addEventListener('dragstart', handleDragStart);
         card.addEventListener('dragend', handleDragEnd);
     });
 
-    // Делаем все ячейки кабинетов и пустые слоты местами для drop
-    document.querySelectorAll('.room-cell, .empty-slot').forEach(cell => {
+    // Делаем все ячейки кабинетов местами для drop
+    const cells = document.querySelectorAll('.room-cell');
+    console.log('Found room cells:', cells.length);
+    cells.forEach(cell => {
         cell.addEventListener('dragover', handleDragOver);
+        cell.addEventListener('dragenter', handleDragEnter);
         cell.addEventListener('dragleave', handleDragLeave);
         cell.addEventListener('drop', handleDrop);
     });
@@ -410,6 +417,8 @@ function handleDragStart(e) {
     const lessonId = getLessonIdFromCard(draggedLesson);
     draggedLessonData = templatesData.find(t => t.id === lessonId);
 
+    console.log('Drag start - lesson ID:', lessonId, 'data:', draggedLessonData);
+
     if (!draggedLessonData) {
         console.error('Failed to find lesson data for card:', draggedLesson);
         e.preventDefault();
@@ -418,22 +427,30 @@ function handleDragStart(e) {
 
     // Устанавливаем данные для переноса
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/html', e.currentTarget.innerHTML);
+    e.dataTransfer.setData('text/plain', lessonId); // Используем text/plain вместо text/html
 
     // Добавляем класс для визуального эффекта
     e.currentTarget.classList.add('dragging');
     e.currentTarget.style.opacity = '0.4';
+
+    // ВАЖНО: делаем дочерние элементы "прозрачными" для событий мыши
+    // чтобы dragover срабатывал на room-cell, а не на вложенных элементах
+    setTimeout(() => {
+        e.currentTarget.style.pointerEvents = 'none';
+    }, 0);
 }
 
 /**
  * Конец перетаскивания
  */
 function handleDragEnd(e) {
+    console.log('Drag end');
     e.currentTarget.classList.remove('dragging');
     e.currentTarget.style.opacity = '1';
+    e.currentTarget.style.pointerEvents = ''; // Восстанавливаем pointer-events
 
     // Убираем подсветку со всех drop зон
-    document.querySelectorAll('.room-cell, .empty-slot').forEach(cell => {
+    document.querySelectorAll('.room-cell').forEach(cell => {
         cell.classList.remove('drag-over');
     });
 
@@ -442,24 +459,23 @@ function handleDragEnd(e) {
 }
 
 /**
- * Перетаскивание над элементом
+ * Вход в зону drop
+ */
+function handleDragEnter(e) {
+    e.preventDefault();
+    const cell = e.currentTarget;
+    if (!cell.classList.contains('drag-over')) {
+        cell.classList.add('drag-over');
+    }
+}
+
+/**
+ * Перетаскивание над элементом (постоянное обновление)
  */
 function handleDragOver(e) {
-    if (e.preventDefault) {
-        e.preventDefault(); // Разрешаем drop
-    }
-
+    e.preventDefault(); // ОБЯЗАТЕЛЬНО для разрешения drop
+    e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
-
-    // Находим ближайшую ячейку или пустой слот
-    const dropTarget = e.currentTarget.classList.contains('room-cell')
-        ? e.currentTarget
-        : e.currentTarget.closest('.room-cell');
-
-    if (dropTarget && !dropTarget.classList.contains('drag-over')) {
-        dropTarget.classList.add('drag-over');
-    }
-
     return false;
 }
 
@@ -467,38 +483,36 @@ function handleDragOver(e) {
  * Выход из зоны drop
  */
 function handleDragLeave(e) {
-    const dropTarget = e.currentTarget.classList.contains('room-cell')
-        ? e.currentTarget
-        : e.currentTarget.closest('.room-cell');
+    // Проверяем, что мы действительно покинули cell, а не просто вошли в дочерний элемент
+    const cell = e.currentTarget;
+    const rect = cell.getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
 
-    if (dropTarget) {
-        dropTarget.classList.remove('drag-over');
+    // Если курсор все еще внутри границ cell, не убираем подсветку
+    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+        return;
     }
+
+    cell.classList.remove('drag-over');
 }
 
 /**
  * Drop (бросок)
  */
 async function handleDrop(e) {
-    if (e.stopPropagation) {
-        e.stopPropagation(); // Останавливаем propagation
-    }
+    e.preventDefault();
+    e.stopPropagation();
+
+    console.log('Drop event triggered');
 
     if (!draggedLessonData) {
         console.error('No dragged lesson data');
         return false;
     }
 
-    // Находим целевую ячейку
-    let dropCell = e.currentTarget;
-    if (!dropCell.classList.contains('room-cell')) {
-        dropCell = e.currentTarget.closest('.room-cell');
-    }
-
-    if (!dropCell) {
-        console.error('Drop target is not a room-cell');
-        return false;
-    }
+    const dropCell = e.currentTarget;
+    console.log('Drop cell:', dropCell);
 
     // Убираем подсветку
     dropCell.classList.remove('drag-over');
@@ -510,15 +524,20 @@ async function handleDrop(e) {
     const dayColumn = dropCell.closest('.day-column');
     const newDay = dayColumn ? parseInt(dayColumn.dataset.day) : null;
 
+    console.log('New position:', { newDay, newTime, newRoom });
+
     if (!newDay || !newTime || !newRoom) {
         console.error('Failed to determine new position:', { newDay, newTime, newRoom });
+        showNotification('Ошибка определения новой позиции', 'error');
         return false;
     }
 
     // Проверяем, изменилась ли позиция
-    const oldDay = draggedLessonData.day_of_week;
+    const oldDay = parseInt(draggedLessonData.day_of_week);
     const oldTime = draggedLessonData.time_start.substring(0, 5);
-    const oldRoom = draggedLessonData.room;
+    const oldRoom = parseInt(draggedLessonData.room);
+
+    console.log('Old position:', { oldDay, oldTime, oldRoom });
 
     if (oldDay === newDay && oldTime === newTime && oldRoom === newRoom) {
         console.log('Position unchanged, no API call needed');

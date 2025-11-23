@@ -413,6 +413,11 @@ require_once __DIR__ . '/templates/header.php';
     opacity: 0.4;
     cursor: grabbing;
     transform: rotate(2deg);
+    pointer-events: none; /* Пропускаем события мыши через карточку */
+}
+
+.lesson-card.dragging * {
+    pointer-events: none; /* И через всех её потомков */
 }
 
 .room-cell.drag-over {
