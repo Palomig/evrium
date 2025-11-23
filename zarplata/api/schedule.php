@@ -36,6 +36,9 @@ switch ($action) {
     case 'delete_template':
         handleDeleteTemplate();
         break;
+    case 'move_template':
+        handleMoveTemplate();
+        break;
     case 'get_week':
         handleGetWeek();
         break;
@@ -311,6 +314,179 @@ function handleUpdateTemplate() {
         jsonSuccess($template);
     } else {
         jsonError('Не удалось обновить шаблон', 500);
+    }
+}
+
+/**
+ * Переместить урок (изменить день, время, кабинет) с синхронизацией учеников
+ */
+function handleMoveTemplate() {
+    // Получаем данные
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+
+    if (!$data) {
+        $data = $_POST;
+    }
+
+    $id = filter_var($data['id'] ?? 0, FILTER_VALIDATE_INT);
+    $newDayOfWeek = filter_var($data['day_of_week'] ?? 0, FILTER_VALIDATE_INT);
+    $newRoom = filter_var($data['room'] ?? 0, FILTER_VALIDATE_INT);
+    $newTimeStart = $data['time_start'] ?? '';
+
+    if (!$id) {
+        jsonError('Неверный ID урока', 400);
+    }
+
+    if ($newDayOfWeek < 1 || $newDayOfWeek > 7) {
+        jsonError('Неверный день недели', 400);
+    }
+
+    if ($newRoom < 1 || $newRoom > 3) {
+        jsonError('Неверный номер кабинета', 400);
+    }
+
+    if (!$newTimeStart) {
+        jsonError('Укажите время урока', 400);
+    }
+
+    // Получаем старые данные урока
+    $oldTemplate = dbQueryOne("SELECT * FROM lessons_template WHERE id = ?", [$id]);
+    if (!$oldTemplate) {
+        jsonError('Урок не найден', 404);
+    }
+
+    // Вычисляем новое время окончания (добавляем 1 час)
+    $hour = intval(substr($newTimeStart, 0, 2));
+    $newTimeEnd = sprintf('%02d:00:00', $hour + 1);
+
+    // Обновляем урок в lessons_template
+    try {
+        dbExecute(
+            "UPDATE lessons_template
+             SET day_of_week = ?, room = ?, time_start = ?, time_end = ?, updated_at = NOW()
+             WHERE id = ?",
+            [$newDayOfWeek, $newRoom, $newTimeStart, $newTimeEnd, $id]
+        );
+
+        // Синхронизация с учениками
+        syncStudentsSchedule($oldTemplate, $newDayOfWeek, $newTimeStart, $newRoom);
+
+        logAudit('template_moved', 'template', $id, $oldTemplate, [
+            'old_day' => $oldTemplate['day_of_week'],
+            'old_time' => $oldTemplate['time_start'],
+            'old_room' => $oldTemplate['room'],
+            'new_day' => $newDayOfWeek,
+            'new_time' => $newTimeStart,
+            'new_room' => $newRoom
+        ], 'Урок перемещён (drag and drop)');
+
+        $updatedTemplate = dbQueryOne("SELECT * FROM lessons_template WHERE id = ?", [$id]);
+        jsonSuccess($updatedTemplate);
+    } catch (Exception $e) {
+        error_log("Failed to move template: " . $e->getMessage());
+        jsonError('Ошибка при перемещении урока', 500);
+    }
+}
+
+/**
+ * Синхронизировать расписание учеников после изменения урока
+ *
+ * @param array $oldTemplate Старые данные урока
+ * @param int $newDay Новый день недели
+ * @param string $newTime Новое время
+ * @param int $newRoom Новый кабинет
+ */
+function syncStudentsSchedule($oldTemplate, $newDay, $newTime, $newRoom) {
+    try {
+        // Получаем список учеников из урока
+        $studentsInLesson = [];
+        if (!empty($oldTemplate['students'])) {
+            $studentsInLesson = json_decode($oldTemplate['students'], true);
+            if (!is_array($studentsInLesson)) {
+                $studentsInLesson = [];
+            }
+        }
+
+        if (empty($studentsInLesson)) {
+            return; // Нет учеников для синхронизации
+        }
+
+        // Формат времени: убираем секунды (HH:MM)
+        $oldTime = substr($oldTemplate['time_start'], 0, 5);
+        $newTimeShort = substr($newTime, 0, 5);
+
+        // Получаем всех учеников, которые есть в этом уроке
+        $placeholders = str_repeat('?,', count($studentsInLesson) - 1) . '?';
+        $students = dbQuery(
+            "SELECT id, name, schedule FROM students
+             WHERE name IN ($placeholders) AND active = 1",
+            $studentsInLesson
+        );
+
+        foreach ($students as $student) {
+            // Парсим расписание ученика
+            $schedule = [];
+            if (!empty($student['schedule'])) {
+                $schedule = json_decode($student['schedule'], true);
+                if (!is_array($schedule)) {
+                    $schedule = [];
+                }
+            }
+
+            $wasUpdated = false;
+
+            // Ищем старый урок в расписании ученика
+            $oldDay = $oldTemplate['day_of_week'];
+            if (isset($schedule[$oldDay]) && is_array($schedule[$oldDay])) {
+                foreach ($schedule[$oldDay] as $key => $lesson) {
+                    // Проверяем, что это урок с таким же временем и преподавателем
+                    if (is_array($lesson) &&
+                        isset($lesson['time']) &&
+                        $lesson['time'] === $oldTime &&
+                        isset($lesson['teacher_id']) &&
+                        $lesson['teacher_id'] == $oldTemplate['teacher_id']) {
+
+                        // Удаляем урок из старого дня
+                        unset($schedule[$oldDay][$key]);
+
+                        // Если день остался пустым, удаляем его
+                        if (empty($schedule[$oldDay])) {
+                            unset($schedule[$oldDay]);
+                        } else {
+                            // Переиндексируем массив
+                            $schedule[$oldDay] = array_values($schedule[$oldDay]);
+                        }
+
+                        // Добавляем урок в новый день
+                        if (!isset($schedule[$newDay])) {
+                            $schedule[$newDay] = [];
+                        }
+
+                        $schedule[$newDay][] = [
+                            'time' => $newTimeShort,
+                            'teacher_id' => $oldTemplate['teacher_id'],
+                            'room' => $newRoom
+                        ];
+
+                        $wasUpdated = true;
+                        break;
+                    }
+                }
+            }
+
+            // Если расписание обновилось, сохраняем
+            if ($wasUpdated) {
+                $scheduleJson = json_encode($schedule, JSON_UNESCAPED_UNICODE);
+                dbExecute(
+                    "UPDATE students SET schedule = ?, updated_at = NOW() WHERE id = ?",
+                    [$scheduleJson, $student['id']]
+                );
+            }
+        }
+    } catch (Exception $e) {
+        error_log("Failed to sync students schedule: " . $e->getMessage());
+        // Не останавливаем выполнение, только логируем ошибку
     }
 }
 

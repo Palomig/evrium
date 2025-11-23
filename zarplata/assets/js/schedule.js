@@ -376,6 +376,244 @@ document.addEventListener('click', (e) => {
     }
 });
 
+// ========== DRAG AND DROP FUNCTIONALITY ==========
+
+let draggedLesson = null;
+let draggedLessonData = null;
+
+/**
+ * Инициализировать drag and drop для карточек уроков
+ */
+function initDragAndDrop() {
+    // Делаем все карточки уроков перетаскиваемыми
+    document.querySelectorAll('.lesson-card').forEach(card => {
+        card.setAttribute('draggable', 'true');
+        card.addEventListener('dragstart', handleDragStart);
+        card.addEventListener('dragend', handleDragEnd);
+    });
+
+    // Делаем все ячейки кабинетов и пустые слоты местами для drop
+    document.querySelectorAll('.room-cell, .empty-slot').forEach(cell => {
+        cell.addEventListener('dragover', handleDragOver);
+        cell.addEventListener('dragleave', handleDragLeave);
+        cell.addEventListener('drop', handleDrop);
+    });
+}
+
+/**
+ * Начало перетаскивания
+ */
+function handleDragStart(e) {
+    draggedLesson = e.currentTarget;
+
+    // Получаем данные урока из глобального массива templatesData
+    const lessonId = getLessonIdFromCard(draggedLesson);
+    draggedLessonData = templatesData.find(t => t.id === lessonId);
+
+    if (!draggedLessonData) {
+        console.error('Failed to find lesson data for card:', draggedLesson);
+        e.preventDefault();
+        return;
+    }
+
+    // Устанавливаем данные для переноса
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', e.currentTarget.innerHTML);
+
+    // Добавляем класс для визуального эффекта
+    e.currentTarget.classList.add('dragging');
+    e.currentTarget.style.opacity = '0.4';
+}
+
+/**
+ * Конец перетаскивания
+ */
+function handleDragEnd(e) {
+    e.currentTarget.classList.remove('dragging');
+    e.currentTarget.style.opacity = '1';
+
+    // Убираем подсветку со всех drop зон
+    document.querySelectorAll('.room-cell, .empty-slot').forEach(cell => {
+        cell.classList.remove('drag-over');
+    });
+
+    draggedLesson = null;
+    draggedLessonData = null;
+}
+
+/**
+ * Перетаскивание над элементом
+ */
+function handleDragOver(e) {
+    if (e.preventDefault) {
+        e.preventDefault(); // Разрешаем drop
+    }
+
+    e.dataTransfer.dropEffect = 'move';
+
+    // Находим ближайшую ячейку или пустой слот
+    const dropTarget = e.currentTarget.classList.contains('room-cell')
+        ? e.currentTarget
+        : e.currentTarget.closest('.room-cell');
+
+    if (dropTarget && !dropTarget.classList.contains('drag-over')) {
+        dropTarget.classList.add('drag-over');
+    }
+
+    return false;
+}
+
+/**
+ * Выход из зоны drop
+ */
+function handleDragLeave(e) {
+    const dropTarget = e.currentTarget.classList.contains('room-cell')
+        ? e.currentTarget
+        : e.currentTarget.closest('.room-cell');
+
+    if (dropTarget) {
+        dropTarget.classList.remove('drag-over');
+    }
+}
+
+/**
+ * Drop (бросок)
+ */
+async function handleDrop(e) {
+    if (e.stopPropagation) {
+        e.stopPropagation(); // Останавливаем propagation
+    }
+
+    if (!draggedLessonData) {
+        console.error('No dragged lesson data');
+        return false;
+    }
+
+    // Находим целевую ячейку
+    let dropCell = e.currentTarget;
+    if (!dropCell.classList.contains('room-cell')) {
+        dropCell = e.currentTarget.closest('.room-cell');
+    }
+
+    if (!dropCell) {
+        console.error('Drop target is not a room-cell');
+        return false;
+    }
+
+    // Убираем подсветку
+    dropCell.classList.remove('drag-over');
+
+    // Получаем новую позицию (день, время, кабинет)
+    const newRoom = parseInt(dropCell.dataset.room);
+    const timeRow = dropCell.closest('.time-row');
+    const newTime = timeRow ? timeRow.dataset.time : null;
+    const dayColumn = dropCell.closest('.day-column');
+    const newDay = dayColumn ? parseInt(dayColumn.dataset.day) : null;
+
+    if (!newDay || !newTime || !newRoom) {
+        console.error('Failed to determine new position:', { newDay, newTime, newRoom });
+        return false;
+    }
+
+    // Проверяем, изменилась ли позиция
+    const oldDay = draggedLessonData.day_of_week;
+    const oldTime = draggedLessonData.time_start.substring(0, 5);
+    const oldRoom = draggedLessonData.room;
+
+    if (oldDay === newDay && oldTime === newTime && oldRoom === newRoom) {
+        console.log('Position unchanged, no API call needed');
+        return false;
+    }
+
+    // Вызываем API для перемещения урока
+    await moveLesson(draggedLessonData.id, newDay, newTime + ':00', newRoom);
+
+    return false;
+}
+
+/**
+ * API вызов для перемещения урока
+ */
+async function moveLesson(lessonId, newDay, newTime, newRoom) {
+    try {
+        showNotification('Перемещение урока...', 'info');
+
+        const response = await fetch('/zarplata/api/schedule.php?action=move_template', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                id: lessonId,
+                day_of_week: newDay,
+                time_start: newTime,
+                room: newRoom
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showNotification('Урок перемещён! Обновляю расписание...', 'success');
+
+            // Перезагружаем страницу через 500мс
+            setTimeout(() => {
+                location.reload();
+            }, 500);
+        } else {
+            showNotification(result.error || 'Ошибка перемещения урока', 'error');
+        }
+    } catch (error) {
+        console.error('Error moving lesson:', error);
+        showNotification('Ошибка перемещения урока', 'error');
+    }
+}
+
+/**
+ * Получить ID урока из карточки
+ */
+function getLessonIdFromCard(card) {
+    // Ищем ID урока через onclick атрибут или data-атрибут
+    const onclickAttr = card.getAttribute('onclick');
+    if (onclickAttr) {
+        const match = onclickAttr.match(/viewTemplate\((\{[^}]+\})\)/);
+        if (match) {
+            try {
+                const lessonData = eval('(' + match[1] + ')');
+                return lessonData.id;
+            } catch (e) {
+                console.error('Failed to parse lesson data from onclick:', e);
+            }
+        }
+    }
+
+    // Альтернатива: ищем по teacher_id и извлекаем из templatesData
+    const teacherId = card.dataset.teacherId;
+    if (teacherId) {
+        const dayColumn = card.closest('.day-column');
+        const day = dayColumn ? parseInt(dayColumn.dataset.day) : null;
+        const timeRow = card.closest('.time-row');
+        const time = timeRow ? timeRow.dataset.time : null;
+        const roomCell = card.closest('.room-cell');
+        const room = roomCell ? parseInt(roomCell.dataset.room) : null;
+
+        if (day && time && room) {
+            const lesson = templatesData.find(t =>
+                parseInt(t.day_of_week) === day &&
+                t.time_start.substring(0, 5) === time &&
+                parseInt(t.room) === room &&
+                parseInt(t.teacher_id) === parseInt(teacherId)
+            );
+
+            if (lesson) {
+                return lesson.id;
+            }
+        }
+    }
+
+    return null;
+}
+
 // Просмотр урока (модальное окно со списком учеников)
 function viewTemplate(lesson) {
     // Парсим учеников
