@@ -714,13 +714,13 @@ require_once __DIR__ . '/templates/header.php';
 <div class="filters-panel">
     <div class="filters-content">
         <div class="filter-group">
-            <button class="day-filter-btn active" data-day="1" onclick="toggleDayFilter(this)">Пн</button>
-            <button class="day-filter-btn active" data-day="2" onclick="toggleDayFilter(this)">Вт</button>
-            <button class="day-filter-btn active" data-day="3" onclick="toggleDayFilter(this)">Ср</button>
-            <button class="day-filter-btn active" data-day="4" onclick="toggleDayFilter(this)">Чт</button>
-            <button class="day-filter-btn active" data-day="5" onclick="toggleDayFilter(this)">Пт</button>
-            <button class="day-filter-btn active" data-day="6" onclick="toggleDayFilter(this)">Сб</button>
-            <button class="day-filter-btn active" data-day="7" onclick="toggleDayFilter(this)">Вс</button>
+            <button class="day-filter-btn" data-day="1" onclick="toggleDayFilter(this)">Пн</button>
+            <button class="day-filter-btn" data-day="2" onclick="toggleDayFilter(this)">Вт</button>
+            <button class="day-filter-btn" data-day="3" onclick="toggleDayFilter(this)">Ср</button>
+            <button class="day-filter-btn" data-day="4" onclick="toggleDayFilter(this)">Чт</button>
+            <button class="day-filter-btn" data-day="5" onclick="toggleDayFilter(this)">Пт</button>
+            <button class="day-filter-btn" data-day="6" onclick="toggleDayFilter(this)">Сб</button>
+            <button class="day-filter-btn" data-day="7" onclick="toggleDayFilter(this)">Вс</button>
         </div>
 
         <div class="filter-divider"></div>
@@ -1229,8 +1229,9 @@ function applyTeacherFilter() {
 }
 
 function resetFilters() {
+    // Убираем active со всех кнопок фильтров
     document.querySelectorAll('.day-filter-btn, .room-filter-btn').forEach(btn => {
-        btn.classList.add('active');
+        btn.classList.remove('active');
     });
     updateVisibleDays();
     updateVisibleRooms();
@@ -1270,7 +1271,10 @@ function restoreFilters() {
     const savedFilters = localStorage.getItem('scheduleFilters');
 
     if (!savedFilters) {
-        return; // Нет сохраненных фильтров
+        // Если нет сохраненных фильтров, показываем все дни и кабинеты
+        updateVisibleDays();
+        updateVisibleRooms();
+        return;
     }
 
     try {
