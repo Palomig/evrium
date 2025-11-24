@@ -49,9 +49,9 @@ require_once __DIR__ . '/templates/header.php';
     <div class="filters-content">
         <div class="filter-group">
             <span class="legend-label">Класс:</span>
-            <button class="class-filter-btn active" data-class="all" onclick="toggleClassFilter(this)">Все</button>
+            <button class="class-filter-btn" data-class="all" onclick="toggleClassFilter(this)">Все</button>
             <?php for ($i = 2; $i <= 11; $i++): ?>
-                <button class="class-filter-btn active" data-class="<?= $i ?>" onclick="toggleClassFilter(this)"><?= $i ?></button>
+                <button class="class-filter-btn" data-class="<?= $i ?>" onclick="toggleClassFilter(this)"><?= $i ?></button>
             <?php endfor; ?>
         </div>
 
