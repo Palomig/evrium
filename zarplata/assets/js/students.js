@@ -575,22 +575,13 @@ async function toggleStudentActive(id) {
 // Фильтрация
 function toggleClassFilter(button) {
     if (button.dataset.class === 'all') {
-        // Если нажата "Все", активировать все кнопки
+        // Если нажата "Все", убрать active со всех кнопок (сброс фильтра)
         document.querySelectorAll('.class-filter-btn').forEach(btn => {
-            btn.classList.add('active');
+            btn.classList.remove('active');
         });
     } else {
-        // Иначе убрать "Все" и переключить выбранную
-        const allBtn = document.querySelector('.class-filter-btn[data-class="all"]');
-        allBtn.classList.remove('active');
+        // Переключить выбранную кнопку
         button.classList.toggle('active');
-
-        // Если все остальные активны, активировать "Все"
-        const otherBtns = Array.from(document.querySelectorAll('.class-filter-btn:not([data-class="all"])'));
-        const allActive = otherBtns.every(btn => btn.classList.contains('active'));
-        if (allActive) {
-            allBtn.classList.add('active');
-        }
     }
 
     updateVisibleStudents();
@@ -598,22 +589,13 @@ function toggleClassFilter(button) {
 
 function toggleTypeFilter(button) {
     if (button.dataset.type === 'all') {
-        // Если нажата "Все", активировать все кнопки
+        // Если нажата "Все", убрать active со всех кнопок (сброс фильтра)
         document.querySelectorAll('.type-filter-btn').forEach(btn => {
-            btn.classList.add('active');
+            btn.classList.remove('active');
         });
     } else {
-        // Иначе убрать "Все" и переключить выбранную
-        const allBtn = document.querySelector('.type-filter-btn[data-type="all"]');
-        allBtn.classList.remove('active');
+        // Переключить выбранную кнопку
         button.classList.toggle('active');
-
-        // Если все остальные активны, активировать "Все"
-        const otherBtns = Array.from(document.querySelectorAll('.type-filter-btn:not([data-type="all"])'));
-        const allActive = otherBtns.every(btn => btn.classList.contains('active'));
-        if (allActive) {
-            allBtn.classList.add('active');
-        }
     }
 
     updateVisibleStudents();
@@ -630,16 +612,14 @@ function updateVisibleStudents() {
         .map(btn => btn.dataset.type);
     const searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
 
-    const allClassesActive = document.querySelector('.class-filter-btn[data-class="all"]').classList.contains('active');
-    const allTypesActive = document.querySelector('.type-filter-btn[data-type="all"]').classList.contains('active');
-
     document.querySelectorAll('.student-row').forEach(row => {
         const studentClass = row.getAttribute('data-class');
         const studentType = row.getAttribute('data-type');
         const studentName = row.getAttribute('data-name');
 
-        const classMatch = allClassesActive || activeClasses.includes(studentClass);
-        const typeMatch = allTypesActive || activeTypes.includes(studentType);
+        // Если нет активных фильтров - показываем всех
+        const classMatch = activeClasses.length === 0 || activeClasses.includes(studentClass);
+        const typeMatch = activeTypes.length === 0 || activeTypes.includes(studentType);
         const searchMatch = !searchQuery || studentName.includes(searchQuery);
 
         if (classMatch && typeMatch && searchMatch) {
