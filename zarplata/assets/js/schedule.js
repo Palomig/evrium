@@ -721,12 +721,14 @@ function viewTemplate(lesson) {
 }
 
 // ========== АВТОМАТИЧЕСКАЯ ИНИЦИАЛИЗАЦИЯ ==========
-
-// Ждём, пока страница полностью загрузится и renderSchedule() создаст все карточки
-window.addEventListener('load', () => {
-    // Небольшая задержка, чтобы убедиться, что renderSchedule() выполнился
-    setTimeout(() => {
-        console.log('Initializing drag and drop from schedule.js...');
-        initDragAndDrop();
-    }, 100);
+// Вызывается после загрузки DOM
+document.addEventListener('DOMContentLoaded', () => {
+    // Проверяем, что мы на странице расписания
+    if (typeof renderSchedule === 'function') {
+        renderSchedule(); // Создает карточки
+        if (typeof restoreFilters === 'function') {
+            restoreFilters();
+        }
+        // initDragAndDrop() вызовется автоматически в конце renderSchedule()
+    }
 });

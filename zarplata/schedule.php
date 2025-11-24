@@ -1074,6 +1074,11 @@ function renderSchedule() {
         dayColumn.appendChild(content);
         board.appendChild(dayColumn);
     });
+
+    // ВАЖНО: Инициализируем drag and drop СРАЗУ после рендеринга карточек
+    if (typeof initDragAndDrop === 'function') {
+        initDragAndDrop();
+    }
 }
 
 // Создать карточку урока
@@ -1339,12 +1344,7 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Инициализация
-document.addEventListener('DOMContentLoaded', () => {
-    renderSchedule();
-    // Восстанавливаем сохраненные фильтры после рендеринга
-    restoreFilters();
-});
+// renderSchedule и restoreFilters вызываются из schedule.js после его загрузки
 </script>
 
 <script src="/zarplata/assets/js/schedule.js"></script>
