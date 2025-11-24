@@ -59,9 +59,9 @@ require_once __DIR__ . '/templates/header.php';
 
         <div class="filter-group">
             <span class="legend-label">Тип:</span>
-            <button class="type-filter-btn active" data-type="all" onclick="toggleTypeFilter(this)">Все</button>
-            <button class="type-filter-btn active" data-type="group" onclick="toggleTypeFilter(this)">Групповые</button>
-            <button class="type-filter-btn active" data-type="individual" onclick="toggleTypeFilter(this)">Индивидуальные</button>
+            <button class="type-filter-btn" data-type="all" onclick="toggleTypeFilter(this)">Все</button>
+            <button class="type-filter-btn" data-type="group" onclick="toggleTypeFilter(this)">Групповые</button>
+            <button class="type-filter-btn" data-type="individual" onclick="toggleTypeFilter(this)">Индивидуальные</button>
         </div>
 
         <div class="filter-divider"></div>
