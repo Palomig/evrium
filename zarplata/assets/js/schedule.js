@@ -401,8 +401,6 @@ function initDragAndDrop() {
     console.log('Found room cells:', cells.length);
     cells.forEach(cell => {
         cell.addEventListener('dragover', handleDragOver);
-        cell.addEventListener('dragenter', handleDragEnter);
-        cell.addEventListener('dragleave', handleDragLeave);
         cell.addEventListener('drop', handleDrop);
     });
 }
@@ -427,17 +425,11 @@ function handleDragStart(e) {
 
     // Устанавливаем данные для переноса
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', lessonId); // Используем text/plain вместо text/html
+    e.dataTransfer.setData('text/html', e.currentTarget.innerHTML);
 
     // Добавляем класс для визуального эффекта
     e.currentTarget.classList.add('dragging');
     e.currentTarget.style.opacity = '0.4';
-
-    // ВАЖНО: делаем дочерние элементы "прозрачными" для событий мыши
-    // чтобы dragover срабатывал на room-cell, а не на вложенных элементах
-    setTimeout(() => {
-        e.currentTarget.style.pointerEvents = 'none';
-    }, 0);
 }
 
 /**
@@ -447,7 +439,6 @@ function handleDragEnd(e) {
     console.log('Drag end');
     e.currentTarget.classList.remove('dragging');
     e.currentTarget.style.opacity = '1';
-    e.currentTarget.style.pointerEvents = ''; // Восстанавливаем pointer-events
 
     // Убираем подсветку со всех drop зон
     document.querySelectorAll('.room-cell').forEach(cell => {
@@ -459,42 +450,22 @@ function handleDragEnd(e) {
 }
 
 /**
- * Вход в зону drop
+ * Перетаскивание над элементом
  */
-function handleDragEnter(e) {
-    e.preventDefault();
+function handleDragOver(e) {
+    if (e.preventDefault) {
+        e.preventDefault(); // Разрешаем drop
+    }
+
+    e.dataTransfer.dropEffect = 'move';
+
+    // Подсвечиваем целевую ячейку
     const cell = e.currentTarget;
     if (!cell.classList.contains('drag-over')) {
         cell.classList.add('drag-over');
     }
-}
 
-/**
- * Перетаскивание над элементом (постоянное обновление)
- */
-function handleDragOver(e) {
-    e.preventDefault(); // ОБЯЗАТЕЛЬНО для разрешения drop
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = 'move';
     return false;
-}
-
-/**
- * Выход из зоны drop
- */
-function handleDragLeave(e) {
-    // Проверяем, что мы действительно покинули cell, а не просто вошли в дочерний элемент
-    const cell = e.currentTarget;
-    const rect = cell.getBoundingClientRect();
-    const x = e.clientX;
-    const y = e.clientY;
-
-    // Если курсор все еще внутри границ cell, не убираем подсветку
-    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
-        return;
-    }
-
-    cell.classList.remove('drag-over');
 }
 
 /**
