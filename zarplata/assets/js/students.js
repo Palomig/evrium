@@ -585,6 +585,7 @@ function toggleClassFilter(button) {
     }
 
     updateVisibleStudents();
+    saveFilters();
 }
 
 function toggleTypeFilter(button) {
@@ -599,10 +600,12 @@ function toggleTypeFilter(button) {
     }
 
     updateVisibleStudents();
+    saveFilters();
 }
 
 function filterByName() {
     updateVisibleStudents();
+    saveFilters();
 }
 
 function updateVisibleStudents() {
@@ -668,3 +671,76 @@ window.onclick = function(event) {
         closeViewModal();
     }
 }
+
+/**
+ * Сохранить состояние фильтров в localStorage
+ */
+function saveFilters() {
+    const activeClasses = Array.from(document.querySelectorAll('.class-filter-btn.active:not([data-class="all"])'))
+        .map(btn => btn.dataset.class);
+    const activeTypes = Array.from(document.querySelectorAll('.type-filter-btn.active:not([data-type="all"])'))
+        .map(btn => btn.dataset.type);
+    const searchQuery = document.getElementById('search-input')?.value || '';
+
+    const filters = {
+        classes: activeClasses,
+        types: activeTypes,
+        search: searchQuery
+    };
+
+    localStorage.setItem('studentsFilters', JSON.stringify(filters));
+}
+
+/**
+ * Восстановить состояние фильтров из localStorage
+ */
+function restoreFilters() {
+    const savedFilters = localStorage.getItem('studentsFilters');
+
+    if (!savedFilters) {
+        // Если нет сохраненных фильтров, показываем всех студентов
+        updateVisibleStudents();
+        return;
+    }
+
+    try {
+        const filters = JSON.parse(savedFilters);
+
+        // Восстанавливаем классы
+        if (filters.classes && filters.classes.length > 0) {
+            document.querySelectorAll('.class-filter-btn').forEach(btn => {
+                if (btn.dataset.class !== 'all' && filters.classes.includes(btn.dataset.class)) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+
+        // Восстанавливаем типы
+        if (filters.types && filters.types.length > 0) {
+            document.querySelectorAll('.type-filter-btn').forEach(btn => {
+                if (btn.dataset.type !== 'all' && filters.types.includes(btn.dataset.type)) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+
+        // Восстанавливаем поиск
+        if (filters.search) {
+            const searchInput = document.getElementById('search-input');
+            if (searchInput) {
+                searchInput.value = filters.search;
+            }
+        }
+
+        // Применяем фильтры
+        updateVisibleStudents();
+    } catch (e) {
+        console.error('Failed to restore filters:', e);
+        updateVisibleStudents();
+    }
+}
+
+// Восстановить фильтры при загрузке страницы
+document.addEventListener('DOMContentLoaded', () => {
+    restoreFilters();
+});
