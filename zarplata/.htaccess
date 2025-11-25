@@ -10,9 +10,9 @@
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^(.*)/$ /$1 [L,R=301]
 
-    # Редирект index.php на корень
+    # Редирект index.php на корень (внутри zarplata)
     RewriteCond %{THE_REQUEST} ^GET.*index\.php [NC]
-    RewriteRule ^(.*)index\.php$ /$1 [R=301,L]
+    RewriteRule ^(.*)index\.php$ /zarplata/$1 [R=301,L]
 </IfModule>
 
 # Безопасность
