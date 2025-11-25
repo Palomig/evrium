@@ -264,233 +264,16 @@ foreach ($teachers as $teacher) {
 // Месяцы в порядке убывания
 $dataByMonth = array_reverse($dataByMonth, true);
 
+// Page settings for header template
+define('PAGE_TITLE', 'Выплаты преподавателям');
+define('PAGE_SUBTITLE', 'Учёт и одобрение выплат за проведённые занятия');
+define('ACTIVE_PAGE', 'payments');
+
+require_once __DIR__ . '/templates/header.php';
+
 ?>
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Выплаты преподавателям — Эвриум</title>
-
-    <!-- Google Fonts: Nunito + JetBrains Mono -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            /* Фоны */
-            --bg-dark: #0c0f14;
-            --bg-card: #14181f;
-            --bg-elevated: #1a1f28;
-            --bg-hover: #1f2631;
-
-            /* Текст */
-            --text-primary: #f0f2f5;
-            --text-secondary: #8b95a5;
-            --text-muted: #5a6473;
-
-            /* Границы */
-            --border: #252b36;
-
-            /* Teal accent */
-            --accent: #14b8a6;
-            --accent-dim: rgba(20, 184, 166, 0.15);
-            --accent-hover: #0d9488;
-
-            /* Status colors */
-            --status-green: #22c55e;
-            --status-green-dim: rgba(34, 197, 94, 0.12);
-            --status-amber: #f59e0b;
-            --status-amber-dim: rgba(245, 158, 11, 0.12);
-            --status-blue: #3b82f6;
-            --status-blue-dim: rgba(59, 130, 246, 0.12);
-            --status-rose: #f43f5e;
-            --status-rose-dim: rgba(244, 63, 94, 0.12);
-
-            /* Lesson types */
-            --lesson-individual: #06b6d4;
-            --lesson-individual-dim: rgba(6, 182, 212, 0.12);
-            --lesson-group: #a855f7;
-            --lesson-group-dim: rgba(168, 85, 247, 0.12);
-        }
-
-        body {
-            font-family: 'Nunito', sans-serif;
-            background: var(--bg-dark);
-            color: var(--text-primary);
-            min-height: 100vh;
-            line-height: 1.5;
-        }
-
-        /* Layout */
-        .layout {
-            display: flex;
-            min-height: 100vh;
-        }
-
-        /* Sidebar */
-        .sidebar {
-            width: 220px;
-            background: var(--bg-card);
-            border-right: 1px solid var(--border);
-            padding: 24px 0;
-            position: fixed;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .logo {
-            padding: 0 20px 28px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .logo-icon {
-            width: 38px;
-            height: 38px;
-            background: linear-gradient(135deg, var(--accent) 0%, #0d9488 100%);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 600;
-            font-size: 16px;
-            color: white;
-        }
-
-        .logo-text {
-            font-weight: 700;
-            font-size: 15px;
-            letter-spacing: -0.02em;
-        }
-
-        .nav-section {
-            padding: 0 12px;
-            margin-bottom: 24px;
-        }
-
-        .nav-label {
-            font-size: 10px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--text-muted);
-            padding: 0 8px;
-            margin-bottom: 8px;
-        }
-
-        .nav-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 12px;
-            border-radius: 8px;
-            color: var(--text-secondary);
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            text-decoration: none;
-        }
-
-        .nav-item:hover {
-            background: var(--bg-hover);
-            color: var(--text-primary);
-        }
-
-        .nav-item.active {
-            background: var(--accent-dim);
-            color: var(--accent);
-        }
-
-        .nav-icon {
-            width: 18px;
-            height: 18px;
-            opacity: 0.7;
-        }
-
-        .nav-item.active .nav-icon {
-            opacity: 1;
-        }
-
-        /* Main content */
-        .main {
-            flex: 1;
-            margin-left: 220px;
-            padding: 28px 32px;
-            max-width: calc(100vw - 220px);
-            overflow-x: hidden;
-        }
-
-        /* Header */
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 28px;
-        }
-
-        .page-title {
-            font-size: 26px;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            margin-bottom: 6px;
-        }
-
-        .page-subtitle {
-            color: var(--text-secondary);
-            font-size: 14px;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 10px;
-        }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 16px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            border: none;
-            font-family: inherit;
-            text-decoration: none;
-        }
-
-        .btn-secondary {
-            background: var(--bg-elevated);
-            color: var(--text-primary);
-            border: 1px solid var(--border);
-        }
-
-        .btn-secondary:hover {
-            background: var(--bg-hover);
-        }
-
-        .btn-primary {
-            background: var(--accent);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: var(--accent-hover);
-        }
-
+<style>
+/* Page-specific CSS for payments page */
         /* Teacher Filter */
         .teacher-filter {
             display: flex;
@@ -987,73 +770,10 @@ $dataByMonth = array_reverse($dataByMonth, true);
             color: var(--text-muted);
         }
     </style>
-</head>
-<body>
-    <div class="layout">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="logo">
-                <div class="logo-icon">Э</div>
-                <div class="logo-text">Эвриум</div>
-            </div>
+</style>
 
-            <nav class="nav-section">
-                <div class="nav-label">Основное</div>
-                <a href="index.php" class="nav-item">
-                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-                    </svg>
-                    Главная
-                </a>
-                <a href="schedule.php" class="nav-item">
-                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                    </svg>
-                    Расписание
-                </a>
-                <a href="students.php" class="nav-item">
-                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
-                    </svg>
-                    Ученики
-                </a>
-            </nav>
-
-            <nav class="nav-section">
-                <div class="nav-label">Финансы</div>
-                <a href="payments.php" class="nav-item active">
-                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
-                    </svg>
-                    Выплаты
-                </a>
-                <a href="reports.php" class="nav-item">
-                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                    </svg>
-                    Отчёты
-                </a>
-            </nav>
-
-            <nav class="nav-section">
-                <div class="nav-label">Команда</div>
-                <a href="teachers.php" class="nav-item">
-                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                    </svg>
-                    Преподаватели
-                </a>
-            </nav>
-        </aside>
-
-        <!-- Main Content -->
-        <main class="main">
-            <header class="page-header">
-                <div>
-                    <h1 class="page-title">Выплаты преподавателям</h1>
-                    <p class="page-subtitle">Учёт и одобрение выплат за проведённые занятия</p>
-                </div>
-                <div class="header-actions">
+<!-- Add header actions to page-header -->
+<div class="header-actions" style="position: absolute; top: 28px; right: 32px;">
                     <a href="?export=xlsx" class="btn btn-secondary">
                         <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
@@ -1067,7 +787,6 @@ $dataByMonth = array_reverse($dataByMonth, true);
                         Выход
                     </a>
                 </div>
-            </header>
 
             <!-- Teacher Filter -->
             <div class="teacher-filter">
@@ -1277,5 +996,4 @@ $dataByMonth = array_reverse($dataByMonth, true);
             }
         }
     </script>
-</body>
-</html>
+<?php require_once __DIR__ . '/templates/footer.php'; ?>
