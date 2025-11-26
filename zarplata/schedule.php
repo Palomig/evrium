@@ -100,6 +100,16 @@ require_once __DIR__ . '/templates/header.php';
 ?>
 
 <style>
+/* Fonts */
+body, .schedule-header, .filters-panel, .day-filter-btn, .room-filter-btn, 
+.time-filter-select, select, button, .modal-content {
+    font-family: 'Nunito', sans-serif;
+}
+
+.time-cell, .card-cell.capacity, .money {
+    font-family: 'JetBrains Mono', monospace;
+}
+
 /* Скрыть пустой page-header */
 .page-header {
     display: none;
@@ -107,11 +117,11 @@ require_once __DIR__ . '/templates/header.php';
 
 /* Заголовок */
 .schedule-header {
-    background-color: var(--md-surface);
+    background-color: var(--bg-card);
     border-radius: 12px;
     padding: 24px;
     margin-bottom: 24px;
-    box-shadow: var(--elevation-2);
+    /* box-shadow removed */
     max-width: 100%;
     overflow: hidden;
 }
@@ -131,8 +141,10 @@ require_once __DIR__ . '/templates/header.php';
     flex-wrap: wrap;
     align-items: center;
     margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 12px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
 }
 
 .legend-group {
@@ -143,7 +155,7 @@ require_once __DIR__ . '/templates/header.php';
 
 .legend-label {
     font-weight: 600;
-    color: var(--text-medium-emphasis);
+    color: var(--text-secondary);
     font-size: 0.875rem;
 }
 
@@ -152,28 +164,28 @@ require_once __DIR__ . '/templates/header.php';
     align-items: center;
     gap: 8px;
     font-size: 0.875rem;
-    color: var(--text-medium-emphasis);
+    color: var(--text-secondary);
 }
 
 .legend-color {
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
 }
 
 .legend-divider {
     width: 1px;
     height: 24px;
-    background: rgba(255, 255, 255, 0.12);
+    background: var(--border);
 }
 
 /* Панель фильтров */
 .filters-panel {
-    background-color: var(--md-surface);
+    background-color: var(--bg-card);
     border-radius: 12px;
     padding: 20px;
     margin-bottom: 24px;
-    box-shadow: var(--elevation-2);
+    /* box-shadow removed */
     max-width: 100%;
     overflow: hidden;
 }
@@ -195,10 +207,10 @@ require_once __DIR__ . '/templates/header.php';
 .room-filter-btn,
 .time-filter-select {
     padding: 10px 16px;
-    border: 2px solid rgba(255, 255, 255, 0.12);
+    border: 2px solid var(--border);
     border-radius: 8px;
-    background-color: var(--md-surface-3);
-    color: var(--text-medium-emphasis);
+    background-color: var(--bg-elevated);
+    color: var(--text-secondary);
     cursor: pointer;
     font-size: 0.875rem;
     font-weight: 600;
@@ -209,21 +221,21 @@ require_once __DIR__ . '/templates/header.php';
 
 .day-filter-btn:hover,
 .room-filter-btn:hover {
-    border-color: var(--md-primary);
-    background-color: var(--md-surface-4);
+    border-color: var(--accent);
+    background-color: var(--bg-hover);
 }
 
 .day-filter-btn.active,
 .room-filter-btn.active {
-    background-color: rgba(187, 134, 252, 0.15);
-    border-color: var(--md-primary);
-    color: var(--md-primary);
+    background-color: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
 }
 
 .time-filter-select {
     min-width: 100px;
     padding-right: 40px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23BB86FC' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2314b8a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 12px center;
     background-size: 20px;
@@ -233,16 +245,16 @@ require_once __DIR__ . '/templates/header.php';
 .filter-divider {
     width: 1px;
     height: 32px;
-    background: rgba(255, 255, 255, 0.12);
+    background: var(--border);
     margin: 0 8px;
 }
 
 .btn-reset-filters {
     padding: 10px 16px;
-    border: 2px solid var(--md-error);
+    border: 2px solid #f43f5e;
     border-radius: 8px;
     background: transparent;
-    color: var(--md-error);
+    color: #f43f5e;
     cursor: pointer;
     font-size: 0.875rem;
     font-weight: 600;
@@ -251,7 +263,7 @@ require_once __DIR__ . '/templates/header.php';
 }
 
 .btn-reset-filters:hover {
-    background-color: var(--md-error);
+    background-color: #f43f5e;
     color: white;
 }
 
@@ -260,10 +272,10 @@ require_once __DIR__ . '/templates/header.php';
     position: relative;
     overflow-x: auto;
     overflow-y: auto;
-    background-color: var(--md-surface);
+    background-color: var(--bg-card);
     border-radius: 12px;
     padding: 20px;
-    box-shadow: var(--elevation-2);
+    /* box-shadow removed */
     max-height: calc(100vh - 400px);
     width: 100%;
     box-sizing: border-box;
@@ -277,13 +289,13 @@ require_once __DIR__ . '/templates/header.php';
 
 /* Столбец дня - это ТАБЛИЦА */
 .day-column {
-    background-color: var(--md-surface-3);
+    background-color: var(--bg-elevated);
     border-radius: 12px;
     min-width: 420px;
     max-width: 420px;
     width: 420px;
     flex-shrink: 0;
-    box-shadow: var(--elevation-1);
+    /* box-shadow removed */
     display: flex;
     flex-direction: column;
 }
@@ -294,22 +306,22 @@ require_once __DIR__ . '/templates/header.php';
 
 /* Заголовок дня */
 .day-header {
-    background-color: var(--md-surface-4);
+    background-color: var(--bg-hover);
     color: white;
     padding: 16px;
     border-radius: 12px 12px 0 0;
     text-align: center;
     font-weight: 700;
     font-size: 1rem;
-    border-bottom: 2px solid rgba(255, 255, 255, 0.12);
+    border-bottom: 2px solid var(--border);
 }
 
 /* Заголовки кабинетов */
 .room-headers {
     display: grid;
     grid-template-columns: 60px repeat(3, 120px);
-    background: var(--md-surface-4);
-    border-bottom: 2px solid rgba(255, 255, 255, 0.12);
+    background: var(--bg-hover);
+    border-bottom: 2px solid var(--border);
 }
 
 .room-header {
@@ -317,7 +329,7 @@ require_once __DIR__ . '/templates/header.php';
     text-align: center;
     font-weight: 600;
     font-size: 0.8rem;
-    color: var(--text-medium-emphasis);
+    color: var(--text-secondary);
     border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -326,8 +338,8 @@ require_once __DIR__ . '/templates/header.php';
 }
 
 .room-header.time-label {
-    background: var(--md-surface-3);
-    color: var(--text-disabled);
+    background: var(--bg-elevated);
+    color: var(--text-muted);
     font-size: 0.75rem;
 }
 
@@ -363,8 +375,8 @@ require_once __DIR__ . '/templates/header.php';
     justify-content: center;
     font-size: 0.85rem;
     font-weight: 700;
-    color: var(--text-medium-emphasis);
-    background: var(--md-surface-3);
+    color: var(--text-secondary);
+    background: var(--bg-elevated);
     border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -386,13 +398,13 @@ require_once __DIR__ . '/templates/header.php';
 
 /* Карточка урока - КОМПАКТНАЯ */
 .lesson-card {
-    background-color: var(--md-surface);
+    background-color: var(--bg-card);
     border-radius: 6px;
     overflow: hidden;
     cursor: move;
     cursor: grab;
     transition: all 0.3s var(--transition-standard);
-    box-shadow: var(--elevation-1);
+    /* box-shadow removed */
     border-left: 4px solid;
     width: 100%;
     display: flex;
@@ -401,7 +413,7 @@ require_once __DIR__ . '/templates/header.php';
 
 .lesson-card:hover {
     transform: translateY(-1px);
-    box-shadow: var(--elevation-2);
+    /* box-shadow removed */
 }
 
 .lesson-card:active {
@@ -416,27 +428,27 @@ require_once __DIR__ . '/templates/header.php';
 }
 
 .room-cell.drag-over {
-    background-color: rgba(187, 134, 252, 0.15);
-    border: 2px solid var(--md-primary);
+    background-color: var(--accent-dim);
+    border: 2px solid var(--accent);
     border-radius: 6px;
 }
 
 .empty-slot.drag-over {
     background-color: rgba(187, 134, 252, 0.2);
-    border-color: var(--md-primary);
+    border-color: var(--accent);
     border-style: solid;
 }
 
 .lesson-card.Математика {
-    border-left-color: #5599ff;
+    border-left-color: #3b82f6;
 }
 
 .lesson-card.Физика {
-    border-left-color: #ff5555;
+    border-left-color: #f43f5e;
 }
 
 .lesson-card.Информатика {
-    border-left-color: #55cc77;
+    border-left-color: #22c55e;
 }
 
 .card-body {
@@ -487,11 +499,11 @@ require_once __DIR__ . '/templates/header.php';
 }
 
 .card-cell.capacity.available {
-    color: #55cc77;
+    color: #22c55e;
 }
 
 .card-cell.capacity.full {
-    color: #ff5555;
+    color: #f43f5e;
 }
 
 .card-cell.grades {
@@ -500,7 +512,7 @@ require_once __DIR__ . '/templates/header.php';
 }
 
 .card-cell.teacher {
-    color: var(--text-high-emphasis);
+    color: var(--text-primary);
     font-size: 0.75rem;
 }
 
@@ -524,7 +536,7 @@ require_once __DIR__ . '/templates/header.php';
     background: rgba(255, 255, 255, 0.05);
     border: none;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
-    color: #55cc77;
+    color: #22c55e;
     cursor: pointer;
     font-size: 0.75rem;
     font-weight: 600;
@@ -552,7 +564,7 @@ require_once __DIR__ . '/templates/header.php';
 
 .student-name {
     font-size: 0.7rem;
-    color: var(--text-medium-emphasis);
+    color: var(--text-secondary);
     padding: 2px 6px;
     border-left: 2px solid rgba(187, 134, 252, 0.3);
     margin-bottom: 2px;
@@ -570,17 +582,17 @@ require_once __DIR__ . '/templates/header.php';
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--text-disabled);
+    color: var(--text-muted);
     font-size: 0.75rem;
-    border: 2px dashed rgba(255, 255, 255, 0.12);
+    border: 2px dashed var(--border);
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.3s var(--transition-standard);
 }
 
 .empty-slot:hover {
-    border-color: var(--md-primary);
-    color: var(--md-primary);
+    border-color: var(--accent);
+    color: var(--accent);
     background-color: rgba(187, 134, 252, 0.05);
 }
 
@@ -599,21 +611,21 @@ require_once __DIR__ . '/templates/header.php';
 .schedule-container::-webkit-scrollbar-track,
 .day-content::-webkit-scrollbar-track,
 .students-list::-webkit-scrollbar-track {
-    background: var(--md-background);
+    background: var(--bg-dark);
     border-radius: 10px;
 }
 
 .schedule-container::-webkit-scrollbar-thumb,
 .day-content::-webkit-scrollbar-thumb,
 .students-list::-webkit-scrollbar-thumb {
-    background: var(--md-surface-4);
+    background: var(--bg-hover);
     border-radius: 10px;
 }
 
 .schedule-container::-webkit-scrollbar-thumb:hover,
 .day-content::-webkit-scrollbar-thumb:hover,
 .students-list::-webkit-scrollbar-thumb:hover {
-    background: var(--md-surface-5);
+    background: var(--bg-hover);
 }
 
 /* Уведомления */
@@ -621,11 +633,11 @@ require_once __DIR__ . '/templates/header.php';
     position: fixed;
     bottom: 24px;
     right: 24px;
-    background-color: var(--md-surface);
-    color: var(--text-high-emphasis);
+    background-color: var(--bg-card);
+    color: var(--text-primary);
     padding: 16px 24px;
     border-radius: 8px;
-    box-shadow: var(--elevation-3);
+    /* box-shadow removed */
     display: flex;
     align-items: center;
     gap: 12px;
@@ -641,15 +653,15 @@ require_once __DIR__ . '/templates/header.php';
 }
 
 .notification-success {
-    border-left: 4px solid #55cc77;
+    border-left: 4px solid #22c55e;
 }
 
 .notification-error {
-    border-left: 4px solid #ff5555;
+    border-left: 4px solid #f43f5e;
 }
 
 .notification-info {
-    border-left: 4px solid var(--md-primary);
+    border-left: 4px solid var(--accent);
 }
 
 .notification .material-icons {
@@ -657,17 +669,37 @@ require_once __DIR__ . '/templates/header.php';
 }
 
 .notification-success .material-icons {
-    color: #55cc77;
+    color: #22c55e;
 }
 
 .notification-error .material-icons {
-    color: #ff5555;
+    color: #f43f5e;
 }
 
 .notification-info .material-icons {
-    color: var(--md-primary);
+    color: var(--accent);
 }
 
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-dark);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--bg-hover);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
 }
 </style>
 
@@ -905,10 +937,10 @@ require_once __DIR__ . '/templates/header.php';
             <!-- Информация о формуле оплаты -->
             <div class="form-group" id="formula-info-group" style="display: none;">
                 <label style="display: flex; align-items: center; gap: 8px;">
-                    <span class="material-icons" style="font-size: 18px; color: var(--md-secondary);">payments</span>
+                    <span class="material-icons" style="font-size: 18px; color: var(--accent);">payments</span>
                     Формула оплаты
                 </label>
-                <div style="padding: 12px; background-color: rgba(3, 218, 198, 0.1); border-left: 3px solid var(--md-secondary); border-radius: 4px;">
+                <div style="padding: 12px; background-color: rgba(3, 218, 198, 0.1); border-left: 3px solid var(--accent); border-radius: 4px;">
                     <p id="formula-info-text" style="margin: 0; color: var(--text-high-emphasis); font-size: 0.875rem;"></p>
                     <p style="margin: 4px 0 0 0; color: var(--text-medium-emphasis); font-size: 0.75rem;">
                         Назначается автоматически из профиля преподавателя
