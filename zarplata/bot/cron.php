@@ -5,6 +5,11 @@
  * Команда: php /home/c/cw95865/PALOMATIKA/public_html/zarplata/bot/cron.php
  */
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ОТКЛЮЧАЕМ ВЫВОД В STDOUT (чтобы cron не отправлял email)
+// ═══════════════════════════════════════════════════════════════════════════
+ob_start();
+
 require_once __DIR__ . '/config.php';
 
 // Логируем запуск
@@ -83,6 +88,9 @@ foreach ($lessons as $lesson) {
 }
 
 error_log("Attendance cron finished");
+
+// Очищаем буфер вывода (не отправляем на email)
+ob_end_clean();
 exit(0);
 
 /**
