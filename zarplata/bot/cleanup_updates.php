@@ -5,6 +5,11 @@
  * 0 3 * * * php /путь/к/zarplata/bot/cleanup_updates.php
  */
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ОТКЛЮЧАЕМ ВЫВОД В STDOUT (чтобы cron не отправлял email)
+// ═══════════════════════════════════════════════════════════════════════════
+ob_start();
+
 require_once __DIR__ . '/config.php';
 
 try {
@@ -23,3 +28,7 @@ try {
 } catch (Exception $e) {
     error_log("[Telegram Bot Cleanup] Error: " . $e->getMessage());
 }
+
+// Очищаем буфер вывода (не отправляем на email)
+ob_end_clean();
+exit(0);
