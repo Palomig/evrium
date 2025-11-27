@@ -1,6 +1,7 @@
 <?php
 /**
  * Обработчик посещаемости уроков
+ * Исправленная версия с защитой от ошибок
  */
 
 // Подключаем зависимости
@@ -9,140 +10,171 @@ if (!function_exists('getTeacherByTelegramId')) {
 }
 
 /**
+ * Получить ID формулы для преподавателя
+ * С fallback на старое поле formula_id
+ */
+function getFormulaIdForTeacher($teacher, $lessonType) {
+    // Новые поля (если есть)
+    if ($lessonType === 'individual') {
+        $formulaId = $teacher['formula_id_individual'] ?? null;
+        if ($formulaId) {
+            error_log("[Telegram Bot] Using formula_id_individual: {$formulaId}");
+            return $formulaId;
+        }
+    } else {
+        $formulaId = $teacher['formula_id_group'] ?? null;
+        if ($formulaId) {
+            error_log("[Telegram Bot] Using formula_id_group: {$formulaId}");
+            return $formulaId;
+        }
+    }
+
+    // Fallback на старое поле formula_id
+    $formulaId = $teacher['formula_id'] ?? null;
+    if ($formulaId) {
+        error_log("[Telegram Bot] Using legacy formula_id: {$formulaId}");
+        return $formulaId;
+    }
+
+    error_log("[Telegram Bot] No formula_id found for teacher {$teacher['id']}");
+    return null;
+}
+
+/**
  * Все ученики пришли
  */
 function handleAllPresent($chatId, $messageId, $telegramId, $lessonTemplateId, $callbackQueryId) {
     error_log("[Telegram Bot] handleAllPresent called for lesson {$lessonTemplateId}");
 
-    $teacher = getTeacherByTelegramId($telegramId);
+    try {
+        $teacher = getTeacherByTelegramId($telegramId);
 
-    if (!$teacher) {
-        answerCallbackQuery($callbackQueryId, "Ошибка: преподаватель не найден", true);
-        return;
-    }
+        if (!$teacher) {
+            error_log("[Telegram Bot] Teacher not found for telegram_id {$telegramId}");
+            answerCallbackQuery($callbackQueryId, "Ошибка: преподаватель не найден", true);
+            return;
+        }
 
-    // Получаем данные урока
-    $lesson = dbQueryOne(
-        "SELECT * FROM lessons_template WHERE id = ?",
-        [$lessonTemplateId]
-    );
+        // Получаем данные урока
+        $lesson = dbQueryOne(
+            "SELECT * FROM lessons_template WHERE id = ?",
+            [$lessonTemplateId]
+        );
 
-    if (!$lesson) {
-        answerCallbackQuery($callbackQueryId, "Ошибка: урок не найден", true);
-        return;
-    }
+        if (!$lesson) {
+            error_log("[Telegram Bot] Lesson not found: {$lessonTemplateId}");
+            answerCallbackQuery($callbackQueryId, "Ошибка: урок не найден", true);
+            return;
+        }
 
-    // Все ученики пришли = expected_students
-    $attendedCount = $lesson['expected_students'];
+        // Все ученики пришли = expected_students
+        $attendedCount = (int)$lesson['expected_students'];
+        $lessonType = $lesson['lesson_type'] ?? 'group';
 
-    // Определяем формулу расчета в зависимости от типа урока
-    $lessonType = $lesson['lesson_type'] ?? 'group';
-    $formulaId = null;
+        // Получаем ID формулы (с fallback)
+        $formulaId = getFormulaIdForTeacher($teacher, $lessonType);
 
-    if ($lessonType === 'individual') {
-        // Для индивидуальных уроков используем formula_id_individual
-        $formulaId = $teacher['formula_id_individual'] ?? null;
-        error_log("[Telegram Bot] Using individual formula for teacher {$teacher['id']}: {$formulaId}");
-    } else {
-        // Для групповых уроков используем formula_id_group
-        $formulaId = $teacher['formula_id_group'] ?? null;
-        error_log("[Telegram Bot] Using group formula for teacher {$teacher['id']}: {$formulaId}");
-    }
+        if (!$formulaId) {
+            error_log("[Telegram Bot] No formula configured for teacher {$teacher['id']}");
+            answerCallbackQuery($callbackQueryId, "Ошибка: не настроена формула расчета. Обратитесь к администратору.", true);
+            return;
+        }
 
-    if (!$formulaId) {
-        error_log("[Telegram Bot] No formula_id for {$lessonType} lessons, teacher {$teacher['id']}");
-        answerCallbackQuery($callbackQueryId, "Ошибка: не настроена формула расчета для " . ($lessonType === 'individual' ? 'индивидуальных' : 'групповых') . " уроков", true);
-        return;
-    }
+        // Получаем формулу
+        $formula = dbQueryOne(
+            "SELECT * FROM payment_formulas WHERE id = ? AND active = 1",
+            [$formulaId]
+        );
 
-    // Получаем формулу
-    $formula = dbQueryOne(
-        "SELECT * FROM payment_formulas WHERE id = ? AND active = 1",
-        [$formulaId]
-    );
+        if (!$formula) {
+            error_log("[Telegram Bot] Formula {$formulaId} not found or inactive");
+            answerCallbackQuery($callbackQueryId, "Ошибка: формула расчета не найдена или неактивна", true);
+            return;
+        }
 
-    if (!$formula) {
-        error_log("[Telegram Bot] Formula {$formulaId} not found or inactive");
-        answerCallbackQuery($callbackQueryId, "Ошибка: формула расчета не найдена", true);
-        return;
-    }
+        error_log("[Telegram Bot] Using formula '{$formula['name']}' (type: {$formula['type']})");
 
-    error_log("[Telegram Bot] Using formula '{$formula['name']}' (type: {$formula['type']}) for {$lessonType} lesson");
+        // Проверяем, не создана ли уже выплата за этот урок сегодня
+        $today = date('Y-m-d');
+        $existingPayment = dbQueryOne(
+            "SELECT id FROM payments
+             WHERE teacher_id = ? AND lesson_template_id = ? AND DATE(created_at) = ?
+             ORDER BY created_at DESC LIMIT 1",
+            [$teacher['id'], $lessonTemplateId, $today]
+        );
 
-    // Проверяем, не создана ли уже выплата за этот урок сегодня
-    $today = date('Y-m-d');
-    $existingPayment = dbQueryOne(
-        "SELECT id FROM payments
-         WHERE teacher_id = ? AND lesson_template_id = ? AND DATE(created_at) = ?
-         ORDER BY created_at DESC LIMIT 1",
-        [$teacher['id'], $lessonTemplateId, $today]
-    );
+        if ($existingPayment) {
+            error_log("[Telegram Bot] Payment already exists for lesson {$lessonTemplateId} today");
+            answerCallbackQuery($callbackQueryId, "⚠️ Выплата за этот урок уже создана сегодня", true);
+            return;
+        }
 
-    if ($existingPayment) {
-        error_log("[Telegram Bot] Payment already exists for lesson {$lessonTemplateId} today, payment_id: {$existingPayment['id']}");
-        answerCallbackQuery($callbackQueryId, "⚠️ Выплата за этот урок уже создана сегодня", true);
-        return;
-    }
+        // Рассчитываем зарплату
+        $paymentAmount = calculatePayment($formula, $attendedCount);
+        error_log("[Telegram Bot] Calculated payment: {$paymentAmount} RUB for {$attendedCount} students");
 
-    // Рассчитываем зарплату
-    $paymentAmount = calculatePayment($formula, $attendedCount);
+        // Создаём запись о выплате
+        $paymentId = dbExecute(
+            "INSERT INTO payments
+             (teacher_id, lesson_template_id, amount, payment_type, calculation_method, status, created_at)
+             VALUES (?, ?, ?, 'lesson', ?, 'pending', NOW())",
+            [
+                $teacher['id'],
+                $lessonTemplateId,
+                $paymentAmount,
+                "Все пришли ({$attendedCount} из {$lesson['expected_students']})"
+            ]
+        );
 
-    // Создаём запись о выплате
-    $paymentId = dbExecute(
-        "INSERT INTO payments
-         (teacher_id, lesson_template_id, amount, payment_type, calculation_method, status, created_at)
-         VALUES (?, ?, ?, 'lesson', ?, 'pending', NOW())",
-        [
-            $teacher['id'],
-            $lessonTemplateId,
-            $paymentAmount,
-            "Все пришли ({$attendedCount} из {$lesson['expected_students']})"
-        ]
-    );
+        // Логируем в audit_log (с защитой от ошибок)
+        try {
+            if (function_exists('logAudit')) {
+                logAudit(
+                    'attendance_marked',
+                    'lesson_template',
+                    $lessonTemplateId,
+                    null,
+                    [
+                        'teacher_id' => $teacher['id'],
+                        'attended' => $attendedCount,
+                        'expected' => $lesson['expected_students'],
+                        'payment_id' => $paymentId,
+                        'amount' => $paymentAmount
+                    ],
+                    'Посещаемость отмечена через Telegram бот'
+                );
+            }
+        } catch (Throwable $e) {
+            error_log("[Telegram Bot] logAudit failed: " . $e->getMessage());
+        }
 
-    // Логируем в audit_log
-    logAudit(
-        'attendance_marked',
-        'lesson_template',
-        $lessonTemplateId,
-        null,
-        [
-            'teacher_id' => $teacher['id'],
-            'attended' => $attendedCount,
-            'expected' => $lesson['expected_students'],
-            'payment_id' => $paymentId,
-            'amount' => $paymentAmount
-        ],
-        'Посещаемость отмечена через Telegram бот'
-    );
+        // Формируем текст подтверждения
+        $subject = $lesson['subject'] ? "{$lesson['subject']}" : "Урок";
+        $time = date('H:i', strtotime($lesson['time_start']));
 
-    // Обновляем сообщение
-    $subject = $lesson['subject'] ? "{$lesson['subject']}" : "Урок";
-    $time = date('H:i', strtotime($lesson['time_start']));
+        $confirmationText =
+            "✅ <b>Посещаемость отмечена!</b>\n\n" .
+            "📚 <b>{$subject}</b> ({$time})\n" .
+            "👥 Присутствовало: <b>{$attendedCount} из {$lesson['expected_students']}</b> (все пришли)\n\n" .
+            "💰 Начислено: <b>" . number_format($paymentAmount, 0, ',', ' ') . " ₽</b>\n\n" .
+            "✨ Выплата добавлена в систему";
 
-    $confirmationText =
-        "✅ <b>Посещаемость отмечена!</b>\n\n" .
-        "📚 <b>{$subject}</b> ({$time})\n" .
-        "👥 Присутствовало: <b>{$attendedCount} из {$lesson['expected_students']}</b> (все пришли)\n\n" .
-        "💰 Начислено: <b>" . number_format($paymentAmount, 0, ',', ' ') . " ₽</b>\n\n" .
-        "✨ Выплата добавлена в систему со статусом \"Ожидает одобрения\"";
+        // Отвечаем на callback query
+        $alertText = "✅ Посещаемость отмечена!\n💰 Начислено: " . number_format($paymentAmount, 0, ',', ' ') . " ₽";
+        answerCallbackQuery($callbackQueryId, $alertText, true);
 
-    // ВАЖНО: Сначала отвечаем на callback query с ALERT (большое всплывающее окно)
-    $alertText = "✅ Посещаемость отмечена!\n\n" .
-                 "💰 Начислено: " . number_format($paymentAmount, 0, ',', ' ') . " ₽\n" .
-                 "Выплата добавлена в систему";
+        // Обновляем сообщение (убираем кнопки)
+        $editResult = editTelegramMessage($chatId, $messageId, $confirmationText, ['inline_keyboard' => []]);
 
-    $answerResult = answerCallbackQuery($callbackQueryId, $alertText, true); // true = show_alert
-    error_log("[Telegram Bot] answerCallbackQuery result: " . json_encode($answerResult));
+        if (!$editResult || !isset($editResult['ok']) || !$editResult['ok']) {
+            error_log("[Telegram Bot] editTelegramMessage failed, sending new message");
+            sendTelegramMessage($chatId, $confirmationText);
+        }
 
-    // Затем пробуем обновить сообщение (убираем кнопки)
-    $editResult = editTelegramMessage($chatId, $messageId, $confirmationText, ['inline_keyboard' => []]);
-    error_log("[Telegram Bot] editTelegramMessage result: " . json_encode($editResult));
-
-    // Если редактирование не удалось, отправляем новое сообщение
-    if (!$editResult || !isset($editResult['ok']) || !$editResult['ok']) {
-        error_log("[Telegram Bot] editTelegramMessage failed, sending new message");
-        sendTelegramMessage($chatId, $confirmationText);
+    } catch (Throwable $e) {
+        error_log("[Telegram Bot] Error in handleAllPresent: " . $e->getMessage());
+        error_log("[Telegram Bot] Trace: " . $e->getTraceAsString());
+        answerCallbackQuery($callbackQueryId, "Произошла ошибка. Попробуйте позже.", true);
     }
 }
 
@@ -152,71 +184,80 @@ function handleAllPresent($chatId, $messageId, $telegramId, $lessonTemplateId, $
 function handleSomeAbsent($chatId, $messageId, $telegramId, $lessonTemplateId, $callbackQueryId) {
     error_log("[Telegram Bot] handleSomeAbsent called for lesson {$lessonTemplateId}");
 
-    $teacher = getTeacherByTelegramId($telegramId);
+    try {
+        $teacher = getTeacherByTelegramId($telegramId);
 
-    if (!$teacher) {
-        error_log("[Telegram Bot] Teacher not found for telegram_id {$telegramId}");
-        answerCallbackQuery($callbackQueryId, "Ошибка: преподаватель не найден", true);
-        return;
-    }
+        if (!$teacher) {
+            error_log("[Telegram Bot] Teacher not found for telegram_id {$telegramId}");
+            answerCallbackQuery($callbackQueryId, "Ошибка: преподаватель не найден", true);
+            return;
+        }
 
-    // Получаем данные урока
-    $lesson = dbQueryOne(
-        "SELECT * FROM lessons_template WHERE id = ?",
-        [$lessonTemplateId]
-    );
+        // Получаем данные урока
+        $lesson = dbQueryOne(
+            "SELECT * FROM lessons_template WHERE id = ?",
+            [$lessonTemplateId]
+        );
 
-    if (!$lesson) {
-        error_log("[Telegram Bot] Lesson not found: {$lessonTemplateId}");
-        answerCallbackQuery($callbackQueryId, "Ошибка: урок не найден", true);
-        return;
-    }
+        if (!$lesson) {
+            error_log("[Telegram Bot] Lesson not found: {$lessonTemplateId}");
+            answerCallbackQuery($callbackQueryId, "Ошибка: урок не найден", true);
+            return;
+        }
 
-    error_log("[Telegram Bot] Creating keyboard for {$lesson['expected_students']} students");
+        $expectedStudents = (int)$lesson['expected_students'];
+        error_log("[Telegram Bot] Creating keyboard for {$expectedStudents} students");
 
-    // Создаём клавиатуру с выбором количества присутствующих (от 1 до N)
-    $keyboard = [];
-    $row = [];
+        // Создаём клавиатуру с выбором количества присутствующих
+        $keyboard = [];
+        $row = [];
 
-    for ($i = 1; $i <= $lesson['expected_students']; $i++) {
-        $row[] = [
-            'text' => (string)$i,
-            'callback_data' => "attendance_count:{$lessonTemplateId}:{$i}"
+        for ($i = 1; $i <= $expectedStudents; $i++) {
+            $row[] = [
+                'text' => (string)$i,
+                'callback_data' => "attendance_count:{$lessonTemplateId}:{$i}"
+            ];
+
+            // По 5 кнопок в ряду
+            if (count($row) == 5) {
+                $keyboard[] = $row;
+                $row = [];
+            }
+        }
+
+        // Добавляем оставшиеся кнопки
+        if (!empty($row)) {
+            $keyboard[] = $row;
+        }
+
+        // Кнопка "0" в отдельном ряду
+        $keyboard[] = [
+            [
+                'text' => '0 (никто не пришел)',
+                'callback_data' => "attendance_count:{$lessonTemplateId}:0"
+            ]
         ];
 
-        // По 5 кнопок в ряду
-        if (count($row) == 5) {
-            $keyboard[] = $row;
-            $row = [];
-        }
+        // Обновляем сообщение
+        $subject = $lesson['subject'] ? "{$lesson['subject']}" : "Урок";
+        $time = date('H:i', strtotime($lesson['time_start']));
+
+        editTelegramMessage($chatId, $messageId,
+            "📊 <b>Посещаемость урока</b>\n\n" .
+            "📚 {$subject} ({$time})\n" .
+            "👥 Ожидалось: {$expectedStudents}\n\n" .
+            "❓ Сколько учеников <b>ПРИШЛО</b> на урок?\n" .
+            "Выберите число:",
+            ['inline_keyboard' => $keyboard]
+        );
+
+        answerCallbackQuery($callbackQueryId);
+
+    } catch (Throwable $e) {
+        error_log("[Telegram Bot] Error in handleSomeAbsent: " . $e->getMessage());
+        error_log("[Telegram Bot] Trace: " . $e->getTraceAsString());
+        answerCallbackQuery($callbackQueryId, "Произошла ошибка. Попробуйте позже.", true);
     }
-
-    // Добавляем кнопку "0" (никто не пришел) в отдельный ряд
-    if (!empty($row)) {
-        $keyboard[] = $row;
-    }
-
-    $keyboard[] = [
-        [
-            'text' => '0 (никто не пришел)',
-            'callback_data' => "attendance_count:{$lessonTemplateId}:0"
-        ]
-    ];
-
-    // Обновляем сообщение
-    $subject = $lesson['subject'] ? "{$lesson['subject']}" : "Урок";
-    $time = date('H:i', strtotime($lesson['time_start']));
-
-    editTelegramMessage($chatId, $messageId,
-        "📊 <b>Посещаемость урока</b>\n\n" .
-        "📚 {$subject} ({$time})\n" .
-        "👥 Ожидалось: {$lesson['expected_students']}\n\n" .
-        "❓ Сколько учеников <b>ПРИШЛО</b> на урок?\n" .
-        "Выберите число:",
-        ['inline_keyboard' => $keyboard]
-    );
-
-    answerCallbackQuery($callbackQueryId);
 }
 
 /**
@@ -225,142 +266,136 @@ function handleSomeAbsent($chatId, $messageId, $telegramId, $lessonTemplateId, $
 function handleAttendanceCount($chatId, $messageId, $telegramId, $lessonTemplateId, $attendedCount, $callbackQueryId) {
     error_log("[Telegram Bot] handleAttendanceCount called for lesson {$lessonTemplateId}, attended: {$attendedCount}");
 
-    $teacher = getTeacherByTelegramId($telegramId);
+    try {
+        $attendedCount = (int)$attendedCount;
 
-    if (!$teacher) {
-        error_log("[Telegram Bot] Teacher not found for telegram_id {$telegramId}");
-        answerCallbackQuery($callbackQueryId, "Ошибка: преподаватель не найден", true);
-        return;
-    }
+        $teacher = getTeacherByTelegramId($telegramId);
 
-    error_log("[Telegram Bot] Teacher found: {$teacher['name']} (ID: {$teacher['id']})");
+        if (!$teacher) {
+            error_log("[Telegram Bot] Teacher not found for telegram_id {$telegramId}");
+            answerCallbackQuery($callbackQueryId, "Ошибка: преподаватель не найден", true);
+            return;
+        }
 
-    // Получаем данные урока
-    $lesson = dbQueryOne(
-        "SELECT * FROM lessons_template WHERE id = ?",
-        [$lessonTemplateId]
-    );
+        error_log("[Telegram Bot] Teacher found: {$teacher['name']} (ID: {$teacher['id']})");
 
-    if (!$lesson) {
-        error_log("[Telegram Bot] Lesson not found: {$lessonTemplateId}");
-        answerCallbackQuery($callbackQueryId, "Ошибка: урок не найден", true);
-        return;
-    }
+        // Получаем данные урока
+        $lesson = dbQueryOne(
+            "SELECT * FROM lessons_template WHERE id = ?",
+            [$lessonTemplateId]
+        );
 
-    error_log("[Telegram Bot] Lesson found: {$lesson['subject']} (expected: {$lesson['expected_students']})");
+        if (!$lesson) {
+            error_log("[Telegram Bot] Lesson not found: {$lessonTemplateId}");
+            answerCallbackQuery($callbackQueryId, "Ошибка: урок не найден", true);
+            return;
+        }
 
-    // Определяем формулу расчета в зависимости от типа урока
-    $lessonType = $lesson['lesson_type'] ?? 'group';
-    $formulaId = null;
+        $lessonType = $lesson['lesson_type'] ?? 'group';
 
-    if ($lessonType === 'individual') {
-        // Для индивидуальных уроков используем formula_id_individual
-        $formulaId = $teacher['formula_id_individual'] ?? null;
-        error_log("[Telegram Bot] Using individual formula for teacher {$teacher['id']}: {$formulaId}");
-    } else {
-        // Для групповых уроков используем formula_id_group
-        $formulaId = $teacher['formula_id_group'] ?? null;
-        error_log("[Telegram Bot] Using group formula for teacher {$teacher['id']}: {$formulaId}");
-    }
+        // Получаем ID формулы (с fallback)
+        $formulaId = getFormulaIdForTeacher($teacher, $lessonType);
 
-    if (!$formulaId) {
-        error_log("[Telegram Bot] No formula_id for {$lessonType} lessons, teacher {$teacher['id']}");
-        answerCallbackQuery($callbackQueryId, "Ошибка: не настроена формула расчета для " . ($lessonType === 'individual' ? 'индивидуальных' : 'групповых') . " уроков", true);
-        return;
-    }
+        if (!$formulaId) {
+            error_log("[Telegram Bot] No formula configured for teacher {$teacher['id']}");
+            answerCallbackQuery($callbackQueryId, "Ошибка: не настроена формула расчета. Обратитесь к администратору.", true);
+            return;
+        }
 
-    // Получаем формулу
-    $formula = dbQueryOne(
-        "SELECT * FROM payment_formulas WHERE id = ? AND active = 1",
-        [$formulaId]
-    );
+        // Получаем формулу
+        $formula = dbQueryOne(
+            "SELECT * FROM payment_formulas WHERE id = ? AND active = 1",
+            [$formulaId]
+        );
 
-    if (!$formula) {
-        error_log("[Telegram Bot] Formula {$formulaId} not found or inactive");
-        answerCallbackQuery($callbackQueryId, "Ошибка: формула расчета не найдена", true);
-        return;
-    }
+        if (!$formula) {
+            error_log("[Telegram Bot] Formula {$formulaId} not found or inactive");
+            answerCallbackQuery($callbackQueryId, "Ошибка: формула расчета не найдена", true);
+            return;
+        }
 
-    error_log("[Telegram Bot] Calling calculatePayment with formula type: {$formula['type']}, attended: {$attendedCount}");
+        error_log("[Telegram Bot] Using formula '{$formula['name']}' (type: {$formula['type']})");
 
-    // Проверяем, не создана ли уже выплата за этот урок сегодня
-    $today = date('Y-m-d');
-    $existingPayment = dbQueryOne(
-        "SELECT id FROM payments
-         WHERE teacher_id = ? AND lesson_template_id = ? AND DATE(created_at) = ?
-         ORDER BY created_at DESC LIMIT 1",
-        [$teacher['id'], $lessonTemplateId, $today]
-    );
+        // Проверяем, не создана ли уже выплата за этот урок сегодня
+        $today = date('Y-m-d');
+        $existingPayment = dbQueryOne(
+            "SELECT id FROM payments
+             WHERE teacher_id = ? AND lesson_template_id = ? AND DATE(created_at) = ?
+             ORDER BY created_at DESC LIMIT 1",
+            [$teacher['id'], $lessonTemplateId, $today]
+        );
 
-    if ($existingPayment) {
-        error_log("[Telegram Bot] Payment already exists for lesson {$lessonTemplateId} today, payment_id: {$existingPayment['id']}");
-        answerCallbackQuery($callbackQueryId, "⚠️ Выплата за этот урок уже создана сегодня", true);
-        return;
-    }
+        if ($existingPayment) {
+            error_log("[Telegram Bot] Payment already exists for lesson {$lessonTemplateId} today");
+            answerCallbackQuery($callbackQueryId, "⚠️ Выплата за этот урок уже создана сегодня", true);
+            return;
+        }
 
-    // Рассчитываем зарплату
-    $paymentAmount = calculatePayment($formula, $attendedCount);
+        // Рассчитываем зарплату
+        $paymentAmount = calculatePayment($formula, $attendedCount);
+        error_log("[Telegram Bot] Calculated payment: {$paymentAmount} RUB for {$attendedCount} students");
 
-    error_log("[Telegram Bot] Payment calculated: {$paymentAmount} RUB");
+        // Создаём запись о выплате
+        $paymentId = dbExecute(
+            "INSERT INTO payments
+             (teacher_id, lesson_template_id, amount, payment_type, calculation_method, status, created_at)
+             VALUES (?, ?, ?, 'lesson', ?, 'pending', NOW())",
+            [
+                $teacher['id'],
+                $lessonTemplateId,
+                $paymentAmount,
+                "Пришло {$attendedCount} из {$lesson['expected_students']}"
+            ]
+        );
 
-    // Создаём запись о выплате
-    $paymentId = dbExecute(
-        "INSERT INTO payments
-         (teacher_id, lesson_template_id, amount, payment_type, calculation_method, status, created_at)
-         VALUES (?, ?, ?, 'lesson', ?, 'pending', NOW())",
-        [
-            $teacher['id'],
-            $lessonTemplateId,
-            $paymentAmount,
-            "Пришло {$attendedCount} из {$lesson['expected_students']}"
-        ]
-    );
+        // Логируем в audit_log (с защитой от ошибок)
+        try {
+            if (function_exists('logAudit')) {
+                logAudit(
+                    'attendance_marked',
+                    'lesson_template',
+                    $lessonTemplateId,
+                    null,
+                    [
+                        'teacher_id' => $teacher['id'],
+                        'attended' => $attendedCount,
+                        'expected' => $lesson['expected_students'],
+                        'payment_id' => $paymentId,
+                        'amount' => $paymentAmount
+                    ],
+                    'Посещаемость отмечена через Telegram бот'
+                );
+            }
+        } catch (Throwable $e) {
+            error_log("[Telegram Bot] logAudit failed: " . $e->getMessage());
+        }
 
-    // Логируем в audit_log
-    logAudit(
-        'attendance_marked',
-        'lesson_template',
-        $lessonTemplateId,
-        null,
-        [
-            'teacher_id' => $teacher['id'],
-            'attended' => $attendedCount,
-            'expected' => $lesson['expected_students'],
-            'payment_id' => $paymentId,
-            'amount' => $paymentAmount
-        ],
-        'Посещаемость отмечена через Telegram бот'
-    );
+        // Формируем текст подтверждения
+        $subject = $lesson['subject'] ? "{$lesson['subject']}" : "Урок";
+        $time = date('H:i', strtotime($lesson['time_start']));
 
-    // Обновляем сообщение
-    $subject = $lesson['subject'] ? "{$lesson['subject']}" : "Урок";
-    $time = date('H:i', strtotime($lesson['time_start']));
+        $confirmationText =
+            "✅ <b>Посещаемость отмечена!</b>\n\n" .
+            "📚 <b>{$subject}</b> ({$time})\n" .
+            "👥 Присутствовало: <b>{$attendedCount} из {$lesson['expected_students']}</b>\n\n" .
+            "💰 Начислено: <b>" . number_format($paymentAmount, 0, ',', ' ') . " ₽</b>\n\n" .
+            "✨ Выплата добавлена в систему";
 
-    $confirmationText =
-        "✅ <b>Посещаемость отмечена!</b>\n\n" .
-        "📚 <b>{$subject}</b> ({$time})\n" .
-        "👥 Присутствовало: <b>{$attendedCount} из {$lesson['expected_students']}</b>\n\n" .
-        "💰 Начислено: <b>" . number_format($paymentAmount, 0, ',', ' ') . " ₽</b>\n\n" .
-        "✨ Выплата добавлена в систему со статусом \"Ожидает одобрения\"";
+        // Отвечаем на callback query
+        $alertText = "✅ Посещаемость отмечена!\n👥 Пришло: {$attendedCount}\n💰 Начислено: " . number_format($paymentAmount, 0, ',', ' ') . " ₽";
+        answerCallbackQuery($callbackQueryId, $alertText, true);
 
-    // ВАЖНО: Сначала отвечаем на callback query с ALERT (большое всплывающее окно)
-    $alertText = "✅ Посещаемость отмечена!\n\n" .
-                 "👥 Пришло: {$attendedCount} из {$lesson['expected_students']}\n" .
-                 "💰 Начислено: " . number_format($paymentAmount, 0, ',', ' ') . " ₽\n" .
-                 "Выплата добавлена в систему";
+        // Обновляем сообщение (убираем кнопки)
+        $editResult = editTelegramMessage($chatId, $messageId, $confirmationText, ['inline_keyboard' => []]);
 
-    $answerResult = answerCallbackQuery($callbackQueryId, $alertText, true); // true = show_alert
-    error_log("[Telegram Bot] answerCallbackQuery result: " . json_encode($answerResult));
+        if (!$editResult || !isset($editResult['ok']) || !$editResult['ok']) {
+            error_log("[Telegram Bot] editTelegramMessage failed, sending new message");
+            sendTelegramMessage($chatId, $confirmationText);
+        }
 
-    // Затем пробуем обновить сообщение (убираем кнопки)
-    $editResult = editTelegramMessage($chatId, $messageId, $confirmationText, ['inline_keyboard' => []]);
-    error_log("[Telegram Bot] editTelegramMessage result: " . json_encode($editResult));
-
-    // Если редактирование не удалось, отправляем новое сообщение
-    if (!$editResult || !isset($editResult['ok']) || !$editResult['ok']) {
-        error_log("[Telegram Bot] editTelegramMessage failed, sending new message");
-        sendTelegramMessage($chatId, $confirmationText);
+    } catch (Throwable $e) {
+        error_log("[Telegram Bot] Error in handleAttendanceCount: " . $e->getMessage());
+        error_log("[Telegram Bot] Trace: " . $e->getTraceAsString());
+        answerCallbackQuery($callbackQueryId, "Произошла ошибка. Попробуйте позже.", true);
     }
 }
-
-// Функция calculatePayment() уже определена в /config/helpers.php
