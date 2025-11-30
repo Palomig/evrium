@@ -119,7 +119,7 @@ body, .schedule-header, .filters-panel, .day-filter-btn, .room-filter-btn,
 .schedule-header {
     background-color: var(--bg-card);
     border-radius: 12px;
-    padding: 24px;
+    padding: 16px 24px;
     margin-bottom: 24px;
     /* box-shadow removed */
     max-width: 100%;
@@ -140,7 +140,6 @@ body, .schedule-header, .filters-panel, .day-filter-btn, .room-filter-btn,
     gap: 24px;
     flex-wrap: wrap;
     align-items: center;
-    margin-top: 16px;
     padding: 12px 16px;
     background: var(--bg-card);
     border: 1px solid var(--border);
@@ -276,7 +275,8 @@ body, .schedule-header, .filters-panel, .day-filter-btn, .room-filter-btn,
     border-radius: 12px;
     padding: 20px;
     /* box-shadow removed */
-    max-height: calc(100vh - 400px);
+    max-height: calc(100vh - 240px);
+    min-height: calc(100vh - 240px);
     width: 100%;
     box-sizing: border-box;
 }
@@ -1324,13 +1324,6 @@ body, .schedule-header, .filters-panel, .day-filter-btn, .room-filter-btn,
 
 <!-- Заголовок -->
 <div class="schedule-header">
-    <div class="schedule-header-top">
-        <button class="btn btn-primary" onclick="openTemplateModal()">
-            <span class="material-icons" style="margin-right: 8px; font-size: 18px;">add</span>
-            Добавить занятие
-        </button>
-    </div>
-
     <div class="schedule-legend">
         <div class="legend-group">
             <span class="legend-label">Предметы:</span>
