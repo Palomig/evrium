@@ -42,6 +42,9 @@ switch ($action) {
     case 'delete':
         handleDelete();
         break;
+    case 'add_adjustment':
+        handleAddAdjustment();
+        break;
     default:
         jsonError('Неизвестное действие', 400);
 }
@@ -430,5 +433,82 @@ function handleDelete() {
     } catch (Exception $e) {
         error_log("Failed to delete payment: " . $e->getMessage());
         jsonError('Ошибка при удалении выплаты', 500);
+    }
+}
+
+/**
+ * Добавить ручную корректировку выплаты
+ */
+function handleAddAdjustment() {
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+
+    if (!$data) {
+        $data = $_POST;
+    }
+
+    // Валидация
+    $teacherId = filter_var($data['teacher_id'] ?? 0, FILTER_VALIDATE_INT);
+    $amount = filter_var($data['amount'] ?? 0, FILTER_VALIDATE_INT);
+    $paymentType = $data['payment_type'] ?? 'adjustment';
+    $date = $data['date'] ?? date('Y-m-d');
+    $notes = $data['notes'] ?? null;
+
+    if (!$teacherId) {
+        jsonError('Выберите преподавателя', 400);
+    }
+
+    if ($amount === 0 || $amount === false) {
+        jsonError('Введите сумму', 400);
+    }
+
+    if (!in_array($paymentType, ['bonus', 'penalty', 'adjustment'])) {
+        jsonError('Неверный тип корректировки', 400);
+    }
+
+    // Проверяем существование преподавателя
+    $teacher = dbQueryOne("SELECT id, name FROM teachers WHERE id = ? AND active = 1", [$teacherId]);
+    if (!$teacher) {
+        jsonError('Преподаватель не найден', 404);
+    }
+
+    // Создаём выплату
+    try {
+        $result = dbExecute(
+            "INSERT INTO payments
+                (teacher_id, lesson_instance_id, amount, payment_type, status, notes, created_at)
+             VALUES
+                (?, NULL, ?, ?, 'pending', ?, NOW())",
+            [$teacherId, $amount, $paymentType, $notes]
+        );
+
+        if ($result) {
+            logAudit(
+                'payment_adjustment_added',
+                'payment',
+                $result,
+                null,
+                [
+                    'teacher_id' => $teacherId,
+                    'amount' => $amount,
+                    'payment_type' => $paymentType,
+                    'date' => $date,
+                    'notes' => $notes
+                ],
+                "Ручная корректировка: {$paymentType}, сумма: {$amount}₽"
+            );
+
+            jsonSuccess([
+                'id' => $result,
+                'message' => 'Корректировка успешно добавлена',
+                'teacher_name' => $teacher['name'],
+                'amount' => $amount
+            ]);
+        } else {
+            jsonError('Не удалось создать корректировку', 500);
+        }
+    } catch (Exception $e) {
+        error_log("Failed to add payment adjustment: " . $e->getMessage());
+        jsonError('Ошибка при создании корректировки: ' . $e->getMessage(), 500);
     }
 }
