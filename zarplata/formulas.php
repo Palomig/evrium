@@ -192,6 +192,246 @@ require_once __DIR__ . '/templates/header.php';
     </div>
 </div>
 
+<style>
+/* Модальное окно */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000000;
+    animation: fadeIn 0.2s;
+}
+
+.modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background: #252a34;
+    border-radius: 20px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    animation: modalAppear 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+@keyframes modalAppear {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* Цветовая полоска сверху */
+.modal-content::before {
+    content: '';
+    display: block;
+    height: 4px;
+    width: 100%;
+    background: linear-gradient(90deg, #14b8a6, #0d9488);
+}
+
+.modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.modal-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #e5e7eb;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.modal-close:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(1.05);
+}
+
+.modal-close .material-icons {
+    font-size: 20px;
+}
+
+/* Форма */
+#formula-form {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    padding: 24px;
+    overflow-y: auto;
+}
+
+/* Стили полей */
+.modal .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #e5e7eb;
+}
+
+.modal input[type="text"],
+.modal input[type="number"],
+.modal select,
+.modal textarea {
+    width: 100%;
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    color: #ffffff;
+    font-size: 14px;
+    font-family: 'Montserrat', sans-serif;
+    transition: all 0.2s;
+}
+
+.modal input::placeholder,
+.modal textarea::placeholder {
+    color: #6b7280;
+}
+
+.modal input:hover,
+.modal select:hover,
+.modal textarea:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.modal input:focus,
+.modal select:focus,
+.modal textarea:focus {
+    outline: none;
+    border-color: #14b8a6;
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
+}
+
+.modal select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2314b8a6' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 40px;
+    cursor: pointer;
+}
+
+.modal select option {
+    background: #1f2937;
+    color: #ffffff;
+    padding: 10px;
+}
+
+.modal select option:hover,
+.modal select option:checked {
+    background: #14b8a6;
+    color: #ffffff;
+}
+
+.modal textarea {
+    resize: vertical;
+    min-height: 60px;
+    line-height: 1.5;
+}
+
+.modal small {
+    color: #9ca3af;
+    font-size: 12px;
+}
+
+.modal small strong {
+    color: #14b8a6;
+}
+
+/* Футер */
+.modal-actions {
+    padding: 16px 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.modal-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+}
+
+.modal-actions .btn .material-icons {
+    font-size: 18px;
+    margin-right: 0;
+}
+
+.modal-actions .btn-text {
+    background: rgba(255, 255, 255, 0.08);
+    color: #d1d5db;
+}
+
+.modal-actions .btn-text:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+}
+
+.modal-actions .btn-primary {
+    background: linear-gradient(135deg, #14b8a6, #0d9488);
+    color: #ffffff;
+}
+
+.modal-actions .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px -10px rgba(20, 184, 166, 0.5);
+}
+</style>
+
 <!-- Модальное окно добавления/редактирования формулы -->
 <div id="formula-modal" class="modal">
     <div class="modal-content">
