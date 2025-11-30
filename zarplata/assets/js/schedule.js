@@ -644,18 +644,23 @@ function viewTemplate(lesson) {
         }
     }
 
-    // Получаем классы учеников
-    let studentClasses = [];
-    if (lesson.student_classes) {
-        studentClasses = lesson.student_classes.split(',').map(c => c.trim()).filter(c => c);
-    }
-
-    // Назначаем классы ученикам (циклически распределяем по доступным классам)
-    const studentsWithClasses = students.map((name, index) => {
-        const studentClass = studentClasses.length > 0
-            ? studentClasses[index % studentClasses.length]
-            : '';
-        return { name, class: studentClass };
+    // Парсим учеников с классами из формата "Имя (N кл.)"
+    const studentsWithClasses = students.map(studentName => {
+        // Проверяем есть ли класс в скобках: "Коля (2 кл.)"
+        const match = studentName.match(/^(.+?)\s*\((\d+)\s*кл\.\)\s*$/);
+        if (match) {
+            return {
+                name: match[1].trim(),
+                class: match[2],
+                displayName: studentName
+            };
+        } else {
+            return {
+                name: studentName.trim(),
+                class: '',
+                displayName: studentName.trim()
+            };
+        }
     });
 
     // Создаём модальное окно

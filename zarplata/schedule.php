@@ -32,6 +32,14 @@ try {
     }
 }
 
+// Получить всех учеников для autocomplete
+$students = dbQuery("
+    SELECT id, name, class
+    FROM students
+    WHERE active = 1
+    ORDER BY name, class
+", []);
+
 // Получить все активные шаблоны расписания с кабинетами
 try {
     $templates = dbQuery(
@@ -64,32 +72,47 @@ foreach ($templates as &$template) {
         $template['room'] = 1; // По умолчанию кабинет 1
     }
 
-    // Получаем классы учеников из базы данных
+    // Получаем классы учеников
     $studentClasses = [];
     if ($template['students']) {
         $studentsNames = json_decode($template['students'], true);
         if (is_array($studentsNames) && !empty($studentsNames)) {
-            // Получаем классы учеников по именам (БЕЗ фильтра по teacher_id,
-            // так как теперь у ученика может быть несколько преподавателей)
-            $placeholders = str_repeat('?,', count($studentsNames) - 1) . '?';
+            // Сначала пробуем извлечь классы из имен учеников (формат "Имя (N кл.)")
+            $namesForDbQuery = [];
 
-            $classesResult = dbQuery(
-                "SELECT DISTINCT class FROM students
-                 WHERE name IN ($placeholders) AND class IS NOT NULL AND active = 1
-                 ORDER BY class ASC",
-                $studentsNames
-            );
+            foreach ($studentsNames as $studentName) {
+                // Проверяем есть ли класс в скобках: "Коля (2 кл.)"
+                if (preg_match('/\((\d+)\s*кл\.\)/', $studentName, $matches)) {
+                    $studentClasses[] = (int)$matches[1];
+                } else {
+                    // Если класса нет в скобках, запомним для поиска в БД
+                    $namesForDbQuery[] = $studentName;
+                }
+            }
 
-            foreach ($classesResult as $row) {
-                if ($row['class']) {
-                    $studentClasses[] = $row['class'];
+            // Для имен без класса в скобках ищем в базе данных
+            if (!empty($namesForDbQuery)) {
+                $placeholders = str_repeat('?,', count($namesForDbQuery) - 1) . '?';
+                $classesResult = dbQuery(
+                    "SELECT DISTINCT class FROM students
+                     WHERE name IN ($placeholders) AND class IS NOT NULL AND active = 1
+                     ORDER BY class ASC",
+                    $namesForDbQuery
+                );
+
+                foreach ($classesResult as $row) {
+                    if ($row['class']) {
+                        $studentClasses[] = $row['class'];
+                    }
                 }
             }
         }
     }
 
-    // Добавляем строку с классами (уникальные, через запятую)
-    $template['student_classes'] = !empty($studentClasses) ? implode(', ', array_unique($studentClasses)) : '';
+    // Добавляем строку с классами (уникальные, отсортированные, через запятую)
+    $studentClasses = array_unique($studentClasses);
+    sort($studentClasses);
+    $template['student_classes'] = !empty($studentClasses) ? implode(', ', $studentClasses) : '';
 }
 
 define('PAGE_TITLE', '');
@@ -1558,10 +1581,11 @@ body {
                 </div>
             </div>
 
-            <div class="form-group">
+            <div class="form-group" style="position: relative;">
                 <label for="template-student-list">Список учеников (каждый с новой строки)</label>
-                <textarea id="template-student-list" name="students" rows="4" placeholder="Иван Петров&#10;Мария Сидорова&#10;Дмитрий Козлов"></textarea>
-                <small>Введите имена учеников, каждое имя на отдельной строке</small>
+                <textarea id="template-student-list" name="students" rows="4"
+                          placeholder="Начните вводить имя и выберите из списка&#10;Например: Коля (2 кл.)&#10;Маша (5 кл.)"></textarea>
+                <small style="color: var(--md-warning);">⚠️ Используйте формат "Имя (класс)" для избежания дубликатов имен</small>
             </div>
 
             <!-- Скрытое поле для formula_id (подставляется автоматически из данных преподавателя) -->
@@ -2007,6 +2031,113 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+// ========== АВТОДОПОЛНЕНИЕ УЧЕНИКОВ ==========
+
+// Список учеников для автодополнения
+const studentsAutocomplete = <?= json_encode(array_map(function($s) {
+    return [
+        'id' => $s['id'],
+        'name' => $s['name'],
+        'class' => $s['class'],
+        'display' => $s['name'] . ' (' . $s['class'] . ' кл.)'
+    ];
+}, $students), JSON_UNESCAPED_UNICODE) ?>;
+
+// Создаем элемент для suggestions
+let suggestionBox = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    const textarea = document.getElementById('template-student-list');
+    if (!textarea) return;
+
+    // Создаем контейнер для suggestions
+    suggestionBox = document.createElement('div');
+    suggestionBox.id = 'student-suggestions';
+    suggestionBox.style.cssText = `
+        position: absolute;
+        background: var(--md-surface-3);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+        box-shadow: var(--elevation-3);
+    `;
+    textarea.parentNode.appendChild(suggestionBox);
+
+    // Показываем suggestions при вводе
+    let currentLine = '';
+    textarea.addEventListener('input', function(e) {
+        const lines = textarea.value.split('\n');
+        currentLine = lines[lines.length - 1].trim();
+
+        if (currentLine.length < 2) {
+            suggestionBox.style.display = 'none';
+            return;
+        }
+
+        // Фильтруем учеников
+        const filtered = studentsAutocomplete.filter(s =>
+            s.name.toLowerCase().includes(currentLine.toLowerCase())
+        ).slice(0, 10);
+
+        if (filtered.length === 0) {
+            suggestionBox.style.display = 'none';
+            return;
+        }
+
+        // Отображаем suggestions
+        suggestionBox.innerHTML = '';
+        filtered.forEach(student => {
+            const item = document.createElement('div');
+            item.textContent = student.display;
+            item.style.cssText = `
+                padding: 8px 12px;
+                cursor: pointer;
+                transition: background 0.2s;
+            `;
+            item.addEventListener('mouseenter', () => {
+                item.style.background = 'var(--md-surface-4)';
+            });
+            item.addEventListener('mouseleave', () => {
+                item.style.background = 'transparent';
+            });
+            item.addEventListener('click', () => {
+                // Заменяем текущую строку на выбранного ученика
+                const lines = textarea.value.split('\n');
+                lines[lines.length - 1] = student.display;
+                textarea.value = lines.join('\n');
+                suggestionBox.style.display = 'none';
+                textarea.focus();
+            });
+            suggestionBox.appendChild(item);
+        });
+
+        // Позиционируем suggestions под textarea
+        const rect = textarea.getBoundingClientRect();
+        suggestionBox.style.position = 'absolute';
+        suggestionBox.style.left = '0';
+        suggestionBox.style.top = (textarea.offsetHeight + 4) + 'px';
+        suggestionBox.style.width = textarea.offsetWidth + 'px';
+        suggestionBox.style.display = 'block';
+    });
+
+    // Закрываем suggestions при клике вне
+    document.addEventListener('click', function(e) {
+        if (e.target !== textarea && e.target !== suggestionBox) {
+            suggestionBox.style.display = 'none';
+        }
+    });
+
+    // Закрываем по Escape
+    textarea.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            suggestionBox.style.display = 'none';
+        }
+    });
+});
 
 // renderSchedule и restoreFilters вызываются из schedule.js после его загрузки
 </script>
