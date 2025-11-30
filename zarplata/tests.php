@@ -116,6 +116,10 @@ require_once __DIR__ . '/templates/header.php';
                 <span class="material-icons">delete_forever</span>
                 Удалить всех преподавателей
             </button>
+            <button class="btn" style="background-color: var(--md-error); border-color: var(--md-error);" onclick="clearPayments()">
+                <span class="material-icons">delete_forever</span>
+                Удалить все выплаты
+            </button>
         </div>
     </div>
 </div>
@@ -557,6 +561,40 @@ async function clearTeachers() {
         if (result.success) {
             log(`✓ Удалено преподавателей: ${result.data.count}`, 'success');
             log('✓ База данных преподавателей очищена', 'success');
+        } else {
+            log(`✗ Ошибка: ${result.error}`, 'error');
+        }
+
+        log('─'.repeat(80), 'info');
+    } catch (error) {
+        log(`✗ Ошибка выполнения: ${error.message}`, 'error');
+    }
+}
+
+// Очистка выплат
+async function clearPayments() {
+    if (!confirm('⚠️ ВЫ УВЕРЕНЫ? Все выплаты будут удалены из базы данных!')) {
+        return;
+    }
+
+    if (!confirm('⚠️ ПОСЛЕДНЕЕ ПРЕДУПРЕЖДЕНИЕ! Это действие НЕОБРАТИМО! Удалить все выплаты?')) {
+        return;
+    }
+
+    log('⚠️ Запуск удаления всех выплат...', 'warning');
+
+    try {
+        const response = await fetch('/zarplata/api/clear_all_payments.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            log(`✓ Удалено выплат: ${result.data.deleted_payments}`, 'success');
+            log(`✓ Удалено записей аудита: ${result.data.deleted_audit_logs}`, 'success');
+            log('✓ База данных выплат очищена', 'success');
         } else {
             log(`✗ Ошибка: ${result.error}`, 'error');
         }
