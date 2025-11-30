@@ -616,66 +616,154 @@ function viewTemplate(lesson) {
         }
     }
 
+    // Получаем классы учеников
+    let studentClasses = [];
+    if (lesson.student_classes) {
+        studentClasses = lesson.student_classes.split(',').map(c => c.trim()).filter(c => c);
+    }
+
+    // Назначаем классы ученикам (циклически распределяем по доступным классам)
+    const studentsWithClasses = students.map((name, index) => {
+        const studentClass = studentClasses.length > 0
+            ? studentClasses[index % studentClasses.length]
+            : '';
+        return { name, class: studentClass };
+    });
+
     // Создаём модальное окно
     const modal = document.createElement('div');
     modal.className = 'modal active';
     modal.style.zIndex = '10001';
+    modal.style.background = 'rgba(0, 0, 0, 0.7)';
+    modal.style.backdropFilter = 'blur(4px)';
 
     const daysMap = ['', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
     const dayName = daysMap[lesson.day_of_week] || 'День ' + lesson.day_of_week;
     const time = lesson.time_start ? lesson.time_start.substring(0, 5) : '';
 
+    // Цвета для предметов
+    const subjectColors = {
+        'Математика': 'linear-gradient(90deg, #10b981, #34d399)',
+        'Физика': 'linear-gradient(90deg, #ef4444, #f87171)',
+        'Информатика': 'linear-gradient(90deg, #8b5cf6, #a78bfa)'
+    };
+    const subjectColor = subjectColors[lesson.subject] || 'linear-gradient(90deg, #6366f1, #818cf8)';
+
+    const subjectBgColors = {
+        'Математика': 'rgba(16, 185, 129, 0.15)',
+        'Физика': 'rgba(239, 68, 68, 0.15)',
+        'Информатика': 'rgba(139, 92, 246, 0.15)'
+    };
+    const subjectBgColor = subjectBgColors[lesson.subject] || 'rgba(99, 102, 241, 0.15)';
+
+    const subjectTextColors = {
+        'Математика': '#10b981',
+        'Физика': '#ef4444',
+        'Информатика': '#8b5cf6'
+    };
+    const subjectTextColor = subjectTextColors[lesson.subject] || '#6366f1';
+
+    // Цвета для квадратов с классами (чередуются)
+    const classColors = [
+        'linear-gradient(135deg, #14b8a6, #0d9488)',
+        'linear-gradient(135deg, #f59e0b, #d97706)',
+        'linear-gradient(135deg, #ec4899, #db2777)',
+        'linear-gradient(135deg, #6366f1, #4f46e5)',
+        'linear-gradient(135deg, #22c55e, #16a34a)'
+    ];
+
+    // Иконки для предметов
+    const subjectIcons = {
+        'Математика': 'calculate',
+        'Физика': 'science',
+        'Информатика': 'computer'
+    };
+    const subjectIcon = subjectIcons[lesson.subject] || 'school';
+
+    const lessonType = lesson.lesson_type === 'individual' ? 'Индивидуальное' : 'Групповое';
+
     modal.innerHTML = `
-        <div class="modal-content" style="max-width: 500px;">
-            <div class="modal-header">
-                <h2 class="modal-title">${escapeHtml(lesson.subject || 'Урок')}</h2>
-                <button class="modal-close" onclick="this.closest('.modal').remove()">
+        <div class="lesson-info-modal">
+            <!-- Цветовая полоска сверху -->
+            <div class="lesson-color-bar" style="background: ${subjectColor};"></div>
+
+            <!-- Шапка -->
+            <div class="lesson-info-header">
+                <div class="lesson-subject-badge" style="background: ${subjectBgColor}; color: ${subjectTextColor};">
+                    <span class="material-icons">${subjectIcon}</span>
+                    <span>${escapeHtml(lesson.subject || 'Урок')}</span>
+                </div>
+                <button class="lesson-close-btn" onclick="this.closest('.modal').remove()">
                     <span class="material-icons">close</span>
                 </button>
             </div>
-            <div class="modal-body">
-                <div style="margin-bottom: 16px; color: var(--text-medium-emphasis);">
-                    <div style="margin-bottom: 8px;">
-                        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">event</span>
-                        ${dayName}, ${time}
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">person</span>
-                        ${escapeHtml(lesson.teacher_name || '—')}
-                    </div>
-                    <div>
-                        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">meeting_room</span>
-                        Кабинет ${lesson.room || 1}
-                    </div>
-                </div>
 
-                <div style="margin-top: 24px;">
-                    <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 12px; color: var(--md-primary);">
-                        👥 Ученики (${students.length}/${lesson.expected_students || 6})
-                    </h3>
-                    ${students.length > 0 ? `
-                        <div style="max-height: 300px; overflow-y: auto;">
-                            ${students.map(s => `
-                                <div style="padding: 8px 12px; background-color: var(--md-surface-3); border-radius: 6px; margin-bottom: 6px;">
-                                    • ${escapeHtml(s)}
-                                </div>
-                            `).join('')}
-                        </div>
-                    ` : `
-                        <div style="text-align: center; padding: 32px; color: var(--text-medium-emphasis);">
-                            <span class="material-icons" style="font-size: 48px; opacity: 0.3;">person_outline</span>
-                            <div style="margin-top: 8px;">Нет учеников</div>
-                        </div>
-                    `}
+            <!-- Тип урока -->
+            <div class="lesson-type-section">
+                <div class="lesson-type-label">УРОК</div>
+                <div class="lesson-type-value">${lessonType}</div>
+            </div>
+
+            <!-- Информационная сетка 2×2 -->
+            <div class="lesson-info-grid">
+                <div class="lesson-info-card">
+                    <span class="material-icons lesson-info-icon">calendar_today</span>
+                    <div class="lesson-info-label">ДЕНЬ</div>
+                    <div class="lesson-info-value">${dayName}</div>
+                </div>
+                <div class="lesson-info-card">
+                    <span class="material-icons lesson-info-icon">schedule</span>
+                    <div class="lesson-info-label">ВРЕМЯ</div>
+                    <div class="lesson-info-value">${time}</div>
+                </div>
+                <div class="lesson-info-card">
+                    <span class="material-icons lesson-info-icon">meeting_room</span>
+                    <div class="lesson-info-label">КАБИНЕТ</div>
+                    <div class="lesson-info-value">${lesson.room || 1}</div>
+                </div>
+                <div class="lesson-info-card">
+                    <span class="material-icons lesson-info-icon">person</span>
+                    <div class="lesson-info-label">ПРЕПОДАВАТЕЛЬ</div>
+                    <div class="lesson-info-value">${escapeHtml(lesson.teacher_name || '—')}</div>
                 </div>
             </div>
-            <div class="modal-footer" style="justify-content: space-between;">
-                <button type="button" class="btn btn-outline" onclick="this.closest('.modal').remove()">
+
+            <!-- Секция учеников -->
+            <div class="lesson-students-section">
+                <div class="lesson-students-header">
+                    <span class="material-icons">groups</span>
+                    <span>Ученики</span>
+                    <div class="lesson-students-badge">${students.length} / ${lesson.expected_students || 6}</div>
+                </div>
+                ${studentsWithClasses.length > 0 ? `
+                    <div class="lesson-students-grid">
+                        ${studentsWithClasses.map((student, index) => `
+                            <div class="lesson-student-card">
+                                ${student.class ? `
+                                    <div class="lesson-student-class" style="background: ${classColors[index % classColors.length]};">
+                                        ${escapeHtml(student.class)}
+                                    </div>
+                                ` : ''}
+                                <div class="lesson-student-name">${escapeHtml(student.name)}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : `
+                    <div class="lesson-no-students">
+                        <span class="material-icons">person_off</span>
+                        <div>Нет учеников</div>
+                    </div>
+                `}
+            </div>
+
+            <!-- Футер -->
+            <div class="lesson-info-footer">
+                <button type="button" class="lesson-btn lesson-btn-secondary" onclick="this.closest('.modal').remove()">
                     Закрыть
                 </button>
-                <button type="button" class="btn btn-primary" onclick="this.closest('.modal').remove(); editTemplate(${lesson.id})">
-                    <span class="material-icons" style="margin-right: 8px; font-size: 18px;">edit</span>
-                    Редактировать
+                <button type="button" class="lesson-btn lesson-btn-primary" onclick="this.closest('.modal').remove(); editTemplate(${lesson.id})">
+                    <span class="material-icons">edit</span>
+                    <span>Редактировать</span>
                 </button>
             </div>
         </div>
