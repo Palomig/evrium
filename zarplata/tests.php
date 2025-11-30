@@ -91,6 +91,31 @@ require_once __DIR__ . '/templates/header.php';
     </div>
 </div>
 
+<!-- Миграция данных -->
+<div class="table-container">
+    <div class="table-header">
+        <h2 class="table-title">Миграция данных</h2>
+    </div>
+    <div style="padding: 24px;">
+        <div style="margin-bottom: 20px; padding: 16px; background: rgba(251, 191, 36, 0.1); border-radius: 8px; color: #fbbf24;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span class="material-icons">info</span>
+                <strong>Обновление формата учеников</strong>
+            </div>
+            <div style="font-size: 0.875rem; line-height: 1.5;">
+                Обновляет формат хранения учеников в расписании с "Имя" на "Имя (класс кл.)"
+                <br>Решает проблему дублирования учеников с одинаковыми именами.
+            </div>
+        </div>
+        <div class="test-buttons">
+            <button class="btn btn-primary" onclick="migrateStudents()">
+                <span class="material-icons">upgrade</span>
+                Мигрировать учеников в новый формат
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Очистка базы данных -->
 <div class="table-container">
     <div class="table-header">
@@ -595,6 +620,52 @@ async function clearPayments() {
             log(`✓ Удалено выплат: ${result.data.deleted_payments}`, 'success');
             log(`✓ Удалено записей аудита: ${result.data.deleted_audit_logs}`, 'success');
             log('✓ База данных выплат очищена', 'success');
+        } else {
+            log(`✗ Ошибка: ${result.error}`, 'error');
+        }
+
+        log('─'.repeat(80), 'info');
+    } catch (error) {
+        log(`✗ Ошибка выполнения: ${error.message}`, 'error');
+    }
+}
+
+// Миграция учеников в новый формат
+async function migrateStudents() {
+    if (!confirm('🔄 Запустить миграцию учеников в новый формат "Имя (класс кл.)"?')) {
+        return;
+    }
+
+    log('🔄 Запуск миграции учеников...', 'info');
+
+    try {
+        const response = await fetch('/zarplata/api/migrate_students.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            log(`✓ Миграция завершена успешно!`, 'success');
+            log(`  Обновлено шаблонов: ${result.data.updated}`, 'success');
+            log(`  Пропущено (уже в новом формате): ${result.data.skipped}`, 'info');
+
+            if (result.data.errors && result.data.errors.length > 0) {
+                log(`⚠️ Предупреждения и ошибки:`, 'warning');
+                result.data.errors.forEach(err => {
+                    log(`  ${err}`, 'warning');
+                });
+            }
+
+            if (result.data.details && result.data.details.length > 0) {
+                log(`📝 Детали изменений:`, 'info');
+                result.data.details.forEach(detail => {
+                    log(`  ${detail}`, 'info');
+                });
+            }
+
+            log('✓ Рекомендуется перезагрузить страницу расписания', 'success');
         } else {
             log(`✗ Ошибка: ${result.error}`, 'error');
         }

@@ -72,39 +72,18 @@ foreach ($templates as &$template) {
         $template['room'] = 1; // По умолчанию кабинет 1
     }
 
-    // Получаем классы учеников
+    // Получаем классы учеников из формата "Имя (N кл.)"
     $studentClasses = [];
     if ($template['students']) {
         $studentsNames = json_decode($template['students'], true);
         if (is_array($studentsNames) && !empty($studentsNames)) {
-            // Сначала пробуем извлечь классы из имен учеников (формат "Имя (N кл.)")
-            $namesForDbQuery = [];
-
             foreach ($studentsNames as $studentName) {
-                // Проверяем есть ли класс в скобках: "Коля (2 кл.)"
+                // Извлекаем класс из скобок: "Коля (2 кл.)" -> 2
                 if (preg_match('/\((\d+)\s*кл\.\)/', $studentName, $matches)) {
                     $studentClasses[] = (int)$matches[1];
-                } else {
-                    // Если класса нет в скобках, запомним для поиска в БД
-                    $namesForDbQuery[] = $studentName;
                 }
-            }
-
-            // Для имен без класса в скобках ищем в базе данных
-            if (!empty($namesForDbQuery)) {
-                $placeholders = str_repeat('?,', count($namesForDbQuery) - 1) . '?';
-                $classesResult = dbQuery(
-                    "SELECT DISTINCT class FROM students
-                     WHERE name IN ($placeholders) AND class IS NOT NULL AND active = 1
-                     ORDER BY class ASC",
-                    $namesForDbQuery
-                );
-
-                foreach ($classesResult as $row) {
-                    if ($row['class']) {
-                        $studentClasses[] = $row['class'];
-                    }
-                }
+                // Если класса нет в скобках - не добавляем класс
+                // (это старые данные, которые нужно обновить вручную)
             }
         }
     }
