@@ -115,15 +115,29 @@ body, .schedule-header, .filters-panel, .day-filter-btn, .room-filter-btn,
     display: none;
 }
 
+/* Запретить скролл всей страницы */
+body {
+    overflow: hidden;
+}
+
+/* Основной контейнер */
+.main-content {
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
 /* Заголовок */
 .schedule-header {
     background-color: var(--bg-card);
     border-radius: 12px;
     padding: 16px 24px;
-    margin-bottom: 24px;
+    margin-bottom: 16px;
     /* box-shadow removed */
     max-width: 100%;
     overflow: hidden;
+    flex-shrink: 0;
 }
 
 .schedule-header-top {
@@ -183,10 +197,11 @@ body, .schedule-header, .filters-panel, .day-filter-btn, .room-filter-btn,
     background-color: var(--bg-card);
     border-radius: 12px;
     padding: 20px;
-    margin-bottom: 24px;
+    margin-bottom: 16px;
     /* box-shadow removed */
     max-width: 100%;
     overflow: hidden;
+    flex-shrink: 0;
 }
 
 .filters-content {
@@ -275,10 +290,10 @@ body, .schedule-header, .filters-panel, .day-filter-btn, .room-filter-btn,
     border-radius: 12px;
     padding: 20px;
     /* box-shadow removed */
-    max-height: calc(100vh - 240px);
-    min-height: calc(100vh - 240px);
     width: 100%;
     box-sizing: border-box;
+    flex: 1;
+    min-height: 0;
 }
 
 .schedule-board {
