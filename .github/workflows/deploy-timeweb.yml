@@ -3,34 +3,21 @@ name: Deploy to Timeweb
 on:
   push:
     branches:
-      - main  # Деплой при пуше в main ветку
-  workflow_dispatch:  # Возможность ручного запуска
+      - main
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout кода
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 2. Деплой на Timeweb через FTP
-      - name: Deploy to Timeweb via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      - name: Deploy to Hosting
+        uses: SamKirkland/FTP-Deploy-Action@4.0.0
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./
           server-dir: /PALOMATIKA/public_html/
-          dangerous-clean-slate: false
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            **/.github/**
-            **/.vscode/**
-            **/.idea/**
-            **/README.md
-            **/.DS_Store
