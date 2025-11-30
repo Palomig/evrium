@@ -119,58 +119,6 @@ require_once __DIR__ . '/templates/header.php';
     </div>
 </div>
 
-<!-- Финансовые настройки -->
-<div class="card mb-4">
-    <div class="card-header">
-        <h3 style="margin: 0;">
-            <span class="material-icons" style="vertical-align: middle;">account_balance</span>
-            Финансовые настройки
-        </h3>
-    </div>
-    <div class="card-body">
-        <form id="financial-settings-form" onsubmit="saveFinancialSettings(event)">
-            <div class="form-group">
-                <label class="form-label" for="owner_share_percent">
-                    <span class="material-icons" style="font-size: 16px; vertical-align: middle;">percent</span>
-                    Процент владельца от выручки
-                </label>
-                <input
-                    type="number"
-                    class="form-control"
-                    id="owner_share_percent"
-                    name="owner_share_percent"
-                    value="<?= e($settingsMap['owner_share_percent'] ?? '30') ?>"
-                    min="0"
-                    max="100"
-                >
-                <small style="color: var(--text-medium-emphasis); display: block; margin-top: 8px;">
-                    Ваша доля от общей выручки
-                </small>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label" for="currency">
-                    <span class="material-icons" style="font-size: 16px; vertical-align: middle;">attach_money</span>
-                    Валюта
-                </label>
-                <input
-                    type="text"
-                    class="form-control"
-                    id="currency"
-                    name="currency"
-                    value="<?= e($settingsMap['currency'] ?? 'RUB') ?>"
-                    maxlength="10"
-                >
-            </div>
-
-            <button type="submit" class="btn btn-primary" id="save-financial-btn">
-                <span class="material-icons" style="margin-right: 8px; font-size: 18px;">save</span>
-                Сохранить финансовые настройки
-            </button>
-        </form>
-    </div>
-</div>
-
 <!-- Системные настройки -->
 <div class="card mb-4">
     <div class="card-header">
@@ -228,20 +176,55 @@ require_once __DIR__ . '/templates/header.php';
         </h3>
     </div>
     <div class="card-body">
+        <style>
+            .input-with-icon {
+                position: relative;
+            }
+
+            .password-toggle {
+                position: absolute;
+                right: 12px;
+                top: 50%;
+                transform: translateY(-50%);
+                background: none;
+                border: none;
+                color: var(--text-medium-emphasis);
+                cursor: pointer;
+                padding: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: color 0.2s;
+            }
+
+            .password-toggle:hover {
+                color: var(--text-high-emphasis);
+            }
+
+            .password-toggle .material-icons {
+                font-size: 20px;
+            }
+        </style>
+
         <form id="password-form" onsubmit="changePassword(event)">
             <div class="form-group">
                 <label class="form-label" for="current_password">
                     <span class="material-icons" style="font-size: 16px; vertical-align: middle;">lock</span>
                     Текущий пароль *
                 </label>
-                <input
-                    type="password"
-                    class="form-control"
-                    id="current_password"
-                    name="current_password"
-                    placeholder="Введите текущий пароль"
-                    required
-                >
+                <div class="input-with-icon">
+                    <input
+                        type="password"
+                        class="form-control"
+                        id="current_password"
+                        name="current_password"
+                        placeholder="Введите текущий пароль"
+                        required
+                    >
+                    <button type="button" class="password-toggle" onclick="togglePassword('current_password')">
+                        <span class="material-icons" id="current_password-icon">visibility_off</span>
+                    </button>
+                </div>
             </div>
 
             <div class="form-group">
@@ -249,15 +232,20 @@ require_once __DIR__ . '/templates/header.php';
                     <span class="material-icons" style="font-size: 16px; vertical-align: middle;">lock_open</span>
                     Новый пароль *
                 </label>
-                <input
-                    type="password"
-                    class="form-control"
-                    id="new_password"
-                    name="new_password"
-                    placeholder="Введите новый пароль (минимум 6 символов)"
-                    required
-                    minlength="6"
-                >
+                <div class="input-with-icon">
+                    <input
+                        type="password"
+                        class="form-control"
+                        id="new_password"
+                        name="new_password"
+                        placeholder="Введите новый пароль (минимум 6 символов)"
+                        required
+                        minlength="6"
+                    >
+                    <button type="button" class="password-toggle" onclick="togglePassword('new_password')">
+                        <span class="material-icons" id="new_password-icon">visibility_off</span>
+                    </button>
+                </div>
             </div>
 
             <div class="form-group">
@@ -265,14 +253,19 @@ require_once __DIR__ . '/templates/header.php';
                     <span class="material-icons" style="font-size: 16px; vertical-align: middle;">lock_reset</span>
                     Подтвердите новый пароль *
                 </label>
-                <input
-                    type="password"
-                    class="form-control"
-                    id="confirm_password"
-                    name="confirm_password"
-                    placeholder="Повторите новый пароль"
-                    required
-                >
+                <div class="input-with-icon">
+                    <input
+                        type="password"
+                        class="form-control"
+                        id="confirm_password"
+                        name="confirm_password"
+                        placeholder="Повторите новый пароль"
+                        required
+                    >
+                    <button type="button" class="password-toggle" onclick="togglePassword('confirm_password')">
+                        <span class="material-icons" id="confirm_password-icon">visibility_off</span>
+                    </button>
+                </div>
             </div>
 
             <button type="submit" class="btn btn-primary" id="change-password-btn">
@@ -280,6 +273,21 @@ require_once __DIR__ . '/templates/header.php';
                 Изменить пароль
             </button>
         </form>
+
+        <script>
+            function togglePassword(fieldId) {
+                const input = document.getElementById(fieldId);
+                const icon = document.getElementById(fieldId + '-icon');
+
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.textContent = 'visibility';
+                } else {
+                    input.type = 'password';
+                    icon.textContent = 'visibility_off';
+                }
+            }
+        </script>
     </div>
 </div>
 
