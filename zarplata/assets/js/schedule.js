@@ -339,9 +339,37 @@ function selectSubject(subject) {
         selectedBtn.classList.add('active');
     }
 
-    // Установить скрытое поле
+    // Установить значение в текстовое поле
     document.getElementById('template-subject').value = subject;
 }
+
+// Отслеживать ручной ввод предмета и снимать выделение с кнопок
+document.addEventListener('DOMContentLoaded', () => {
+    const subjectInput = document.getElementById('template-subject');
+    if (subjectInput) {
+        subjectInput.addEventListener('input', () => {
+            const inputValue = subjectInput.value;
+
+            // Проверяем, совпадает ли введенное значение с какой-либо кнопкой
+            let matchFound = false;
+            document.querySelectorAll('.subject-btn').forEach(btn => {
+                if (btn.dataset.subject === inputValue) {
+                    btn.classList.add('active');
+                    matchFound = true;
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            // Если не нашли совпадения, снимаем выделение со всех кнопок
+            if (!matchFound) {
+                document.querySelectorAll('.subject-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+            }
+        });
+    }
+});
 
 // Утилиты
 function escapeHtml(text) {

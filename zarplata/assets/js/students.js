@@ -608,24 +608,32 @@ function filterByName() {
     saveFilters();
 }
 
+function filterByTeacher() {
+    updateVisibleStudents();
+    saveFilters();
+}
+
 function updateVisibleStudents() {
     const activeClasses = Array.from(document.querySelectorAll('.class-filter-btn.active:not([data-class="all"])'))
         .map(btn => btn.dataset.class);
     const activeTypes = Array.from(document.querySelectorAll('.type-filter-btn.active:not([data-type="all"])'))
         .map(btn => btn.dataset.type);
     const searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
+    const teacherFilter = document.getElementById('teacher-filter')?.value || 'all';
 
     document.querySelectorAll('.student-row').forEach(row => {
         const studentClass = row.getAttribute('data-class');
         const studentType = row.getAttribute('data-type');
         const studentName = row.getAttribute('data-name');
+        const studentTeacher = row.getAttribute('data-teacher-id');
 
         // Если нет активных фильтров - показываем всех
         const classMatch = activeClasses.length === 0 || activeClasses.includes(studentClass);
         const typeMatch = activeTypes.length === 0 || activeTypes.includes(studentType);
         const searchMatch = !searchQuery || studentName.includes(searchQuery);
+        const teacherMatch = teacherFilter === 'all' || studentTeacher === teacherFilter;
 
-        if (classMatch && typeMatch && searchMatch) {
+        if (classMatch && typeMatch && searchMatch && teacherMatch) {
             row.style.display = '';
         } else {
             row.style.display = 'none';
@@ -681,11 +689,13 @@ function saveFilters() {
     const activeTypes = Array.from(document.querySelectorAll('.type-filter-btn.active:not([data-type="all"])'))
         .map(btn => btn.dataset.type);
     const searchQuery = document.getElementById('search-input')?.value || '';
+    const teacherFilter = document.getElementById('teacher-filter')?.value || 'all';
 
     const filters = {
         classes: activeClasses,
         types: activeTypes,
-        search: searchQuery
+        search: searchQuery,
+        teacher: teacherFilter
     };
 
     localStorage.setItem('studentsFilters', JSON.stringify(filters));
@@ -729,6 +739,14 @@ function restoreFilters() {
             const searchInput = document.getElementById('search-input');
             if (searchInput) {
                 searchInput.value = filters.search;
+            }
+        }
+
+        // Восстанавливаем преподавателя
+        if (filters.teacher) {
+            const teacherSelect = document.getElementById('teacher-filter');
+            if (teacherSelect) {
+                teacherSelect.value = filters.teacher;
             }
         }
 
