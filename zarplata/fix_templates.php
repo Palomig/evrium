@@ -199,9 +199,66 @@ require_once __DIR__ . '/templates/header.php';
 <?php endforeach; ?>
 
 <script>
-    function selectClass(templateId, studentIndex, studentName, studentClass) {
-        console.log(`Template ${templateId}, Index ${studentIndex}: ${studentName} (${studentClass} кл.)`);
-        alert(`Функция в разработке. Используйте кнопку "Редактировать в расписании" для исправления.`);
+    async function selectClass(templateId, studentIndex, studentName, studentClass) {
+        const button = event.target;
+        const originalText = button.textContent;
+
+        // Подтверждение
+        if (!confirm(`Установить для ученика "${studentName}" класс ${studentClass}?`)) {
+            return;
+        }
+
+        // Блокируем кнопку
+        button.disabled = true;
+        button.textContent = '...';
+
+        try {
+            const response = await fetch('/zarplata/api/update_student_in_template.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    template_id: templateId,
+                    student_index: studentIndex,
+                    student_name: studentName,
+                    student_class: studentClass
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Успешно обновлено
+                button.classList.add('selected');
+                button.textContent = '✓ ' + studentClass + ' кл.';
+
+                // Показываем уведомление
+                showNotification('Ученик успешно обновлён!', 'success');
+
+                // Обновляем статус ученика в интерфейсе
+                const studentItem = button.closest('.student-item');
+                const statusSpan = studentItem.querySelector('.student-name span');
+                if (statusSpan) {
+                    statusSpan.textContent = '✓ исправлен';
+                    statusSpan.style.color = 'var(--accent)';
+                }
+
+                // Убираем другие кнопки выбора класса
+                const studentOptions = button.closest('.student-options');
+                if (studentOptions) {
+                    const otherButtons = studentOptions.querySelectorAll('.class-btn:not(.selected)');
+                    otherButtons.forEach(btn => btn.remove());
+                }
+            } else {
+                throw new Error(result.error || 'Ошибка обновления');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showNotification('Ошибка: ' + error.message, 'error');
+            button.disabled = false;
+            button.textContent = originalText;
+        }
     }
 
     function openEditModal(templateId) {
@@ -212,6 +269,55 @@ require_once __DIR__ . '/templates/header.php';
     function viewTemplateData(templateId) {
         alert('Функция просмотра JSON в разработке');
     }
+
+    function showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            padding: 16px 24px;
+            background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 10000;
+            font-size: 14px;
+            font-weight: 500;
+            animation: slideIn 0.3s ease;
+        `;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
 </script>
+
+<style>
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+    }
+</style>
 
 <?php require_once __DIR__ . '/templates/footer.php'; ?>

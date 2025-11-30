@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Диагностика JavaScript</title>
+</head>
+<body>
+    <h1>Тест парсинга учеников</h1>
+    <div id="output"></div>
+
+    <script>
+        const output = document.getElementById('output');
+
+        function log(message) {
+            output.innerHTML += message + '<br>';
+        }
+
+        // Тестовые данные
+        const testStudents = [
+            'Маша',
+            'Коля',
+            'Маша (5 кл.)',
+            'Коля (7 кл.)',
+            'Вика (6 кл.)'
+        ];
+
+        log('<h2>Тест парсинга:</h2>');
+
+        testStudents.forEach(studentName => {
+            try {
+                // Проверяем есть ли класс в скобках: "Коля (2 кл.)"
+                const match = studentName.match(/^(.+?)\s*\((\d+)\s*кл\.\)\s*$/);
+                if (match) {
+                    log(`✓ "${studentName}" -> Имя: "${match[1].trim()}", Класс: ${match[2]}`);
+                } else {
+                    log(`⚠ "${studentName}" -> нет класса в скобках`);
+                }
+            } catch (e) {
+                log(`❌ Ошибка при парсинге "${studentName}": ${e.message}`);
+            }
+        });
+
+        // Тест создания модального окна
+        log('<h2>Тест модального окна:</h2>');
+        try {
+            const students = ['Маша', 'Коля (7 кл.)'];
+            const studentsWithClasses = students.map(studentName => {
+                const match = studentName.match(/^(.+?)\s*\((\d+)\s*кл\.\)\s*$/);
+                if (match) {
+                    return {
+                        name: match[1].trim(),
+                        class: match[2],
+                        displayName: studentName
+                    };
+                } else {
+                    return {
+                        name: studentName.trim(),
+                        class: '',
+                        displayName: studentName.trim()
+                    };
+                }
+            });
+
+            log('✓ Успешно распарсены ученики:');
+            studentsWithClasses.forEach(s => {
+                log(`  - ${s.displayName} (класс: ${s.class || 'не указан'})`);
+            });
+        } catch (e) {
+            log(`❌ Ошибка: ${e.message}`);
+            log(`Stack: ${e.stack}`);
+        }
+    </script>
+</body>
+</html>
