@@ -264,6 +264,26 @@ foreach ($teachers as $teacher) {
 // Месяцы в порядке убывания
 $dataByMonth = array_reverse($dataByMonth, true);
 
+// Получить последние события из журнала аудита (связанные с выплатами)
+$auditLogs = dbQuery(
+    "SELECT
+        al.id,
+        al.action_type,
+        al.entity_type,
+        al.entity_id,
+        al.old_value,
+        al.new_value,
+        al.notes,
+        al.created_at,
+        u.name as user_name
+    FROM audit_log al
+    LEFT JOIN users u ON al.user_id = u.id
+    WHERE al.entity_type IN ('payment', 'lesson', 'adjustment')
+    ORDER BY al.created_at DESC
+    LIMIT 50",
+    []
+);
+
 // Page settings for header template
 define('PAGE_TITLE', 'Выплаты преподавателям');
 define('PAGE_SUBTITLE', 'Учёт и одобрение выплат за проведённые занятия');
@@ -996,6 +1016,118 @@ require_once __DIR__ . '/templates/header.php';
             }
         }
     </script>
+
+<!-- Журнал событий -->
+<section class="audit-log-section" style="margin-top: 40px;">
+    <div class="section-header" style="margin-bottom: 20px;">
+        <h2 style="font-size: 24px; font-weight: 700; color: var(--text-high-emphasis); margin: 0;">
+            Журнал событий
+        </h2>
+        <p style="font-size: 14px; color: var(--text-medium-emphasis); margin: 4px 0 0 0;">
+            История действий с выплатами и уроками
+        </p>
+    </div>
+
+    <?php if (empty($auditLogs)): ?>
+        <div class="empty-state">
+            <p>Журнал событий пуст</p>
+        </div>
+    <?php else: ?>
+        <div class="audit-log-table" style="background: var(--bg-elevated); border-radius: 12px; overflow: hidden;">
+            <div class="audit-header" style="display: grid; grid-template-columns: 180px 120px 1fr 150px 120px; gap: 16px; padding: 16px 20px; background: var(--bg-hover); border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 600; color: var(--text-medium-emphasis); text-transform: uppercase; letter-spacing: 0.5px;">
+                <div>Дата и время</div>
+                <div>Действие</div>
+                <div>Описание</div>
+                <div>Пользователь</div>
+                <div>Тип</div>
+            </div>
+
+            <div class="audit-log-entries">
+                <?php foreach ($auditLogs as $log): ?>
+                    <?php
+                    // Форматируем дату
+                    $date = new DateTime($log['created_at']);
+                    $dateFormatted = $date->format('d.m.Y H:i');
+
+                    // Определяем иконку и цвет по типу действия
+                    $actionIcons = [
+                        'payment_created' => ['icon' => 'add_circle', 'color' => '#10b981'],
+                        'payment_updated' => ['icon' => 'edit', 'color' => '#f59e0b'],
+                        'payment_deleted' => ['icon' => 'delete', 'color' => '#ef4444'],
+                        'payment_approved' => ['icon' => 'check_circle', 'color' => '#10b981'],
+                        'payment_paid' => ['icon' => 'payments', 'color' => '#14b8a6'],
+                        'adjustment_created' => ['icon' => 'tune', 'color' => '#8b5cf6'],
+                        'lesson_completed' => ['icon' => 'done', 'color' => '#10b981'],
+                        'payments_cleared_all' => ['icon' => 'delete_sweep', 'color' => '#ef4444']
+                    ];
+
+                    $actionInfo = $actionIcons[$log['action_type']] ?? ['icon' => 'info', 'color' => '#6366f1'];
+
+                    // Определяем читаемое название действия
+                    $actionLabels = [
+                        'payment_created' => 'Создание',
+                        'payment_updated' => 'Изменение',
+                        'payment_deleted' => 'Удаление',
+                        'payment_approved' => 'Одобрение',
+                        'payment_paid' => 'Выплата',
+                        'adjustment_created' => 'Корректировка',
+                        'lesson_completed' => 'Урок завершён',
+                        'payments_cleared_all' => 'Полная очистка'
+                    ];
+
+                    $actionLabel = $actionLabels[$log['action_type']] ?? $log['action_type'];
+
+                    // Определяем тип сущности
+                    $entityLabels = [
+                        'payment' => 'Выплата',
+                        'lesson' => 'Урок',
+                        'adjustment' => 'Корректировка'
+                    ];
+
+                    $entityLabel = $entityLabels[$log['entity_type']] ?? $log['entity_type'];
+                    ?>
+
+                    <div class="audit-entry" style="display: grid; grid-template-columns: 180px 120px 1fr 150px 120px; gap: 16px; padding: 16px 20px; border-bottom: 1px solid var(--border); transition: background 0.2s; cursor: default;">
+                        <div style="font-size: 13px; color: var(--text-medium-emphasis); font-family: 'JetBrains Mono', monospace;">
+                            <?= e($dateFormatted) ?>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span class="material-icons" style="font-size: 18px; color: <?= $actionInfo['color'] ?>;">
+                                <?= $actionInfo['icon'] ?>
+                            </span>
+                            <span style="font-size: 13px; font-weight: 500; color: var(--text-high-emphasis);">
+                                <?= e($actionLabel) ?>
+                            </span>
+                        </div>
+                        <div style="font-size: 13px; color: var(--text-medium-emphasis);">
+                            <?= e($log['notes'] ?: '—') ?>
+                            <?php if ($log['entity_id']): ?>
+                                <span style="color: var(--text-disabled); font-size: 12px;">(ID: <?= $log['entity_id'] ?>)</span>
+                            <?php endif; ?>
+                        </div>
+                        <div style="font-size: 13px; color: var(--text-medium-emphasis);">
+                            <?= e($log['user_name'] ?: 'Система') ?>
+                        </div>
+                        <div>
+                            <span style="display: inline-block; padding: 4px 10px; background: rgba(99, 102, 241, 0.1); color: #818cf8; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <?= e($entityLabel) ?>
+                            </span>
+                        </div>
+                    </div>
+
+                    <style>
+                        .audit-entry:hover {
+                            background: var(--bg-hover);
+                        }
+                        .audit-entry:last-child {
+                            border-bottom: none;
+                        }
+                    </style>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    <?php endif; ?>
+</section>
 
 <!-- Модальное окно корректировки выплат -->
 <div id="adjustment-modal" class="modal">
