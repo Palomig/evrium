@@ -622,60 +622,76 @@ require_once __DIR__ . '/templates/header.php';
     }
 
     .modal-content {
-        background-color: var(--md-surface);
-        border-radius: 12px;
+        background: #252a34;
+        border-radius: 20px;
         max-width: 700px;
         width: 90%;
         max-height: 90vh;
         overflow: hidden;
         display: flex;
         flex-direction: column;
-        box-shadow: var(--elevation-5);
-        animation: slideUp 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        animation: modalAppear 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
     }
 
-    @keyframes slideUp {
+    @keyframes modalAppear {
         from {
             opacity: 0;
-            transform: translateY(20px);
+            transform: scale(0.95) translateY(10px);
         }
         to {
             opacity: 1;
-            transform: translateY(0);
+            transform: scale(1) translateY(0);
         }
     }
 
+    /* Цветовая полоска сверху */
+    .modal-content::before {
+        content: '';
+        display: block;
+        height: 4px;
+        width: 100%;
+        background: linear-gradient(90deg, #14b8a6, #0d9488);
+    }
+
     .modal-header {
-        padding: 24px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        padding: 20px 24px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         display: flex;
         justify-content: space-between;
         align-items: center;
         flex-shrink: 0;
-        background-color: var(--md-surface);
     }
 
     .modal-header h2 {
         margin: 0;
         font-size: 1.5rem;
-        font-weight: 400;
+        font-weight: 600;
+        color: #ffffff;
     }
 
     .modal-close {
-        background: none;
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.1);
         border: none;
-        color: var(--text-medium-emphasis);
+        color: #e5e7eb;
         cursor: pointer;
-        padding: 8px;
+        padding: 0;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 50%;
-        transition: background-color 0.2s;
+        transition: all 0.2s;
     }
 
     .modal-close:hover {
-        background-color: rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.15);
+        transform: scale(1.05);
+    }
+
+    .modal-close .material-icons {
+        font-size: 20px;
     }
 
     /* Форма внутри модального окна */
@@ -697,12 +713,11 @@ require_once __DIR__ . '/templates/header.php';
 
     .modal-footer {
         padding: 16px 24px;
-        border-top: 1px solid rgba(255, 255, 255, 0.12);
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
         display: flex;
         justify-content: flex-end;
         gap: 12px;
         flex-shrink: 0;
-        background-color: var(--md-surface);
     }
 
     .form-row {
@@ -719,10 +734,10 @@ require_once __DIR__ . '/templates/header.php';
     .btn-toggle {
         flex: 1;
         padding: 12px 20px;
-        border: 2px solid rgba(255, 255, 255, 0.12);
-        border-radius: 8px;
-        background-color: var(--md-surface-3);
-        color: var(--text-medium-emphasis);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.05);
+        color: #9ca3af;
         cursor: pointer;
         font-size: 0.875rem;
         font-weight: 600;
@@ -735,14 +750,14 @@ require_once __DIR__ . '/templates/header.php';
     }
 
     .btn-toggle:hover {
-        border-color: var(--md-primary);
-        background-color: var(--md-surface-4);
+        border-color: #14b8a6;
+        background: rgba(255, 255, 255, 0.08);
     }
 
     .btn-toggle.active {
-        background-color: rgba(187, 134, 252, 0.15);
-        border-color: var(--md-primary);
-        color: var(--md-primary);
+        background: rgba(20, 184, 166, 0.15);
+        border-color: #14b8a6;
+        color: #14b8a6;
     }
 
     /* Цены */
@@ -768,10 +783,10 @@ require_once __DIR__ . '/templates/header.php';
 
     .btn-day {
         padding: 10px 16px;
-        border: 2px solid rgba(255, 255, 255, 0.12);
-        border-radius: 8px;
-        background-color: var(--md-surface-3);
-        color: var(--text-medium-emphasis);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.05);
+        color: #9ca3af;
         cursor: pointer;
         font-size: 0.875rem;
         font-weight: 600;
@@ -781,14 +796,14 @@ require_once __DIR__ . '/templates/header.php';
     }
 
     .btn-day:hover {
-        border-color: var(--md-primary);
-        background-color: var(--md-surface-4);
+        border-color: #14b8a6;
+        background: rgba(255, 255, 255, 0.08);
     }
 
     .btn-day.active {
-        background-color: rgba(187, 134, 252, 0.15);
-        border-color: var(--md-primary);
-        color: var(--md-primary);
+        background: rgba(20, 184, 166, 0.15);
+        border-color: #14b8a6;
+        color: #14b8a6;
     }
 
     /* Кнопки тира */
@@ -800,10 +815,10 @@ require_once __DIR__ . '/templates/header.php';
 
     .btn-tier {
         padding: 12px 20px;
-        border: 2px solid rgba(255, 255, 255, 0.12);
-        border-radius: 8px;
-        background-color: var(--md-surface-3);
-        color: var(--text-medium-emphasis);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.05);
+        color: #9ca3af;
         cursor: pointer;
         font-size: 1rem;
         font-weight: 700;
@@ -813,14 +828,14 @@ require_once __DIR__ . '/templates/header.php';
     }
 
     .btn-tier:hover {
-        border-color: var(--md-primary);
-        background-color: var(--md-surface-4);
+        border-color: #14b8a6;
+        background: rgba(255, 255, 255, 0.08);
     }
 
     .btn-tier.active {
-        background-color: rgba(187, 134, 252, 0.15);
-        border-color: var(--md-primary);
-        color: var(--md-primary);
+        background: rgba(20, 184, 166, 0.15);
+        border-color: #14b8a6;
+        color: #14b8a6;
     }
 
     /* Список расписания */
@@ -981,6 +996,98 @@ require_once __DIR__ . '/templates/header.php';
 
     .search-input::placeholder {
         color: var(--text-medium-emphasis);
+    }
+
+    /* Обновленные стили для модального окна */
+    .modal .form-label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #e5e7eb;
+    }
+
+    .modal .form-control {
+        width: 100%;
+        padding: 12px 14px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        color: #ffffff;
+        font-size: 14px;
+        font-family: 'Montserrat', sans-serif;
+        transition: all 0.2s;
+    }
+
+    .modal .form-control::placeholder {
+        color: #6b7280;
+    }
+
+    .modal .form-control:hover {
+        border-color: rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    .modal .form-control:focus {
+        outline: none;
+        border-color: #14b8a6;
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
+    }
+
+    .modal select.form-control {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2314b8a6' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        padding-right: 40px;
+        cursor: pointer;
+    }
+
+    .modal textarea.form-control {
+        resize: vertical;
+        min-height: 80px;
+        line-height: 1.5;
+    }
+
+    /* Обновленные стили кнопок для модального окна */
+    .modal-footer .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 12px 20px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+    }
+
+    .modal-footer .btn .material-icons {
+        font-size: 18px;
+        margin-right: 0;
+    }
+
+    .modal-footer .btn-outline {
+        background: rgba(255, 255, 255, 0.08);
+        color: #d1d5db;
+    }
+
+    .modal-footer .btn-outline:hover {
+        background: rgba(255, 255, 255, 0.12);
+        color: #ffffff;
+    }
+
+    .modal-footer .btn-primary {
+        background: linear-gradient(135deg, #14b8a6, #0d9488);
+        color: #ffffff;
+    }
+
+    .modal-footer .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px -10px rgba(20, 184, 166, 0.5);
     }
 </style>
 
