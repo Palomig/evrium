@@ -366,8 +366,6 @@ body {
 .day-content {
     padding: 0;
     flex: 1;
-    max-height: 70vh;
-    overflow-y: auto;
 }
 
 /* Строка времени */
