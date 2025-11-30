@@ -1503,9 +1503,16 @@ body {
             </div>
 
             <div class="form-group">
-                <label>Предмет *</label>
-                <input type="hidden" id="template-subject" name="subject" required>
-                <div class="subject-buttons">
+                <label for="template-subject">Предмет *</label>
+                <input
+                    type="text"
+                    id="template-subject"
+                    name="subject"
+                    required
+                    placeholder="Введите название предмета"
+                    maxlength="100"
+                >
+                <div class="subject-buttons" style="margin-top: 8px;">
                     <button type="button" class="subject-btn" data-subject="Математика" onclick="selectSubject('Математика')">
                         Математика
                     </button>
@@ -1516,6 +1523,7 @@ body {
                         Информатика
                     </button>
                 </div>
+                <small>Нажмите на кнопку или введите свой предмет</small>
             </div>
 
             <div class="form-row">
