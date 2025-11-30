@@ -1044,6 +1044,18 @@ require_once __DIR__ . '/templates/header.php';
         cursor: pointer;
     }
 
+    .modal select.form-control option {
+        background: #1f2937;
+        color: #ffffff;
+        padding: 10px;
+    }
+
+    .modal select.form-control option:hover,
+    .modal select.form-control option:checked {
+        background: #14b8a6;
+        color: #ffffff;
+    }
+
     .modal textarea.form-control {
         resize: vertical;
         min-height: 80px;
