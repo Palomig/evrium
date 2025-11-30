@@ -1043,6 +1043,283 @@ body, .schedule-header, .filters-panel, .day-filter-btn, .room-filter-btn,
         justify-content: center;
     }
 }
+
+/* ===========================
+   Lesson Info Modal (NEW DESIGN)
+   =========================== */
+
+.lesson-info-modal {
+    background: #252a34;
+    border-radius: 20px;
+    max-width: 440px;
+    width: 90%;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    animation: modalAppear 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+@keyframes modalAppear {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* Цветовая полоска сверху */
+.lesson-color-bar {
+    height: 4px;
+    width: 100%;
+}
+
+/* Шапка */
+.lesson-info-header {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.lesson-subject-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.lesson-subject-badge .material-icons {
+    font-size: 18px;
+}
+
+.lesson-close-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #e5e7eb;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.lesson-close-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(1.05);
+}
+
+.lesson-close-btn .material-icons {
+    font-size: 20px;
+}
+
+/* Тип урока */
+.lesson-type-section {
+    padding: 0 20px 20px 20px;
+}
+
+.lesson-type-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #9ca3af;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+}
+
+.lesson-type-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+/* Информационная сетка 2×2 */
+.lesson-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 0 20px 20px 20px;
+}
+
+.lesson-info-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.lesson-info-icon {
+    font-size: 20px;
+    color: #14b8a6;
+}
+
+.lesson-info-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #9ca3af;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.lesson-info-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+/* Секция учеников */
+.lesson-students-section {
+    padding: 0 20px 20px 20px;
+}
+
+.lesson-students-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.lesson-students-header .material-icons {
+    font-size: 22px;
+    color: #14b8a6;
+}
+
+.lesson-students-badge {
+    margin-left: auto;
+    background: rgba(20, 184, 166, 0.15);
+    color: #14b8a6;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.lesson-students-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.lesson-student-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 10px;
+}
+
+.lesson-student-class {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: 700;
+    color: #ffffff;
+    flex-shrink: 0;
+}
+
+.lesson-student-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: #e5e7eb;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lesson-no-students {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 32px;
+    color: #6b7280;
+}
+
+.lesson-no-students .material-icons {
+    font-size: 48px;
+    opacity: 0.3;
+}
+
+/* Футер */
+.lesson-info-footer {
+    padding: 16px 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.lesson-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+}
+
+.lesson-btn .material-icons {
+    font-size: 18px;
+}
+
+.lesson-btn-secondary {
+    background: rgba(255, 255, 255, 0.08);
+    color: #d1d5db;
+}
+
+.lesson-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+}
+
+.lesson-btn-primary {
+    background: linear-gradient(135deg, #14b8a6, #0d9488);
+    color: #ffffff;
+}
+
+.lesson-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px -10px rgba(20, 184, 166, 0.5);
+}
+
+@media (max-width: 480px) {
+    .lesson-info-modal {
+        max-width: 95%;
+    }
+
+    .lesson-students-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .lesson-info-footer {
+        flex-direction: column;
+    }
+
+    .lesson-btn {
+        width: 100%;
+    }
+}
 </style>
 
 <!-- Заголовок -->
