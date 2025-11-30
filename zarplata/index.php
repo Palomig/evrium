@@ -51,6 +51,78 @@ $monthPayments = dbQueryOne(
     [date('Y-m')]
 );
 
+// Реальная зарплата за текущий месяц (из фактически проведенных уроков + корректировок)
+$realSalary = dbQueryOne(
+    "SELECT COALESCE(SUM(amount), 0) as total
+     FROM payments
+     WHERE status != 'cancelled'
+     AND created_at >= ?
+     AND created_at <= ?",
+    [$monthStart, $monthEnd . ' 23:59:59']
+);
+
+// Ожидаемая зарплата за текущий месяц (из шаблонов расписания)
+// Считаем количество уроков каждого типа в текущем месяце
+$expectedSalaryRaw = 0;
+$templates = dbQuery(
+    "SELECT lt.*, pf.type, pf.min_payment, pf.per_student, pf.threshold, pf.fixed_amount, pf.expression
+     FROM lessons_template lt
+     LEFT JOIN teachers t ON lt.teacher_id = t.id
+     LEFT JOIN payment_formulas pf ON COALESCE(lt.formula_id, t.formula_id) = pf.id
+     WHERE lt.active = 1",
+    []
+);
+
+// Получаем все даты текущего месяца
+$start = new DateTime($monthStart);
+$end = new DateTime($monthEnd);
+$interval = new DateInterval('P1D');
+$period = new DatePeriod($start, $interval, $end->modify('+1 day'));
+
+foreach ($templates as $template) {
+    $lessonCount = 0;
+
+    // Считаем сколько раз этот урок должен состояться в текущем месяце
+    foreach ($period as $date) {
+        $dayOfWeek = $date->format('N'); // 1 (Monday) to 7 (Sunday)
+        if ($dayOfWeek == $template['day_of_week']) {
+            $lessonCount++;
+        }
+    }
+
+    if ($lessonCount > 0 && $template['type']) {
+        $studentCount = $template['expected_students'] ?? 1;
+
+        // Расчёт по формуле
+        if ($template['type'] === 'min_plus_per') {
+            $minPayment = $template['min_payment'] ?? 0;
+            $perStudent = $template['per_student'] ?? 0;
+            $threshold = $template['threshold'] ?? 2;
+
+            if ($studentCount > $threshold) {
+                $lessonPayment = $minPayment + (($studentCount - $threshold) * $perStudent);
+            } else {
+                $lessonPayment = $minPayment;
+            }
+        } elseif ($template['type'] === 'fixed') {
+            $lessonPayment = $template['fixed_amount'] ?? 0;
+        } elseif ($template['type'] === 'expression') {
+            // Evaluate expression (simple eval - в продакшене нужна безопасная реализация)
+            $N = $studentCount;
+            $expression = str_replace('N', $N, $template['expression'] ?? '0');
+            try {
+                $lessonPayment = eval("return $expression;");
+            } catch (Exception $e) {
+                $lessonPayment = 0;
+            }
+        } else {
+            $lessonPayment = 0;
+        }
+
+        $expectedSalaryRaw += $lessonPayment * $lessonCount;
+    }
+}
+
 // Активные преподаватели
 $activeTeachers = dbQueryOne(
     "SELECT COUNT(*) as count FROM teachers WHERE active = 1",
@@ -143,6 +215,49 @@ require_once __DIR__ . '/templates/header.php';
             </div>
             <div style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background-color: rgba(76, 175, 80, 0.12); color: var(--md-success);">
                 <span class="material-icons">account_balance</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <div style="font-size: 2rem; font-weight: 300; margin-bottom: 4px;">
+                    <?= formatMoney($expectedSalaryRaw) ?>
+                </div>
+                <div style="font-size: 0.875rem; color: var(--text-medium-emphasis);">Ожидаемая зарплата</div>
+                <div style="font-size: 0.75rem; color: var(--text-disabled); margin-top: 4px;">
+                    по расписанию на <?= date('F Y') ?>
+                </div>
+            </div>
+            <div style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background-color: rgba(33, 150, 243, 0.12); color: #2196F3;">
+                <span class="material-icons">event_available</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <div style="font-size: 2rem; font-weight: 300; margin-bottom: 4px;">
+                    <?= formatMoney($realSalary['total'] ?? 0) ?>
+                </div>
+                <div style="font-size: 0.875rem; color: var(--text-medium-emphasis);">Реальная зарплата</div>
+                <div style="font-size: 0.75rem; color: var(--text-disabled); margin-top: 4px;">
+                    <?php
+                    $diff = ($realSalary['total'] ?? 0) - $expectedSalaryRaw;
+                    if ($diff > 0) {
+                        echo '+' . formatMoney($diff) . ' к ожидаемой';
+                    } elseif ($diff < 0) {
+                        echo formatMoney(abs($diff)) . ' ниже ожидаемой';
+                    } else {
+                        echo 'соответствует ожидаемой';
+                    }
+                    ?>
+                </div>
+            </div>
+            <div style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background-color: rgba(156, 39, 176, 0.12); color: #9C27B0;">
+                <span class="material-icons">fact_check</span>
             </div>
         </div>
     </div>
