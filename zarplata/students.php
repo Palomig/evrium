@@ -67,6 +67,19 @@ require_once __DIR__ . '/templates/header.php';
         <div class="filter-divider"></div>
 
         <div class="filter-group">
+            <span class="legend-label">Преподаватель:</span>
+            <select class="teacher-filter-select" id="teacher-filter" onchange="filterByTeacher()">
+                <option value="all">Все</option>
+                <option value="none">Без преподавателя</option>
+                <?php foreach ($teachers as $teacher): ?>
+                    <option value="<?= $teacher['id'] ?>"><?= e($teacher['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <div class="filter-divider"></div>
+
+        <div class="filter-group">
             <input type="text" id="search-input" class="search-input" placeholder="Поиск по имени..." onkeyup="filterByName()">
         </div>
     </div>
@@ -118,6 +131,7 @@ require_once __DIR__ . '/templates/header.php';
                         data-class="<?= $student['class'] ?? 'none' ?>"
                         data-type="<?= $student['lesson_type'] ?? 'group' ?>"
                         data-name="<?= mb_strtolower($student['name']) ?>"
+                        data-teacher-id="<?= $student['teacher_id'] ?? 'none' ?>"
                         class="student-row">
                         <td><?= $student['id'] ?></td>
                         <td>
@@ -996,6 +1010,41 @@ require_once __DIR__ . '/templates/header.php';
 
     .search-input::placeholder {
         color: var(--text-medium-emphasis);
+    }
+
+    .teacher-filter-select {
+        padding: 10px 40px 10px 16px;
+        border: 2px solid rgba(255, 255, 255, 0.12);
+        border-radius: 8px;
+        background-color: var(--md-surface-3);
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2314b8a6' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        color: var(--text-high-emphasis);
+        font-size: 0.875rem;
+        font-weight: 600;
+        font-family: 'Montserrat', sans-serif;
+        min-width: 200px;
+        appearance: none;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .teacher-filter-select:hover {
+        border-color: var(--md-primary);
+        background-color: var(--md-surface-4);
+    }
+
+    .teacher-filter-select:focus {
+        outline: none;
+        border-color: var(--md-primary);
+        background-color: var(--md-surface-4);
+    }
+
+    .teacher-filter-select option {
+        background: #1f2937;
+        color: #ffffff;
+        padding: 10px;
     }
 
     /* Обновленные стили для модального окна */
