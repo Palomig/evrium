@@ -91,6 +91,40 @@ require_once __DIR__ . '/templates/header.php';
     </div>
 </div>
 
+<!-- Генерация уроков -->
+<div class="table-container">
+    <div class="table-header">
+        <h2 class="table-title">Генерация уроков из шаблонов</h2>
+    </div>
+    <div style="padding: 24px;">
+        <div style="margin-bottom: 20px; padding: 16px; background: rgba(129, 140, 248, 0.1); border-radius: 8px; color: #818cf8;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span class="material-icons">info</span>
+                <strong>Генерация уроков</strong>
+            </div>
+            <div style="font-size: 0.875rem; line-height: 1.5;">
+                Создает записи уроков (lessons_instance) на основе активных шаблонов расписания.
+                <br>Выберите период для генерации уроков. Уже существующие уроки пропускаются.
+            </div>
+        </div>
+        <div class="test-buttons">
+            <button class="btn btn-primary" onclick="generateLessons('week')">
+                <span class="material-icons">date_range</span>
+                Сгенерировать на текущую неделю
+            </button>
+            <button class="btn btn-primary" onclick="generateLessons('month')">
+                <span class="material-icons">calendar_month</span>
+                Сгенерировать на текущий месяц
+            </button>
+            <button class="btn btn-primary" onclick="generateLessons('three_months')">
+                <span class="material-icons">event_available</span>
+                Сгенерировать на 3 месяца
+            </button>
+        </div>
+        <div id="generation-result" style="margin-top: 16px; padding: 12px; border-radius: 8px; display: none;"></div>
+    </div>
+</div>
+
 <!-- Миграция данных -->
 <div class="table-container">
     <div class="table-header">
@@ -672,6 +706,86 @@ async function migrateStudents() {
 
         log('─'.repeat(80), 'info');
     } catch (error) {
+        log(`✗ Ошибка выполнения: ${error.message}`, 'error');
+    }
+}
+
+// Генерация уроков из шаблонов
+async function generateLessons(period) {
+    const periodNames = {
+        'week': 'текущую неделю',
+        'month': 'текущий месяц',
+        'three_months': '3 месяца'
+    };
+
+    if (!confirm(`🗓️ Сгенерировать уроки на ${periodNames[period]}?`)) {
+        return;
+    }
+
+    const resultDiv = document.getElementById('generation-result');
+    resultDiv.style.display = 'block';
+    resultDiv.style.background = 'rgba(129, 140, 248, 0.1)';
+    resultDiv.style.color = '#818cf8';
+    resultDiv.innerHTML = '<span class="material-icons" style="vertical-align: middle;">hourglass_empty</span> Генерация уроков...';
+
+    try {
+        // Определяем количество недель
+        let weeks;
+        switch(period) {
+            case 'week':
+                weeks = 1;
+                break;
+            case 'month':
+                weeks = 5; // примерно месяц
+                break;
+            case 'three_months':
+                weeks = 13; // примерно 3 месяца
+                break;
+        }
+
+        let totalCreated = 0;
+        const today = new Date();
+
+        // Генерируем уроки для каждой недели
+        for (let i = 0; i < weeks; i++) {
+            const weekDate = new Date(today);
+            weekDate.setDate(today.getDate() + (i * 7));
+            const dateStr = weekDate.toISOString().split('T')[0];
+
+            const response = await fetch(`/zarplata/api/schedule.php?action=generate_week`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date: dateStr })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                totalCreated += result.data.created || 0;
+                log(`✓ Неделя ${i + 1}/${weeks}: создано ${result.data.created} уроков (${result.data.week_start})`, 'success');
+            } else {
+                log(`✗ Неделя ${i + 1}: ${result.error}`, 'error');
+            }
+        }
+
+        resultDiv.style.background = 'rgba(16, 185, 129, 0.1)';
+        resultDiv.style.color = '#10b981';
+        resultDiv.innerHTML = `
+            <span class="material-icons" style="vertical-align: middle;">check_circle</span>
+            <strong>Готово!</strong> Создано уроков: ${totalCreated}
+        `;
+
+        log(`✓ Всего создано уроков: ${totalCreated}`, 'success');
+        log('✓ Обновите страницу выплат для просмотра результатов', 'success');
+        log('─'.repeat(80), 'info');
+
+    } catch (error) {
+        resultDiv.style.background = 'rgba(239, 68, 68, 0.1)';
+        resultDiv.style.color = '#ef4444';
+        resultDiv.innerHTML = `
+            <span class="material-icons" style="vertical-align: middle;">error</span>
+            Ошибка: ${error.message}
+        `;
         log(`✗ Ошибка выполнения: ${error.message}`, 'error');
     }
 }
