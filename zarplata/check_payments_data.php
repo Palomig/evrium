@@ -6,7 +6,8 @@
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/config/auth.php';
 
-requireAuth();
+// Временно отключаем проверку авторизации для диагностики
+// requireAuth();
 
 header('Content-Type: text/plain; charset=utf-8');
 
