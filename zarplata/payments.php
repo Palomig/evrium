@@ -21,7 +21,8 @@ $teachers = dbQuery(
 );
 
 // Базовый SQL для выборки уроков с выплатами
-$whereClauses = ["li.status = 'completed'"];
+// Показываем ВСЕ уроки (не только completed), чтобы видеть потенциальную зарплату
+$whereClauses = ["(li.status = 'completed' OR li.status = 'scheduled')"];
 $params = [];
 
 if ($teacherFilter > 0) {
@@ -31,7 +32,7 @@ if ($teacherFilter > 0) {
 
 $whereSQL = implode(' AND ', $whereClauses);
 
-// Получить завершённые уроки с выплатами за последние 3 месяца
+// Получить уроки (завершенные и запланированные) с выплатами за последние 3 месяца
 $lessons = dbQuery(
     "SELECT
         li.id as lesson_id,
@@ -43,6 +44,7 @@ $lessons = dbQuery(
         li.expected_students,
         li.actual_students,
         li.notes,
+        li.status,
         t.id as teacher_id,
         t.name as teacher_name,
         p.id as payment_id,
@@ -51,11 +53,19 @@ $lessons = dbQuery(
         lt.tier,
         lt.grades,
         lt.students as students_json,
-        lt.room
+        lt.room,
+        COALESCE(li.formula_id, t.formula_id) as formula_id,
+        pf.type as formula_type,
+        pf.min_payment,
+        pf.per_student,
+        pf.threshold,
+        pf.fixed_amount,
+        pf.expression
     FROM lessons_instance li
     LEFT JOIN teachers t ON li.teacher_id = t.id
     LEFT JOIN payments p ON li.id = p.lesson_instance_id
     LEFT JOIN lessons_template lt ON li.template_id = lt.id
+    LEFT JOIN payment_formulas pf ON COALESCE(li.formula_id, t.formula_id) = pf.id
     WHERE $whereSQL
         AND li.lesson_date >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)
     ORDER BY li.lesson_date DESC, li.time_start ASC",
@@ -116,10 +126,46 @@ foreach ($lessons as $lesson) {
     }
 
     // Подсчёт суммы
-    $amount = (int)($lesson['amount'] ?? 0);
+    // Для completed уроков берем реальную сумму из payments
+    // Для scheduled уроков рассчитываем потенциальную зарплату
+    if ($lesson['status'] === 'completed' && $lesson['amount']) {
+        $amount = (int)$lesson['amount'];
+    } elseif ($lesson['status'] === 'scheduled') {
+        // Рассчитываем потенциальную зарплату на основе формулы
+        $studentsCount = $lesson['expected_students'] ?? 1;
+        $amount = 0;
+
+        if ($lesson['formula_type'] === 'min_plus_per') {
+            $minPayment = $lesson['min_payment'] ?? 0;
+            $perStudent = $lesson['per_student'] ?? 0;
+            $threshold = $lesson['threshold'] ?? 2;
+
+            $amount = $minPayment;
+            if ($studentsCount > $threshold) {
+                $amount += ($studentsCount - $threshold) * $perStudent;
+            }
+        } elseif ($lesson['formula_type'] === 'fixed') {
+            $amount = $lesson['fixed_amount'] ?? 0;
+        } elseif ($lesson['formula_type'] === 'expression') {
+            // Простая обработка expression (если нужно, можно улучшить)
+            // Заменяем N на количество учеников
+            $expression = str_replace('N', $studentsCount, $lesson['expression'] ?? '0');
+            try {
+                $amount = @eval("return $expression;");
+            } catch (Exception $e) {
+                $amount = 0;
+            }
+        }
+    } else {
+        $amount = (int)($lesson['amount'] ?? 0);
+    }
+
     $dataByMonth[$monthKey]['total'] += $amount;
 
-    if ($lesson['payment_status'] === 'pending') {
+    // Для scheduled уроков считаем как pending
+    if ($lesson['status'] === 'scheduled') {
+        $dataByMonth[$monthKey]['pending'] += $amount;
+    } elseif ($lesson['payment_status'] === 'pending') {
         $dataByMonth[$monthKey]['pending'] += $amount;
     } elseif ($lesson['payment_status'] === 'approved') {
         $dataByMonth[$monthKey]['approved'] += $amount;
@@ -207,6 +253,7 @@ foreach ($lessons as $lesson) {
         'amount' => $amount,
         'payment_id' => $lesson['payment_id'],
         'payment_status' => $lesson['payment_status'],
+        'lesson_status' => $lesson['status'], // scheduled или completed
         'tier' => $lesson['tier'],
         'duration' => $duration
     ];
@@ -783,6 +830,21 @@ require_once __DIR__ . '/templates/header.php';
             color: white;
         }
 
+        /* Scheduled lessons */
+        .lesson-scheduled {
+            opacity: 0.6;
+            background: rgba(251, 191, 36, 0.03);
+        }
+
+        .lesson-scheduled:hover {
+            opacity: 0.8;
+        }
+
+        .amount-estimated {
+            color: var(--md-warning);
+            font-style: italic;
+        }
+
         /* Empty state */
         .empty-state {
             padding: 48px;
@@ -806,6 +868,10 @@ require_once __DIR__ . '/templates/header.php';
                         </svg>
                         Экспорт
                     </a>
+                    <button onclick="openJournalModal()" class="btn btn-secondary">
+                        <span class="material-icons" style="font-size: 16px;">history</span>
+                        Журнал событий
+                    </button>
                 </div>
 
             <!-- Teacher Filter -->
@@ -951,7 +1017,7 @@ require_once __DIR__ . '/templates/header.php';
                                     <!-- Lessons -->
                                     <div class="lessons-container">
                                         <?php foreach ($day['lessons'] as $lesson): ?>
-                                            <div class="lesson-item">
+                                            <div class="lesson-item <?= $lesson['lesson_status'] === 'scheduled' ? 'lesson-scheduled' : '' ?>">
                                                 <div class="lesson-time"><?= e($lesson['time']) ?></div>
                                                 <div class="lesson-subject-cell">
                                                     <?php if (!empty($lesson['students'])): ?>
@@ -968,10 +1034,18 @@ require_once __DIR__ . '/templates/header.php';
                                                         <?= $lesson['type'] === 'individual' ? 'инд' : 'груп' ?>
                                                     </span>
                                                     <span class="lesson-subject-name"><?= e($lesson['subject']) ?></span>
+                                                    <?php if ($lesson['lesson_status'] === 'scheduled'): ?>
+                                                        <span style="font-size: 10px; color: var(--md-warning); margin-left: 4px;">запл.</span>
+                                                    <?php endif; ?>
                                                 </div>
                                                 <div class="day-hours"><?= number_format($lesson['duration'], 1) ?> ч</div>
                                                 <div class="day-absences">—</div>
-                                                <div class="lesson-amount"><?= formatMoney($lesson['amount']) ?></div>
+                                                <div class="lesson-amount <?= $lesson['lesson_status'] === 'scheduled' ? 'amount-estimated' : '' ?>">
+                                                    <?= formatMoney($lesson['amount']) ?>
+                                                    <?php if ($lesson['lesson_status'] === 'scheduled'): ?>
+                                                        <span style="font-size: 10px; color: var(--text-disabled); margin-left: 2px;">~</span>
+                                                    <?php endif; ?>
+                                                </div>
                                                 <button
                                                     class="lesson-approve <?= in_array($lesson['payment_status'], ['approved', 'paid']) ? 'approved' : '' ?>"
                                                     onclick="event.stopPropagation()"
@@ -991,9 +1065,16 @@ require_once __DIR__ . '/templates/header.php';
                 <?php endforeach; ?>
             <?php endif; ?>
 
-            <!-- Журнал событий -->
-            <section class="audit-log-section" style="margin-top: 40px;">
-                <div class="section-header" style="margin-bottom: 20px;">
+
+        </main>
+    </div>
+
+    <!-- Модальное окно журнала событий -->
+    <div id="journalModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
+        <div class="modal-content" style="background: var(--bg-card); border-radius: 16px; max-width: 1200px; max-height: 80vh; width: 90%; overflow: hidden; display: flex; flex-direction: column;">
+            <!-- Header -->
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 24px 28px; border-bottom: 1px solid var(--border);">
+                <div>
                     <h2 style="font-size: 24px; font-weight: 700; color: var(--text-high-emphasis); margin: 0;">
                         Журнал событий
                     </h2>
@@ -1001,7 +1082,13 @@ require_once __DIR__ . '/templates/header.php';
                         История действий с выплатами и уроками
                     </p>
                 </div>
+                <button onclick="closeJournalModal()" class="btn-icon" style="background: var(--bg-hover); border: none; border-radius: 8px; padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">
+                    <span class="material-icons" style="font-size: 24px; color: var(--text-medium-emphasis);">close</span>
+                </button>
+            </div>
 
+            <!-- Body -->
+            <div class="modal-body" style="padding: 24px 28px; overflow-y: auto; flex: 1;">
                 <?php if (empty($auditLogs)): ?>
                     <div class="empty-state">
                         <p>Журнал событий пуст</p>
@@ -1088,23 +1175,25 @@ require_once __DIR__ . '/templates/header.php';
                                         </span>
                                     </div>
                                 </div>
-
-                                <style>
-                                    .audit-entry:hover {
-                                        background: var(--bg-hover);
-                                    }
-                                    .audit-entry:last-child {
-                                        border-bottom: none;
-                                    }
-                                </style>
                             <?php endforeach; ?>
                         </div>
                     </div>
                 <?php endif; ?>
-            </section>
-
-        </main>
+            </div>
+        </div>
     </div>
+
+    <style>
+        .audit-entry:hover {
+            background: var(--bg-hover);
+        }
+        .audit-entry:last-child {
+            border-bottom: none;
+        }
+        .btn-icon:hover {
+            background: var(--bg-dark) !important;
+        }
+    </style>
 
     <script>
         // Toggle day expansion
@@ -1128,6 +1217,26 @@ require_once __DIR__ . '/templates/header.php';
                 lessonsContainer.classList.add('expanded');
             }
         }
+
+        // Open journal modal
+        function openJournalModal() {
+            const modal = document.getElementById('journalModal');
+            modal.style.display = 'flex';
+        }
+
+        // Close journal modal
+        function closeJournalModal() {
+            const modal = document.getElementById('journalModal');
+            modal.style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('journalModal');
+            if (event.target === modal) {
+                closeJournalModal();
+            }
+        });
     </script>
 
 <!-- Модальное окно корректировки выплат -->
