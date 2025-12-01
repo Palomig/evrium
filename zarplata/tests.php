@@ -125,6 +125,33 @@ require_once __DIR__ . '/templates/header.php';
     </div>
 </div>
 
+<!-- Исправление данных уроков -->
+<div class="table-container">
+    <div class="table-header">
+        <h2 class="table-title">Исправление данных уроков</h2>
+    </div>
+    <div style="padding: 24px;">
+        <div style="margin-bottom: 20px; padding: 16px; background: rgba(251, 191, 36, 0.1); border-radius: 8px; color: #fbbf24;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span class="material-icons">build</span>
+                <strong>Исправление пустых данных</strong>
+            </div>
+            <div style="font-size: 0.875rem; line-height: 1.5;">
+                Исправляет уроки, у которых отсутствуют формулы выплат или предметы.
+                <br>1. Назначает формулы преподавателям (если отсутствуют)
+                <br>2. Обновляет существующие уроки, копируя данные из шаблонов
+            </div>
+        </div>
+        <div class="test-buttons">
+            <button class="btn btn-primary" onclick="fixLessonsData()">
+                <span class="material-icons">build_circle</span>
+                Исправить данные уроков
+            </button>
+        </div>
+        <div id="fix-result" style="margin-top: 16px; padding: 12px; border-radius: 8px; display: none;"></div>
+    </div>
+</div>
+
 <!-- Миграция данных -->
 <div class="table-container">
     <div class="table-header">
@@ -777,6 +804,68 @@ async function generateLessons(period) {
 
         log(`✓ Всего создано уроков: ${totalCreated}`, 'success');
         log('✓ Обновите страницу выплат для просмотра результатов', 'success');
+        log('─'.repeat(80), 'info');
+
+    } catch (error) {
+        resultDiv.style.background = 'rgba(239, 68, 68, 0.1)';
+        resultDiv.style.color = '#ef4444';
+        resultDiv.innerHTML = `
+            <span class="material-icons" style="vertical-align: middle;">error</span>
+            Ошибка: ${error.message}
+        `;
+        log(`✗ Ошибка выполнения: ${error.message}`, 'error');
+    }
+}
+
+// Исправление данных уроков
+async function fixLessonsData() {
+    if (!confirm('🔧 Исправить данные уроков?\n\n1. Назначить формулы преподавателям\n2. Обновить уроки из шаблонов')) {
+        return;
+    }
+
+    const resultDiv = document.getElementById('fix-result');
+    resultDiv.style.display = 'block';
+    resultDiv.style.background = 'rgba(129, 140, 248, 0.1)';
+    resultDiv.style.color = '#818cf8';
+    resultDiv.innerHTML = '<span class="material-icons" style="vertical-align: middle;">hourglass_empty</span> Исправление данных...';
+
+    try {
+        log('🔧 Запуск исправления данных уроков...', 'info');
+
+        const response = await fetch('/zarplata/fix_lessons_data.php?action=full_fix', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            resultDiv.style.background = 'rgba(16, 185, 129, 0.1)';
+            resultDiv.style.color = '#10b981';
+            resultDiv.innerHTML = `
+                <span class="material-icons" style="vertical-align: middle;">check_circle</span>
+                <strong>Готово!</strong> ${result.message}
+            `;
+
+            log(`✓ ${result.message}`, 'success');
+            log(`✓ Обновлено уроков: ${result.updated || 0}`, 'success');
+
+            if (result.errors && result.errors.length > 0) {
+                log(`⚠️ Ошибки:`, 'warning');
+                result.errors.forEach(err => log(`  ${err}`, 'warning'));
+            }
+
+            log('✓ Обновите страницу выплат для просмотра результатов', 'success');
+        } else {
+            resultDiv.style.background = 'rgba(239, 68, 68, 0.1)';
+            resultDiv.style.color = '#ef4444';
+            resultDiv.innerHTML = `
+                <span class="material-icons" style="vertical-align: middle;">error</span>
+                Ошибка: ${result.error}
+            `;
+            log(`✗ Ошибка: ${result.error}`, 'error');
+        }
+
         log('─'.repeat(80), 'info');
 
     } catch (error) {
