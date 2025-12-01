@@ -19,14 +19,24 @@ $action = $_GET['action'] ?? '';
 try {
     switch ($action) {
         case 'assign_formulas':
-            assignFormulasToTeachers();
+            $result = assignFormulasToTeachers();
+            echo json_encode($result);
             break;
         case 'update_lessons':
-            updateLessonsFromTemplates();
+            $result = updateLessonsFromTemplates();
+            echo json_encode($result);
             break;
         case 'full_fix':
-            assignFormulasToTeachers();
-            updateLessonsFromTemplates();
+            $result1 = assignFormulasToTeachers();
+            $result2 = updateLessonsFromTemplates();
+
+            echo json_encode([
+                'success' => true,
+                'message' => "Обновлено уроков: " . ($result2['updated'] ?? 0),
+                'updated' => $result2['updated'] ?? 0,
+                'formulas_assigned' => $result1['updated'] ?? 0,
+                'errors' => $result2['errors'] ?? []
+            ]);
             break;
         default:
             echo json_encode(['success' => false, 'error' => 'Неизвестное действие']);
@@ -58,11 +68,11 @@ function assignFormulasToTeachers() {
     );
     if ($result2) $updated++;
 
-    echo json_encode([
+    return [
         'success' => true,
         'message' => "Назначено формул преподавателям",
         'updated' => $updated
-    ]);
+    ];
 }
 
 /**
@@ -114,10 +124,10 @@ function updateLessonsFromTemplates() {
         }
     }
 
-    echo json_encode([
+    return [
         'success' => true,
         'message' => "Обновлено уроков: $updated",
         'updated' => $updated,
         'errors' => $errors
-    ]);
+    ];
 }
