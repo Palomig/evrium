@@ -1,136 +1,96 @@
 <?php
 /**
- * Проверка данных для страницы выплат
+ * Диагностика данных для страницы Выплаты
  */
 
 require_once __DIR__ . '/config/db.php';
-require_once __DIR__ . '/config/auth.php';
 
-// Временно отключаем проверку авторизации для диагностики
-// requireAuth();
+echo "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Диагностика</title>";
+echo "<style>body{font-family:monospace;background:#1a1a1a;color:#fff;padding:20px;}";
+echo ".section{background:#2a2a2a;padding:15px;margin:15px 0;border-radius:5px;}";
+echo ".ok{color:#10b981;}.error{color:#ef4444;}.warning{color:#f59e0b;}";
+echo "table{border-collapse:collapse;width:100%;margin-top:10px;}";
+echo "th,td{padding:8px;text-align:left;border:1px solid #444;}th{background:#333;}";
+echo "pre{background:#0a0a0a;padding:10px;border-radius:5px;overflow-x:auto;}</style></head><body>";
+echo "<h1>🔍 Диагностика данных для страницы Выплаты</h1>";
 
-header('Content-Type: text/plain; charset=utf-8');
+// 1. lessons_instance
+echo "<div class='section'><h2>1. Таблица lessons_instance</h2>";
+$lessons = dbQuery("SELECT COUNT(*) as count FROM lessons_instance", []);
+$count = $lessons[0]['count'] ?? 0;
+echo "<p class='" . ($count > 0 ? 'ok' : 'error') . "'>Всего уроков: <strong>$count</strong></p>";
 
-echo "=== ПРОВЕРКА ДАННЫХ ДЛЯ СТРАНИЦЫ ВЫПЛАТ ===\n\n";
-
-// 1. Уроки за последние 3 месяца
-echo "1. УРОКИ ЗА ПОСЛЕДНИЕ 3 МЕСЯЦА\n";
-echo str_repeat("-", 50) . "\n";
-
-$lessons = dbQuery("
-    SELECT
-        DATE_FORMAT(lesson_date, '%Y-%m') as month,
-        status,
-        COUNT(*) as cnt
-    FROM lessons_instance
-    WHERE lesson_date >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)
-    GROUP BY month, status
-    ORDER BY month DESC, status
-", []);
-
-foreach ($lessons as $l) {
-    echo "{$l['month']}: {$l['status']} = {$l['cnt']} уроков\n";
+if ($count > 0) {
+    $statuses = dbQuery("SELECT status, COUNT(*) as count FROM lessons_instance GROUP BY status", []);
+    echo "<p>По статусам:</p><ul>";
+    foreach ($statuses as $s) echo "<li>{$s['status']}: {$s['count']}</li>";
+    echo "</ul>";
 }
+echo "</div>";
 
-// 2. Выплаты
-echo "\n\n2. ВЫПЛАТЫ\n";
-echo str_repeat("-", 50) . "\n";
+// 2. payments
+echo "<div class='section'><h2>2. Таблица payments</h2>";
+$payments = dbQuery("SELECT COUNT(*) as count FROM payments", []);
+$count = $payments[0]['count'] ?? 0;
+echo "<p class='" . ($count > 0 ? 'ok' : 'error') . "'>Всего выплат: <strong>$count</strong></p>";
 
-$payments = dbQuery("
-    SELECT
-        p.id,
-        p.lesson_instance_id,
-        p.amount,
-        p.status,
-        li.lesson_date,
-        li.subject,
-        t.name as teacher_name
-    FROM payments p
-    LEFT JOIN lessons_instance li ON p.lesson_instance_id = li.id
-    LEFT JOIN teachers t ON p.teacher_id = t.id
-    ORDER BY p.id DESC
-", []);
-
-echo "Всего выплат: " . count($payments) . "\n\n";
-foreach ($payments as $p) {
-    echo "ID {$p['id']}: {$p['amount']}₽ | {$p['status']} | lesson_id={$p['lesson_instance_id']} | {$p['lesson_date']} | {$p['subject']} | {$p['teacher_name']}\n";
-}
-
-// 3. JOIN как в payments.php
-echo "\n\n3. ДАННЫЕ ДЛЯ PAYMENTS.PHP (как в реальном запросе)\n";
-echo str_repeat("-", 50) . "\n";
-
-$realData = dbQuery("
-    SELECT
-        li.id as lesson_id,
-        li.lesson_date,
-        li.time_start,
-        li.status as lesson_status,
-        li.subject,
-        li.expected_students,
-        t.name as teacher_name,
-        p.id as payment_id,
-        p.amount as payment_amount,
-        p.status as payment_status,
-        COALESCE(li.formula_id, t.formula_id) as formula_id,
-        pf.type as formula_type,
-        pf.min_payment,
-        pf.per_student,
-        pf.threshold
-    FROM lessons_instance li
-    LEFT JOIN teachers t ON li.teacher_id = t.id
-    LEFT JOIN payments p ON li.id = p.lesson_instance_id
-    LEFT JOIN lessons_template lt ON li.template_id = lt.id
-    LEFT JOIN payment_formulas pf ON COALESCE(li.formula_id, t.formula_id) = pf.id
-    WHERE (li.status = 'completed' OR li.status = 'scheduled')
-        AND li.lesson_date >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)
-    ORDER BY li.lesson_date DESC, li.time_start ASC
-    LIMIT 20
-", []);
-
-echo "Найдено записей: " . count($realData) . "\n\n";
-foreach ($realData as $d) {
-    echo "{$d['lesson_date']} {$d['time_start']} | {$d['lesson_status']} | {$d['subject']} | {$d['teacher_name']}\n";
-    echo "  payment_id: {$d['payment_id']}, amount: {$d['payment_amount']}, status: {$d['payment_status']}\n";
-    echo "  formula: {$d['formula_type']} (id={$d['formula_id']}), expected_students: {$d['expected_students']}\n";
-    if ($d['formula_type'] === 'min_plus_per') {
-        echo "  min={$d['min_payment']}, per={$d['per_student']}, threshold={$d['threshold']}\n";
+if ($count > 0) {
+    $recent = dbQuery("SELECT id, lesson_instance_id, amount, status FROM payments ORDER BY created_at DESC LIMIT 5", []);
+    echo "<table><tr><th>ID</th><th>Lesson ID</th><th>Сумма</th><th>Статус</th></tr>";
+    foreach ($recent as $r) {
+        echo "<tr><td>{$r['id']}</td><td>{$r['lesson_instance_id']}</td><td>{$r['amount']}₽</td><td>{$r['status']}</td></tr>";
     }
-    echo "\n";
+    echo "</table>";
 }
+echo "</div>";
 
-// 4. Проверка текущей недели
-echo "\n4. ТЕКУЩАЯ НЕДЕЛЯ\n";
-echo str_repeat("-", 50) . "\n";
+// 3. Связь
+echo "<div class='section'><h2>3. Уроки с выплатами</h2>";
+$joined = dbQuery(
+    "SELECT COUNT(DISTINCT li.id) as lessons_count, COUNT(DISTINCT p.id) as payments_count
+     FROM lessons_instance li LEFT JOIN payments p ON li.id = p.lesson_instance_id",
+    []
+);
+$data = $joined[0];
+echo "<p>Уроков: {$data['lessons_count']}, Выплат: {$data['payments_count']}</p>";
 
-$today = date('Y-m-d');
-$weekStart = date('Y-m-d', strtotime('monday this week'));
-$weekEnd = date('Y-m-d', strtotime('sunday this week'));
-
-echo "Сегодня: $today\n";
-echo "Неделя: $weekStart — $weekEnd\n\n";
-
-$thisWeek = dbQuery("
-    SELECT
-        li.lesson_date,
-        li.time_start,
-        li.subject,
-        li.status,
-        p.amount,
-        t.name as teacher_name
-    FROM lessons_instance li
-    LEFT JOIN teachers t ON li.teacher_id = t.id
-    LEFT JOIN payments p ON li.id = p.lesson_instance_id
-    WHERE li.lesson_date BETWEEN ? AND ?
-    ORDER BY li.lesson_date, li.time_start
-", [$weekStart, $weekEnd]);
-
-echo "Уроков на этой неделе: " . count($thisWeek) . "\n\n";
-$totalAmount = 0;
-foreach ($thisWeek as $lesson) {
-    $totalAmount += (int)($lesson['amount'] ?? 0);
-    echo "{$lesson['lesson_date']} {$lesson['time_start']} | {$lesson['status']} | {$lesson['subject']} | {$lesson['teacher_name']} | {$lesson['amount']}₽\n";
+$withPayments = dbQuery(
+    "SELECT li.id, li.lesson_date, li.subject, p.amount
+     FROM lessons_instance li INNER JOIN payments p ON li.id = p.lesson_instance_id
+     ORDER BY li.lesson_date DESC LIMIT 5",
+    []
+);
+echo "<p class='" . (count($withPayments) > 0 ? 'ok' : 'error') . "'>Уроков с выплатами: <strong>" . count($withPayments) . "</strong></p>";
+if (count($withPayments) > 0) {
+    echo "<table><tr><th>ID</th><th>Дата</th><th>Предмет</th><th>Сумма</th></tr>";
+    foreach ($withPayments as $w) {
+        echo "<tr><td>{$w['id']}</td><td>{$w['lesson_date']}</td><td>" . ($w['subject'] ?: '—') . "</td><td>{$w['amount']}₽</td></tr>";
+    }
+    echo "</table>";
 }
-echo "\nИтого за неделю: {$totalAmount}₽\n";
+echo "</div>";
 
-echo "\n=== ПРОВЕРКА ЗАВЕРШЕНА ===\n";
+// 4. Тест запроса из payments.php
+echo "<div class='section'><h2>4. Тест запроса из payments.php</h2>";
+$testResults = dbQuery(
+    "SELECT li.id, li.lesson_date, li.time_start, p.amount
+     FROM lessons_instance li
+     LEFT JOIN payments p ON li.id = p.lesson_instance_id
+     WHERE p.id IS NOT NULL AND li.lesson_date >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)
+     LIMIT 10",
+    []
+);
+echo "<p class='" . (count($testResults) > 0 ? 'ok' : 'error') . "'>Результатов: <strong>" . count($testResults) . "</strong></p>";
+
+if (count($testResults) > 0) {
+    echo "<table><tr><th>ID</th><th>Дата</th><th>Время</th><th>Сумма</th></tr>";
+    foreach ($testResults as $t) {
+        echo "<tr><td>{$t['id']}</td><td>{$t['lesson_date']}</td><td>{$t['time_start']}</td><td>{$t['amount']}₽</td></tr>";
+    }
+    echo "</table>";
+} else {
+    echo "<p class='warning'>⚠️ Нет уроков с выплатами за последние 3 месяца!</p>";
+}
+echo "</div>";
+
+echo "</body></html>";
