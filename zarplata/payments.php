@@ -102,6 +102,21 @@ $weekdayNames = [
     'Sun' => 'Вс'
 ];
 
+$monthNamesShort = [
+    'Jan' => 'Янв',
+    'Feb' => 'Фев',
+    'Mar' => 'Мар',
+    'Apr' => 'Апр',
+    'May' => 'Май',
+    'Jun' => 'Июн',
+    'Jul' => 'Июл',
+    'Aug' => 'Авг',
+    'Sep' => 'Сен',
+    'Oct' => 'Окт',
+    'Nov' => 'Ноя',
+    'Dec' => 'Дек'
+];
+
 foreach ($lessons as $lesson) {
     $date = new DateTime($lesson['lesson_date']);
     $monthKey = $date->format('Y-m');
@@ -111,7 +126,9 @@ foreach ($lessons as $lesson) {
     $monthName = "$monthNameRu $year";
     $weekNumber = $date->format('W');
     $dayKey = $lesson['lesson_date'];
-    $dayName = $date->format('d M');
+    $dayMonthEn = $date->format('M');
+    $dayMonthRu = $monthNamesShort[$dayMonthEn] ?? $dayMonthEn;
+    $dayName = $date->format('d') . ' ' . $dayMonthRu;
     $dayWeekdayEn = $date->format('D');
     $dayWeekday = $weekdayNames[$dayWeekdayEn] ?? $dayWeekdayEn;
 
@@ -190,14 +207,32 @@ foreach ($lessons as $lesson) {
     $dataByMonth[$monthKey]['days'][$dayKey]['total'] += $amount;
     $dataByMonth[$monthKey]['days'][$dayKey]['hours'] += $duration;
 
-    if ($lesson['lesson_type'] === 'individual') {
+    // Определяем тип урока (с fallback на payment_type)
+    $lessonType = $lesson['lesson_type'] ?: 'group';
+
+    if ($lessonType === 'individual') {
         $dataByMonth[$monthKey]['days'][$dayKey]['individual_count']++;
     } else {
         $dataByMonth[$monthKey]['days'][$dayKey]['group_count']++;
     }
 
-    if ($lesson['subject'] && !in_array($lesson['subject'], $dataByMonth[$monthKey]['days'][$dayKey]['subjects'])) {
-        $dataByMonth[$monthKey]['days'][$dayKey]['subjects'][] = $lesson['subject'];
+    // Определяем предмет (с fallback на payment_type)
+    $subject = $lesson['subject'];
+    if (!$subject) {
+        $paymentTypeLabels = [
+            'lesson' => 'Урок',
+            'bonus' => 'Премия',
+            'penalty' => 'Штраф',
+            'adjustment' => 'Корректировка'
+        ];
+        $subject = $paymentTypeLabels[$lesson['payment_type']] ?? 'Выплата';
+        if ($lesson['payment_notes']) {
+            $subject .= ': ' . mb_substr($lesson['payment_notes'], 0, 30);
+        }
+    }
+
+    if ($subject && !in_array($subject, $dataByMonth[$monthKey]['days'][$dayKey]['subjects'])) {
+        $dataByMonth[$monthKey]['days'][$dayKey]['subjects'][] = $subject;
     }
 
     if (!in_array($lesson['payment_status'], ['approved', 'paid'])) {
@@ -213,18 +248,28 @@ foreach ($lessons as $lesson) {
         }
     }
 
+    // Определяем время (с fallback на время создания выплаты)
+    $time = '';
+    if ($lesson['time_start']) {
+        $time = substr($lesson['time_start'], 0, 5);
+    } else {
+        // Используем время создания выплаты
+        $time = date('H:i', strtotime($lesson['payment_created']));
+    }
+
     // Добавление урока в день
     $dataByMonth[$monthKey]['days'][$dayKey]['lessons'][] = [
         'id' => $lesson['lesson_id'],
-        'time' => substr($lesson['time_start'] ?? '', 0, 5),
-        'subject' => $lesson['subject'],
-        'type' => $lesson['lesson_type'],
+        'time' => $time,
+        'subject' => $subject,
+        'type' => $lessonType,
         'students' => $students,
         'amount' => $amount,
         'payment_id' => $lesson['payment_id'],
         'payment_status' => $lesson['payment_status'],
         'tier' => $lesson['tier'],
-        'duration' => $duration
+        'duration' => $duration,
+        'is_manual_payment' => !$lesson['lesson_id']  // Флаг для ручных выплат
     ];
 }
 
