@@ -8,8 +8,10 @@ require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/config/auth.php';
 require_once __DIR__ . '/config/helpers.php';
 
-requireAuth();
-$user = getCurrentUser();
+// ВАЖНО: Авторизация отключена для упрощения доступа
+// requireAuth();
+// $user = getCurrentUser();
+$user = null;
 
 // Обработка запроса на синхронизацию
 $syncResults = null;
