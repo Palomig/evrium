@@ -20,23 +20,31 @@ $teachers = dbQuery(
     []
 );
 
-// Базовый SQL для выборки уроков с выплатами
-// Показываем все уроки, у которых ЕСТЬ ВЫПЛАТЫ (независимо от статуса урока)
-$whereClauses = ["p.id IS NOT NULL"]; // Обязательно должна быть запись в payments
+// Базовый SQL для выборки выплат
+// Начинаем запрос с таблицы payments, чтобы показать ВСЕ выплаты (даже не привязанные к урокам)
+$whereClauses = ["p.payment_type IN ('lesson', 'bonus', 'penalty', 'adjustment')"];
 $params = [];
 
 if ($teacherFilter > 0) {
-    $whereClauses[] = "li.teacher_id = ?";
+    $whereClauses[] = "p.teacher_id = ?";
     $params[] = $teacherFilter;
 }
 
 $whereSQL = implode(' AND ', $whereClauses);
 
-// Получить уроки с выплатами за последние 3 месяца
+// Получить выплаты за последние 3 месяца
 $lessons = dbQuery(
     "SELECT
+        p.id as payment_id,
+        p.amount,
+        p.status as payment_status,
+        p.created_at as payment_created,
+        p.notes as payment_notes,
+        p.payment_type,
+        t.id as teacher_id,
+        t.name as teacher_name,
         li.id as lesson_id,
-        li.lesson_date,
+        COALESCE(li.lesson_date, DATE(p.created_at)) as lesson_date,
         li.time_start,
         li.time_end,
         li.lesson_type,
@@ -45,11 +53,6 @@ $lessons = dbQuery(
         li.actual_students,
         li.notes,
         li.status,
-        t.id as teacher_id,
-        t.name as teacher_name,
-        p.id as payment_id,
-        p.amount,
-        p.status as payment_status,
         lt.tier,
         lt.grades,
         lt.students as students_json,
@@ -61,14 +64,14 @@ $lessons = dbQuery(
         pf.threshold,
         pf.fixed_amount,
         pf.expression
-    FROM lessons_instance li
-    LEFT JOIN teachers t ON li.teacher_id = t.id
-    LEFT JOIN payments p ON li.id = p.lesson_instance_id
+    FROM payments p
+    LEFT JOIN teachers t ON p.teacher_id = t.id
+    LEFT JOIN lessons_instance li ON p.lesson_instance_id = li.id
     LEFT JOIN lessons_template lt ON li.template_id = lt.id
     LEFT JOIN payment_formulas pf ON COALESCE(li.formula_id, t.formula_id) = pf.id
     WHERE $whereSQL
-        AND li.lesson_date >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)
-    ORDER BY li.lesson_date DESC, li.time_start ASC",
+        AND COALESCE(li.lesson_date, DATE(p.created_at)) >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)
+    ORDER BY COALESCE(li.lesson_date, DATE(p.created_at)) DESC, COALESCE(li.time_start, '00:00') ASC",
     $params
 );
 
@@ -256,14 +259,13 @@ $teacherStats = [];
 foreach ($teachers as $teacher) {
     $stats = dbQueryOne(
         "SELECT
-            COUNT(DISTINCT li.id) as lesson_count,
+            COUNT(DISTINCT p.id) as lesson_count,
             SUM(p.amount) as total_amount
-        FROM lessons_instance li
-        LEFT JOIN payments p ON li.id = p.lesson_instance_id
-        WHERE li.teacher_id = ?
-            AND li.status = 'completed'
-            AND li.lesson_date >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)
-        GROUP BY li.teacher_id",
+        FROM payments p
+        WHERE p.teacher_id = ?
+            AND p.payment_type IN ('lesson', 'bonus', 'penalty', 'adjustment')
+            AND p.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)
+        GROUP BY p.teacher_id",
         [$teacher['id']]
     );
 
