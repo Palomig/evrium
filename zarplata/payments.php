@@ -21,8 +21,8 @@ $teachers = dbQuery(
 );
 
 // Базовый SQL для выборки уроков с выплатами
-// Показываем только ЗАВЕРШЁННЫЕ уроки (completed) с реальными выплатами
-$whereClauses = ["li.status = 'completed'"];
+// Показываем все уроки, у которых ЕСТЬ ВЫПЛАТЫ (независимо от статуса урока)
+$whereClauses = ["p.id IS NOT NULL"]; // Обязательно должна быть запись в payments
 $params = [];
 
 if ($teacherFilter > 0) {
@@ -32,7 +32,7 @@ if ($teacherFilter > 0) {
 
 $whereSQL = implode(' AND ', $whereClauses);
 
-// Получить завершённые уроки с выплатами за последние 3 месяца
+// Получить уроки с выплатами за последние 3 месяца
 $lessons = dbQuery(
     "SELECT
         li.id as lesson_id,
