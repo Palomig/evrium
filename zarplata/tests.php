@@ -152,6 +152,32 @@ require_once __DIR__ . '/templates/header.php';
     </div>
 </div>
 
+<!-- Синхронизация количества студентов -->
+<div class="table-container">
+    <div class="table-header">
+        <h2 class="table-title">Синхронизация количества студентов</h2>
+    </div>
+    <div style="padding: 24px;">
+        <div style="margin-bottom: 20px; padding: 16px; background: rgba(20, 184, 166, 0.1); border-radius: 8px; color: #14b8a6;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span class="material-icons">sync</span>
+                <strong>Синхронизация expected_students</strong>
+            </div>
+            <div style="font-size: 0.875rem; line-height: 1.5;">
+                Обновляет поле <code>expected_students</code> в шаблонах расписания на основе реального количества студентов в JSON-массиве <code>students</code>.
+                <br>Это необходимо для корректного расчёта выплат на странице "Выплаты", особенно для запланированных уроков.
+            </div>
+        </div>
+        <div class="test-buttons">
+            <button class="btn btn-primary" onclick="syncStudentsCount()">
+                <span class="material-icons">sync</span>
+                Синхронизировать количество студентов
+            </button>
+        </div>
+        <div id="sync-result" style="margin-top: 16px;"></div>
+    </div>
+</div>
+
 <!-- Миграция данных -->
 <div class="table-container">
     <div class="table-header">
@@ -856,6 +882,78 @@ async function fixLessonsData() {
             }
 
             log('✓ Обновите страницу выплат для просмотра результатов', 'success');
+        } else {
+            resultDiv.style.background = 'rgba(239, 68, 68, 0.1)';
+            resultDiv.style.color = '#ef4444';
+            resultDiv.innerHTML = `
+                <span class="material-icons" style="vertical-align: middle;">error</span>
+                Ошибка: ${result.error}
+            `;
+            log(`✗ Ошибка: ${result.error}`, 'error');
+        }
+
+        log('─'.repeat(80), 'info');
+
+    } catch (error) {
+        resultDiv.style.background = 'rgba(239, 68, 68, 0.1)';
+        resultDiv.style.color = '#ef4444';
+        resultDiv.innerHTML = `
+            <span class="material-icons" style="vertical-align: middle;">error</span>
+            Ошибка: ${error.message}
+        `;
+        log(`✗ Ошибка выполнения: ${error.message}`, 'error');
+    }
+}
+
+// Синхронизация количества студентов
+async function syncStudentsCount() {
+    if (!confirm('🔄 Синхронизировать количество студентов?\n\nОбновит поле expected_students на основе реального количества в JSON.')) {
+        return;
+    }
+
+    const resultDiv = document.getElementById('sync-result');
+    resultDiv.style.display = 'block';
+    resultDiv.style.padding = '12px';
+    resultDiv.style.borderRadius = '8px';
+    resultDiv.style.background = 'rgba(129, 140, 248, 0.1)';
+    resultDiv.style.color = '#818cf8';
+    resultDiv.innerHTML = '<span class="material-icons" style="vertical-align: middle;">hourglass_empty</span> Синхронизация...';
+
+    try {
+        log('🔄 Запуск синхронизации количества студентов...', 'info');
+
+        const response = await fetch('/zarplata/api/sync_students.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            resultDiv.style.background = 'rgba(16, 185, 129, 0.1)';
+            resultDiv.style.color = '#10b981';
+            resultDiv.innerHTML = `
+                <span class="material-icons" style="vertical-align: middle;">check_circle</span>
+                <strong>Готово!</strong> Всего: ${result.data.total}, Обновлено: ${result.data.updated}, Пропущено: ${result.data.skipped}
+            `;
+
+            log(`✓ Синхронизация завершена`, 'success');
+            log(`  Всего шаблонов: ${result.data.total}`, 'info');
+            log(`  Обновлено: ${result.data.updated}`, 'success');
+            log(`  Без изменений: ${result.data.skipped}`, 'info');
+            log(`  Ошибок: ${result.data.errors}`, result.data.errors > 0 ? 'warning' : 'info');
+
+            // Выводим детали
+            if (result.data.details && result.data.details.length > 0) {
+                log(`📋 Детали изменений:`, 'info');
+                result.data.details.forEach(detail => {
+                    if (detail.updated) {
+                        log(`  ID ${detail.id} (${detail.day} ${detail.time}): ${detail.expected} → ${detail.real} студентов`, 'success');
+                    }
+                });
+            }
+
+            log('✓ Рекомендуется обновить страницу "Выплаты"', 'success');
         } else {
             resultDiv.style.background = 'rgba(239, 68, 68, 0.1)';
             resultDiv.style.color = '#ef4444';
