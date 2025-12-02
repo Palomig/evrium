@@ -21,8 +21,8 @@ $teachers = dbQuery(
 );
 
 // Базовый SQL для выборки уроков с выплатами
-// Показываем ВСЕ уроки (не только completed), чтобы видеть потенциальную зарплату
-$whereClauses = ["(li.status = 'completed' OR li.status = 'scheduled')"];
+// Показываем только ЗАВЕРШЁННЫЕ уроки (completed) с реальными выплатами
+$whereClauses = ["li.status = 'completed'"];
 $params = [];
 
 if ($teacherFilter > 0) {
@@ -32,7 +32,7 @@ if ($teacherFilter > 0) {
 
 $whereSQL = implode(' AND ', $whereClauses);
 
-// Получить уроки (завершенные и запланированные) с выплатами за последние 3 месяца
+// Получить завершённые уроки с выплатами за последние 3 месяца
 $lessons = dbQuery(
     "SELECT
         li.id as lesson_id,
@@ -126,56 +126,13 @@ foreach ($lessons as $lesson) {
     }
 
     // Подсчёт суммы
-    // Для completed уроков берем реальную сумму из payments
-    // Для scheduled уроков рассчитываем потенциальную зарплату
-    if ($lesson['status'] === 'completed' && $lesson['amount']) {
-        $amount = (int)$lesson['amount'];
-    } elseif ($lesson['status'] === 'scheduled') {
-        // Рассчитываем потенциальную зарплату на основе формулы
-        // Используем РЕАЛЬНОЕ количество студентов из JSON, а не expected_students
-        $studentsCount = $lesson['expected_students'] ?? 1;
-
-        // Парсим students_json чтобы получить точное количество
-        if ($lesson['students_json']) {
-            $studentsData = json_decode($lesson['students_json'], true);
-            if (is_array($studentsData)) {
-                $studentsCount = count($studentsData);
-            }
-        }
-
-        $amount = 0;
-
-        if ($lesson['formula_type'] === 'min_plus_per') {
-            $minPayment = $lesson['min_payment'] ?? 0;
-            $perStudent = $lesson['per_student'] ?? 0;
-            $threshold = $lesson['threshold'] ?? 2;
-
-            $amount = $minPayment;
-            if ($studentsCount > $threshold) {
-                $amount += ($studentsCount - $threshold) * $perStudent;
-            }
-        } elseif ($lesson['formula_type'] === 'fixed') {
-            $amount = $lesson['fixed_amount'] ?? 0;
-        } elseif ($lesson['formula_type'] === 'expression') {
-            // Простая обработка expression (если нужно, можно улучшить)
-            // Заменяем N на количество учеников
-            $expression = str_replace('N', $studentsCount, $lesson['expression'] ?? '0');
-            try {
-                $amount = @eval("return $expression;");
-            } catch (Exception $e) {
-                $amount = 0;
-            }
-        }
-    } else {
-        $amount = (int)($lesson['amount'] ?? 0);
-    }
+    // Берём реальную сумму из payments (только для completed уроков)
+    $amount = (int)($lesson['amount'] ?? 0);
 
     $dataByMonth[$monthKey]['total'] += $amount;
 
-    // Для scheduled уроков считаем как pending
-    if ($lesson['status'] === 'scheduled') {
-        $dataByMonth[$monthKey]['pending'] += $amount;
-    } elseif ($lesson['payment_status'] === 'pending') {
+    // Распределяем по статусам выплат
+    if ($lesson['payment_status'] === 'pending') {
         $dataByMonth[$monthKey]['pending'] += $amount;
     } elseif ($lesson['payment_status'] === 'approved') {
         $dataByMonth[$monthKey]['approved'] += $amount;
@@ -263,7 +220,6 @@ foreach ($lessons as $lesson) {
         'amount' => $amount,
         'payment_id' => $lesson['payment_id'],
         'payment_status' => $lesson['payment_status'],
-        'lesson_status' => $lesson['status'], // scheduled или completed
         'tier' => $lesson['tier'],
         'duration' => $duration
     ];
@@ -840,21 +796,6 @@ require_once __DIR__ . '/templates/header.php';
             color: white;
         }
 
-        /* Scheduled lessons */
-        .lesson-scheduled {
-            opacity: 0.6;
-            background: rgba(251, 191, 36, 0.03);
-        }
-
-        .lesson-scheduled:hover {
-            opacity: 0.8;
-        }
-
-        .amount-estimated {
-            color: var(--md-warning);
-            font-style: italic;
-        }
-
         /* Empty state */
         .empty-state {
             padding: 48px;
@@ -1027,7 +968,7 @@ require_once __DIR__ . '/templates/header.php';
                                     <!-- Lessons -->
                                     <div class="lessons-container">
                                         <?php foreach ($day['lessons'] as $lesson): ?>
-                                            <div class="lesson-item <?= $lesson['lesson_status'] === 'scheduled' ? 'lesson-scheduled' : '' ?>">
+                                            <div class="lesson-item">
                                                 <div class="lesson-time"><?= e($lesson['time']) ?></div>
                                                 <div class="lesson-subject-cell">
                                                     <?php if (!empty($lesson['students'])): ?>
@@ -1044,17 +985,11 @@ require_once __DIR__ . '/templates/header.php';
                                                         <?= $lesson['type'] === 'individual' ? 'инд' : 'груп' ?>
                                                     </span>
                                                     <span class="lesson-subject-name"><?= e($lesson['subject']) ?></span>
-                                                    <?php if ($lesson['lesson_status'] === 'scheduled'): ?>
-                                                        <span style="font-size: 10px; color: var(--md-warning); margin-left: 4px;">запл.</span>
-                                                    <?php endif; ?>
                                                 </div>
                                                 <div class="day-hours"><?= number_format($lesson['duration'], 1) ?> ч</div>
                                                 <div class="day-absences">—</div>
-                                                <div class="lesson-amount <?= $lesson['lesson_status'] === 'scheduled' ? 'amount-estimated' : '' ?>">
+                                                <div class="lesson-amount">
                                                     <?= formatMoney($lesson['amount']) ?>
-                                                    <?php if ($lesson['lesson_status'] === 'scheduled'): ?>
-                                                        <span style="font-size: 10px; color: var(--text-disabled); margin-left: 2px;">~</span>
-                                                    <?php endif; ?>
                                                 </div>
                                                 <button
                                                     class="lesson-approve <?= in_array($lesson['payment_status'], ['approved', 'paid']) ? 'approved' : '' ?>"
