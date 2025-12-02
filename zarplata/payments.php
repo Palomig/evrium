@@ -132,7 +132,17 @@ foreach ($lessons as $lesson) {
         $amount = (int)$lesson['amount'];
     } elseif ($lesson['status'] === 'scheduled') {
         // Рассчитываем потенциальную зарплату на основе формулы
+        // Используем РЕАЛЬНОЕ количество студентов из JSON, а не expected_students
         $studentsCount = $lesson['expected_students'] ?? 1;
+
+        // Парсим students_json чтобы получить точное количество
+        if ($lesson['students_json']) {
+            $studentsData = json_decode($lesson['students_json'], true);
+            if (is_array($studentsData)) {
+                $studentsCount = count($studentsData);
+            }
+        }
+
         $amount = 0;
 
         if ($lesson['formula_type'] === 'min_plus_per') {
