@@ -50,7 +50,100 @@ switch ($action) {
 }
 
 /**
- * Получить список шаблонов
+ * ⭐ HELPER FUNCTION: Получить список студентов для шаблона урока
+ * Динамически читает из таблицы students на основе их расписания
+ *
+ * @param array $template Шаблон урока из lessons_template
+ * @return array ['students' => [...], 'count' => N, 'classes' => 'X, Y, Z']
+ */
+function getStudentsForTemplate($template) {
+    $teacherId = $template['teacher_id'];
+    $dayOfWeek = $template['day_of_week'];
+    $timeStart = substr($template['time_start'], 0, 5); // "17:00:00" -> "17:00"
+
+    // Получаем всех активных студентов этого преподавателя
+    $allStudents = dbQuery(
+        "SELECT id, name, class, schedule
+         FROM students
+         WHERE active = 1 AND teacher_id = ?",
+        [$teacherId]
+    );
+
+    $studentsForLesson = [];
+    $studentClasses = [];
+
+    foreach ($allStudents as $student) {
+        if (!$student['schedule']) continue;
+
+        $schedule = json_decode($student['schedule'], true);
+        if (!is_array($schedule)) continue;
+
+        $hasThisLesson = false;
+
+        // Проверяем формат расписания
+        // Формат 1: [{"day": "Monday", "time": "17:00"}, ...]
+        // Формат 2: {"1": "17:00", "3": "19:00"}
+        foreach ($schedule as $key => $entry) {
+            if (is_array($entry)) {
+                // Формат 1: массив объектов
+                $entryDay = $entry['day'] ?? null;
+                $entryTime = $entry['time'] ?? null;
+
+                // Преобразуем день из названия в номер
+                $dayMap = [
+                    'Monday' => 1, 'Пн' => 1, 'понедельник' => 1,
+                    'Tuesday' => 2, 'Вт' => 2, 'вторник' => 2,
+                    'Wednesday' => 3, 'Ср' => 3, 'среда' => 3,
+                    'Thursday' => 4, 'Чт' => 4, 'четверг' => 4,
+                    'Friday' => 5, 'Пт' => 5, 'пятница' => 5,
+                    'Saturday' => 6, 'Сб' => 6, 'суббота' => 6,
+                    'Sunday' => 7, 'Вс' => 7, 'воскресенье' => 7
+                ];
+
+                $entryDayNum = $dayMap[$entryDay] ?? (int)$entryDay;
+
+                if ($entryDayNum == $dayOfWeek && substr($entryTime, 0, 5) == $timeStart) {
+                    $hasThisLesson = true;
+                    break;
+                }
+            } else {
+                // Формат 2: объект {"1": "17:00"}
+                if ((int)$key == $dayOfWeek && substr($entry, 0, 5) == $timeStart) {
+                    $hasThisLesson = true;
+                    break;
+                }
+            }
+        }
+
+        if ($hasThisLesson) {
+            $studentName = $student['name'];
+            if ($student['class']) {
+                $studentName .= " ({$student['class']} кл.)";
+                $studentClasses[] = (int)$student['class'];
+            }
+            $studentsForLesson[] = [
+                'id' => $student['id'],
+                'name' => $student['name'],
+                'class' => $student['class'],
+                'display' => $studentName
+            ];
+        }
+    }
+
+    // Формируем строку с классами
+    $studentClasses = array_unique($studentClasses);
+    sort($studentClasses);
+    $classesStr = !empty($studentClasses) ? implode(', ', $studentClasses) : '';
+
+    return [
+        'students' => $studentsForLesson,
+        'count' => count($studentsForLesson),
+        'classes' => $classesStr
+    ];
+}
+
+/**
+ * Получить список шаблонов с динамическим расчетом студентов
  */
 function handleListTemplates() {
     $templates = dbQuery(
@@ -63,11 +156,19 @@ function handleListTemplates() {
         []
     );
 
+    // ⭐ НОВАЯ ЛОГИКА: Добавляем динамический список студентов для каждого шаблона
+    foreach ($templates as &$template) {
+        $studentsData = getStudentsForTemplate($template);
+        $template['students_array'] = $studentsData['students'];
+        $template['actual_student_count'] = $studentsData['count'];
+        $template['student_classes'] = $studentsData['classes'];
+    }
+
     jsonSuccess($templates);
 }
 
 /**
- * Получить один шаблон
+ * Получить один шаблон с динамическим расчетом студентов
  */
 function handleGetTemplate() {
     $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
@@ -84,6 +185,12 @@ function handleGetTemplate() {
     if (!$template) {
         jsonError('Шаблон не найден', 404);
     }
+
+    // ⭐ НОВАЯ ЛОГИКА: Добавляем динамический список студентов
+    $studentsData = getStudentsForTemplate($template);
+    $template['students_array'] = $studentsData['students'];
+    $template['actual_student_count'] = $studentsData['count'];
+    $template['student_classes'] = $studentsData['classes'];
 
     jsonSuccess($template);
 }
@@ -121,7 +228,8 @@ function handleAddTemplate() {
 
     $tier = trim($data['tier'] ?? 'C');
     $grades = trim($data['grades'] ?? '');
-    $students = $data['students'] ?? '';
+    // ⭐ ИЗМЕНЕНИЕ: Больше НЕ сохраняем students в БД (читаем динамически из таблицы students)
+    // Поле students в форме игнорируется
 
     if (!$teacherId) {
         jsonError('Выберите преподавателя', 400);
@@ -148,14 +256,14 @@ function handleAddTemplate() {
     $lastError = null;
 
     try {
-        // Сначала пробуем с новыми полями (room, tier, grades, students)
+        // ⭐ ИЗМЕНЕНИЕ: Убрали поле students из INSERT (больше не сохраняем)
         $templateId = dbExecute(
             "INSERT INTO lessons_template
              (teacher_id, day_of_week, room, time_start, time_end, lesson_type,
-              subject, expected_students, formula_id, tier, grades, students, active)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
+              subject, expected_students, formula_id, tier, grades, active)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
             [$teacherId, $dayOfWeek, $room, $timeStart, $timeEnd, $lessonType,
-             $subject ?: null, $expectedStudents, $formulaId, $tier, $grades ?: null, $students ?: null]
+             $subject ?: null, $expectedStudents, $formulaId, $tier, $grades ?: null]
         );
 
         if (!$templateId) {
@@ -257,7 +365,8 @@ function handleUpdateTemplate() {
 
     $tier = trim($data['tier'] ?? 'C');
     $grades = trim($data['grades'] ?? '');
-    $students = $data['students'] ?? '';
+    // ⭐ ИЗМЕНЕНИЕ: Больше НЕ сохраняем students в БД (читаем динамически из таблицы students)
+    // Поле students в форме игнорируется
 
     if (!$teacherId) {
         jsonError('Выберите преподавателя', 400);
@@ -277,15 +386,15 @@ function handleUpdateTemplate() {
 
     // Обновляем шаблон
     try {
-        // Сначала пробуем с новыми полями (room, tier, grades, students)
+        // ⭐ ИЗМЕНЕНИЕ: Убрали поле students из UPDATE (больше не сохраняем)
         $result = dbExecute(
             "UPDATE lessons_template
              SET teacher_id = ?, day_of_week = ?, room = ?, time_start = ?, time_end = ?,
                  lesson_type = ?, subject = ?, expected_students = ?,
-                 formula_id = ?, tier = ?, grades = ?, students = ?, updated_at = NOW()
+                 formula_id = ?, tier = ?, grades = ?, updated_at = NOW()
              WHERE id = ?",
             [$teacherId, $dayOfWeek, $room, $timeStart, $timeEnd, $lessonType,
-             $subject ?: null, $expectedStudents, $formulaId, $tier, $grades ?: null, $students ?: null, $id]
+             $subject ?: null, $expectedStudents, $formulaId, $tier, $grades ?: null, $id]
         );
     } catch (PDOException $e) {
         // Если ошибка из-за отсутствующих полей - пробуем без них
@@ -369,8 +478,8 @@ function handleMoveTemplate() {
             [$newDayOfWeek, $newRoom, $newTimeStart, $newTimeEnd, $id]
         );
 
-        // Синхронизация с учениками
-        syncStudentsSchedule($oldTemplate, $newDayOfWeek, $newTimeStart, $newRoom);
+        // ⭐ УДАЛЕНО: syncStudentsSchedule() больше не нужна
+        // Студенты читаются динамически из таблицы students, синхронизация не требуется
 
         logAudit('template_moved', 'template', $id, $oldTemplate, [
             'old_day' => $oldTemplate['day_of_week'],
@@ -382,6 +491,13 @@ function handleMoveTemplate() {
         ], 'Урок перемещён (drag and drop)');
 
         $updatedTemplate = dbQueryOne("SELECT * FROM lessons_template WHERE id = ?", [$id]);
+
+        // Добавляем динамические данные студентов
+        $studentsData = getStudentsForTemplate($updatedTemplate);
+        $updatedTemplate['students_array'] = $studentsData['students'];
+        $updatedTemplate['actual_student_count'] = $studentsData['count'];
+        $updatedTemplate['student_classes'] = $studentsData['classes'];
+
         jsonSuccess($updatedTemplate);
     } catch (Exception $e) {
         error_log("Failed to move template: " . $e->getMessage());
@@ -389,106 +505,8 @@ function handleMoveTemplate() {
     }
 }
 
-/**
- * Синхронизировать расписание учеников после изменения урока
- *
- * @param array $oldTemplate Старые данные урока
- * @param int $newDay Новый день недели
- * @param string $newTime Новое время
- * @param int $newRoom Новый кабинет
- */
-function syncStudentsSchedule($oldTemplate, $newDay, $newTime, $newRoom) {
-    try {
-        // Получаем список учеников из урока
-        $studentsInLesson = [];
-        if (!empty($oldTemplate['students'])) {
-            $studentsInLesson = json_decode($oldTemplate['students'], true);
-            if (!is_array($studentsInLesson)) {
-                $studentsInLesson = [];
-            }
-        }
-
-        if (empty($studentsInLesson)) {
-            return; // Нет учеников для синхронизации
-        }
-
-        // Формат времени: убираем секунды (HH:MM)
-        $oldTime = substr($oldTemplate['time_start'], 0, 5);
-        $newTimeShort = substr($newTime, 0, 5);
-
-        // Получаем всех учеников, которые есть в этом уроке
-        $placeholders = str_repeat('?,', count($studentsInLesson) - 1) . '?';
-        $students = dbQuery(
-            "SELECT id, name, schedule FROM students
-             WHERE name IN ($placeholders) AND active = 1",
-            $studentsInLesson
-        );
-
-        foreach ($students as $student) {
-            // Парсим расписание ученика
-            $schedule = [];
-            if (!empty($student['schedule'])) {
-                $schedule = json_decode($student['schedule'], true);
-                if (!is_array($schedule)) {
-                    $schedule = [];
-                }
-            }
-
-            $wasUpdated = false;
-
-            // Ищем старый урок в расписании ученика
-            $oldDay = $oldTemplate['day_of_week'];
-            if (isset($schedule[$oldDay]) && is_array($schedule[$oldDay])) {
-                foreach ($schedule[$oldDay] as $key => $lesson) {
-                    // Проверяем, что это урок с таким же временем и преподавателем
-                    if (is_array($lesson) &&
-                        isset($lesson['time']) &&
-                        $lesson['time'] === $oldTime &&
-                        isset($lesson['teacher_id']) &&
-                        $lesson['teacher_id'] == $oldTemplate['teacher_id']) {
-
-                        // Удаляем урок из старого дня
-                        unset($schedule[$oldDay][$key]);
-
-                        // Если день остался пустым, удаляем его
-                        if (empty($schedule[$oldDay])) {
-                            unset($schedule[$oldDay]);
-                        } else {
-                            // Переиндексируем массив
-                            $schedule[$oldDay] = array_values($schedule[$oldDay]);
-                        }
-
-                        // Добавляем урок в новый день
-                        if (!isset($schedule[$newDay])) {
-                            $schedule[$newDay] = [];
-                        }
-
-                        $schedule[$newDay][] = [
-                            'time' => $newTimeShort,
-                            'teacher_id' => $oldTemplate['teacher_id'],
-                            'room' => $newRoom
-                        ];
-
-                        $wasUpdated = true;
-                        break;
-                    }
-                }
-            }
-
-            // Если расписание обновилось, сохраняем
-            if ($wasUpdated) {
-                $scheduleJson = json_encode($schedule, JSON_UNESCAPED_UNICODE);
-                dbExecute(
-                    "UPDATE students SET schedule = ?, updated_at = NOW() WHERE id = ?",
-                    [$scheduleJson, $student['id']]
-                );
-            }
-        }
-    } catch (Exception $e) {
-        error_log("Failed to sync students schedule: " . $e->getMessage());
-        // Не останавливаем выполнение, только логируем ошибку
-    }
-}
+// ⭐ УДАЛЕНО: syncStudentsSchedule() больше не нужна
+// Студенты читаются динамически из таблицы students, синхронизация не требуется
 
 /**
  * Удалить шаблон урока
