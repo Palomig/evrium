@@ -66,25 +66,85 @@ try {
 }
 
 // Добавляем поле room (кабинет) если его нет
-// И определяем классы учеников для каждого урока
+// И определяем классы учеников для каждого урока ДИНАМИЧЕСКИ из таблицы students
 foreach ($templates as &$template) {
     if (!isset($template['room'])) {
         $template['room'] = 1; // По умолчанию кабинет 1
     }
 
-    // Получаем классы учеников из формата "Имя (N кл.)"
+    // ⭐ НОВАЯ ЛОГИКА: Получаем студентов динамически из таблицы students
+    // на основе их расписания (schedule JSON)
+    $teacherId = $template['teacher_id'];
+    $dayOfWeek = $template['day_of_week'];
+    $timeStart = substr($template['time_start'], 0, 5); // "17:00:00" -> "17:00"
+
+    // Получаем всех активных студентов этого преподавателя
+    $allStudents = dbQuery(
+        "SELECT id, name, class, schedule
+         FROM students
+         WHERE active = 1 AND teacher_id = ?",
+        [$teacherId]
+    );
+
+    // Фильтруем студентов, у которых в расписании есть этот день и время
+    $studentsForLesson = [];
     $studentClasses = [];
-    if ($template['students']) {
-        $studentsNames = json_decode($template['students'], true);
-        if (is_array($studentsNames) && !empty($studentsNames)) {
-            foreach ($studentsNames as $studentName) {
-                // Извлекаем класс из скобок: "Коля (2 кл.)" -> 2
-                if (preg_match('/\((\d+)\s*кл\.\)/', $studentName, $matches)) {
-                    $studentClasses[] = (int)$matches[1];
+
+    foreach ($allStudents as $student) {
+        if (!$student['schedule']) continue;
+
+        $schedule = json_decode($student['schedule'], true);
+        if (!is_array($schedule)) continue;
+
+        // Проверяем формат расписания
+        // Формат 1: [{"day": "Monday", "time": "17:00"}, ...]
+        // Формат 2: {"1": "17:00", "3": "19:00"}
+        $hasThisLesson = false;
+
+        foreach ($schedule as $key => $entry) {
+            if (is_array($entry)) {
+                // Формат 1: массив объектов
+                $entryDay = $entry['day'] ?? null;
+                $entryTime = $entry['time'] ?? null;
+
+                // Преобразуем день из названия в номер
+                $dayMap = [
+                    'Monday' => 1, 'Пн' => 1, 'понедельник' => 1,
+                    'Tuesday' => 2, 'Вт' => 2, 'вторник' => 2,
+                    'Wednesday' => 3, 'Ср' => 3, 'среда' => 3,
+                    'Thursday' => 4, 'Чт' => 4, 'четверг' => 4,
+                    'Friday' => 5, 'Пт' => 5, 'пятница' => 5,
+                    'Saturday' => 6, 'Сб' => 6, 'суббота' => 6,
+                    'Sunday' => 7, 'Вс' => 7, 'воскресенье' => 7
+                ];
+
+                $entryDayNum = $dayMap[$entryDay] ?? (int)$entryDay;
+
+                if ($entryDayNum == $dayOfWeek && substr($entryTime, 0, 5) == $timeStart) {
+                    $hasThisLesson = true;
+                    break;
                 }
-                // Если класса нет в скобках - не добавляем класс
-                // (это старые данные, которые нужно обновить вручную)
+            } else {
+                // Формат 2: объект {"1": "17:00"}
+                if ((int)$key == $dayOfWeek && substr($entry, 0, 5) == $timeStart) {
+                    $hasThisLesson = true;
+                    break;
+                }
             }
+        }
+
+        if ($hasThisLesson) {
+            $studentName = $student['name'];
+            if ($student['class']) {
+                $studentName .= " ({$student['class']} кл.)";
+                $studentClasses[] = (int)$student['class'];
+            }
+            $studentsForLesson[] = [
+                'id' => $student['id'],
+                'name' => $student['name'],
+                'class' => $student['class'],
+                'display' => $studentName
+            ];
         }
     }
 
@@ -92,6 +152,10 @@ foreach ($templates as &$template) {
     $studentClasses = array_unique($studentClasses);
     sort($studentClasses);
     $template['student_classes'] = !empty($studentClasses) ? implode(', ', $studentClasses) : '';
+
+    // ⭐ КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Добавляем массив реальных студентов
+    $template['students_array'] = $studentsForLesson;
+    $template['actual_student_count'] = count($studentsForLesson);
 }
 
 define('PAGE_TITLE', '');
@@ -1751,22 +1815,15 @@ function createLessonCard(lesson) {
     card.dataset.teacherId = lesson.teacher_id;
     card.onclick = () => viewTemplate(lesson);
 
-    // Парсим учеников
-    let students = [];
-    if (lesson.students) {
-        try {
-            students = typeof lesson.students === 'string' ? JSON.parse(lesson.students) : lesson.students;
-        } catch (e) {
-            students = lesson.students.split('\n').filter(s => s.trim());
-        }
-    }
-
-    const currentStudents = students.length || 0;
+    // ⭐ НОВАЯ ЛОГИКА: Используем students_array (динамические данные из таблицы students)
+    // вместо статического JSON из lessons_template.students
+    const students = lesson.students_array || [];
+    const currentStudents = lesson.actual_student_count || 0;
     const maxStudents = lesson.expected_students || 6;
     const isFull = currentStudents >= maxStudents;
     const capacityClass = isFull ? 'full' : 'available';
     const tier = lesson.tier || 'C';
-    // Используем student_classes из базы данных (классы реальных учеников)
+    // Используем student_classes (динамически вычисленные классы реальных учеников)
     const studentClasses = lesson.student_classes || '';
 
     card.innerHTML = `
