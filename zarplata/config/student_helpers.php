@@ -86,12 +86,16 @@ function getStudentsForLesson($teacherId, $dayOfWeek, $timeStart) {
         }
 
         if ($hasThisLesson) {
-            $studentName = $student['name'];
+            // Добавляем студента как объект с полями name и class
+            $studentsForLesson[] = [
+                'name' => $student['name'],
+                'class' => $student['class'] ? (int)$student['class'] : null
+            ];
+
+            // Собираем уникальные классы для строки
             if ($student['class']) {
-                $studentName .= " ({$student['class']} кл.)";
                 $studentClasses[] = (int)$student['class'];
             }
-            $studentsForLesson[] = $studentName;
         }
     }
 
