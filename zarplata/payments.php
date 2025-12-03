@@ -7,6 +7,7 @@
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/config/auth.php';
 require_once __DIR__ . '/config/helpers.php';
+require_once __DIR__ . '/config/student_helpers.php'; // ⭐ Новый helper для динамического чтения студентов
 
 requireAuth();
 $user = getCurrentUser();
@@ -55,8 +56,10 @@ $lessons = dbQuery(
         li.status,
         lt.tier,
         lt.grades,
-        lt.students as students_json,
         lt.room,
+        lt.teacher_id as template_teacher_id,
+        lt.day_of_week as template_day_of_week,
+        lt.time_start as template_time_start,
         COALESCE(li.formula_id, t.formula_id) as formula_id,
         pf.type as formula_type,
         pf.min_payment,
@@ -239,13 +242,16 @@ foreach ($lessons as $lesson) {
         $dataByMonth[$monthKey]['days'][$dayKey]['all_approved'] = false;
     }
 
-    // Парсинг списка студентов
+    // ⭐ НОВАЯ ЛОГИКА: Получаем студентов динамически из таблицы students
     $students = [];
-    if ($lesson['students_json']) {
-        $studentsData = json_decode($lesson['students_json'], true);
-        if (is_array($studentsData)) {
-            $students = $studentsData;
-        }
+    if ($lesson['template_teacher_id'] && $lesson['template_day_of_week'] && $lesson['template_time_start']) {
+        // Урок создан из шаблона - получаем студентов динамически
+        $studentsData = getStudentsForLesson(
+            $lesson['template_teacher_id'],
+            $lesson['template_day_of_week'],
+            $lesson['template_time_start']
+        );
+        $students = $studentsData['students'];
     }
 
     // Определяем время (с fallback на время создания выплаты)
