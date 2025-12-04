@@ -11,6 +11,7 @@
 ob_start();
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/../config/student_helpers.php';
 
 // Логируем запуск
 error_log("Attendance cron started at " . date('Y-m-d H:i:s'));
@@ -102,6 +103,19 @@ function sendAttendanceQuery($lesson) {
         return;
     }
 
+    // ⭐ ДИНАМИЧЕСКИЙ РАСЧЁТ: Получаем реальное количество учеников из таблицы students
+    $studentsData = getStudentsForLesson(
+        $lesson['teacher_id'],
+        $lesson['day_of_week'],
+        substr($lesson['time_start'], 0, 5)
+    );
+    $dynamicStudentCount = $studentsData['count'];
+
+    // Если динамический расчёт дал 0, используем expected_students как fallback
+    $expected = $dynamicStudentCount > 0 ? $dynamicStudentCount : (int)$lesson['expected_students'];
+
+    error_log("Lesson {$lesson['id']}: dynamic students = {$dynamicStudentCount}, expected_students = {$lesson['expected_students']}, using = {$expected}");
+
     // ⭐ КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: Логируем ДО отправки, чтобы предотвратить дубликаты
     // Даже если отправка не удастся, повторная попытка не будет предпринята
     logAudit(
@@ -112,7 +126,9 @@ function sendAttendanceQuery($lesson) {
         [
             'teacher_id' => $lesson['teacher_id'],
             'telegram_id' => $lesson['telegram_id'],
-            'expected_students' => $lesson['expected_students']
+            'expected_students' => $expected,
+            'dynamic_count' => $dynamicStudentCount,
+            'template_expected' => $lesson['expected_students']
         ],
         'Попытка отправки опроса о посещаемости в Telegram'
     );
@@ -125,7 +141,7 @@ function sendAttendanceQuery($lesson) {
     $subject = $lesson['subject'] ? "<b>{$lesson['subject']}</b>" : "<b>Урок</b>";
     $timeStart = date('H:i', strtotime($lesson['time_start']));
     $timeEnd = date('H:i', strtotime($lesson['time_end']));
-    $expected = $lesson['expected_students'];
+    // $expected уже рассчитан выше
     $room = $lesson['room'] ?? '-';
     $tier = $lesson['tier'] ?? '';
 

@@ -8,6 +8,9 @@
 if (!function_exists('getTeacherByTelegramId')) {
     require_once __DIR__ . '/../config.php';
 }
+if (!function_exists('getStudentsForLesson')) {
+    require_once __DIR__ . '/../../config/student_helpers.php';
+}
 
 /**
  * Получить ID формулы для преподавателя
@@ -67,8 +70,18 @@ function handleAllPresent($chatId, $messageId, $telegramId, $lessonTemplateId, $
             return;
         }
 
-        // Все ученики пришли = expected_students
-        $attendedCount = (int)$lesson['expected_students'];
+        // ⭐ ДИНАМИЧЕСКИЙ РАСЧЁТ: Получаем реальное количество учеников
+        $studentsData = getStudentsForLesson(
+            $lesson['teacher_id'],
+            $lesson['day_of_week'],
+            substr($lesson['time_start'], 0, 5)
+        );
+        $dynamicStudentCount = $studentsData['count'];
+
+        // Используем динамический расчёт, если он > 0, иначе fallback на expected_students
+        $attendedCount = $dynamicStudentCount > 0 ? $dynamicStudentCount : (int)$lesson['expected_students'];
+        error_log("[Telegram Bot] handleAllPresent: dynamic={$dynamicStudentCount}, expected={$lesson['expected_students']}, using={$attendedCount}");
+
         $lessonType = $lesson['lesson_type'] ?? 'group';
 
         // Получаем ID формулы (с fallback)
@@ -113,6 +126,9 @@ function handleAllPresent($chatId, $messageId, $telegramId, $lessonTemplateId, $
         $paymentAmount = calculatePayment($formula, $attendedCount);
         error_log("[Telegram Bot] Calculated payment: {$paymentAmount} RUB for {$attendedCount} students");
 
+        // Сохраняем ожидаемое количество для отображения
+        $expectedForDisplay = $attendedCount; // Все пришли = ожидаемое = пришедшие
+
         // Создаём запись о выплате
         $paymentId = dbExecute(
             "INSERT INTO payments
@@ -122,7 +138,7 @@ function handleAllPresent($chatId, $messageId, $telegramId, $lessonTemplateId, $
                 $teacher['id'],
                 $lessonTemplateId,
                 $paymentAmount,
-                "Все пришли ({$attendedCount} из {$lesson['expected_students']})"
+                "Все пришли ({$attendedCount} из {$expectedForDisplay})"
             ]
         );
 
@@ -137,7 +153,7 @@ function handleAllPresent($chatId, $messageId, $telegramId, $lessonTemplateId, $
                     [
                         'teacher_id' => $teacher['id'],
                         'attended' => $attendedCount,
-                        'expected' => $lesson['expected_students'],
+                        'expected' => $expectedForDisplay,
                         'payment_id' => $paymentId,
                         'amount' => $paymentAmount
                     ],
@@ -155,7 +171,7 @@ function handleAllPresent($chatId, $messageId, $telegramId, $lessonTemplateId, $
         $confirmationText =
             "✅ <b>Посещаемость отмечена!</b>\n\n" .
             "📚 <b>{$subject}</b> ({$time})\n" .
-            "👥 Присутствовало: <b>{$attendedCount} из {$lesson['expected_students']}</b> (все пришли)\n\n" .
+            "👥 Присутствовало: <b>{$attendedCount} из {$expectedForDisplay}</b> (все пришли)\n\n" .
             "💰 Начислено: <b>" . number_format($paymentAmount, 0, ',', ' ') . " ₽</b>\n\n" .
             "✨ Выплата добавлена в систему";
 
@@ -205,7 +221,17 @@ function handleSomeAbsent($chatId, $messageId, $telegramId, $lessonTemplateId, $
             return;
         }
 
-        $expectedStudents = (int)$lesson['expected_students'];
+        // ⭐ ДИНАМИЧЕСКИЙ РАСЧЁТ: Получаем реальное количество учеников
+        $studentsData = getStudentsForLesson(
+            $lesson['teacher_id'],
+            $lesson['day_of_week'],
+            substr($lesson['time_start'], 0, 5)
+        );
+        $dynamicStudentCount = $studentsData['count'];
+
+        // Используем динамический расчёт, если он > 0, иначе fallback на expected_students
+        $expectedStudents = $dynamicStudentCount > 0 ? $dynamicStudentCount : (int)$lesson['expected_students'];
+        error_log("[Telegram Bot] handleSomeAbsent: dynamic={$dynamicStudentCount}, expected={$lesson['expected_students']}, using={$expectedStudents}");
         error_log("[Telegram Bot] Creating keyboard for {$expectedStudents} students");
 
         // Создаём клавиатуру с выбором количества присутствующих
@@ -291,6 +317,18 @@ function handleAttendanceCount($chatId, $messageId, $telegramId, $lessonTemplate
             return;
         }
 
+        // ⭐ ДИНАМИЧЕСКИЙ РАСЧЁТ: Получаем реальное количество учеников
+        $studentsData = getStudentsForLesson(
+            $lesson['teacher_id'],
+            $lesson['day_of_week'],
+            substr($lesson['time_start'], 0, 5)
+        );
+        $dynamicStudentCount = $studentsData['count'];
+
+        // Используем динамический расчёт, если он > 0, иначе fallback на expected_students
+        $expectedStudents = $dynamicStudentCount > 0 ? $dynamicStudentCount : (int)$lesson['expected_students'];
+        error_log("[Telegram Bot] handleAttendanceCount: dynamic={$dynamicStudentCount}, template_expected={$lesson['expected_students']}, using={$expectedStudents}");
+
         $lessonType = $lesson['lesson_type'] ?? 'group';
 
         // Получаем ID формулы (с fallback)
@@ -344,7 +382,7 @@ function handleAttendanceCount($chatId, $messageId, $telegramId, $lessonTemplate
                 $teacher['id'],
                 $lessonTemplateId,
                 $paymentAmount,
-                "Пришло {$attendedCount} из {$lesson['expected_students']}"
+                "Пришло {$attendedCount} из {$expectedStudents}"
             ]
         );
 
@@ -359,7 +397,7 @@ function handleAttendanceCount($chatId, $messageId, $telegramId, $lessonTemplate
                     [
                         'teacher_id' => $teacher['id'],
                         'attended' => $attendedCount,
-                        'expected' => $lesson['expected_students'],
+                        'expected' => $expectedStudents,
                         'payment_id' => $paymentId,
                         'amount' => $paymentAmount
                     ],
@@ -377,7 +415,7 @@ function handleAttendanceCount($chatId, $messageId, $telegramId, $lessonTemplate
         $confirmationText =
             "✅ <b>Посещаемость отмечена!</b>\n\n" .
             "📚 <b>{$subject}</b> ({$time})\n" .
-            "👥 Присутствовало: <b>{$attendedCount} из {$lesson['expected_students']}</b>\n\n" .
+            "👥 Присутствовало: <b>{$attendedCount} из {$expectedStudents}</b>\n\n" .
             "💰 Начислено: <b>" . number_format($paymentAmount, 0, ',', ' ') . " ₽</b>\n\n" .
             "✨ Выплата добавлена в систему";
 
