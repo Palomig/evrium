@@ -1044,15 +1044,29 @@ require_once __DIR__ . '/templates/header.php';
                                                 <div class="lesson-amount">
                                                     <?= formatMoney($lesson['amount']) ?>
                                                 </div>
-                                                <button
-                                                    class="lesson-approve <?= in_array($lesson['payment_status'], ['approved', 'paid']) ? 'approved' : '' ?>"
-                                                    onclick="event.stopPropagation()"
-                                                    <?= !$lesson['payment_id'] ? 'disabled' : '' ?>
-                                                >
-                                                    <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                                                    </svg>
-                                                </button>
+                                                <div class="lesson-actions" style="display: flex; gap: 4px;">
+                                                    <?php if ($lesson['payment_id'] && $lesson['payment_status'] !== 'paid'): ?>
+                                                    <button
+                                                        class="lesson-edit"
+                                                        onclick="event.stopPropagation(); openEditModal(<?= $lesson['payment_id'] ?>)"
+                                                        title="Редактировать"
+                                                        style="width: 24px; height: 24px; border-radius: 4px; border: none; background: var(--md-surface-variant); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;"
+                                                    >
+                                                        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                                        </svg>
+                                                    </button>
+                                                    <?php endif; ?>
+                                                    <button
+                                                        class="lesson-approve <?= in_array($lesson['payment_status'], ['approved', 'paid']) ? 'approved' : '' ?>"
+                                                        onclick="event.stopPropagation()"
+                                                        <?= !$lesson['payment_id'] ? 'disabled' : '' ?>
+                                                    >
+                                                        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                                        </svg>
+                                                    </button>
+                                                </div>
                                             </div>
                                         <?php endforeach; ?>
                                     </div>
@@ -1309,6 +1323,70 @@ require_once __DIR__ . '/templates/header.php';
                     <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                     </svg>
+                    Сохранить
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Модальное окно редактирования выплаты -->
+<div id="edit-payment-modal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3>✏️ Редактирование выплаты</h3>
+            <button class="modal-close" onclick="closeEditModal()">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <form id="edit-payment-form" onsubmit="saveEditPayment(event)">
+            <div class="modal-body">
+                <div id="edit-payment-info" style="margin-bottom: 20px; padding: 12px; background: var(--md-surface-variant); border-radius: 8px;"></div>
+
+                <input type="hidden" id="edit-payment-id" name="id">
+
+                <div class="form-group">
+                    <label for="edit-payment-amount">Сумма (₽)</label>
+                    <input type="number"
+                           id="edit-payment-amount"
+                           name="amount"
+                           class="form-control"
+                           placeholder="Новая сумма"
+                           min="0"
+                    >
+                    <small style="color: var(--text-medium-emphasis);">Оставьте пустым, если не нужно менять</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-payment-students">Количество пришедших учеников</label>
+                    <input type="number"
+                           id="edit-payment-students"
+                           name="student_count"
+                           class="form-control"
+                           placeholder="Фактическое количество"
+                           min="0"
+                    >
+                    <small style="color: var(--text-medium-emphasis);">Для исправления ошибочно указанного количества</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-payment-notes">Комментарий</label>
+                    <textarea
+                        id="edit-payment-notes"
+                        name="notes"
+                        class="form-control"
+                        rows="2"
+                        placeholder="Причина изменения"
+                    ></textarea>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeEditModal()">
+                    Отмена
+                </button>
+                <button type="submit" id="edit-payment-btn" class="btn btn-primary">
+                    <span class="material-icons" style="margin-right: 8px; font-size: 18px;">save</span>
                     Сохранить
                 </button>
             </div>
