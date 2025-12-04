@@ -200,15 +200,9 @@ foreach ($lessons as $lesson) {
     }
 
     // Добавление данных дня
-    $duration = 0;
-    if ($lesson['time_start'] && $lesson['time_end']) {
-        $start = new DateTime($lesson['time_start']);
-        $end = new DateTime($lesson['time_end']);
-        $duration = ($end->getTimestamp() - $start->getTimestamp()) / 3600;
-    }
-
+    // Каждый урок = 1 час (фиксировано)
     $dataByMonth[$monthKey]['days'][$dayKey]['total'] += $amount;
-    $dataByMonth[$monthKey]['days'][$dayKey]['hours'] += $duration;
+    $dataByMonth[$monthKey]['days'][$dayKey]['hours'] += 1;  // 1 урок = 1 час
 
     // Определяем тип урока (с fallback на payment_type)
     $lessonType = $lesson['lesson_type'] ?: 'group';
@@ -244,6 +238,7 @@ foreach ($lessons as $lesson) {
 
     // ⭐ НОВАЯ ЛОГИКА: Получаем студентов динамически из таблицы students
     $students = [];
+    $studentNames = [];
     if ($lesson['template_teacher_id'] && $lesson['template_day_of_week'] && $lesson['template_time_start']) {
         // Урок создан из шаблона - получаем студентов динамически
         $studentsData = getStudentsForLesson(
@@ -252,6 +247,10 @@ foreach ($lessons as $lesson) {
             $lesson['template_time_start']
         );
         $students = $studentsData['students'];
+        // Преобразуем в массив имён для отображения
+        foreach ($students as $student) {
+            $studentNames[] = $student['name'];
+        }
     }
 
     // Определяем время (с fallback на время создания выплаты)
@@ -269,12 +268,11 @@ foreach ($lessons as $lesson) {
         'time' => $time,
         'subject' => $subject,
         'type' => $lessonType,
-        'students' => $students,
+        'students' => $studentNames,  // Массив имён для отображения
         'amount' => $amount,
         'payment_id' => $lesson['payment_id'],
         'payment_status' => $lesson['payment_status'],
         'tier' => $lesson['tier'],
-        'duration' => $duration,
         'is_manual_payment' => !$lesson['lesson_id']  // Флаг для ручных выплат
     ];
 }
@@ -632,7 +630,8 @@ require_once __DIR__ . '/templates/header.php';
 
         .table-header {
             display: grid;
-            grid-template-columns: 100px 1fr 120px 80px 80px 100px 50px;
+            /* дата | уроки | предмет | часы | неявки | сумма | кнопка */
+            grid-template-columns: 100px 1fr 150px 60px 60px 90px 40px;
             gap: 12px;
             padding: 12px 16px;
             background: var(--bg-dark);
@@ -654,7 +653,8 @@ require_once __DIR__ . '/templates/header.php';
 
         .day-header {
             display: grid;
-            grid-template-columns: 100px 1fr 120px 80px 80px 100px 50px;
+            /* дата | badges | предмет | часы | неявки | сумма | кнопка */
+            grid-template-columns: 100px 1fr 150px 60px 60px 90px 40px;
             gap: 12px;
             padding: 14px 16px;
             cursor: pointer;
@@ -775,7 +775,8 @@ require_once __DIR__ . '/templates/header.php';
 
         .lesson-item {
             display: grid;
-            grid-template-columns: 100px 1fr 120px 80px 80px 100px 50px;
+            /* время | ученики | предмет | неявки | сумма | кнопка */
+            grid-template-columns: 60px 1fr 150px 60px 90px 40px;
             gap: 12px;
             padding: 12px 16px 12px 40px;
             border-top: 1px solid var(--border);
@@ -847,6 +848,46 @@ require_once __DIR__ . '/templates/header.php';
             background: var(--status-green);
             border-color: var(--status-green);
             color: white;
+        }
+
+        /* Кнопка редактирования выплаты */
+        .lesson-edit-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+        }
+
+        .lesson-edit-btn:hover {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: #6366f1;
+            color: #6366f1;
+        }
+
+        /* Бейдж "Выплачено" */
+        .lesson-paid-badge {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--status-green);
+        }
+
+        /* Ячейка с учениками */
+        .lesson-students-cell {
+            flex: 2;
+            min-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         /* Empty state */
@@ -1023,14 +1064,16 @@ require_once __DIR__ . '/templates/header.php';
                                         <?php foreach ($day['lessons'] as $lesson): ?>
                                             <div class="lesson-item">
                                                 <div class="lesson-time"><?= e($lesson['time']) ?></div>
-                                                <div class="lesson-subject-cell">
+                                                <div class="lesson-students-cell">
                                                     <?php if (!empty($lesson['students'])): ?>
-                                                        <span style="color: var(--text-secondary)">
-                                                            <?= e(implode(', ', array_slice($lesson['students'], 0, 2))) ?>
-                                                            <?php if (count($lesson['students']) > 2): ?>
-                                                                +<?= count($lesson['students']) - 2 ?>
+                                                        <span style="color: var(--text-secondary); font-size: 0.85em;">
+                                                            <?= e(implode(', ', array_slice($lesson['students'], 0, 3))) ?>
+                                                            <?php if (count($lesson['students']) > 3): ?>
+                                                                <span style="color: var(--text-medium-emphasis);">+<?= count($lesson['students']) - 3 ?></span>
                                                             <?php endif; ?>
                                                         </span>
+                                                    <?php else: ?>
+                                                        <span style="color: var(--text-disabled);">—</span>
                                                     <?php endif; ?>
                                                 </div>
                                                 <div class="lesson-subject-cell">
@@ -1039,34 +1082,29 @@ require_once __DIR__ . '/templates/header.php';
                                                     </span>
                                                     <span class="lesson-subject-name"><?= e($lesson['subject']) ?></span>
                                                 </div>
-                                                <div class="day-hours"><?= number_format($lesson['duration'], 1) ?> ч</div>
                                                 <div class="day-absences">—</div>
                                                 <div class="lesson-amount">
                                                     <?= formatMoney($lesson['amount']) ?>
                                                 </div>
-                                                <div class="lesson-actions" style="display: flex; gap: 4px;">
-                                                    <?php if ($lesson['payment_id'] && $lesson['payment_status'] !== 'paid'): ?>
-                                                    <button
-                                                        class="lesson-edit"
-                                                        onclick="event.stopPropagation(); openEditModal(<?= $lesson['payment_id'] ?>)"
-                                                        title="Редактировать"
-                                                        style="width: 24px; height: 24px; border-radius: 4px; border: none; background: var(--md-surface-variant); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;"
-                                                    >
-                                                        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                                        </svg>
-                                                    </button>
-                                                    <?php endif; ?>
-                                                    <button
-                                                        class="lesson-approve <?= in_array($lesson['payment_status'], ['approved', 'paid']) ? 'approved' : '' ?>"
-                                                        onclick="event.stopPropagation()"
-                                                        <?= !$lesson['payment_id'] ? 'disabled' : '' ?>
-                                                    >
-                                                        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                                                        </svg>
-                                                    </button>
-                                                </div>
+                                                <?php if ($lesson['payment_id'] && $lesson['payment_status'] !== 'paid'): ?>
+                                                <button
+                                                    class="lesson-edit-btn"
+                                                    onclick="event.stopPropagation(); openEditModal(<?= $lesson['payment_id'] ?>)"
+                                                    title="Редактировать выплату"
+                                                >
+                                                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                                    </svg>
+                                                </button>
+                                                <?php elseif ($lesson['payment_status'] === 'paid'): ?>
+                                                <span class="lesson-paid-badge" title="Выплачено">
+                                                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                                    </svg>
+                                                </span>
+                                                <?php else: ?>
+                                                <span style="width: 28px;"></span>
+                                                <?php endif; ?>
                                             </div>
                                         <?php endforeach; ?>
                                     </div>
