@@ -344,6 +344,109 @@ async function cancelPayment(paymentId) {
     }
 }
 
+// Открыть модальное окно редактирования выплаты
+async function openEditModal(paymentId) {
+    const modal = document.getElementById('edit-payment-modal');
+    const form = document.getElementById('edit-payment-form');
+
+    // Загружаем данные выплаты
+    try {
+        const response = await fetch(`/zarplata/api/payments.php?action=get&id=${paymentId}`);
+        const result = await response.json();
+
+        if (result.success) {
+            const payment = result.data;
+
+            document.getElementById('edit-payment-id').value = payment.id;
+            document.getElementById('edit-payment-amount').value = payment.amount;
+            document.getElementById('edit-payment-notes').value = payment.notes || '';
+
+            // Парсим количество учеников из calculation_method
+            let studentCount = '';
+            if (payment.calculation_method) {
+                const match = payment.calculation_method.match(/пришло (\d+)/iu) ||
+                              payment.calculation_method.match(/все пришли \((\d+)/iu);
+                if (match) {
+                    studentCount = match[1];
+                }
+            }
+            document.getElementById('edit-payment-students').value = studentCount;
+
+            // Показываем информацию о выплате
+            document.getElementById('edit-payment-info').innerHTML = `
+                <strong>Выплата #${payment.id}</strong><br>
+                <span style="color: var(--text-medium-emphasis);">
+                    ${escapeHtml(payment.teacher_name)} • ${formatDate(payment.lesson_date || payment.created_at)}
+                </span>
+            `;
+
+            modal.classList.add('active');
+        } else {
+            showNotification(result.error || 'Ошибка загрузки', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading payment:', error);
+        showNotification('Ошибка загрузки данных', 'error');
+    }
+}
+
+// Закрыть модальное окно редактирования
+function closeEditModal() {
+    document.getElementById('edit-payment-modal').classList.remove('active');
+}
+
+// Сохранить редактирование выплаты
+async function saveEditPayment(event) {
+    event.preventDefault();
+
+    const paymentId = document.getElementById('edit-payment-id').value;
+    const newAmount = document.getElementById('edit-payment-amount').value;
+    const newStudentCount = document.getElementById('edit-payment-students').value;
+    const notes = document.getElementById('edit-payment-notes').value;
+
+    const saveBtn = document.getElementById('edit-payment-btn');
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="material-icons rotating" style="margin-right: 8px; font-size: 18px;">sync</span>Сохранение...';
+
+    try {
+        const data = { id: parseInt(paymentId) };
+
+        if (newAmount) {
+            data.amount = parseInt(newAmount);
+        }
+        if (newStudentCount) {
+            data.student_count = parseInt(newStudentCount);
+        }
+        if (notes !== undefined) {
+            data.notes = notes;
+        }
+
+        const response = await fetch('/zarplata/api/payments.php?action=update', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showNotification('Выплата обновлена', 'success');
+            closeEditModal();
+            setTimeout(() => location.reload(), 500);
+        } else {
+            showNotification(result.error || 'Ошибка сохранения', 'error');
+        }
+    } catch (error) {
+        console.error('Error updating payment:', error);
+        showNotification('Ошибка сохранения данных', 'error');
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<span class="material-icons" style="margin-right: 8px; font-size: 18px;">save</span>Сохранить';
+    }
+}
+
 // Удалить выплату
 async function deletePayment(paymentId) {
     if (!confirm('Вы уверены, что хотите удалить эту выплату?')) {
