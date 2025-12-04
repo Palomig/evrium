@@ -1762,12 +1762,29 @@ function createLessonCard(lesson) {
     // вместо статического JSON из lessons_template.students
     const students = lesson.students_array || [];
     const currentStudents = lesson.actual_student_count || 0;
-    const maxStudents = lesson.expected_students || 6;
-    const isFull = currentStudents >= maxStudents;
-    const capacityClass = isFull ? 'full' : 'available';
+    const lessonType = lesson.lesson_type || 'group';
     const tier = lesson.tier || 'C';
+
     // Используем student_classes (динамически вычисленные классы реальных учеников)
     const studentClasses = lesson.student_classes || '';
+
+    // ⭐ НОВОЕ: Разное отображение для групповых и индивидуальных
+    let capacityHtml;
+    let capacityClass;
+
+    if (lessonType === 'individual') {
+        // Для индивидуальных - зелёная иконка если занято, серая если свободно
+        capacityClass = currentStudents > 0 ? 'full' : 'available';
+        capacityHtml = currentStudents > 0
+            ? '<i class="material-icons" style="color: #4caf50; font-size: 20px;">person</i>'
+            : '<i class="material-icons" style="color: #666; font-size: 20px;">person</i>';
+    } else {
+        // Для групповых - текущее отображение с числами
+        const maxStudents = lesson.expected_students || 6;
+        const isFull = currentStudents >= maxStudents;
+        capacityClass = isFull ? 'full' : 'available';
+        capacityHtml = `${currentStudents}/${maxStudents}`;
+    }
 
     card.innerHTML = `
         <div class="card-body">
@@ -1777,7 +1794,7 @@ function createLessonCard(lesson) {
                         <span class="tier-badge tier-${tier}">${tier}</span>
                     </div>
                     <div class="card-cell capacity ${capacityClass}">
-                        ${currentStudents}/${maxStudents}
+                        ${capacityHtml}
                     </div>
                 </div>
                 ${studentClasses ? `
