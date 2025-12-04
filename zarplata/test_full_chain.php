@@ -5,7 +5,18 @@
  */
 
 require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/config/auth.php';
 require_once __DIR__ . '/config/student_helpers.php';
+
+// Стартуем сессию для тестов API
+session_start();
+
+// Если не авторизован, создаём тестовую сессию
+if (!isLoggedIn()) {
+    $_SESSION['user_id'] = 1;
+    $_SESSION['username'] = 'test_user';
+    $_SESSION['role'] = 'admin';
+}
 
 header('Content-Type: text/html; charset=utf-8');
 ?>
