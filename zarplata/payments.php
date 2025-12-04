@@ -195,7 +195,8 @@ foreach ($lessons as $lesson) {
             'group_count' => 0,
             'subjects' => [],
             'lessons' => [],
-            'all_approved' => true
+            'all_approved' => true,
+            'payment_ids' => []  // Для массового одобрения
         ];
     }
 
@@ -234,6 +235,11 @@ foreach ($lessons as $lesson) {
 
     if (!in_array($lesson['payment_status'], ['approved', 'paid'])) {
         $dataByMonth[$monthKey]['days'][$dayKey]['all_approved'] = false;
+    }
+
+    // Собираем payment_ids для массового одобрения
+    if ($lesson['payment_id']) {
+        $dataByMonth[$monthKey]['days'][$dayKey]['payment_ids'][] = $lesson['payment_id'];
     }
 
     // ⭐ НОВАЯ ЛОГИКА: Получаем студентов динамически из таблицы students
@@ -761,6 +767,11 @@ require_once __DIR__ . '/templates/header.php';
             pointer-events: none;
         }
 
+        .approve-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         /* Lessons Container */
         .lessons-container {
             max-height: 0;
@@ -1052,7 +1063,12 @@ require_once __DIR__ . '/templates/header.php';
                                         <div class="day-hours"><?= number_format($day['hours'], 1) ?> ч</div>
                                         <div class="day-absences"><?= $day['absences'] ?></div>
                                         <div class="day-amount"><?= formatMoney($day['total']) ?></div>
-                                        <button class="approve-btn <?= $day['all_approved'] ? 'approved' : '' ?>" onclick="event.stopPropagation()">
+                                        <button
+                                            class="approve-btn <?= $day['all_approved'] ? 'approved' : '' ?>"
+                                            onclick="event.stopPropagation(); approveDay(this, [<?= implode(',', $day['payment_ids']) ?>])"
+                                            title="<?= $day['all_approved'] ? 'Все выплаты одобрены' : 'Одобрить все выплаты за день' ?>"
+                                            <?= $day['all_approved'] ? 'disabled' : '' ?>
+                                        >
                                             <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
                                             </svg>
@@ -1646,6 +1662,58 @@ require_once __DIR__ . '/templates/header.php';
                 modal.classList.remove('active');
             }
         });
+    }
+
+    // ========== Функция одобрения всех выплат за день ==========
+
+    async function approveDay(btn, paymentIds) {
+        if (!paymentIds || paymentIds.length === 0) {
+            alert('Нет выплат для одобрения');
+            return;
+        }
+
+        // Фильтруем только pending выплаты (на бэкенде тоже есть проверка)
+        if (!confirm(`Одобрить ${paymentIds.length} выплат за этот день?`)) {
+            return;
+        }
+
+        btn.disabled = true;
+        const originalContent = btn.innerHTML;
+        btn.innerHTML = '<span style="display: inline-block; animation: spin 1s linear infinite;">⟳</span>';
+
+        try {
+            const response = await fetch('/zarplata/api/payments.php?action=approve_bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: paymentIds })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                if (result.data.approved > 0) {
+                    btn.classList.add('approved');
+                    btn.title = 'Все выплаты одобрены';
+                    btn.innerHTML = originalContent;
+                    alert(`Одобрено выплат: ${result.data.approved} из ${result.data.total}`);
+                    // Перезагружаем страницу для обновления данных
+                    window.location.reload();
+                } else {
+                    btn.innerHTML = originalContent;
+                    btn.disabled = false;
+                    alert('Нет выплат для одобрения (все уже одобрены или выплачены)');
+                }
+            } else {
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+                alert(result.error || 'Ошибка одобрения');
+            }
+        } catch (error) {
+            console.error('Error approving payments:', error);
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+            alert('Ошибка при одобрении выплат');
+        }
     }
 
     // ========== Функции редактирования выплаты ==========
