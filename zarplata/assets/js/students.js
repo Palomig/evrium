@@ -162,7 +162,7 @@ function renderSchedule() {
                     <select
                         class="form-control"
                         onchange="updateLessonTeacher(${day}, ${index}, this.value)"
-                        style="flex: 1; min-width: 140px;"
+                        style="flex: 1; min-width: 180px;"
                     >
                         <option value="">Выберите преподавателя</option>
                         ${teachersData.map(t => `
@@ -174,7 +174,7 @@ function renderSchedule() {
                     <select
                         class="form-control"
                         onchange="updateLessonSubject(${day}, ${index}, this.value)"
-                        style="width: 70px;"
+                        style="width: 65px;"
                         title="Предмет"
                     >
                         <option value="Мат." ${(lesson.subject === 'Мат.' || !lesson.subject) ? 'selected' : ''}>Мат.</option>
@@ -184,7 +184,7 @@ function renderSchedule() {
                     <select
                         class="form-control"
                         onchange="updateLessonRoom(${day}, ${index}, this.value)"
-                        style="width: 80px;"
+                        style="width: 75px;"
                         title="Кабинет"
                     >
                         <option value="1" ${(lesson.room == 1 || !lesson.room) ? 'selected' : ''}>Каб 1</option>
