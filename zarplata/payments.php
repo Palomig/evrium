@@ -1370,65 +1370,16 @@ require_once __DIR__ . '/templates/header.php';
 
 <!-- Модальное окно редактирования выплаты -->
 <div id="edit-payment-modal" class="modal">
-    <div class="modal-content" style="max-width: 500px;">
+    <div class="modal-content" style="max-width: 450px;">
         <div class="modal-header">
             <h3>✏️ Редактирование выплаты</h3>
             <button class="modal-close" onclick="closeEditModal()">
-                <span class="material-icons">close</span>
+                ✕
             </button>
         </div>
-        <form id="edit-payment-form" onsubmit="saveEditPayment(event)">
-            <div class="modal-body">
-                <div id="edit-payment-info" style="margin-bottom: 20px; padding: 12px; background: var(--md-surface-variant); border-radius: 8px;"></div>
-
-                <input type="hidden" id="edit-payment-id" name="id">
-
-                <div class="form-group">
-                    <label for="edit-payment-amount">Сумма (₽)</label>
-                    <input type="number"
-                           id="edit-payment-amount"
-                           name="amount"
-                           class="form-control"
-                           placeholder="Новая сумма"
-                           min="0"
-                    >
-                    <small style="color: var(--text-medium-emphasis);">Оставьте пустым, если не нужно менять</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="edit-payment-students">Количество пришедших учеников</label>
-                    <input type="number"
-                           id="edit-payment-students"
-                           name="student_count"
-                           class="form-control"
-                           placeholder="Фактическое количество"
-                           min="0"
-                    >
-                    <small style="color: var(--text-medium-emphasis);">Для исправления ошибочно указанного количества</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="edit-payment-notes">Комментарий</label>
-                    <textarea
-                        id="edit-payment-notes"
-                        name="notes"
-                        class="form-control"
-                        rows="2"
-                        placeholder="Причина изменения"
-                    ></textarea>
-                </div>
-            </div>
-
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline" onclick="closeEditModal()">
-                    Отмена
-                </button>
-                <button type="submit" id="edit-payment-btn" class="btn btn-primary">
-                    <span class="material-icons" style="margin-right: 8px; font-size: 18px;">save</span>
-                    Сохранить
-                </button>
-            </div>
-        </form>
+        <div class="modal-body" id="edit-payment-content">
+            <p style="text-align: center; padding: 20px;">Загрузка...</p>
+        </div>
     </div>
 </div>
 
@@ -1689,11 +1640,201 @@ require_once __DIR__ . '/templates/header.php';
 
     // Закрыть модалку при клике вне её
     window.onclick = function(event) {
-        const modal = document.getElementById('adjustment-modal');
-        if (event.target === modal) {
-            closeAdjustmentModal();
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            if (event.target === modal) {
+                modal.classList.remove('active');
+            }
+        });
+    }
+
+    // ========== Функции редактирования выплаты ==========
+
+    // Открыть модальное окно редактирования
+    async function openEditModal(paymentId) {
+        const modal = document.getElementById('edit-payment-modal');
+        const content = document.getElementById('edit-payment-content');
+
+        content.innerHTML = '<p style="text-align: center; padding: 20px;">Загрузка...</p>';
+        modal.classList.add('active');
+
+        try {
+            const response = await fetch(`/zarplata/api/payments.php?action=get&id=${paymentId}`);
+            const result = await response.json();
+
+            if (result.success) {
+                const payment = result.data;
+
+                // Парсим количество учеников из calculation_method
+                let attendedCount = '';
+                let expectedCount = '';
+                if (payment.calculation_method) {
+                    const match = payment.calculation_method.match(/(\d+)\s*из\s*(\d+)/iu);
+                    if (match) {
+                        attendedCount = match[1];
+                        expectedCount = match[2];
+                    }
+                }
+
+                content.innerHTML = `
+                    <form id="edit-payment-form" onsubmit="saveEditPayment(event)">
+                        <input type="hidden" id="edit-payment-id" value="${payment.id}">
+
+                        <div style="margin-bottom: 20px; padding: 16px; background: rgba(99, 102, 241, 0.1); border-radius: 8px; border-left: 3px solid #6366f1;">
+                            <div style="font-weight: 600; margin-bottom: 4px;">Выплата #${payment.id}</div>
+                            <div style="color: var(--text-medium-emphasis); font-size: 0.9em;">
+                                ${escapeHtml(payment.teacher_name || 'Преподаватель')} • ${formatDateRu(payment.lesson_date || payment.created_at)}
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Сумма выплаты (₽)</label>
+                            <input type="number" id="edit-amount" class="form-control"
+                                   value="${payment.amount}" min="0" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Пришло учеников</label>
+                            <input type="number" id="edit-attended" class="form-control"
+                                   value="${attendedCount}" min="0" placeholder="Количество">
+                            ${expectedCount ? `<small style="color: var(--text-medium-emphasis);">Ожидалось: ${expectedCount}</small>` : ''}
+                        </div>
+
+                        <div class="form-group">
+                            <label>Комментарий</label>
+                            <textarea id="edit-notes" class="form-control" rows="2"
+                                      placeholder="Причина изменения">${escapeHtml(payment.notes || '')}</textarea>
+                        </div>
+
+                        <div style="display: flex; gap: 12px; margin-top: 24px;">
+                            <button type="button" class="btn btn-outline" onclick="closeEditModal()" style="flex: 1;">
+                                Отмена
+                            </button>
+                            <button type="submit" id="edit-save-btn" class="btn btn-primary" style="flex: 1;">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right: 8px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                Сохранить
+                            </button>
+                        </div>
+
+                        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
+                            <button type="button" class="btn btn-outline" onclick="deletePayment(${payment.id})"
+                                    style="width: 100%; color: #ef4444; border-color: rgba(239, 68, 68, 0.3);">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right: 8px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                                Удалить выплату
+                            </button>
+                        </div>
+                    </form>
+                `;
+            } else {
+                content.innerHTML = `<p style="color: #ef4444; text-align: center;">${result.error || 'Ошибка загрузки'}</p>`;
+            }
+        } catch (error) {
+            console.error('Error loading payment:', error);
+            content.innerHTML = '<p style="color: #ef4444; text-align: center;">Ошибка загрузки данных</p>';
         }
     }
+
+    // Закрыть модальное окно
+    function closeEditModal() {
+        document.getElementById('edit-payment-modal').classList.remove('active');
+    }
+
+    // Сохранить изменения
+    async function saveEditPayment(event) {
+        event.preventDefault();
+
+        const paymentId = document.getElementById('edit-payment-id').value;
+        const amount = document.getElementById('edit-amount').value;
+        const attended = document.getElementById('edit-attended').value;
+        const notes = document.getElementById('edit-notes').value;
+
+        const saveBtn = document.getElementById('edit-save-btn');
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span style="display: inline-block; animation: spin 1s linear infinite;">⟳</span> Сохранение...';
+
+        try {
+            const data = { id: parseInt(paymentId) };
+
+            if (amount) data.amount = parseInt(amount);
+            if (attended) data.student_count = parseInt(attended);
+            if (notes !== undefined) data.notes = notes;
+
+            const response = await fetch('/zarplata/api/payments.php?action=update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('Выплата обновлена!');
+                closeEditModal();
+                window.location.reload();
+            } else {
+                alert(result.error || 'Ошибка сохранения');
+            }
+        } catch (error) {
+            console.error('Error updating payment:', error);
+            alert('Ошибка сохранения данных');
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '✓ Сохранить';
+        }
+    }
+
+    // Удалить выплату
+    async function deletePayment(paymentId) {
+        if (!confirm('Вы уверены, что хотите удалить эту выплату?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/zarplata/api/payments.php?action=delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: paymentId })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('Выплата удалена');
+                closeEditModal();
+                window.location.reload();
+            } else {
+                alert(result.error || 'Ошибка удаления');
+            }
+        } catch (error) {
+            console.error('Error deleting payment:', error);
+            alert('Ошибка удаления');
+        }
+    }
+
+    // Вспомогательные функции
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function formatDateRu(dateStr) {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('ru-RU');
+    }
 </script>
+
+<style>
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+</style>
 
 <?php require_once __DIR__ . '/templates/footer.php'; ?>
