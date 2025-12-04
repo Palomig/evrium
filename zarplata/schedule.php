@@ -99,6 +99,15 @@ foreach ($templates as &$template) {
     $template['students_array'] = $studentsForLesson;
     $template['actual_student_count'] = $studentsData['count'];
     $template['student_classes'] = $studentsData['classes'];
+
+    // ⭐ Предмет из расписания учеников (если не задан в шаблоне)
+    if (empty($template['subject']) && $studentsData['subject']) {
+        $template['subject'] = $studentsData['subject'];
+    }
+    // Fallback: если предмет всё ещё не задан, ставим "Математика"
+    if (empty($template['subject'])) {
+        $template['subject'] = 'Математика';
+    }
 }
 
 define('PAGE_TITLE', '');

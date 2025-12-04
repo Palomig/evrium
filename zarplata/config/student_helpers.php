@@ -10,22 +10,24 @@
  * @param int $teacherId ID преподавателя
  * @param int $dayOfWeek День недели (1-7)
  * @param string $timeStart Время начала урока (HH:MM)
- * @return array ['students' => [...], 'count' => N, 'classes' => 'X, Y, Z']
+ * @return array ['students' => [...], 'count' => N, 'classes' => 'X, Y, Z', 'subject' => 'Мат.']
  */
 function getStudentsForLesson($teacherId, $dayOfWeek, $timeStart) {
     // Убираем секунды если есть
     $timeStart = substr($timeStart, 0, 5); // "17:00:00" -> "17:00"
 
-    // Получаем всех активных студентов этого преподавателя
+    // ⭐ ИСПРАВЛЕНИЕ: Получаем ВСЕХ активных студентов и фильтруем по schedule
+    // Потому что teacher_id может быть указан внутри schedule JSON для каждого урока
     $allStudents = dbQuery(
-        "SELECT id, name, class, schedule
+        "SELECT id, name, class, schedule, teacher_id
          FROM students
-         WHERE active = 1 AND teacher_id = ?",
-        [$teacherId]
+         WHERE active = 1 AND schedule IS NOT NULL",
+        []
     );
 
     $studentsForLesson = [];
     $studentClasses = [];
+    $lessonSubject = null; // Предмет урока (берём из первого найденного)
 
     foreach ($allStudents as $student) {
         if (!$student['schedule']) continue;
@@ -34,21 +36,32 @@ function getStudentsForLesson($teacherId, $dayOfWeek, $timeStart) {
         if (!is_array($schedule)) continue;
 
         $hasThisLesson = false;
+        $foundSubject = null;
 
         // Проверяем формат расписания
         // Формат 1: [{"day": "Monday", "time": "17:00"}, ...]
         // Формат 2: {"1": "17:00", "3": "19:00"}
-        // Формат 3: {"1": [{"time": "17:00", "room": 1}], "3": [...]} ⭐ НОВЫЙ ФОРМАТ
+        // Формат 3: {"1": [{"time": "17:00", "room": 1, "subject": "Мат."}], "3": [...]} ⭐ НОВЫЙ ФОРМАТ
         foreach ($schedule as $key => $entry) {
             if (is_array($entry)) {
                 // Проверяем, это массив объектов (Формат 3) или один объект (Формат 1)?
                 if (isset($entry[0]) && is_array($entry[0])) {
-                    // ⭐ Формат 3: {"1": [{"time": "17:00", "room": 1}, ...]}
-                    // $key - это день недели, $entry - массив объектов с time/room
+                    // ⭐ Формат 3: {"1": [{"time": "17:00", "teacher_id": 5, "room": 1, "subject": "Мат."}, ...]}
+                    // $key - это день недели, $entry - массив объектов с time/teacher_id/room/subject
                     if ((int)$key == $dayOfWeek) {
                         foreach ($entry as $timeSlot) {
                             if (isset($timeSlot['time']) && substr($timeSlot['time'], 0, 5) == $timeStart) {
+                                // ⭐ Проверяем teacher_id внутри schedule (если указан)
+                                $slotTeacherId = isset($timeSlot['teacher_id']) ? (int)$timeSlot['teacher_id'] : null;
+                                if ($slotTeacherId && $slotTeacherId != $teacherId) {
+                                    continue; // Этот урок для другого преподавателя
+                                }
+                                // Если teacher_id не указан в слоте, проверяем колонку teacher_id
+                                if (!$slotTeacherId && $student['teacher_id'] != $teacherId) {
+                                    continue;
+                                }
                                 $hasThisLesson = true;
+                                $foundSubject = $timeSlot['subject'] ?? null;
                                 break 2; // Выходим из обоих циклов
                             }
                         }
@@ -72,14 +85,26 @@ function getStudentsForLesson($teacherId, $dayOfWeek, $timeStart) {
                     $entryDayNum = $dayMap[$entryDay] ?? (int)$entryDay;
 
                     if ($entryDayNum == $dayOfWeek && substr($entryTime, 0, 5) == $timeStart) {
+                        // ⭐ Проверяем teacher_id (если указан в entry)
+                        $entryTeacherId = isset($entry['teacher_id']) ? (int)$entry['teacher_id'] : null;
+                        if ($entryTeacherId && $entryTeacherId != $teacherId) {
+                            continue; // Другой преподаватель
+                        }
+                        if (!$entryTeacherId && $student['teacher_id'] != $teacherId) {
+                            continue;
+                        }
                         $hasThisLesson = true;
+                        $foundSubject = $entry['subject'] ?? null;
                         break;
                     }
                 }
             } else {
-                // Формат 2: объект {"1": "17:00"}
+                // Формат 2: объект {"1": "17:00"} - только время, без teacher_id
+                // В этом формате используем колонку students.teacher_id
                 if ((int)$key == $dayOfWeek && substr($entry, 0, 5) == $timeStart) {
-                    $hasThisLesson = true;
+                    if ($student['teacher_id'] == $teacherId) {
+                        $hasThisLesson = true;
+                    }
                     break;
                 }
             }
@@ -96,6 +121,11 @@ function getStudentsForLesson($teacherId, $dayOfWeek, $timeStart) {
             if ($student['class']) {
                 $studentClasses[] = (int)$student['class'];
             }
+
+            // Запоминаем предмет из первого найденного урока
+            if ($foundSubject && !$lessonSubject) {
+                $lessonSubject = $foundSubject;
+            }
         }
     }
 
@@ -104,9 +134,18 @@ function getStudentsForLesson($teacherId, $dayOfWeek, $timeStart) {
     sort($studentClasses);
     $classesStr = !empty($studentClasses) ? implode(', ', $studentClasses) : '';
 
+    // Преобразуем сокращённый предмет в полный для CSS-класса
+    $subjectMap = [
+        'Мат.' => 'Математика',
+        'Физ.' => 'Физика',
+        'Инф.' => 'Информатика'
+    ];
+    $fullSubject = $lessonSubject ? ($subjectMap[$lessonSubject] ?? $lessonSubject) : null;
+
     return [
         'students' => $studentsForLesson,
         'count' => count($studentsForLesson),
-        'classes' => $classesStr
+        'classes' => $classesStr,
+        'subject' => $fullSubject // Полное название для CSS-класса
     ];
 }
