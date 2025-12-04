@@ -7,6 +7,7 @@
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/auth.php';
 require_once __DIR__ . '/../config/helpers.php';
+require_once __DIR__ . '/../config/student_helpers.php';
 
 // Устанавливаем JSON заголовки
 header('Content-Type: application/json; charset=utf-8');
@@ -50,99 +51,6 @@ switch ($action) {
 }
 
 /**
- * ⭐ HELPER FUNCTION: Получить список студентов для шаблона урока
- * Динамически читает из таблицы students на основе их расписания
- *
- * @param array $template Шаблон урока из lessons_template
- * @return array ['students' => [...], 'count' => N, 'classes' => 'X, Y, Z']
- */
-function getStudentsForTemplate($template) {
-    $teacherId = $template['teacher_id'];
-    $dayOfWeek = $template['day_of_week'];
-    $timeStart = substr($template['time_start'], 0, 5); // "17:00:00" -> "17:00"
-
-    // Получаем всех активных студентов этого преподавателя
-    $allStudents = dbQuery(
-        "SELECT id, name, class, schedule
-         FROM students
-         WHERE active = 1 AND teacher_id = ?",
-        [$teacherId]
-    );
-
-    $studentsForLesson = [];
-    $studentClasses = [];
-
-    foreach ($allStudents as $student) {
-        if (!$student['schedule']) continue;
-
-        $schedule = json_decode($student['schedule'], true);
-        if (!is_array($schedule)) continue;
-
-        $hasThisLesson = false;
-
-        // Проверяем формат расписания
-        // Формат 1: [{"day": "Monday", "time": "17:00"}, ...]
-        // Формат 2: {"1": "17:00", "3": "19:00"}
-        foreach ($schedule as $key => $entry) {
-            if (is_array($entry)) {
-                // Формат 1: массив объектов
-                $entryDay = $entry['day'] ?? null;
-                $entryTime = $entry['time'] ?? null;
-
-                // Преобразуем день из названия в номер
-                $dayMap = [
-                    'Monday' => 1, 'Пн' => 1, 'понедельник' => 1,
-                    'Tuesday' => 2, 'Вт' => 2, 'вторник' => 2,
-                    'Wednesday' => 3, 'Ср' => 3, 'среда' => 3,
-                    'Thursday' => 4, 'Чт' => 4, 'четверг' => 4,
-                    'Friday' => 5, 'Пт' => 5, 'пятница' => 5,
-                    'Saturday' => 6, 'Сб' => 6, 'суббота' => 6,
-                    'Sunday' => 7, 'Вс' => 7, 'воскресенье' => 7
-                ];
-
-                $entryDayNum = $dayMap[$entryDay] ?? (int)$entryDay;
-
-                if ($entryDayNum == $dayOfWeek && substr($entryTime, 0, 5) == $timeStart) {
-                    $hasThisLesson = true;
-                    break;
-                }
-            } else {
-                // Формат 2: объект {"1": "17:00"}
-                if ((int)$key == $dayOfWeek && substr($entry, 0, 5) == $timeStart) {
-                    $hasThisLesson = true;
-                    break;
-                }
-            }
-        }
-
-        if ($hasThisLesson) {
-            $studentName = $student['name'];
-            if ($student['class']) {
-                $studentName .= " ({$student['class']} кл.)";
-                $studentClasses[] = (int)$student['class'];
-            }
-            $studentsForLesson[] = [
-                'id' => $student['id'],
-                'name' => $student['name'],
-                'class' => $student['class'],
-                'display' => $studentName
-            ];
-        }
-    }
-
-    // Формируем строку с классами
-    $studentClasses = array_unique($studentClasses);
-    sort($studentClasses);
-    $classesStr = !empty($studentClasses) ? implode(', ', $studentClasses) : '';
-
-    return [
-        'students' => $studentsForLesson,
-        'count' => count($studentsForLesson),
-        'classes' => $classesStr
-    ];
-}
-
-/**
  * Получить список шаблонов с динамическим расчетом студентов
  */
 function handleListTemplates() {
@@ -158,8 +66,27 @@ function handleListTemplates() {
 
     // ⭐ НОВАЯ ЛОГИКА: Добавляем динамический список студентов для каждого шаблона
     foreach ($templates as &$template) {
-        $studentsData = getStudentsForTemplate($template);
-        $template['students_array'] = $studentsData['students'];
+        $studentsData = getStudentsForLesson(
+            $template['teacher_id'],
+            $template['day_of_week'],
+            substr($template['time_start'], 0, 5)
+        );
+
+        // Преобразуем формат для совместимости с фронтендом
+        $studentsArray = [];
+        foreach ($studentsData['students'] as $student) {
+            $displayName = $student['name'];
+            if ($student['class']) {
+                $displayName .= " ({$student['class']} кл.)";
+            }
+            $studentsArray[] = [
+                'name' => $student['name'],
+                'class' => $student['class'],
+                'display' => $displayName
+            ];
+        }
+
+        $template['students_array'] = $studentsArray;
         $template['actual_student_count'] = $studentsData['count'];
         $template['student_classes'] = $studentsData['classes'];
     }
@@ -187,8 +114,27 @@ function handleGetTemplate() {
     }
 
     // ⭐ НОВАЯ ЛОГИКА: Добавляем динамический список студентов
-    $studentsData = getStudentsForTemplate($template);
-    $template['students_array'] = $studentsData['students'];
+    $studentsData = getStudentsForLesson(
+        $template['teacher_id'],
+        $template['day_of_week'],
+        substr($template['time_start'], 0, 5)
+    );
+
+    // Преобразуем формат для совместимости с фронтендом
+    $studentsArray = [];
+    foreach ($studentsData['students'] as $student) {
+        $displayName = $student['name'];
+        if ($student['class']) {
+            $displayName .= " ({$student['class']} кл.)";
+        }
+        $studentsArray[] = [
+            'name' => $student['name'],
+            'class' => $student['class'],
+            'display' => $displayName
+        ];
+    }
+
+    $template['students_array'] = $studentsArray;
     $template['actual_student_count'] = $studentsData['count'];
     $template['student_classes'] = $studentsData['classes'];
 
@@ -493,8 +439,27 @@ function handleMoveTemplate() {
         $updatedTemplate = dbQueryOne("SELECT * FROM lessons_template WHERE id = ?", [$id]);
 
         // Добавляем динамические данные студентов
-        $studentsData = getStudentsForTemplate($updatedTemplate);
-        $updatedTemplate['students_array'] = $studentsData['students'];
+        $studentsData = getStudentsForLesson(
+            $updatedTemplate['teacher_id'],
+            $updatedTemplate['day_of_week'],
+            substr($updatedTemplate['time_start'], 0, 5)
+        );
+
+        // Преобразуем формат для совместимости с фронтендом
+        $studentsArray = [];
+        foreach ($studentsData['students'] as $student) {
+            $displayName = $student['name'];
+            if ($student['class']) {
+                $displayName .= " ({$student['class']} кл.)";
+            }
+            $studentsArray[] = [
+                'name' => $student['name'],
+                'class' => $student['class'],
+                'display' => $displayName
+            ];
+        }
+
+        $updatedTemplate['students_array'] = $studentsArray;
         $updatedTemplate['actual_student_count'] = $studentsData['count'];
         $updatedTemplate['student_classes'] = $studentsData['classes'];
 
