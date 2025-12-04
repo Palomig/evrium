@@ -102,6 +102,23 @@ function sendAttendanceQuery($lesson) {
         return;
     }
 
+    // ⭐ КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: Логируем ДО отправки, чтобы предотвратить дубликаты
+    // Даже если отправка не удастся, повторная попытка не будет предпринята
+    logAudit(
+        'attendance_query_sent',
+        'lesson_template',
+        $lesson['id'],
+        null,
+        [
+            'teacher_id' => $lesson['teacher_id'],
+            'telegram_id' => $lesson['telegram_id'],
+            'expected_students' => $lesson['expected_students']
+        ],
+        'Попытка отправки опроса о посещаемости в Telegram'
+    );
+
+    error_log("Logged audit entry for lesson {$lesson['id']} BEFORE sending message");
+
     $chatId = $lesson['telegram_id'];
 
     // Формируем сообщение
@@ -151,23 +168,10 @@ function sendAttendanceQuery($lesson) {
     $result = sendTelegramMessage($chatId, $message, $keyboard);
 
     if ($result) {
-        error_log("Attendance query sent to teacher {$lesson['teacher_id']} for lesson {$lesson['id']}");
-
-        // Логируем в audit_log
-        logAudit(
-            'attendance_query_sent',
-            'lesson_template',
-            $lesson['id'],
-            null,
-            [
-                'teacher_id' => $lesson['teacher_id'],
-                'telegram_id' => $chatId,
-                'expected_students' => $expected
-            ],
-            'Отправлен опрос о посещаемости в Telegram'
-        );
+        error_log("✅ Attendance query successfully sent to teacher {$lesson['teacher_id']} for lesson {$lesson['id']}");
     } else {
-        error_log("Failed to send attendance query to teacher {$lesson['teacher_id']}");
+        error_log("❌ Failed to send attendance query to teacher {$lesson['teacher_id']} for lesson {$lesson['id']}");
+        // Примечание: audit_log уже записан выше, поэтому повторная попытка не будет предпринята
     }
 }
 
