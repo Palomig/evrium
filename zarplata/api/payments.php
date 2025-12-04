@@ -33,6 +33,9 @@ switch ($action) {
     case 'approve':
         handleApprove();
         break;
+    case 'approve_bulk':
+        handleApproveBulk();
+        break;
     case 'mark_paid':
         handleMarkPaid();
         break;
@@ -281,6 +284,74 @@ function handleApprove() {
         error_log("Failed to approve payment: " . $e->getMessage());
         jsonError('Ошибка при одобрении выплаты', 500);
     }
+}
+
+/**
+ * Массовое одобрение выплат (для одобрения всех выплат за день)
+ */
+function handleApproveBulk() {
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+
+    if (!$data) {
+        $data = $_POST;
+    }
+
+    $ids = $data['ids'] ?? [];
+
+    if (empty($ids) || !is_array($ids)) {
+        jsonError('Не указаны ID выплат', 400);
+    }
+
+    // Фильтруем только числовые ID
+    $ids = array_filter(array_map('intval', $ids), function($id) {
+        return $id > 0;
+    });
+
+    if (empty($ids)) {
+        jsonError('Нет валидных ID выплат', 400);
+    }
+
+    $approved = 0;
+    $errors = [];
+
+    foreach ($ids as $id) {
+        $existing = dbQueryOne("SELECT * FROM payments WHERE id = ?", [$id]);
+
+        if (!$existing) {
+            $errors[] = "Выплата #$id не найдена";
+            continue;
+        }
+
+        if ($existing['status'] !== 'pending') {
+            // Пропускаем уже одобренные/выплаченные без ошибки
+            continue;
+        }
+
+        try {
+            $result = dbExecute(
+                "UPDATE payments SET status = 'approved', updated_at = NOW() WHERE id = ?",
+                [$id]
+            );
+
+            if ($result !== false) {
+                $approved++;
+                logAudit('payment_approved', 'payment', $id,
+                    ['status' => 'pending'],
+                    ['status' => 'approved'],
+                    'Выплата одобрена (массовое)'
+                );
+            }
+        } catch (Exception $e) {
+            $errors[] = "Ошибка одобрения #$id: " . $e->getMessage();
+        }
+    }
+
+    jsonSuccess([
+        'approved' => $approved,
+        'total' => count($ids),
+        'errors' => $errors
+    ]);
 }
 
 /**
