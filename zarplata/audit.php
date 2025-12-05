@@ -275,7 +275,7 @@ require_once __DIR__ . '/templates/header.php';
                         <td><?= e($log['description'] ?: '—') ?></td>
                         <td><?= $log['ip_address'] ?? '—' ?></td>
                         <td>
-                            <?php if ($log['old_values'] || $log['new_values']): ?>
+                            <?php if ($log['old_value'] || $log['new_value']): ?>
                                 <button class="btn btn-text" onclick="viewAuditDetails(<?= $log['id'] ?>)">
                                     <span class="material-icons" style="font-size: 18px;">visibility</span>
                                 </button>
