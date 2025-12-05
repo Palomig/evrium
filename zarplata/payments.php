@@ -1092,10 +1092,7 @@ require_once __DIR__ . '/templates/header.php';
                                                 <div class="lesson-students-cell">
                                                     <?php if (!empty($lesson['students'])): ?>
                                                         <span style="color: var(--text-secondary); font-size: 0.85em;">
-                                                            <?= e(implode(', ', array_slice($lesson['students'], 0, 3))) ?>
-                                                            <?php if (count($lesson['students']) > 3): ?>
-                                                                <span style="color: var(--text-medium-emphasis);">+<?= count($lesson['students']) - 3 ?></span>
-                                                            <?php endif; ?>
+                                                            <?= e(implode(', ', $lesson['students'])) ?>
                                                         </span>
                                                     <?php else: ?>
                                                         <span style="color: var(--text-disabled);">—</span>
