@@ -245,12 +245,21 @@ foreach ($lessons as $lesson) {
     // ⭐ НОВАЯ ЛОГИКА: Получаем студентов динамически из таблицы students
     $students = [];
     $studentNames = [];
-    if ($lesson['template_teacher_id'] && $lesson['template_day_of_week'] && $lesson['template_time_start']) {
-        // Урок создан из шаблона - получаем студентов динамически
+
+    // Определяем параметры для поиска студентов
+    // Приоритет: lessons_template -> lessons_instance
+    $teacherIdForStudents = $lesson['template_teacher_id'] ?: $lesson['teacher_id'];
+    $dayOfWeekForStudents = $lesson['template_day_of_week'] ?: (
+        $lesson['lesson_date'] ? (int)date('N', strtotime($lesson['lesson_date'])) : null
+    );
+    $timeStartForStudents = $lesson['template_time_start'] ?: $lesson['time_start'];
+
+    if ($teacherIdForStudents && $dayOfWeekForStudents && $timeStartForStudents) {
+        // Получаем студентов динамически
         $studentsData = getStudentsForLesson(
-            $lesson['template_teacher_id'],
-            $lesson['template_day_of_week'],
-            $lesson['template_time_start']
+            $teacherIdForStudents,
+            $dayOfWeekForStudents,
+            substr($timeStartForStudents, 0, 5)
         );
         $students = $studentsData['students'];
         // Преобразуем в массив имён для отображения
