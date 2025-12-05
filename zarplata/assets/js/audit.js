@@ -90,6 +90,32 @@ async function viewAuditDetails(logId) {
 function renderAuditDetails(log) {
     const content = document.getElementById('audit-details-content');
 
+    // Маппинг типов сущностей
+    const entityTypes = {
+        'payment': 'Выплата',
+        'lesson': 'Урок',
+        'lesson_template': 'Шаблон урока',
+        'lesson_schedule': 'Урок (расписание)',
+        'teacher': 'Преподаватель',
+        'student': 'Ученик',
+        'formula': 'Формула',
+        'template': 'Шаблон',
+        'settings': 'Настройки',
+        'user': 'Пользователь'
+    };
+
+    // Маппинг действий
+    const actionNames = {
+        'Изменение': 'Редактирование',
+        'Одобрение': 'Одобрение выплаты',
+        'attendance_query_sent': 'Отправка опроса посещаемости',
+        'attendance_marked': 'Отметка посещаемости',
+        'payment_created': 'Создание выплаты',
+        'payment_updated': 'Изменение выплаты',
+        'lesson_created': 'Создание урока',
+        'lesson_deleted': 'Удаление урока'
+    };
+
     let html = `
         <div style="display: grid; gap: 20px;">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--md-outline);">
@@ -102,12 +128,38 @@ function renderAuditDetails(log) {
                     <strong>${escapeHtml(log.user_name || 'Система')}</strong>
                 </div>
             </div>
-            <div>
-                <span style="color: var(--text-medium-emphasis); font-size: 0.85em;">Действие</span><br>
-                <strong>${escapeHtml(log.action)}</strong>
-                ${log.description ? `<br><span style="color: var(--text-secondary);">${escapeHtml(log.description)}</span>` : ''}
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div>
+                    <span style="color: var(--text-medium-emphasis); font-size: 0.85em;">Действие</span><br>
+                    <strong>${escapeHtml(actionNames[log.action] || log.action)}</strong>
+                </div>
+                <div>
+                    <span style="color: var(--text-medium-emphasis); font-size: 0.85em;">Тип</span><br>
+                    <strong>${escapeHtml(entityTypes[log.entity_type] || log.entity_type)}</strong>
+                    ${log.entity_id ? ` <span style="color: var(--text-disabled);">#${log.entity_id}</span>` : ''}
+                </div>
             </div>
     `;
+
+    // Описание
+    if (log.description) {
+        html += `
+            <div>
+                <span style="color: var(--text-medium-emphasis); font-size: 0.85em;">Описание</span><br>
+                <span>${escapeHtml(log.description)}</span>
+            </div>
+        `;
+    }
+
+    // Примечание
+    if (log.notes) {
+        html += `
+            <div>
+                <span style="color: var(--text-medium-emphasis); font-size: 0.85em;">Примечание</span><br>
+                <span>${escapeHtml(log.notes)}</span>
+            </div>
+        `;
+    }
 
     // Парсим old_value и new_value
     let oldValues = null;
@@ -142,7 +194,7 @@ function renderAuditDetails(log) {
         else if (!oldValues && newValues) {
             html += `
                 <div style="background: rgba(76, 175, 80, 0.1); border-left: 3px solid var(--md-success); padding: 12px 16px; border-radius: 0 8px 8px 0;">
-                    <strong style="color: var(--md-success);">✓ Созданные данные:</strong>
+                    <strong style="color: var(--md-success);">✓ Данные:</strong>
                     ${renderValues(newValues)}
                 </div>
             `;
@@ -153,6 +205,13 @@ function renderAuditDetails(log) {
         }
 
         html += `</div>`;
+    } else {
+        // Нет данных об изменениях
+        html += `
+            <div style="padding: 16px; background: var(--md-surface-3); border-radius: 8px; text-align: center; color: var(--text-medium-emphasis);">
+                Подробная информация не сохранена
+            </div>
+        `;
     }
 
     html += `</div>`;

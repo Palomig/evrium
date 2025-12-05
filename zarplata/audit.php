@@ -169,6 +169,18 @@ require_once __DIR__ . '/templates/header.php';
         font-size: 0.875rem;
         color: var(--text-medium-emphasis);
     }
+
+    .clickable-row {
+        transition: background-color 0.15s ease;
+    }
+
+    .clickable-row:hover {
+        background-color: var(--md-surface-3) !important;
+    }
+
+    .clickable-row:active {
+        background-color: var(--md-surface-2) !important;
+    }
 </style>
 
 <!-- Фильтры -->
@@ -256,7 +268,7 @@ require_once __DIR__ . '/templates/header.php';
             </thead>
             <tbody>
                 <?php foreach ($logs as $log): ?>
-                    <tr>
+                    <tr onclick="viewAuditDetails(<?= $log['id'] ?>)" style="cursor: pointer;" class="clickable-row">
                         <td>
                             <strong><?= date('d.m.Y H:i:s', strtotime($log['created_at'])) ?></strong>
                         </td>
@@ -275,13 +287,7 @@ require_once __DIR__ . '/templates/header.php';
                         <td><?= e($log['description'] ?: '—') ?></td>
                         <td><?= $log['ip_address'] ?? '—' ?></td>
                         <td>
-                            <?php if ($log['old_value'] || $log['new_value']): ?>
-                                <button class="btn btn-text" onclick="viewAuditDetails(<?= $log['id'] ?>)">
-                                    <span class="material-icons" style="font-size: 18px;">visibility</span>
-                                </button>
-                            <?php else: ?>
-                                —
-                            <?php endif; ?>
+                            <span class="material-icons" style="font-size: 18px; color: var(--text-medium-emphasis);">chevron_right</span>
                         </td>
                     </tr>
                 <?php endforeach; ?>
