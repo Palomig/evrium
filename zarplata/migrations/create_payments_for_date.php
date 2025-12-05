@@ -5,6 +5,10 @@
  * Или через браузер: create_payments_for_date.php?date=2024-12-04
  */
 
+// Включаем отображение ошибок для отладки
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/helpers.php';
 require_once __DIR__ . '/../config/student_helpers.php';
