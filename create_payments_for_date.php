@@ -17,14 +17,35 @@ require_once __DIR__ . '/zarplata/config/db.php';
 require_once __DIR__ . '/zarplata/config/helpers.php';
 require_once __DIR__ . '/zarplata/config/student_helpers.php';
 
-// Определяем дату
+// Определяем дату и флаг очистки
 $date = $_GET['date'] ?? date('Y-m-d');
+$clear = isset($_GET['clear']) && $_GET['clear'] == '1';
 $dayOfWeek = (int)date('N', strtotime($date));
 
 $dayNames = [1 => 'Понедельник', 2 => 'Вторник', 3 => 'Среда', 4 => 'Четверг', 5 => 'Пятница', 6 => 'Суббота', 7 => 'Воскресенье'];
 
 echo "<pre>\n";
 echo "=== Создание уроков и выплат за {$date} ({$dayNames[$dayOfWeek]}) ===\n\n";
+
+// ⭐ Очистка старых записей если указан clear=1
+if ($clear) {
+    echo "🗑 Очистка старых записей за {$date}...\n";
+
+    // Сначала удаляем payments (они ссылаются на lessons_instance)
+    $deletedPayments = dbExecute(
+        "DELETE FROM payments WHERE DATE(created_at) = ? OR lesson_instance_id IN
+         (SELECT id FROM lessons_instance WHERE lesson_date = ?)",
+        [$date, $date]
+    );
+    echo "  Удалено выплат: " . ($deletedPayments ?: 0) . "\n";
+
+    // Затем удаляем lessons_instance
+    $deletedLessons = dbExecute(
+        "DELETE FROM lessons_instance WHERE lesson_date = ?",
+        [$date]
+    );
+    echo "  Удалено уроков: " . ($deletedLessons ?: 0) . "\n\n";
+}
 
 // ⭐ ШАГ 1: Получаем ВСЕ уникальные уроки из students.schedule
 $allStudents = dbQuery(
