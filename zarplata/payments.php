@@ -1142,16 +1142,80 @@ require_once __DIR__ . '/templates/header.php';
     </div>
 
     <!-- Модальное окно журнала событий -->
+    <?php
+    // Маппинги для журнала
+    $journalFieldNames = [
+        'amount' => 'Сумма',
+        'status' => 'Статус',
+        'payment_status' => 'Статус выплаты',
+        'payment_type' => 'Тип выплаты',
+        'notes' => 'Примечание',
+        'description' => 'Описание',
+        'name' => 'Имя',
+        'teacher_id' => 'Преподаватель',
+        'student_id' => 'Ученик',
+        'lesson_date' => 'Дата урока',
+        'time_start' => 'Начало',
+        'time_end' => 'Окончание',
+        'subject' => 'Предмет',
+        'lesson_type' => 'Тип урока',
+        'actual_students' => 'Присутствовало',
+        'expected_students' => 'Ожидалось',
+        'formula_id' => 'Формула',
+        'attended' => 'Присутствовало',
+        'expected' => 'Ожидалось',
+        'payment_id' => 'ID выплаты',
+        'time' => 'Время',
+        'student_names' => 'Ученики'
+    ];
+
+    $journalValueTranslations = [
+        'pending' => 'Ожидает',
+        'approved' => 'Одобрено',
+        'paid' => 'Выплачено',
+        'cancelled' => 'Отменено',
+        'lesson' => 'Урок',
+        'bonus' => 'Бонус',
+        'penalty' => 'Штраф',
+        'adjustment' => 'Корректировка',
+        'group' => 'Групповой',
+        'individual' => 'Индивидуальный'
+    ];
+
+    function formatJournalValue($value, $translations) {
+        if ($value === null || $value === '') {
+            return '<span style="color: var(--text-disabled);">—</span>';
+        }
+        if (is_bool($value)) {
+            return $value ? 'Да' : 'Нет';
+        }
+        if (is_array($value)) {
+            if (empty($value)) {
+                return '<span style="color: var(--text-disabled);">(пусто)</span>';
+            }
+            return e(implode(', ', $value));
+        }
+        $strValue = (string)$value;
+        if (isset($translations[$strValue])) {
+            return e($translations[$strValue]);
+        }
+        if (is_numeric($strValue) && (int)$strValue > 100) {
+            return number_format((int)$strValue, 0, ',', ' ') . ' ₽';
+        }
+        return e($strValue);
+    }
+    ?>
+
     <div id="journalModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
-        <div class="modal-content" style="background: var(--bg-card); border-radius: 16px; max-width: 1200px; max-height: 80vh; width: 90%; overflow: hidden; display: flex; flex-direction: column;">
+        <div class="modal-content" style="background: var(--bg-card); border-radius: 16px; max-width: 1000px; max-height: 85vh; width: 95%; overflow: hidden; display: flex; flex-direction: column;">
             <!-- Header -->
-            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 24px 28px; border-bottom: 1px solid var(--border);">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid var(--border);">
                 <div>
-                    <h2 style="font-size: 24px; font-weight: 700; color: var(--text-high-emphasis); margin: 0;">
+                    <h2 style="font-size: 20px; font-weight: 700; color: var(--text-high-emphasis); margin: 0;">
                         Журнал событий
                     </h2>
-                    <p style="font-size: 14px; color: var(--text-medium-emphasis); margin: 4px 0 0 0;">
-                        История действий с выплатами и уроками
+                    <p style="font-size: 13px; color: var(--text-medium-emphasis); margin: 4px 0 0 0;">
+                        Нажмите на запись для просмотра деталей
                     </p>
                 </div>
                 <button onclick="closeJournalModal()" class="btn-icon" style="background: var(--bg-hover); border: none; border-radius: 8px; padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">
@@ -1160,95 +1224,201 @@ require_once __DIR__ . '/templates/header.php';
             </div>
 
             <!-- Body -->
-            <div class="modal-body" style="padding: 24px 28px; overflow-y: auto; flex: 1;">
+            <div class="modal-body" style="padding: 16px; overflow-y: auto; flex: 1;">
                 <?php if (empty($auditLogs)): ?>
                     <div class="empty-state">
                         <p>Журнал событий пуст</p>
                     </div>
                 <?php else: ?>
-                    <div class="audit-log-table" style="background: var(--bg-elevated); border-radius: 12px; overflow: hidden;">
-                        <div class="audit-header" style="display: grid; grid-template-columns: 180px 120px 1fr 150px 120px; gap: 16px; padding: 16px 20px; background: var(--bg-hover); border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 600; color: var(--text-medium-emphasis); text-transform: uppercase; letter-spacing: 0.5px;">
-                            <div>Дата и время</div>
-                            <div>Действие</div>
-                            <div>Описание</div>
-                            <div>Пользователь</div>
-                            <div>Тип</div>
-                        </div>
+                    <div class="journal-entries" style="display: flex; flex-direction: column; gap: 8px;">
+                        <?php foreach ($auditLogs as $logIndex => $log):
+                            $date = new DateTime($log['created_at']);
+                            $dateFormatted = $date->format('d.m.Y H:i');
 
-                        <div class="audit-log-entries">
-                            <?php foreach ($auditLogs as $log): ?>
-                                <?php
-                                // Форматируем дату
-                                $date = new DateTime($log['created_at']);
-                                $dateFormatted = $date->format('d.m.Y H:i');
+                            $actionIcons = [
+                                'payment_created' => ['icon' => 'add_circle', 'color' => '#10b981', 'class' => 'create'],
+                                'payment_updated' => ['icon' => 'edit', 'color' => '#f59e0b', 'class' => 'update'],
+                                'payment_deleted' => ['icon' => 'delete', 'color' => '#ef4444', 'class' => 'delete'],
+                                'payment_approved' => ['icon' => 'check_circle', 'color' => '#10b981', 'class' => 'approve'],
+                                'payment_paid' => ['icon' => 'payments', 'color' => '#14b8a6', 'class' => 'approve'],
+                                'adjustment_created' => ['icon' => 'tune', 'color' => '#8b5cf6', 'class' => 'info'],
+                                'lesson_completed' => ['icon' => 'done', 'color' => '#10b981', 'class' => 'approve'],
+                                'payments_cleared_all' => ['icon' => 'delete_sweep', 'color' => '#ef4444', 'class' => 'delete']
+                            ];
 
-                                // Определяем иконку и цвет по типу действия
-                                $actionIcons = [
-                                    'payment_created' => ['icon' => 'add_circle', 'color' => '#10b981'],
-                                    'payment_updated' => ['icon' => 'edit', 'color' => '#f59e0b'],
-                                    'payment_deleted' => ['icon' => 'delete', 'color' => '#ef4444'],
-                                    'payment_approved' => ['icon' => 'check_circle', 'color' => '#10b981'],
-                                    'payment_paid' => ['icon' => 'payments', 'color' => '#14b8a6'],
-                                    'adjustment_created' => ['icon' => 'tune', 'color' => '#8b5cf6'],
-                                    'lesson_completed' => ['icon' => 'done', 'color' => '#10b981'],
-                                    'payments_cleared_all' => ['icon' => 'delete_sweep', 'color' => '#ef4444']
-                                ];
+                            $actionInfo = $actionIcons[$log['action_type']] ?? ['icon' => 'info', 'color' => '#6366f1', 'class' => 'info'];
 
-                                $actionInfo = $actionIcons[$log['action_type']] ?? ['icon' => 'info', 'color' => '#6366f1'];
+                            $actionLabels = [
+                                'payment_created' => 'Создание',
+                                'payment_updated' => 'Изменение',
+                                'payment_deleted' => 'Удаление',
+                                'payment_approved' => 'Одобрение',
+                                'payment_paid' => 'Выплата',
+                                'adjustment_created' => 'Корректировка',
+                                'lesson_completed' => 'Урок завершён',
+                                'payments_cleared_all' => 'Полная очистка'
+                            ];
 
-                                // Определяем читаемое название действия
-                                $actionLabels = [
-                                    'payment_created' => 'Создание',
-                                    'payment_updated' => 'Изменение',
-                                    'payment_deleted' => 'Удаление',
-                                    'payment_approved' => 'Одобрение',
-                                    'payment_paid' => 'Выплата',
-                                    'adjustment_created' => 'Корректировка',
-                                    'lesson_completed' => 'Урок завершён',
-                                    'payments_cleared_all' => 'Полная очистка'
-                                ];
+                            $actionLabel = $actionLabels[$log['action_type']] ?? $log['action_type'];
 
-                                $actionLabel = $actionLabels[$log['action_type']] ?? $log['action_type'];
+                            $entityLabels = [
+                                'payment' => 'Выплата',
+                                'lesson' => 'Урок',
+                                'adjustment' => 'Корректировка'
+                            ];
 
-                                // Определяем тип сущности
-                                $entityLabels = [
-                                    'payment' => 'Выплата',
-                                    'lesson' => 'Урок',
-                                    'adjustment' => 'Корректировка'
-                                ];
+                            $entityLabel = $entityLabels[$log['entity_type']] ?? $log['entity_type'];
 
-                                $entityLabel = $entityLabels[$log['entity_type']] ?? $log['entity_type'];
-                                ?>
-
-                                <div class="audit-entry" style="display: grid; grid-template-columns: 180px 120px 1fr 150px 120px; gap: 16px; padding: 16px 20px; border-bottom: 1px solid var(--border); transition: background 0.2s; cursor: default;">
-                                    <div style="font-size: 13px; color: var(--text-medium-emphasis); font-family: 'JetBrains Mono', monospace;">
+                            // Парсим данные
+                            $oldValue = null;
+                            $newValue = null;
+                            if ($log['old_value']) {
+                                $oldValue = json_decode($log['old_value'], true);
+                                if (json_last_error() !== JSON_ERROR_NONE) {
+                                    $oldValue = $log['old_value'];
+                                }
+                            }
+                            if ($log['new_value']) {
+                                $newValue = json_decode($log['new_value'], true);
+                                if (json_last_error() !== JSON_ERROR_NONE) {
+                                    $newValue = $log['new_value'];
+                                }
+                            }
+                        ?>
+                            <div class="journal-entry" style="background: var(--bg-elevated); border-radius: 10px; overflow: hidden;">
+                                <!-- Заголовок записи (кликабельный) -->
+                                <div class="journal-entry-header" onclick="toggleJournalEntry(this)" style="display: grid; grid-template-columns: 130px 120px 1fr 100px 40px; gap: 12px; padding: 14px 16px; cursor: pointer; transition: background 0.2s; align-items: center;">
+                                    <div style="font-size: 12px; color: var(--text-medium-emphasis); font-family: monospace;">
                                         <?= e($dateFormatted) ?>
                                     </div>
                                     <div style="display: flex; align-items: center; gap: 6px;">
-                                        <span class="material-icons" style="font-size: 18px; color: <?= $actionInfo['color'] ?>;">
+                                        <span class="material-icons" style="font-size: 16px; color: <?= $actionInfo['color'] ?>;">
                                             <?= $actionInfo['icon'] ?>
                                         </span>
-                                        <span style="font-size: 13px; font-weight: 500; color: var(--text-high-emphasis);">
+                                        <span style="font-size: 12px; font-weight: 500; color: var(--text-high-emphasis);">
                                             <?= e($actionLabel) ?>
                                         </span>
                                     </div>
-                                    <div style="font-size: 13px; color: var(--text-medium-emphasis);">
-                                        <?= e($log['notes'] ?: '—') ?>
-                                        <?php if ($log['entity_id']): ?>
-                                            <span style="color: var(--text-disabled); font-size: 12px;">(ID: <?= $log['entity_id'] ?>)</span>
-                                        <?php endif; ?>
+                                    <div style="font-size: 12px; color: var(--text-medium-emphasis); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        <?= e($log['notes'] ?: $entityLabel . ($log['entity_id'] ? ' #' . $log['entity_id'] : '')) ?>
                                     </div>
-                                    <div style="font-size: 13px; color: var(--text-medium-emphasis);">
+                                    <div style="font-size: 12px; color: var(--text-medium-emphasis);">
                                         <?= e($log['user_name'] ?: 'Система') ?>
                                     </div>
-                                    <div>
-                                        <span style="display: inline-block; padding: 4px 10px; background: rgba(99, 102, 241, 0.1); color: #818cf8; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
-                                            <?= e($entityLabel) ?>
-                                        </span>
+                                    <div style="text-align: right;">
+                                        <span class="material-icons journal-chevron" style="font-size: 18px; color: var(--text-medium-emphasis); transition: transform 0.3s;">chevron_right</span>
                                     </div>
                                 </div>
-                            <?php endforeach; ?>
-                        </div>
+
+                                <!-- Детали записи (скрыты по умолчанию) -->
+                                <div class="journal-entry-details" style="display: none; padding: 16px; background: var(--bg-hover); border-top: 1px solid var(--border);">
+                                    <!-- Основная информация -->
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                                        <div style="padding: 10px; background: var(--bg-card); border-radius: 8px;">
+                                            <div style="font-size: 10px; color: var(--text-medium-emphasis); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Дата и время</div>
+                                            <div style="font-size: 13px; color: var(--text-high-emphasis); font-weight: 500;"><?= $date->format('d.m.Y H:i:s') ?></div>
+                                        </div>
+                                        <div style="padding: 10px; background: var(--bg-card); border-radius: 8px;">
+                                            <div style="font-size: 10px; color: var(--text-medium-emphasis); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Действие</div>
+                                            <div style="font-size: 13px; color: var(--text-high-emphasis); font-weight: 500;"><?= e($actionLabel) ?></div>
+                                        </div>
+                                        <div style="padding: 10px; background: var(--bg-card); border-radius: 8px;">
+                                            <div style="font-size: 10px; color: var(--text-medium-emphasis); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Тип</div>
+                                            <div style="font-size: 13px; color: var(--text-high-emphasis); font-weight: 500;"><?= e($entityLabel) ?><?= $log['entity_id'] ? ' #' . $log['entity_id'] : '' ?></div>
+                                        </div>
+                                        <div style="padding: 10px; background: var(--bg-card); border-radius: 8px;">
+                                            <div style="font-size: 10px; color: var(--text-medium-emphasis); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Пользователь</div>
+                                            <div style="font-size: 13px; color: var(--text-high-emphasis); font-weight: 500;"><?= e($log['user_name'] ?: 'Система') ?></div>
+                                        </div>
+                                    </div>
+
+                                    <?php if ($log['notes']): ?>
+                                        <div style="padding: 10px; background: var(--bg-card); border-radius: 8px; margin-bottom: 16px;">
+                                            <div style="font-size: 10px; color: var(--text-medium-emphasis); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Описание</div>
+                                            <div style="font-size: 13px; color: var(--text-high-emphasis);"><?= e($log['notes']) ?></div>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <!-- Данные изменений -->
+                                    <?php if ($oldValue || $newValue): ?>
+                                        <div style="margin-top: 12px;">
+                                            <?php if ($oldValue && $newValue && is_array($oldValue) && is_array($newValue)): ?>
+                                                <!-- Изменение -->
+                                                <div style="font-size: 11px; font-weight: 600; color: var(--text-medium-emphasis); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Изменения</div>
+                                                <div style="background: var(--bg-card); border-radius: 8px; overflow: hidden;">
+                                                    <div style="display: grid; grid-template-columns: 120px 1fr 1fr; gap: 8px; padding: 10px 12px; background: var(--bg-elevated); font-size: 11px; font-weight: 600; border-bottom: 1px solid var(--border);">
+                                                        <div>Поле</div>
+                                                        <div style="color: #ef4444;">Было</div>
+                                                        <div style="color: #10b981;">Стало</div>
+                                                    </div>
+                                                    <?php
+                                                    $allKeys = array_unique(array_merge(array_keys($oldValue), array_keys($newValue)));
+                                                    foreach ($allKeys as $key):
+                                                        $oldVal = $oldValue[$key] ?? null;
+                                                        $newVal = $newValue[$key] ?? null;
+                                                        if (json_encode($oldVal) !== json_encode($newVal)):
+                                                            $fieldLabel = $journalFieldNames[$key] ?? $key;
+                                                            $oldDisplay = formatJournalValue($oldVal, $journalValueTranslations);
+                                                            $newDisplay = formatJournalValue($newVal, $journalValueTranslations);
+                                                    ?>
+                                                        <div style="display: grid; grid-template-columns: 120px 1fr 1fr; gap: 8px; padding: 10px 12px; font-size: 12px; border-bottom: 1px solid var(--border);">
+                                                            <div style="color: var(--text-medium-emphasis); font-weight: 500;"><?= e($fieldLabel) ?></div>
+                                                            <div style="color: #ef4444;"><?= $oldDisplay ?></div>
+                                                            <div style="color: #10b981;"><?= $newDisplay ?></div>
+                                                        </div>
+                                                    <?php
+                                                        endif;
+                                                    endforeach;
+                                                    ?>
+                                                </div>
+
+                                            <?php elseif ($newValue && !$oldValue): ?>
+                                                <!-- Создание -->
+                                                <div style="font-size: 11px; font-weight: 600; color: var(--text-medium-emphasis); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Созданные данные</div>
+                                                <div style="padding: 12px; background: rgba(16, 185, 129, 0.08); border-left: 3px solid #10b981; border-radius: 0 8px 8px 0;">
+                                                    <?php if (is_array($newValue)):
+                                                        foreach ($newValue as $key => $val):
+                                                            $fieldLabel = $journalFieldNames[$key] ?? $key;
+                                                            $valDisplay = formatJournalValue($val, $journalValueTranslations);
+                                                    ?>
+                                                        <div style="display: grid; grid-template-columns: 120px 1fr; gap: 8px; padding: 4px 0; font-size: 12px;">
+                                                            <div style="color: var(--text-medium-emphasis);"><?= e($fieldLabel) ?></div>
+                                                            <div style="color: var(--text-high-emphasis);"><?= $valDisplay ?></div>
+                                                        </div>
+                                                    <?php endforeach;
+                                                    else: ?>
+                                                        <div style="font-size: 12px; color: var(--text-high-emphasis);"><?= e($newValue) ?></div>
+                                                    <?php endif; ?>
+                                                </div>
+
+                                            <?php elseif ($oldValue && !$newValue): ?>
+                                                <!-- Удаление -->
+                                                <div style="font-size: 11px; font-weight: 600; color: var(--text-medium-emphasis); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Удалённые данные</div>
+                                                <div style="padding: 12px; background: rgba(239, 68, 68, 0.08); border-left: 3px solid #ef4444; border-radius: 0 8px 8px 0;">
+                                                    <?php if (is_array($oldValue)):
+                                                        foreach ($oldValue as $key => $val):
+                                                            $fieldLabel = $journalFieldNames[$key] ?? $key;
+                                                            $valDisplay = formatJournalValue($val, $journalValueTranslations);
+                                                    ?>
+                                                        <div style="display: grid; grid-template-columns: 120px 1fr; gap: 8px; padding: 4px 0; font-size: 12px;">
+                                                            <div style="color: var(--text-medium-emphasis);"><?= e($fieldLabel) ?></div>
+                                                            <div style="color: var(--text-high-emphasis);"><?= $valDisplay ?></div>
+                                                        </div>
+                                                    <?php endforeach;
+                                                    else: ?>
+                                                        <div style="font-size: 12px; color: var(--text-high-emphasis);"><?= e($oldValue) ?></div>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php else: ?>
+                                        <div style="padding: 16px; text-align: center; color: var(--text-medium-emphasis); font-size: 12px; background: var(--bg-card); border-radius: 8px;">
+                                            Подробная информация не сохранена
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
             </div>
@@ -1256,11 +1426,14 @@ require_once __DIR__ . '/templates/header.php';
     </div>
 
     <style>
-        .audit-entry:hover {
+        .journal-entry-header:hover {
             background: var(--bg-hover);
         }
-        .audit-entry:last-child {
-            border-bottom: none;
+        .journal-entry-header.expanded {
+            background: var(--bg-hover);
+        }
+        .journal-entry-header.expanded .journal-chevron {
+            transform: rotate(90deg);
         }
         .btn-icon:hover {
             background: var(--bg-dark) !important;
@@ -1287,6 +1460,30 @@ require_once __DIR__ . '/templates/header.php';
             } else {
                 header.classList.add('expanded');
                 lessonsContainer.classList.add('expanded');
+            }
+        }
+
+        // Toggle journal entry expansion
+        function toggleJournalEntry(header) {
+            const entry = header.parentElement;
+            const details = entry.querySelector('.journal-entry-details');
+            const isExpanded = header.classList.contains('expanded');
+
+            // Close other expanded entries
+            document.querySelectorAll('.journal-entry-header.expanded').forEach(el => {
+                if (el !== header) {
+                    el.classList.remove('expanded');
+                    el.parentElement.querySelector('.journal-entry-details').style.display = 'none';
+                }
+            });
+
+            // Toggle current entry
+            if (isExpanded) {
+                header.classList.remove('expanded');
+                details.style.display = 'none';
+            } else {
+                header.classList.add('expanded');
+                details.style.display = 'block';
             }
         }
 
