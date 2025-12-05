@@ -109,20 +109,20 @@ function renderAuditDetails(log) {
             </div>
     `;
 
-    // Парсим old_values и new_values
+    // Парсим old_value и new_value
     let oldValues = null;
     let newValues = null;
 
     try {
-        if (log.old_values) oldValues = JSON.parse(log.old_values);
+        if (log.old_value) oldValues = JSON.parse(log.old_value);
     } catch (e) {
-        oldValues = log.old_values;
+        oldValues = log.old_value;
     }
 
     try {
-        if (log.new_values) newValues = JSON.parse(log.new_values);
+        if (log.new_value) newValues = JSON.parse(log.new_value);
     } catch (e) {
-        newValues = log.new_values;
+        newValues = log.new_value;
     }
 
     // Показываем изменения
