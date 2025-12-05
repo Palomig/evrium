@@ -189,4 +189,3 @@ function calculatePayment($formula, $studentCount) {
             return 0;
     }
 }
-# Trigger deploy Fri Dec  5 08:23:43 UTC 2025
