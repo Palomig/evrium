@@ -1,11 +1,11 @@
 <?php
 /**
  * Скрипт для создания выплат за указанную дату
- * Использование: php create_payments_for_date.php [YYYY-MM-DD]
- * Или через браузер: create_payments_for_date.php?date=2024-12-04
+ * ⭐ ЕДИНЫЙ ИСТОЧНИК: students.schedule JSON
+ *
+ * Использование: create_payments_for_date.php?date=2024-12-05
  */
 
-// Включаем отображение ошибок для отладки
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -14,46 +14,87 @@ require_once __DIR__ . '/zarplata/config/helpers.php';
 require_once __DIR__ . '/zarplata/config/student_helpers.php';
 
 // Определяем дату
-$date = $_GET['date'] ?? ($argv[1] ?? date('Y-m-d'));
-$dayOfWeek = date('N', strtotime($date));
+$date = $_GET['date'] ?? date('Y-m-d');
+$dayOfWeek = (int)date('N', strtotime($date));
+
+$dayNames = [1 => 'Понедельник', 2 => 'Вторник', 3 => 'Среда', 4 => 'Четверг', 5 => 'Пятница', 6 => 'Суббота', 7 => 'Воскресенье'];
 
 echo "<pre>\n";
-echo "=== Создание выплат за {$date} (день недели: {$dayOfWeek}) ===\n\n";
+echo "=== Создание выплат за {$date} ({$dayNames[$dayOfWeek]}, день {$dayOfWeek}) ===\n\n";
 
-// Получаем уроки на этот день
-$lessons = dbQuery(
-    "SELECT lt.*, t.name as teacher_name, t.id as teacher_id,
-            t.formula_id_group, t.formula_id_individual, t.formula_id
-     FROM lessons_template lt
-     JOIN teachers t ON lt.teacher_id = t.id
-     WHERE lt.day_of_week = ?
-       AND lt.active = 1
-       AND t.active = 1
-     ORDER BY lt.time_start",
-    [$dayOfWeek]
+// ⭐ ШАГ 1: Получаем ВСЕ уникальные уроки из students.schedule
+$allStudents = dbQuery(
+    "SELECT id, name, class, schedule, teacher_id FROM students WHERE active = 1 AND schedule IS NOT NULL",
+    []
 );
 
-if (empty($lessons)) {
-    echo "Нет уроков на этот день\n";
+// Собираем уникальные слоты: [teacher_id][time] = данные
+$uniqueLessons = [];
+
+foreach ($allStudents as $student) {
+    $schedule = json_decode($student['schedule'], true);
+    if (!is_array($schedule)) continue;
+
+    // Проверяем формат 3: {"4": [{"time": "15:00", "teacher_id": 5, ...}]}
+    if (isset($schedule[$dayOfWeek]) && is_array($schedule[$dayOfWeek])) {
+        foreach ($schedule[$dayOfWeek] as $slot) {
+            if (!isset($slot['time'])) continue;
+
+            $time = substr($slot['time'], 0, 5);
+            $teacherId = isset($slot['teacher_id']) ? (int)$slot['teacher_id'] : (int)$student['teacher_id'];
+
+            if (!$teacherId) continue;
+
+            $key = "{$teacherId}_{$time}";
+            if (!isset($uniqueLessons[$key])) {
+                $uniqueLessons[$key] = [
+                    'teacher_id' => $teacherId,
+                    'time' => $time,
+                    'subject' => $slot['subject'] ?? 'Мат.',
+                    'room' => $slot['room'] ?? 1
+                ];
+            }
+        }
+    }
+}
+
+if (empty($uniqueLessons)) {
+    echo "Нет уроков на этот день (по данным students.schedule)\n";
+    echo "</pre>";
     exit;
 }
 
-echo "Найдено уроков: " . count($lessons) . "\n\n";
+// Сортируем по времени
+usort($uniqueLessons, fn($a, $b) => strcmp($a['time'], $b['time']));
+
+echo "Найдено уникальных уроков: " . count($uniqueLessons) . "\n\n";
+
+// ⭐ ШАГ 2: Получаем информацию о преподавателях
+$teachers = [];
+$teacherRows = dbQuery("SELECT id, name, formula_id_group, formula_id_individual, formula_id FROM teachers WHERE active = 1", []);
+foreach ($teacherRows as $t) {
+    $teachers[$t['id']] = $t;
+}
 
 $created = 0;
 $skipped = 0;
 $errors = 0;
 
-foreach ($lessons as $lesson) {
-    $timeStart = substr($lesson['time_start'], 0, 5);
+foreach ($uniqueLessons as $lesson) {
+    $teacherId = $lesson['teacher_id'];
+    $time = $lesson['time'];
+    $subject = $lesson['subject'];
 
-    echo "--- Урок {$timeStart} ({$lesson['teacher_name']}) ---\n";
+    $teacherName = $teachers[$teacherId]['name'] ?? "Преподаватель #{$teacherId}";
 
-    // Проверяем, есть ли уже выплата за этот урок сегодня
+    echo "--- Урок {$time} ({$teacherName}) ---\n";
+
+    // Проверяем, есть ли уже выплата
     $existingPayment = dbQueryOne(
         "SELECT id FROM payments
-         WHERE teacher_id = ? AND lesson_template_id = ? AND DATE(created_at) = ?",
-        [$lesson['teacher_id'], $lesson['id'], $date]
+         WHERE teacher_id = ? AND DATE(created_at) = ?
+         AND notes LIKE ?",
+        [$teacherId, $date, "%{$time}%"]
     );
 
     if ($existingPayment) {
@@ -62,15 +103,9 @@ foreach ($lessons as $lesson) {
         continue;
     }
 
-    // Получаем учеников динамически
-    $studentsData = getStudentsForLesson(
-        $lesson['teacher_id'],
-        $dayOfWeek,
-        $timeStart
-    );
-
+    // ⭐ Получаем учеников через единую функцию
+    $studentsData = getStudentsForLesson($teacherId, $dayOfWeek, $time);
     $studentCount = $studentsData['count'];
-    $subject = $studentsData['subject'] ?? $lesson['subject'] ?? 'Математика';
 
     echo "  Учеников: {$studentCount}\n";
     echo "  Предмет: {$subject}\n";
@@ -81,30 +116,27 @@ foreach ($lessons as $lesson) {
         continue;
     }
 
-    // Определяем формулу
-    $lessonType = $lesson['lesson_type'] ?? 'group';
-    $formulaId = null;
-
-    if ($lessonType === 'individual') {
-        $formulaId = $lesson['formula_id_individual'] ?? $lesson['formula_id'] ?? null;
-    } else {
-        $formulaId = $lesson['formula_id_group'] ?? $lesson['formula_id'] ?? null;
-    }
-
-    if (!$formulaId) {
-        echo "  ⚠ Нет формулы для преподавателя, пропуск\n";
+    // Определяем формулу (групповая если > 1 ученика)
+    $teacher = $teachers[$teacherId] ?? null;
+    if (!$teacher) {
+        echo "  ⚠ Преподаватель не найден\n";
         $skipped++;
         continue;
     }
 
-    // Получаем формулу
-    $formula = dbQueryOne(
-        "SELECT * FROM payment_formulas WHERE id = ? AND active = 1",
-        [$formulaId]
-    );
+    $formulaId = $studentCount > 1
+        ? ($teacher['formula_id_group'] ?? $teacher['formula_id'])
+        : ($teacher['formula_id_individual'] ?? $teacher['formula_id']);
 
+    if (!$formulaId) {
+        echo "  ⚠ Нет формулы для преподавателя\n";
+        $skipped++;
+        continue;
+    }
+
+    $formula = dbQueryOne("SELECT * FROM payment_formulas WHERE id = ? AND active = 1", [$formulaId]);
     if (!$formula) {
-        echo "  ⚠ Формула #{$formulaId} не найдена или неактивна\n";
+        echo "  ⚠ Формула #{$formulaId} не найдена\n";
         $skipped++;
         continue;
     }
@@ -118,16 +150,14 @@ foreach ($lessons as $lesson) {
     try {
         $result = dbExecute(
             "INSERT INTO payments
-             (teacher_id, lesson_template_id, amount, payment_type, status,
-              calculation_method, notes, created_at)
-             VALUES (?, ?, ?, 'lesson', 'pending', ?, ?, ?)",
+             (teacher_id, amount, payment_type, status, calculation_method, notes, created_at)
+             VALUES (?, ?, 'lesson', 'pending', ?, ?, ?)",
             [
-                $lesson['teacher_id'],
-                $lesson['id'],
+                $teacherId,
                 $amount,
-                "{$studentCount} из {$studentCount} учеников",
-                "Создано скриптом за {$date}",
-                $date . ' ' . $lesson['time_start']
+                "{$studentCount} учеников",
+                "Урок {$time}, {$subject}",
+                $date . ' ' . $time . ':00'
             ]
         );
 
