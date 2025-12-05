@@ -1,6 +1,8 @@
 <?php
 /**
  * Cron задача для автоматического опроса посещаемости
+ * ⭐ ЕДИНЫЙ ИСТОЧНИК: students.schedule JSON
+ *
  * Запускать каждые 5 минут через crontab
  * Команда: php /home/c/cw95865/PALOMATIKA/public_html/zarplata/bot/cron.php
  */
@@ -17,150 +19,184 @@ require_once __DIR__ . '/../config/student_helpers.php';
 error_log("Attendance cron started at " . date('Y-m-d H:i:s'));
 
 // Получаем текущий день недели (1 = Понедельник, 7 = Воскресенье)
-$dayOfWeek = date('N');
+$dayOfWeek = (int)date('N');
+$today = date('Y-m-d');
 
 // Получаем текущее время
-$currentTime = date('H:i:s');
+$currentTime = date('H:i');
 
-// Вычисляем время 15 минут назад
-$time15MinAgo = date('H:i:s', strtotime('-15 minutes'));
+// Вычисляем время 15 минут назад (±3 минуты)
+$timeFrom = date('H:i', strtotime('-18 minutes'));
+$timeTo = date('H:i', strtotime('-12 minutes'));
 
-// Получаем уроки, которые начались примерно 15 минут назад (±3 минуты)
-$timeFrom = date('H:i:s', strtotime('-18 minutes'));
-$timeTo = date('H:i:s', strtotime('-12 minutes'));
+error_log("Looking for lessons between {$timeFrom} and {$timeTo} on day {$dayOfWeek}");
 
-// Находим уроки, для которых нужно спросить о посещаемости
-$lessons = dbQuery(
-    "SELECT lt.*, t.name as teacher_name, t.telegram_id, t.telegram_username
-     FROM lessons_template lt
-     JOIN teachers t ON lt.teacher_id = t.id
-     WHERE lt.day_of_week = ?
-       AND lt.time_start BETWEEN ? AND ?
-       AND lt.active = 1
-       AND t.active = 1
-       AND t.telegram_id IS NOT NULL",
-    [$dayOfWeek, $timeFrom, $timeTo]
+// ⭐ НОВАЯ ЛОГИКА: Получаем уроки из students.schedule
+$allStudents = dbQuery(
+    "SELECT id, name, class, schedule, teacher_id FROM students WHERE active = 1 AND schedule IS NOT NULL",
+    []
 );
 
-if (empty($lessons)) {
+// Собираем уникальные уроки на текущий день
+$uniqueLessons = [];
+
+foreach ($allStudents as $student) {
+    $schedule = json_decode($student['schedule'], true);
+    if (!is_array($schedule)) continue;
+
+    // Проверяем формат: {"4": [{"time": "15:00", "teacher_id": 5, ...}]}
+    if (isset($schedule[$dayOfWeek]) && is_array($schedule[$dayOfWeek])) {
+        foreach ($schedule[$dayOfWeek] as $slot) {
+            if (!isset($slot['time'])) continue;
+
+            $time = substr($slot['time'], 0, 5);
+            $teacherId = isset($slot['teacher_id']) ? (int)$slot['teacher_id'] : (int)$student['teacher_id'];
+
+            if (!$teacherId) continue;
+
+            // Проверяем, попадает ли время в окно
+            if ($time >= $timeFrom && $time <= $timeTo) {
+                $key = "{$teacherId}_{$time}";
+                if (!isset($uniqueLessons[$key])) {
+                    $uniqueLessons[$key] = [
+                        'teacher_id' => $teacherId,
+                        'time' => $time,
+                        'subject' => $slot['subject'] ?? 'Мат.',
+                        'room' => $slot['room'] ?? 1
+                    ];
+                }
+            }
+        }
+    }
+}
+
+if (empty($uniqueLessons)) {
     error_log("No lessons found for attendance polling");
+    ob_end_clean();
     exit(0);
 }
 
-error_log("Found " . count($lessons) . " lessons for attendance polling");
+error_log("Found " . count($uniqueLessons) . " lessons for attendance polling");
 
-// Для каждого урока проверяем, не спрашивали ли уже сегодня
-foreach ($lessons as $lesson) {
-    $today = date('Y-m-d');
+// Получаем информацию о преподавателях
+$teachers = [];
+$teacherRows = dbQuery(
+    "SELECT id, name, telegram_id, telegram_username, formula_id_group, formula_id_individual, formula_id
+     FROM teachers WHERE active = 1",
+    []
+);
+foreach ($teacherRows as $t) {
+    $teachers[$t['id']] = $t;
+}
 
-    // ВАЖНО: Проверяем, не отправляли ли уже сообщение сегодня (через audit_log)
-    // Это предотвращает дубликаты, даже если преподаватель ещё не ответил
+// Маппинг предметов
+$subjectMap = [
+    'Мат.' => 'Математика',
+    'Физ.' => 'Физика',
+    'Инф.' => 'Информатика'
+];
+
+// Для каждого урока проверяем и отправляем сообщение
+foreach ($uniqueLessons as $key => $lesson) {
+    $teacherId = $lesson['teacher_id'];
+    $time = $lesson['time'];
+    $subject = $subjectMap[$lesson['subject']] ?? $lesson['subject'];
+    $room = $lesson['room'];
+
+    $teacher = $teachers[$teacherId] ?? null;
+    if (!$teacher) {
+        error_log("Teacher {$teacherId} not found, skipping");
+        continue;
+    }
+
+    if (!$teacher['telegram_id']) {
+        error_log("Teacher {$teacherId} ({$teacher['name']}) has no telegram_id, skipping");
+        continue;
+    }
+
+    // Проверяем, не отправляли ли уже сообщение сегодня
     $existingQuery = dbQueryOne(
         "SELECT id FROM audit_log
          WHERE action_type = 'attendance_query_sent'
-           AND entity_type = 'lesson_template'
-           AND entity_id = ?
+           AND entity_type = 'lesson_schedule'
+           AND new_value LIKE ?
            AND DATE(created_at) = ?
          LIMIT 1",
-        [$lesson['id'], $today]
+        ["%teacher_id\":{$teacherId}%time\":\"{$time}%", $today]
     );
 
     if ($existingQuery) {
-        error_log("Lesson {$lesson['id']} - query already sent today (audit_log ID: {$existingQuery['id']}), skipping");
+        error_log("Lesson {$key} - query already sent today (audit_log ID: {$existingQuery['id']}), skipping");
         continue;
     }
 
-    // Дополнительная проверка: есть ли уже payment за сегодня
-    $existingPayment = dbQueryOne(
-        "SELECT id FROM payments
-         WHERE teacher_id = ? AND lesson_template_id = ?
-           AND DATE(created_at) = ?
-         LIMIT 1",
-        [$lesson['teacher_id'], $lesson['id'], $today]
-    );
+    // Получаем учеников для этого урока
+    $studentsData = getStudentsForLesson($teacherId, $dayOfWeek, $time);
+    $studentCount = $studentsData['count'];
+    $studentNames = array_column($studentsData['students'], 'name');
 
-    if ($existingPayment) {
-        error_log("Lesson {$lesson['id']} already has payment for today (ID: {$existingPayment['id']}), skipping");
+    if ($studentCount == 0) {
+        error_log("Lesson {$key} has 0 students, skipping");
         continue;
     }
 
-    // Отправляем опрос преподавателю
-    sendAttendanceQuery($lesson);
+    error_log("Lesson {$key}: {$studentCount} students ({$teacher['name']}, {$time})");
+
+    // Отправляем опрос
+    sendAttendanceQuery($teacher, $lesson, $studentCount, $studentNames, $subject);
 }
 
 error_log("Attendance cron finished");
 
-// Очищаем буфер вывода (не отправляем на email)
+// Очищаем буфер вывода
 ob_end_clean();
 exit(0);
 
 /**
  * Отправить опрос о посещаемости
  */
-function sendAttendanceQuery($lesson) {
-    if (!$lesson['telegram_id']) {
-        error_log("Teacher {$lesson['teacher_id']} has no telegram_id, skipping");
-        return;
-    }
+function sendAttendanceQuery($teacher, $lesson, $studentCount, $studentNames, $subject) {
+    global $today, $dayOfWeek;
 
-    // ⭐ ДИНАМИЧЕСКИЙ РАСЧЁТ: Получаем реальное количество учеников из таблицы students
-    $studentsData = getStudentsForLesson(
-        $lesson['teacher_id'],
-        $lesson['day_of_week'],
-        substr($lesson['time_start'], 0, 5)
-    );
-    $dynamicStudentCount = $studentsData['count'];
+    $teacherId = $teacher['id'];
+    $chatId = $teacher['telegram_id'];
+    $time = $lesson['time'];
+    $room = $lesson['room'];
 
-    // Если динамический расчёт дал 0, используем expected_students как fallback
-    $expected = $dynamicStudentCount > 0 ? $dynamicStudentCount : (int)$lesson['expected_students'];
-
-    error_log("Lesson {$lesson['id']}: dynamic students = {$dynamicStudentCount}, expected_students = {$lesson['expected_students']}, using = {$expected}");
-
-    // ⭐ КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: Логируем ДО отправки, чтобы предотвратить дубликаты
-    // Даже если отправка не удастся, повторная попытка не будет предпринята
+    // Логируем ДО отправки (предотвращает дубликаты)
     logAudit(
         'attendance_query_sent',
-        'lesson_template',
-        $lesson['id'],
+        'lesson_schedule',
+        null,
         null,
         [
-            'teacher_id' => $lesson['teacher_id'],
-            'telegram_id' => $lesson['telegram_id'],
-            'expected_students' => $expected,
-            'dynamic_count' => $dynamicStudentCount,
-            'template_expected' => $lesson['expected_students']
+            'teacher_id' => $teacherId,
+            'telegram_id' => $chatId,
+            'time' => $time,
+            'expected_students' => $studentCount,
+            'student_names' => $studentNames,
+            'subject' => $subject
         ],
-        'Попытка отправки опроса о посещаемости в Telegram'
+        'Отправка опроса о посещаемости'
     );
 
-    error_log("Logged audit entry for lesson {$lesson['id']} BEFORE sending message");
-
-    $chatId = $lesson['telegram_id'];
-
     // Формируем сообщение
-    $subject = $lesson['subject'] ? "<b>{$lesson['subject']}</b>" : "<b>Урок</b>";
-    $timeStart = date('H:i', strtotime($lesson['time_start']));
-    $timeEnd = date('H:i', strtotime($lesson['time_end']));
-    // $expected уже рассчитан выше
-    $room = $lesson['room'] ?? '-';
-    $tier = $lesson['tier'] ?? '';
+    $timeEnd = date('H:i', strtotime($time) + 3600);
 
     $message = "📊 <b>Отметка посещаемости</b>\n\n";
-    $message .= "📚 {$subject}";
+    $message .= "📚 <b>{$subject}</b>\n";
+    $message .= "🕐 <b>{$time} - {$timeEnd}</b>\n";
+    $message .= "🏫 Кабинет {$room}\n";
+    $message .= "👥 Ожидалось: <b>{$studentCount}</b> " . plural($studentCount, 'ученик', 'ученика', 'учеников') . "\n";
 
-    if ($tier) {
-        $message .= " [Tier {$tier}]";
+    if (!empty($studentNames)) {
+        $message .= "📝 " . implode(', ', $studentNames) . "\n";
     }
 
-    $message .= "\n";
-    $message .= "🕐 <b>{$timeStart} - {$timeEnd}</b>\n";
+    $message .= "\n❓ <b>Все ученики пришли на урок?</b>";
 
-    if ($room) {
-        $message .= "🏫 Кабинет {$room}\n";
-    }
-
-    $message .= "👥 Ожидалось: <b>{$expected}</b> " . plural($expected, 'ученик', 'ученика', 'учеников') . "\n\n";
-    $message .= "❓ <b>Все ученики пришли на урок?</b>";
+    // Создаём уникальный идентификатор урока для callback
+    $lessonKey = "{$teacherId}_{$time}_{$today}";
 
     // Inline кнопки
     $keyboard = [
@@ -168,13 +204,13 @@ function sendAttendanceQuery($lesson) {
             [
                 [
                     'text' => '✅ Да, все пришли',
-                    'callback_data' => "attendance_all_present:{$lesson['id']}"
+                    'callback_data' => "att_all:{$lessonKey}"
                 ]
             ],
             [
                 [
                     'text' => '❌ Нет, есть отсутствующие',
-                    'callback_data' => "attendance_some_absent:{$lesson['id']}"
+                    'callback_data' => "att_absent:{$lessonKey}"
                 ]
             ]
         ]
@@ -184,11 +220,8 @@ function sendAttendanceQuery($lesson) {
     $result = sendTelegramMessage($chatId, $message, $keyboard);
 
     if ($result) {
-        error_log("✅ Attendance query successfully sent to teacher {$lesson['teacher_id']} for lesson {$lesson['id']}");
+        error_log("✅ Attendance query sent to {$teacher['name']} for lesson at {$time}");
     } else {
-        error_log("❌ Failed to send attendance query to teacher {$lesson['teacher_id']} for lesson {$lesson['id']}");
-        // Примечание: audit_log уже записан выше, поэтому повторная попытка не будет предпринята
+        error_log("❌ Failed to send attendance query to {$teacher['name']} for lesson at {$time}");
     }
 }
-
-// Функция plural() уже определена в /config/helpers.php (загружается через bot/config.php)
