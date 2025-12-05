@@ -17,19 +17,20 @@ require_once __DIR__ . '/zarplata/config/db.php';
 require_once __DIR__ . '/zarplata/config/helpers.php';
 require_once __DIR__ . '/zarplata/config/student_helpers.php';
 
-// Определяем дату и флаг очистки
+// Определяем дату и флаги
 $date = $_GET['date'] ?? date('Y-m-d');
 $clear = isset($_GET['clear']) && $_GET['clear'] == '1';
+$deleteOnly = isset($_GET['delete_only']) && $_GET['delete_only'] == '1';
 $dayOfWeek = (int)date('N', strtotime($date));
 
 $dayNames = [1 => 'Понедельник', 2 => 'Вторник', 3 => 'Среда', 4 => 'Четверг', 5 => 'Пятница', 6 => 'Суббота', 7 => 'Воскресенье'];
 
 echo "<pre>\n";
-echo "=== Создание уроков и выплат за {$date} ({$dayNames[$dayOfWeek]}) ===\n\n";
+echo "=== " . ($deleteOnly ? "Удаление" : "Создание уроков и выплат") . " за {$date} ({$dayNames[$dayOfWeek]}) ===\n\n";
 
-// ⭐ Очистка старых записей если указан clear=1
-if ($clear) {
-    echo "🗑 Очистка старых записей за {$date}...\n";
+// ⭐ Очистка старых записей если указан clear=1 или delete_only=1
+if ($clear || $deleteOnly) {
+    echo "🗑 Очистка записей за {$date}...\n";
 
     // Сначала удаляем payments (они ссылаются на lessons_instance)
     $deletedPayments = dbExecute(
@@ -45,6 +46,12 @@ if ($clear) {
         [$date]
     );
     echo "  Удалено уроков: " . ($deletedLessons ?: 0) . "\n\n";
+
+    if ($deleteOnly) {
+        echo "✓ Готово (режим только удаление)\n";
+        echo "</pre>";
+        exit;
+    }
 }
 
 // ⭐ ШАГ 1: Получаем ВСЕ уникальные уроки из students.schedule
