@@ -1,7 +1,11 @@
 <?php
 /**
- * Скрипт для создания выплат за указанную дату
+ * Скрипт для создания уроков и выплат за указанную дату
  * ⭐ ЕДИНЫЙ ИСТОЧНИК: students.schedule JSON
+ *
+ * Создаёт:
+ * 1. lessons_instance - запись урока
+ * 2. payments - выплата, связанная с уроком
  *
  * Использование: create_payments_for_date.php?date=2024-12-05
  */
@@ -20,7 +24,7 @@ $dayOfWeek = (int)date('N', strtotime($date));
 $dayNames = [1 => 'Понедельник', 2 => 'Вторник', 3 => 'Среда', 4 => 'Четверг', 5 => 'Пятница', 6 => 'Суббота', 7 => 'Воскресенье'];
 
 echo "<pre>\n";
-echo "=== Создание выплат за {$date} ({$dayNames[$dayOfWeek]}, день {$dayOfWeek}) ===\n\n";
+echo "=== Создание уроков и выплат за {$date} ({$dayNames[$dayOfWeek]}) ===\n\n";
 
 // ⭐ ШАГ 1: Получаем ВСЕ уникальные уроки из students.schedule
 $allStudents = dbQuery(
@@ -35,7 +39,7 @@ foreach ($allStudents as $student) {
     $schedule = json_decode($student['schedule'], true);
     if (!is_array($schedule)) continue;
 
-    // Проверяем формат 3: {"4": [{"time": "15:00", "teacher_id": 5, ...}]}
+    // Проверяем формат: {"4": [{"time": "15:00", "teacher_id": 5, ...}]}
     if (isset($schedule[$dayOfWeek]) && is_array($schedule[$dayOfWeek])) {
         foreach ($schedule[$dayOfWeek] as $slot) {
             if (!isset($slot['time'])) continue;
@@ -76,6 +80,13 @@ foreach ($teacherRows as $t) {
     $teachers[$t['id']] = $t;
 }
 
+// Маппинг предметов
+$subjectMap = [
+    'Мат.' => 'Математика',
+    'Физ.' => 'Физика',
+    'Инф.' => 'Информатика'
+];
+
 $created = 0;
 $skipped = 0;
 $errors = 0;
@@ -83,22 +94,27 @@ $errors = 0;
 foreach ($uniqueLessons as $lesson) {
     $teacherId = $lesson['teacher_id'];
     $time = $lesson['time'];
-    $subject = $lesson['subject'];
+    $subject = $subjectMap[$lesson['subject']] ?? $lesson['subject'];
 
     $teacherName = $teachers[$teacherId]['name'] ?? "Преподаватель #{$teacherId}";
 
     echo "--- Урок {$time} ({$teacherName}) ---\n";
 
-    // Проверяем, есть ли уже выплата
-    $existingPayment = dbQueryOne(
-        "SELECT id FROM payments
-         WHERE teacher_id = ? AND DATE(created_at) = ?
-         AND notes LIKE ?",
-        [$teacherId, $date, "%{$time}%"]
+    // Проверяем, есть ли уже lessons_instance за этот день/время/учителя
+    $existingLesson = dbQueryOne(
+        "SELECT li.id, p.id as payment_id
+         FROM lessons_instance li
+         LEFT JOIN payments p ON p.lesson_instance_id = li.id
+         WHERE li.teacher_id = ? AND li.lesson_date = ? AND li.time_start = ?",
+        [$teacherId, $date, $time . ':00']
     );
 
-    if ($existingPayment) {
-        echo "  ⚠ Выплата уже существует (ID: {$existingPayment['id']}), пропуск\n";
+    if ($existingLesson) {
+        echo "  ⚠ Урок уже существует (ID: {$existingLesson['id']}";
+        if ($existingLesson['payment_id']) {
+            echo ", выплата: {$existingLesson['payment_id']}";
+        }
+        echo "), пропуск\n";
         $skipped++;
         continue;
     }
@@ -106,8 +122,13 @@ foreach ($uniqueLessons as $lesson) {
     // ⭐ Получаем учеников через единую функцию
     $studentsData = getStudentsForLesson($teacherId, $dayOfWeek, $time);
     $studentCount = $studentsData['count'];
+    $studentNames = array_column($studentsData['students'], 'name');
 
-    echo "  Учеников: {$studentCount}\n";
+    echo "  Учеников: {$studentCount}";
+    if ($studentCount > 0) {
+        echo " (" . implode(', ', $studentNames) . ")";
+    }
+    echo "\n";
     echo "  Предмет: {$subject}\n";
 
     if ($studentCount == 0) {
@@ -116,7 +137,9 @@ foreach ($uniqueLessons as $lesson) {
         continue;
     }
 
-    // Определяем формулу (групповая если > 1 ученика)
+    // Определяем тип урока и формулу
+    $lessonType = $studentCount > 1 ? 'group' : 'individual';
+
     $teacher = $teachers[$teacherId] ?? null;
     if (!$teacher) {
         echo "  ⚠ Преподаватель не найден\n";
@@ -143,25 +166,56 @@ foreach ($uniqueLessons as $lesson) {
 
     // Рассчитываем выплату
     $amount = calculatePayment($formula, $studentCount);
+    echo "  Тип: {$lessonType}\n";
     echo "  Формула: {$formula['name']}\n";
     echo "  Сумма: {$amount} ₽\n";
 
-    // Создаём выплату
     try {
-        $result = dbExecute(
-            "INSERT INTO payments
-             (teacher_id, amount, payment_type, status, calculation_method, notes, created_at)
-             VALUES (?, ?, 'lesson', 'pending', ?, ?, ?)",
+        // ⭐ ШАГ 1: Создаём lessons_instance
+        $timeEnd = date('H:i', strtotime($time) + 3600); // +1 час
+
+        $lessonInstanceId = dbExecute(
+            "INSERT INTO lessons_instance
+             (teacher_id, lesson_date, time_start, time_end, lesson_type, subject,
+              expected_students, actual_students, formula_id, status, notes, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed', ?, NOW())",
             [
                 $teacherId,
+                $date,
+                $time . ':00',
+                $timeEnd . ':00',
+                $lessonType,
+                $subject,
+                $studentCount,
+                $studentCount,
+                $formulaId,
+                "Ученики: " . implode(', ', $studentNames)
+            ]
+        );
+
+        if (!$lessonInstanceId) {
+            throw new Exception("Не удалось создать lessons_instance");
+        }
+
+        echo "  ✓ Урок создан (ID: {$lessonInstanceId})\n";
+
+        // ⭐ ШАГ 2: Создаём payment, связанную с уроком
+        $paymentId = dbExecute(
+            "INSERT INTO payments
+             (teacher_id, lesson_instance_id, amount, payment_type, status,
+              calculation_method, notes, created_at)
+             VALUES (?, ?, ?, 'lesson', 'pending', ?, ?, ?)",
+            [
+                $teacherId,
+                $lessonInstanceId,
                 $amount,
-                "{$studentCount} учеников",
-                "Урок {$time}, {$subject}",
+                "{$studentCount} из {$studentCount} учеников",
+                "Создано скриптом",
                 $date . ' ' . $time . ':00'
             ]
         );
 
-        echo "  ✓ Выплата создана\n";
+        echo "  ✓ Выплата создана (ID: {$paymentId})\n";
         $created++;
 
     } catch (Exception $e) {
@@ -171,7 +225,7 @@ foreach ($uniqueLessons as $lesson) {
 }
 
 echo "\n=== Результат ===\n";
-echo "Создано: {$created}\n";
+echo "Создано уроков и выплат: {$created}\n";
 echo "Пропущено: {$skipped}\n";
 echo "Ошибок: {$errors}\n";
 echo "</pre>";
