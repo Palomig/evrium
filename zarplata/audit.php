@@ -63,6 +63,74 @@ $stats = dbQueryOne(
     [$dateFrom, $dateTo]
 );
 
+// Маппинги для отображения
+$actionLabels = [
+    'payment_created' => 'Создание выплаты',
+    'payment_updated' => 'Изменение выплаты',
+    'payment_deleted' => 'Удаление выплаты',
+    'payment_approved' => 'Одобрение выплаты',
+    'Одобрение' => 'Одобрение выплаты',
+    'Изменение' => 'Редактирование',
+    'attendance_query_sent' => 'Отправка опроса посещаемости',
+    'attendance_marked' => 'Отметка посещаемости',
+    'lesson_created' => 'Создание урока',
+    'lesson_deleted' => 'Удаление урока'
+];
+
+$entityLabels = [
+    'payment' => 'Выплата',
+    'lesson' => 'Урок',
+    'lesson_template' => 'Шаблон урока',
+    'lesson_schedule' => 'Урок (расписание)',
+    'teacher' => 'Преподаватель',
+    'student' => 'Ученик',
+    'formula' => 'Формула',
+    'template' => 'Шаблон',
+    'settings' => 'Настройки',
+    'user' => 'Пользователь'
+];
+
+$fieldNames = [
+    'amount' => 'Сумма',
+    'status' => 'Статус',
+    'payment_status' => 'Статус выплаты',
+    'payment_type' => 'Тип выплаты',
+    'notes' => 'Примечание',
+    'description' => 'Описание',
+    'name' => 'Имя',
+    'teacher_id' => 'Преподаватель',
+    'student_id' => 'Ученик',
+    'lesson_date' => 'Дата урока',
+    'time_start' => 'Начало',
+    'time_end' => 'Окончание',
+    'subject' => 'Предмет',
+    'lesson_type' => 'Тип урока',
+    'actual_students' => 'Присутствовало',
+    'expected_students' => 'Ожидалось',
+    'formula_id' => 'Формула',
+    'attended' => 'Присутствовало',
+    'expected' => 'Ожидалось',
+    'payment_id' => 'ID выплаты',
+    'telegram_id' => 'Telegram ID',
+    'time' => 'Время',
+    'student_names' => 'Ученики'
+];
+
+$valueTranslations = [
+    'pending' => 'Ожидает',
+    'approved' => 'Одобрено',
+    'paid' => 'Выплачено',
+    'cancelled' => 'Отменено',
+    'lesson' => 'Урок',
+    'bonus' => 'Бонус',
+    'penalty' => 'Штраф',
+    'adjustment' => 'Корректировка',
+    'group' => 'Групповой',
+    'individual' => 'Индивидуальный',
+    'scheduled' => 'Запланирован',
+    'completed' => 'Завершён'
+];
+
 define('PAGE_TITLE', 'Журнал аудита');
 define('PAGE_SUBTITLE', 'История изменений и действий');
 define('ACTIVE_PAGE', 'audit');
@@ -170,16 +238,226 @@ require_once __DIR__ . '/templates/header.php';
         color: var(--text-medium-emphasis);
     }
 
-    .clickable-row {
-        transition: background-color 0.15s ease;
+    /* Раскрывающиеся записи аудита */
+    .audit-entries {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
     }
 
-    .clickable-row:hover {
-        background-color: var(--md-surface-3) !important;
+    .audit-entry {
+        background: var(--md-surface);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: var(--elevation-1);
     }
 
-    .clickable-row:active {
-        background-color: var(--md-surface-2) !important;
+    .audit-header {
+        display: grid;
+        grid-template-columns: 150px 140px 1fr 120px 50px;
+        gap: 16px;
+        padding: 16px 20px;
+        cursor: pointer;
+        transition: background 0.2s;
+        align-items: center;
+    }
+
+    .audit-header:hover {
+        background: var(--md-surface-2);
+    }
+
+    .audit-header.expanded {
+        background: var(--md-surface-2);
+        border-bottom: 1px solid var(--md-outline);
+    }
+
+    .audit-header .chevron {
+        transition: transform 0.3s ease;
+        color: var(--text-medium-emphasis);
+    }
+
+    .audit-header.expanded .chevron {
+        transform: rotate(90deg);
+    }
+
+    .audit-date {
+        font-size: 13px;
+        color: var(--text-medium-emphasis);
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .audit-action {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .audit-action-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+    }
+
+    .audit-action-icon.create { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+    .audit-action-icon.update { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+    .audit-action-icon.delete { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+    .audit-action-icon.approve { background: rgba(20, 184, 166, 0.15); color: #14b8a6; }
+    .audit-action-icon.info { background: rgba(99, 102, 241, 0.15); color: #6366f1; }
+
+    .audit-action-text {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-high-emphasis);
+    }
+
+    .audit-description {
+        font-size: 13px;
+        color: var(--text-medium-emphasis);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .audit-user {
+        font-size: 13px;
+        color: var(--text-medium-emphasis);
+    }
+
+    .audit-details {
+        display: none;
+        padding: 20px;
+        background: var(--md-surface-1);
+        border-top: 1px solid var(--md-outline);
+    }
+
+    .audit-details.expanded {
+        display: block;
+        animation: slideDown 0.3s ease;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .detail-item {
+        padding: 12px;
+        background: var(--md-surface);
+        border-radius: 8px;
+    }
+
+    .detail-label {
+        font-size: 11px;
+        color: var(--text-medium-emphasis);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+    }
+
+    .detail-value {
+        font-size: 14px;
+        color: var(--text-high-emphasis);
+        font-weight: 500;
+    }
+
+    .changes-section {
+        margin-top: 16px;
+    }
+
+    .changes-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-medium-emphasis);
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .change-row {
+        display: grid;
+        grid-template-columns: 140px 1fr 1fr;
+        gap: 12px;
+        padding: 10px 12px;
+        background: var(--md-surface);
+        border-radius: 8px;
+        margin-bottom: 8px;
+        font-size: 13px;
+    }
+
+    .change-field {
+        color: var(--text-medium-emphasis);
+        font-weight: 500;
+    }
+
+    .change-old {
+        color: #ef4444;
+    }
+
+    .change-new {
+        color: #10b981;
+    }
+
+    .data-block {
+        padding: 16px;
+        background: var(--md-surface);
+        border-radius: 8px;
+        border-left: 3px solid;
+    }
+
+    .data-block.created {
+        border-color: #10b981;
+        background: rgba(16, 185, 129, 0.05);
+    }
+
+    .data-block.deleted {
+        border-color: #ef4444;
+        background: rgba(239, 68, 68, 0.05);
+    }
+
+    .data-list {
+        display: grid;
+        gap: 8px;
+    }
+
+    .data-item {
+        display: grid;
+        grid-template-columns: 140px 1fr;
+        gap: 12px;
+        font-size: 13px;
+    }
+
+    .data-item-label {
+        color: var(--text-medium-emphasis);
+    }
+
+    .data-item-value {
+        color: var(--text-high-emphasis);
+    }
+
+    .no-data {
+        padding: 20px;
+        text-align: center;
+        color: var(--text-medium-emphasis);
+        font-size: 13px;
+        background: var(--md-surface);
+        border-radius: 8px;
     }
 </style>
 
@@ -242,78 +520,259 @@ require_once __DIR__ . '/templates/header.php';
 </div>
 
 <!-- Журнал -->
-<div class="table-container">
-    <div class="table-header">
-        <h2 class="table-title">Журнал действий</h2>
+<div class="card">
+    <div class="card-header">
+        <h2 style="margin: 0; font-size: 18px; font-weight: 600;">
+            <span class="material-icons" style="vertical-align: middle; margin-right: 8px;">history</span>
+            Журнал действий
+        </h2>
     </div>
+    <div class="card-body" style="padding: 16px;">
+        <?php if (empty($logs)): ?>
+            <div class="empty-state">
+                <div class="material-icons">assignment</div>
+                <p>Нет записей для отображения</p>
+            </div>
+        <?php else: ?>
+            <div class="audit-entries">
+                <?php foreach ($logs as $log):
+                    // Определяем иконку и класс по типу действия
+                    $actionType = $log['action'] ?? $log['action_type'] ?? '';
+                    $iconClass = 'info';
+                    $icon = 'info';
 
-    <?php if (empty($logs)): ?>
-        <div class="empty-state">
-            <div class="material-icons">assignment</div>
-            <p>Нет записей для отображения</p>
-        </div>
-    <?php else: ?>
-        <table>
-            <thead>
-                <tr>
-                    <th>Дата и время</th>
-                    <th>Пользователь</th>
-                    <th>Действие</th>
-                    <th>Сущность</th>
-                    <th>ID</th>
-                    <th>Описание</th>
-                    <th>IP</th>
-                    <th>Детали</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($logs as $log): ?>
-                    <tr onclick="viewAuditDetails(<?= $log['id'] ?>)" style="cursor: pointer;" class="clickable-row">
-                        <td>
-                            <strong><?= date('d.m.Y H:i:s', strtotime($log['created_at'])) ?></strong>
-                        </td>
-                        <td><?= e($log['user_name'] ?: 'Система') ?></td>
-                        <td>
-                            <?php
-                                $actionBadge = getActionBadge($log['action']);
-                            ?>
-                            <span class="badge badge-<?= $actionBadge['class'] ?>">
-                                <span class="material-icons" style="font-size: 14px;"><?= $actionBadge['icon'] ?></span>
-                                <?= $actionBadge['text'] ?>
-                            </span>
-                        </td>
-                        <td><?= ucfirst($log['entity_type']) ?></td>
-                        <td><?= $log['entity_id'] ?? '—' ?></td>
-                        <td><?= e($log['description'] ?: '—') ?></td>
-                        <td><?= $log['ip_address'] ?? '—' ?></td>
-                        <td>
-                            <span class="material-icons" style="font-size: 18px; color: var(--text-medium-emphasis);">chevron_right</span>
-                        </td>
-                    </tr>
+                    if (strpos($actionType, 'create') !== false || strpos($actionType, 'created') !== false) {
+                        $iconClass = 'create';
+                        $icon = 'add_circle';
+                    } elseif (strpos($actionType, 'update') !== false || strpos($actionType, 'Изменение') !== false) {
+                        $iconClass = 'update';
+                        $icon = 'edit';
+                    } elseif (strpos($actionType, 'delete') !== false) {
+                        $iconClass = 'delete';
+                        $icon = 'delete';
+                    } elseif (strpos($actionType, 'approv') !== false || strpos($actionType, 'Одобрение') !== false) {
+                        $iconClass = 'approve';
+                        $icon = 'check_circle';
+                    } elseif (strpos($actionType, 'attendance') !== false) {
+                        $iconClass = 'approve';
+                        $icon = 'how_to_reg';
+                    }
+
+                    $actionLabel = $actionLabels[$actionType] ?? $actionType;
+                    $entityLabel = $entityLabels[$log['entity_type']] ?? $log['entity_type'];
+
+                    // Парсим данные
+                    $oldValue = null;
+                    $newValue = null;
+                    if ($log['old_value']) {
+                        $oldValue = json_decode($log['old_value'], true);
+                        if (json_last_error() !== JSON_ERROR_NONE) {
+                            $oldValue = $log['old_value'];
+                        }
+                    }
+                    if ($log['new_value']) {
+                        $newValue = json_decode($log['new_value'], true);
+                        if (json_last_error() !== JSON_ERROR_NONE) {
+                            $newValue = $log['new_value'];
+                        }
+                    }
+                ?>
+                    <div class="audit-entry">
+                        <div class="audit-header" onclick="toggleAuditEntry(this)">
+                            <div class="audit-date">
+                                <?= date('d.m.Y H:i', strtotime($log['created_at'])) ?>
+                            </div>
+                            <div class="audit-action">
+                                <div class="audit-action-icon <?= $iconClass ?>">
+                                    <span class="material-icons"><?= $icon ?></span>
+                                </div>
+                                <span class="audit-action-text"><?= e($actionLabel) ?></span>
+                            </div>
+                            <div class="audit-description">
+                                <?= e($log['description'] ?: $entityLabel . ($log['entity_id'] ? ' #' . $log['entity_id'] : '')) ?>
+                            </div>
+                            <div class="audit-user">
+                                <?= e($log['user_name'] ?: 'Система') ?>
+                            </div>
+                            <div style="text-align: right;">
+                                <span class="material-icons chevron">chevron_right</span>
+                            </div>
+                        </div>
+
+                        <div class="audit-details">
+                            <!-- Основная информация -->
+                            <div class="details-grid">
+                                <div class="detail-item">
+                                    <div class="detail-label">Дата и время</div>
+                                    <div class="detail-value"><?= date('d.m.Y H:i:s', strtotime($log['created_at'])) ?></div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Действие</div>
+                                    <div class="detail-value"><?= e($actionLabel) ?></div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Тип сущности</div>
+                                    <div class="detail-value"><?= e($entityLabel) ?><?= $log['entity_id'] ? ' #' . $log['entity_id'] : '' ?></div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Пользователь</div>
+                                    <div class="detail-value"><?= e($log['user_name'] ?: 'Система') ?></div>
+                                </div>
+                                <?php if ($log['ip_address']): ?>
+                                <div class="detail-item">
+                                    <div class="detail-label">IP адрес</div>
+                                    <div class="detail-value"><?= e($log['ip_address']) ?></div>
+                                </div>
+                                <?php endif; ?>
+                                <?php if ($log['description']): ?>
+                                <div class="detail-item">
+                                    <div class="detail-label">Описание</div>
+                                    <div class="detail-value"><?= e($log['description']) ?></div>
+                                </div>
+                                <?php endif; ?>
+                                <?php if ($log['notes']): ?>
+                                <div class="detail-item">
+                                    <div class="detail-label">Примечание</div>
+                                    <div class="detail-value"><?= e($log['notes']) ?></div>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+
+                            <!-- Данные изменений -->
+                            <?php if ($oldValue || $newValue): ?>
+                                <div class="changes-section">
+                                    <?php if ($oldValue && $newValue && is_array($oldValue) && is_array($newValue)): ?>
+                                        <!-- Изменение: показываем было → стало -->
+                                        <div class="changes-title">Изменения</div>
+                                        <div class="change-row" style="font-weight: 600; background: var(--md-surface-2);">
+                                            <div>Поле</div>
+                                            <div style="color: #ef4444;">Было</div>
+                                            <div style="color: #10b981;">Стало</div>
+                                        </div>
+                                        <?php
+                                        $allKeys = array_unique(array_merge(array_keys($oldValue), array_keys($newValue)));
+                                        foreach ($allKeys as $key):
+                                            $oldVal = $oldValue[$key] ?? null;
+                                            $newVal = $newValue[$key] ?? null;
+                                            if (json_encode($oldVal) !== json_encode($newVal)):
+                                                $fieldLabel = $fieldNames[$key] ?? $key;
+                                                $oldDisplay = formatAuditValue($oldVal, $valueTranslations);
+                                                $newDisplay = formatAuditValue($newVal, $valueTranslations);
+                                        ?>
+                                            <div class="change-row">
+                                                <div class="change-field"><?= e($fieldLabel) ?></div>
+                                                <div class="change-old"><?= $oldDisplay ?></div>
+                                                <div class="change-new"><?= $newDisplay ?></div>
+                                            </div>
+                                        <?php
+                                            endif;
+                                        endforeach;
+                                        ?>
+
+                                    <?php elseif ($newValue && !$oldValue): ?>
+                                        <!-- Создание: показываем созданные данные -->
+                                        <div class="changes-title">Созданные данные</div>
+                                        <div class="data-block created">
+                                            <div class="data-list">
+                                                <?php if (is_array($newValue)):
+                                                    foreach ($newValue as $key => $val):
+                                                        $fieldLabel = $fieldNames[$key] ?? $key;
+                                                        $valDisplay = formatAuditValue($val, $valueTranslations);
+                                                ?>
+                                                    <div class="data-item">
+                                                        <div class="data-item-label"><?= e($fieldLabel) ?></div>
+                                                        <div class="data-item-value"><?= $valDisplay ?></div>
+                                                    </div>
+                                                <?php endforeach;
+                                                else: ?>
+                                                    <div class="data-item-value"><?= e($newValue) ?></div>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+
+                                    <?php elseif ($oldValue && !$newValue): ?>
+                                        <!-- Удаление: показываем удалённые данные -->
+                                        <div class="changes-title">Удалённые данные</div>
+                                        <div class="data-block deleted">
+                                            <div class="data-list">
+                                                <?php if (is_array($oldValue)):
+                                                    foreach ($oldValue as $key => $val):
+                                                        $fieldLabel = $fieldNames[$key] ?? $key;
+                                                        $valDisplay = formatAuditValue($val, $valueTranslations);
+                                                ?>
+                                                    <div class="data-item">
+                                                        <div class="data-item-label"><?= e($fieldLabel) ?></div>
+                                                        <div class="data-item-value"><?= $valDisplay ?></div>
+                                                    </div>
+                                                <?php endforeach;
+                                                else: ?>
+                                                    <div class="data-item-value"><?= e($oldValue) ?></div>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php else: ?>
+                                <div class="no-data">Подробная информация не сохранена</div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
                 <?php endforeach; ?>
-            </tbody>
-        </table>
-    <?php endif; ?>
-</div>
-
-<!-- Модальное окно деталей -->
-<div id="audit-details-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Детали изменения</h3>
-            <button class="modal-close" onclick="closeAuditDetails()">
-                <span class="material-icons">close</span>
-            </button>
-        </div>
-        <div id="audit-details-content" style="padding: 24px; max-height: 400px; overflow-y: auto;">
-            <p style="text-align: center;">Загрузка...</p>
-        </div>
-        <div class="modal-actions">
-            <button type="button" class="btn btn-primary" onclick="closeAuditDetails()">Закрыть</button>
-        </div>
+            </div>
+        <?php endif; ?>
     </div>
 </div>
 
-<script src="/zarplata/assets/js/audit.js"></script>
+<script>
+function toggleAuditEntry(header) {
+    const entry = header.parentElement;
+    const details = entry.querySelector('.audit-details');
+    const isExpanded = header.classList.contains('expanded');
 
-<?php require_once __DIR__ . '/templates/footer.php'; ?>
+    // Закрываем другие открытые записи
+    document.querySelectorAll('.audit-header.expanded').forEach(el => {
+        if (el !== header) {
+            el.classList.remove('expanded');
+            el.parentElement.querySelector('.audit-details').classList.remove('expanded');
+        }
+    });
+
+    // Переключаем текущую
+    if (isExpanded) {
+        header.classList.remove('expanded');
+        details.classList.remove('expanded');
+    } else {
+        header.classList.add('expanded');
+        details.classList.add('expanded');
+    }
+}
+</script>
+
+<?php
+// Хелпер для форматирования значений
+function formatAuditValue($value, $translations) {
+    if ($value === null || $value === '') {
+        return '<span style="color: var(--text-disabled);">—</span>';
+    }
+    if (is_bool($value)) {
+        return $value ? 'Да' : 'Нет';
+    }
+    if (is_array($value)) {
+        if (empty($value)) {
+            return '<span style="color: var(--text-disabled);">(пусто)</span>';
+        }
+        return e(implode(', ', $value));
+    }
+    $strValue = (string)$value;
+    if (isset($translations[$strValue])) {
+        return e($translations[$strValue]);
+    }
+    // Форматируем суммы
+    if (is_numeric($strValue) && (int)$strValue > 100) {
+        return number_format((int)$strValue, 0, ',', ' ') . ' ₽';
+    }
+    return e($strValue);
+}
+
+require_once __DIR__ . '/templates/footer.php';
+?>
