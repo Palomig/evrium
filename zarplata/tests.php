@@ -22,6 +22,65 @@ require_once __DIR__ . '/templates/header.php';
     <p class="page-subtitle"><?= PAGE_SUBTITLE ?></p>
 </div>
 
+<!-- Генерация выплат за конкретную дату -->
+<div class="table-container">
+    <div class="table-header">
+        <h2 class="table-title">🗓️ Генерация выплат за конкретную дату</h2>
+    </div>
+    <div style="padding: 24px;">
+        <div style="margin-bottom: 20px; padding: 16px; background: rgba(16, 185, 129, 0.1); border-radius: 8px; color: #10b981;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span class="material-icons">info</span>
+                <strong>Ручная генерация выплат</strong>
+            </div>
+            <div style="font-size: 0.875rem; line-height: 1.5;">
+                Создаёт уроки и выплаты за выбранную дату на основе расписания учеников (students.schedule).
+                <br>Используйте для восстановления данных когда бот не работал.
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 200px 1fr; gap: 16px; align-items: end; margin-bottom: 20px;">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label style="display: block; margin-bottom: 8px; color: var(--text-high-emphasis);">Дата</label>
+                <input type="date" id="paymentDate" class="form-control" value="<?= date('Y-m-d') ?>">
+            </div>
+            <div class="test-buttons" style="display: flex; gap: 12px;">
+                <button class="btn btn-primary" onclick="generatePaymentsForDate()">
+                    <span class="material-icons">payments</span>
+                    Создать выплаты
+                </button>
+                <button class="btn btn-secondary" onclick="generatePaymentsForDate(true)">
+                    <span class="material-icons">refresh</span>
+                    Пересоздать (удалить старые)
+                </button>
+            </div>
+        </div>
+
+        <!-- Быстрые кнопки для дат -->
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
+            <span style="color: var(--text-medium-emphasis); font-size: 0.875rem; margin-right: 8px;">Быстрый выбор:</span>
+            <?php
+            // Генерируем кнопки для дат с 6 по сегодня
+            $today = new DateTime();
+            $startDate = new DateTime('2025-12-06');
+            while ($startDate <= $today):
+                $dateStr = $startDate->format('Y-m-d');
+                $dayNum = $startDate->format('d');
+                $dayName = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'][(int)$startDate->format('w')];
+            ?>
+                <button class="btn btn-outline" style="padding: 6px 12px; font-size: 0.8rem;" onclick="document.getElementById('paymentDate').value='<?= $dateStr ?>'">
+                    <?= $dayNum ?> (<?= $dayName ?>)
+                </button>
+            <?php
+                $startDate->modify('+1 day');
+            endwhile;
+            ?>
+        </div>
+
+        <div id="payment-generation-result" style="margin-top: 16px; padding: 12px; border-radius: 8px; display: none;"></div>
+    </div>
+</div>
+
 <!-- Тесты бота -->
 <div class="table-container">
     <div class="table-header">
@@ -882,6 +941,85 @@ async function fixLessonsData() {
             }
 
             log('✓ Обновите страницу выплат для просмотра результатов', 'success');
+        } else {
+            resultDiv.style.background = 'rgba(239, 68, 68, 0.1)';
+            resultDiv.style.color = '#ef4444';
+            resultDiv.innerHTML = `
+                <span class="material-icons" style="vertical-align: middle;">error</span>
+                Ошибка: ${result.error}
+            `;
+            log(`✗ Ошибка: ${result.error}`, 'error');
+        }
+
+        log('─'.repeat(80), 'info');
+
+    } catch (error) {
+        resultDiv.style.background = 'rgba(239, 68, 68, 0.1)';
+        resultDiv.style.color = '#ef4444';
+        resultDiv.innerHTML = `
+            <span class="material-icons" style="vertical-align: middle;">error</span>
+            Ошибка: ${error.message}
+        `;
+        log(`✗ Ошибка выполнения: ${error.message}`, 'error');
+    }
+}
+
+// Генерация выплат за дату
+async function generatePaymentsForDate(clearExisting = false) {
+    const dateInput = document.getElementById('paymentDate');
+    const date = dateInput.value;
+
+    if (!date) {
+        log('✗ Выберите дату', 'error');
+        return;
+    }
+
+    const action = clearExisting ? 'Пересоздать' : 'Создать';
+    if (!confirm(`${action} выплаты за ${date}?`)) {
+        return;
+    }
+
+    const resultDiv = document.getElementById('payment-generation-result');
+    resultDiv.style.display = 'block';
+    resultDiv.style.background = 'rgba(129, 140, 248, 0.1)';
+    resultDiv.style.color = '#818cf8';
+    resultDiv.innerHTML = '<span class="material-icons" style="vertical-align: middle;">hourglass_empty</span> Генерация выплат...';
+
+    log(`▶ ${action} выплаты за ${date}...`, 'info');
+
+    try {
+        const response = await fetch('/zarplata/api/generate_payments.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                date: date,
+                clear: clearExisting
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            resultDiv.style.background = 'rgba(16, 185, 129, 0.1)';
+            resultDiv.style.color = '#10b981';
+            resultDiv.innerHTML = `
+                <span class="material-icons" style="vertical-align: middle;">check_circle</span>
+                <strong>Готово!</strong> Создано: ${result.data.created}, Пропущено: ${result.data.skipped}
+            `;
+
+            log(`✓ Генерация завершена для ${date}`, 'success');
+            log(`  Создано уроков/выплат: ${result.data.created}`, 'success');
+            log(`  Пропущено: ${result.data.skipped}`, 'info');
+            if (result.data.errors > 0) {
+                log(`  Ошибок: ${result.data.errors}`, 'warning');
+            }
+
+            // Логи деталей
+            if (result.data.details && result.data.details.length > 0) {
+                result.data.details.forEach(detail => {
+                    log(`  ${detail}`, detail.includes('✓') ? 'success' : (detail.includes('⚠') ? 'warning' : 'info'));
+                });
+            }
         } else {
             resultDiv.style.background = 'rgba(239, 68, 68, 0.1)';
             resultDiv.style.color = '#ef4444';
