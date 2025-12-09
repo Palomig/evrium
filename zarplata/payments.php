@@ -163,16 +163,17 @@ foreach ($lessons as $lesson) {
         $dataByMonth[$monthKey]['paid'] += $amount;
     }
 
-    // Инициализация недели
-    $weekStart = clone $date;
-    $weekStart->modify('monday this week');
-    $weekEnd = clone $date;
-    $weekEnd->modify('sunday this week');
-
+    // Инициализация недели - используем setISODate для точного расчёта
     if (!isset($dataByMonth[$monthKey]['weeks'][$weekNumber])) {
+        $year = (int)$date->format('o');  // ISO year (может отличаться от calendar year на границе годов)
+        $weekStartDate = new DateTime();
+        $weekStartDate->setISODate($year, $weekNumber, 1);  // 1 = Monday
+        $weekEndDate = new DateTime();
+        $weekEndDate->setISODate($year, $weekNumber, 7);    // 7 = Sunday
+
         $dataByMonth[$monthKey]['weeks'][$weekNumber] = [
-            'start' => $weekStart->format('d'),
-            'end' => $weekEnd->format('d'),
+            'start' => $weekStartDate->format('d'),
+            'end' => $weekEndDate->format('d'),
             'total' => 0,
             'paid' => 0
         ];
@@ -293,8 +294,11 @@ foreach ($lessons as $lesson) {
     ];
 }
 
-// Подсчёт процента выплаченного для недель
+// Подсчёт процента выплаченного для недель + сортировка недель
 foreach ($dataByMonth as $monthKey => &$month) {
+    // Сортируем недели по номеру (первая неделя слева)
+    ksort($month['weeks']);
+
     foreach ($month['weeks'] as $weekNum => &$week) {
         if ($week['total'] > 0) {
             $week['paid_percent'] = round(($week['paid'] / $week['total']) * 100);
