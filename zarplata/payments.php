@@ -188,6 +188,7 @@ foreach ($lessons as $lesson) {
         $dataByMonth[$monthKey]['days'][$dayKey] = [
             'date' => $dayName,
             'weekday' => $dayWeekday,
+            'week_number' => $weekNumber,  // ⭐ Добавляем номер недели для фильтрации
             'total' => 0,
             'hours' => 0,
             'absences' => 0,
@@ -607,6 +608,15 @@ require_once __DIR__ . '/templates/header.php';
             border-color: var(--text-muted);
         }
 
+        .week-card.active {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+        }
+
+        .week-card.active .week-dates {
+            color: var(--accent);
+        }
+
         .week-dates {
             font-size: 13px;
             font-weight: 600;
@@ -1016,15 +1026,20 @@ require_once __DIR__ . '/templates/header.php';
 
                         <!-- Weeks Grid -->
                         <?php if (!empty($month['weeks'])): ?>
-                            <div class="weeks-grid">
+                            <?php $isFirstWeek = true; ?>
+                            <div class="weeks-grid" data-month="<?= e($monthKey) ?>">
                                 <?php foreach ($month['weeks'] as $weekNum => $week): ?>
-                                    <div class="week-card">
+                                    <div class="week-card <?= $isFirstWeek ? 'active' : '' ?>"
+                                         data-week="<?= $weekNum ?>"
+                                         data-month="<?= e($monthKey) ?>"
+                                         onclick="selectWeek(this, '<?= e($monthKey) ?>', '<?= $weekNum ?>')">
                                         <div class="week-dates"><?= e($week['start']) ?> — <?= e($week['end']) ?></div>
                                         <div class="week-amount"><?= formatMoney($week['total']) ?></div>
                                         <div class="week-progress">
                                             <div class="week-progress-fill" style="width: <?= $week['paid_percent'] ?>%"></div>
                                         </div>
                                     </div>
+                                    <?php $isFirstWeek = false; ?>
                                 <?php endforeach; ?>
                             </div>
                         <?php endif; ?>
@@ -1041,8 +1056,15 @@ require_once __DIR__ . '/templates/header.php';
                                 <div></div>
                             </div>
 
+                            <?php
+                            // Получаем первую неделю для начальной фильтрации
+                            $firstWeekNum = array_key_first($month['weeks']);
+                            ?>
                             <?php foreach ($month['days'] as $dayKey => $day): ?>
-                                <div class="day-row">
+                                <div class="day-row"
+                                     data-week="<?= $day['week_number'] ?>"
+                                     data-month="<?= e($monthKey) ?>"
+                                     style="<?= ($day['week_number'] != $firstWeekNum) ? 'display: none;' : '' ?>">
                                     <div class="day-header" onclick="toggleDay(this)">
                                         <div class="day-date">
                                             <svg class="expand-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1441,6 +1463,39 @@ require_once __DIR__ . '/templates/header.php';
     </style>
 
     <script>
+        // ========== Функция переключения недель ==========
+        function selectWeek(clickedCard, monthKey, weekNum) {
+            // Находим все карточки недель в этом месяце
+            const weeksGrid = clickedCard.parentElement;
+            const allWeekCards = weeksGrid.querySelectorAll('.week-card');
+
+            // Убираем active класс со всех карточек
+            allWeekCards.forEach(card => card.classList.remove('active'));
+
+            // Добавляем active класс на выбранную карточку
+            clickedCard.classList.add('active');
+
+            // Находим все строки дней в этом месяце
+            const monthSection = clickedCard.closest('.month-section');
+            const dayRows = monthSection.querySelectorAll('.day-row[data-month="' + monthKey + '"]');
+
+            // Показываем/скрываем дни в зависимости от выбранной недели
+            dayRows.forEach(row => {
+                if (row.dataset.week == weekNum) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                    // Закрываем развёрнутые уроки при переключении
+                    const header = row.querySelector('.day-header');
+                    const lessons = row.querySelector('.lessons-container');
+                    if (header && lessons) {
+                        header.classList.remove('expanded');
+                        lessons.classList.remove('expanded');
+                    }
+                }
+            });
+        }
+
         // Toggle day expansion
         function toggleDay(header) {
             const lessonsContainer = header.nextElementSibling;
