@@ -51,8 +51,14 @@ function getStudentsForLesson($teacherId, $dayOfWeek, $timeStart) {
                     if ((int)$key == $dayOfWeek) {
                         foreach ($entry as $timeSlot) {
                             if (isset($timeSlot['time']) && substr($timeSlot['time'], 0, 5) == $timeStart) {
-                                // ⭐ Проверяем teacher_id внутри schedule (если указан)
-                                $slotTeacherId = isset($timeSlot['teacher_id']) ? (int)$timeSlot['teacher_id'] : null;
+                                // ⭐ ИСПРАВЛЕНИЕ: Правильно обрабатываем пустой/нулевой teacher_id
+                                // teacher_id может быть: числом, строкой "5", пустой строкой "", null
+                                $slotTeacherId = null;
+                                if (isset($timeSlot['teacher_id']) && $timeSlot['teacher_id'] !== '' && $timeSlot['teacher_id'] !== null) {
+                                    $slotTeacherId = (int)$timeSlot['teacher_id'];
+                                }
+
+                                // Если teacher_id указан в слоте и не совпадает - пропускаем
                                 if ($slotTeacherId && $slotTeacherId != $teacherId) {
                                     continue; // Этот урок для другого преподавателя
                                 }
@@ -85,8 +91,12 @@ function getStudentsForLesson($teacherId, $dayOfWeek, $timeStart) {
                     $entryDayNum = $dayMap[$entryDay] ?? (int)$entryDay;
 
                     if ($entryDayNum == $dayOfWeek && substr($entryTime, 0, 5) == $timeStart) {
-                        // ⭐ Проверяем teacher_id (если указан в entry)
-                        $entryTeacherId = isset($entry['teacher_id']) ? (int)$entry['teacher_id'] : null;
+                        // ⭐ ИСПРАВЛЕНИЕ: Правильно обрабатываем пустой/нулевой teacher_id
+                        $entryTeacherId = null;
+                        if (isset($entry['teacher_id']) && $entry['teacher_id'] !== '' && $entry['teacher_id'] !== null) {
+                            $entryTeacherId = (int)$entry['teacher_id'];
+                        }
+
                         if ($entryTeacherId && $entryTeacherId != $teacherId) {
                             continue; // Другой преподаватель
                         }
