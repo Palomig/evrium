@@ -67,7 +67,16 @@ foreach ($allStudents as $student) {
         if (!isset($slot['time'])) continue;
 
         $time = substr($slot['time'], 0, 5);
-        $teacherId = isset($slot['teacher_id']) ? (int)$slot['teacher_id'] : (int)$student['teacher_id'];
+
+        // ⭐ ИСПРАВЛЕНИЕ: Правильно обрабатываем пустой/нулевой teacher_id
+        // teacher_id может быть: числом, строкой "5", пустой строкой "", null или отсутствовать
+        $slotTeacherId = null;
+        if (isset($slot['teacher_id']) && $slot['teacher_id'] !== '' && $slot['teacher_id'] !== null) {
+            $slotTeacherId = (int)$slot['teacher_id'];
+        }
+
+        // Если teacher_id не указан в слоте, используем teacher_id из колонки students
+        $teacherId = $slotTeacherId ?: (int)$student['teacher_id'];
 
         if (!$teacherId) continue;
 

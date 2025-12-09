@@ -133,7 +133,12 @@ function runDiagnostic() {
                 if (!isset($slot['time'])) continue;
 
                 $time = substr($slot['time'], 0, 5);
-                $teacherId = isset($slot['teacher_id']) ? (int)$slot['teacher_id'] : (int)$student['teacher_id'];
+                // ⭐ ИСПРАВЛЕНИЕ: Правильно обрабатываем пустой/нулевой teacher_id
+                $slotTeacherId = null;
+                if (isset($slot['teacher_id']) && $slot['teacher_id'] !== '' && $slot['teacher_id'] !== null) {
+                    $slotTeacherId = (int)$slot['teacher_id'];
+                }
+                $teacherId = $slotTeacherId ?: (int)$student['teacher_id'];
 
                 if (!$teacherId) continue;
 
@@ -332,7 +337,12 @@ function runCronManually() {
                 if (!isset($slot['time'])) continue;
 
                 $time = substr($slot['time'], 0, 5);
-                $teacherId = isset($slot['teacher_id']) ? (int)$slot['teacher_id'] : (int)$student['teacher_id'];
+                // ⭐ ИСПРАВЛЕНИЕ: Правильно обрабатываем пустой/нулевой teacher_id
+                $slotTeacherId = null;
+                if (isset($slot['teacher_id']) && $slot['teacher_id'] !== '' && $slot['teacher_id'] !== null) {
+                    $slotTeacherId = (int)$slot['teacher_id'];
+                }
+                $teacherId = $slotTeacherId ?: (int)$student['teacher_id'];
 
                 if (!$teacherId) continue;
 
