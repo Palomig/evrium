@@ -107,6 +107,7 @@ function runDiagnostic() {
 
     // 3. Расписание на сегодня
     $dayOfWeek = (int)date('N');
+    $dayOfWeekStr = (string)$dayOfWeek; // ⭐ Для JSON ключей
     $today = date('Y-m-d');
 
     $allStudents = dbQuery(
@@ -119,8 +120,16 @@ function runDiagnostic() {
         $schedule = json_decode($student['schedule'], true);
         if (!is_array($schedule)) continue;
 
+        // ⭐ Проверяем ОБА варианта ключа: число и строку
+        $daySchedule = null;
         if (isset($schedule[$dayOfWeek]) && is_array($schedule[$dayOfWeek])) {
-            foreach ($schedule[$dayOfWeek] as $slot) {
+            $daySchedule = $schedule[$dayOfWeek];
+        } elseif (isset($schedule[$dayOfWeekStr]) && is_array($schedule[$dayOfWeekStr])) {
+            $daySchedule = $schedule[$dayOfWeekStr];
+        }
+
+        if ($daySchedule) {
+            foreach ($daySchedule as $slot) {
                 if (!isset($slot['time'])) continue;
 
                 $time = substr($slot['time'], 0, 5);
@@ -179,6 +188,26 @@ function runDiagnostic() {
             'lesson_time' => $data['time'] ?? '?',
             'teacher_id' => $data['teacher_id'] ?? '?',
             'expected_students' => $data['expected_students'] ?? '?'
+        ];
+    }
+
+    // 4.1. История сообщений за последнюю неделю
+    $weekAgo = date('Y-m-d', strtotime('-7 days'));
+    $sentLastWeek = dbQuery(
+        "SELECT DATE(created_at) as date, COUNT(*) as count
+         FROM audit_log
+         WHERE action_type = 'attendance_query_sent'
+           AND DATE(created_at) >= ?
+         GROUP BY DATE(created_at)
+         ORDER BY date DESC",
+        [$weekAgo]
+    );
+
+    $result['sent_last_week'] = [];
+    foreach ($sentLastWeek as $row) {
+        $result['sent_last_week'][] = [
+            'date' => $row['date'],
+            'count' => (int)$row['count']
         ];
     }
 
@@ -275,6 +304,7 @@ function runCronManually() {
     }
 
     $dayOfWeek = (int)date('N');
+    $dayOfWeekStr = (string)$dayOfWeek; // ⭐ Для JSON ключей
     $today = date('Y-m-d');
     $currentTime = date('H:i');
 
@@ -289,8 +319,16 @@ function runCronManually() {
         $schedule = json_decode($student['schedule'], true);
         if (!is_array($schedule)) continue;
 
+        // ⭐ Проверяем ОБА варианта ключа: число и строку
+        $daySchedule = null;
         if (isset($schedule[$dayOfWeek]) && is_array($schedule[$dayOfWeek])) {
-            foreach ($schedule[$dayOfWeek] as $slot) {
+            $daySchedule = $schedule[$dayOfWeek];
+        } elseif (isset($schedule[$dayOfWeekStr]) && is_array($schedule[$dayOfWeekStr])) {
+            $daySchedule = $schedule[$dayOfWeekStr];
+        }
+
+        if ($daySchedule) {
+            foreach ($daySchedule as $slot) {
                 if (!isset($slot['time'])) continue;
 
                 $time = substr($slot['time'], 0, 5);
