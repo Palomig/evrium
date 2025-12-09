@@ -3,6 +3,8 @@
  * Cron задача для автоматического опроса посещаемости
  * ⭐ ЕДИНЫЙ ИСТОЧНИК: students.schedule JSON
  *
+ * Версия: 2025-12-09
+ *
  * Запускать каждые 5 минут через crontab
  * Команда: php /home/c/cw95865/PALOMATIKA/public_html/zarplata/bot/cron.php
  */
@@ -16,10 +18,11 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/../config/student_helpers.php';
 
 // Логируем запуск
-error_log("Attendance cron started at " . date('Y-m-d H:i:s'));
+error_log("[CRON v2025-12-09] Attendance cron started at " . date('Y-m-d H:i:s'));
 
 // Получаем текущий день недели (1 = Понедельник, 7 = Воскресенье)
 $dayOfWeek = (int)date('N');
+$dayOfWeekStr = (string)$dayOfWeek; // ⭐ Для JSON ключей
 $today = date('Y-m-d');
 
 // Получаем текущее время
@@ -29,54 +32,68 @@ $currentTime = date('H:i');
 $timeFrom = date('H:i', strtotime('-18 minutes'));
 $timeTo = date('H:i', strtotime('-12 minutes'));
 
-error_log("Looking for lessons between {$timeFrom} and {$timeTo} on day {$dayOfWeek}");
+error_log("[CRON] Looking for lessons between {$timeFrom} and {$timeTo} on day {$dayOfWeek} ({$dayOfWeekStr})");
 
-// ⭐ НОВАЯ ЛОГИКА: Получаем уроки из students.schedule
+// ⭐ ЕДИНЫЙ ИСТОЧНИК: Получаем уроки из students.schedule
 $allStudents = dbQuery(
     "SELECT id, name, class, schedule, teacher_id FROM students WHERE active = 1 AND schedule IS NOT NULL",
     []
 );
+
+error_log("[CRON] Found " . count($allStudents) . " students with schedule");
 
 // Собираем уникальные уроки на текущий день
 $uniqueLessons = [];
 
 foreach ($allStudents as $student) {
     $schedule = json_decode($student['schedule'], true);
-    if (!is_array($schedule)) continue;
+    if (!is_array($schedule)) {
+        continue;
+    }
 
-    // Проверяем формат: {"4": [{"time": "15:00", "teacher_id": 5, ...}]}
+    // ⭐ Проверяем ОБА варианта ключа: число и строку
+    $daySchedule = null;
     if (isset($schedule[$dayOfWeek]) && is_array($schedule[$dayOfWeek])) {
-        foreach ($schedule[$dayOfWeek] as $slot) {
-            if (!isset($slot['time'])) continue;
+        $daySchedule = $schedule[$dayOfWeek];
+    } elseif (isset($schedule[$dayOfWeekStr]) && is_array($schedule[$dayOfWeekStr])) {
+        $daySchedule = $schedule[$dayOfWeekStr];
+    }
 
-            $time = substr($slot['time'], 0, 5);
-            $teacherId = isset($slot['teacher_id']) ? (int)$slot['teacher_id'] : (int)$student['teacher_id'];
+    if (!$daySchedule) {
+        continue;
+    }
 
-            if (!$teacherId) continue;
+    foreach ($daySchedule as $slot) {
+        if (!isset($slot['time'])) continue;
 
-            // Проверяем, попадает ли время в окно
-            if ($time >= $timeFrom && $time <= $timeTo) {
-                $key = "{$teacherId}_{$time}";
-                if (!isset($uniqueLessons[$key])) {
-                    $uniqueLessons[$key] = [
-                        'teacher_id' => $teacherId,
-                        'time' => $time,
-                        'subject' => $slot['subject'] ?? 'Мат.',
-                        'room' => $slot['room'] ?? 1
-                    ];
-                }
+        $time = substr($slot['time'], 0, 5);
+        $teacherId = isset($slot['teacher_id']) ? (int)$slot['teacher_id'] : (int)$student['teacher_id'];
+
+        if (!$teacherId) continue;
+
+        // Проверяем, попадает ли время в окно
+        if ($time >= $timeFrom && $time <= $timeTo) {
+            $key = "{$teacherId}_{$time}";
+            if (!isset($uniqueLessons[$key])) {
+                $uniqueLessons[$key] = [
+                    'teacher_id' => $teacherId,
+                    'time' => $time,
+                    'subject' => $slot['subject'] ?? 'Мат.',
+                    'room' => $slot['room'] ?? 1
+                ];
+                error_log("[CRON] Found lesson in window: {$key}");
             }
         }
     }
 }
 
 if (empty($uniqueLessons)) {
-    error_log("No lessons found for attendance polling");
+    error_log("[CRON] No lessons found for attendance polling in time window {$timeFrom}-{$timeTo}");
     ob_end_clean();
     exit(0);
 }
 
-error_log("Found " . count($uniqueLessons) . " lessons for attendance polling");
+error_log("[CRON] Found " . count($uniqueLessons) . " lessons for attendance polling");
 
 // Получаем информацию о преподавателях
 $teachers = [];
@@ -105,12 +122,12 @@ foreach ($uniqueLessons as $key => $lesson) {
 
     $teacher = $teachers[$teacherId] ?? null;
     if (!$teacher) {
-        error_log("Teacher {$teacherId} not found, skipping");
+        error_log("[CRON] Teacher {$teacherId} not found, skipping");
         continue;
     }
 
     if (!$teacher['telegram_id']) {
-        error_log("Teacher {$teacherId} ({$teacher['name']}) has no telegram_id, skipping");
+        error_log("[CRON] Teacher {$teacherId} ({$teacher['name']}) has no telegram_id, skipping");
         continue;
     }
 
@@ -126,7 +143,7 @@ foreach ($uniqueLessons as $key => $lesson) {
     );
 
     if ($existingQuery) {
-        error_log("Lesson {$key} - query already sent today (audit_log ID: {$existingQuery['id']}), skipping");
+        error_log("[CRON] Lesson {$key} - query already sent today (audit_log ID: {$existingQuery['id']}), skipping");
         continue;
     }
 
@@ -136,17 +153,17 @@ foreach ($uniqueLessons as $key => $lesson) {
     $studentNames = array_column($studentsData['students'], 'name');
 
     if ($studentCount == 0) {
-        error_log("Lesson {$key} has 0 students, skipping");
+        error_log("[CRON] Lesson {$key} has 0 students, skipping");
         continue;
     }
 
-    error_log("Lesson {$key}: {$studentCount} students ({$teacher['name']}, {$time})");
+    error_log("[CRON] Sending query for lesson {$key}: {$studentCount} students ({$teacher['name']}, {$time})");
 
     // Отправляем опрос
     sendAttendanceQuery($teacher, $lesson, $studentCount, $studentNames, $subject);
 }
 
-error_log("Attendance cron finished");
+error_log("[CRON] Attendance cron finished");
 
 // Очищаем буфер вывода
 ob_end_clean();
