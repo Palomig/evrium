@@ -81,30 +81,42 @@ require_once __DIR__ . '/templates/header.php';
     </div>
 </div>
 
-<!-- Тесты бота -->
+<!-- Диагностика и тесты Telegram бота -->
 <div class="table-container">
     <div class="table-header">
-        <h2 class="table-title">Тесты Telegram бота</h2>
+        <h2 class="table-title">🤖 Telegram бот</h2>
     </div>
     <div style="padding: 24px;">
-        <div class="test-buttons">
-            <button class="btn btn-primary" onclick="runTest('bot_attendance_all')">
-                <span class="material-icons">check_circle</span>
-                Тест: Все пришли
+        <div style="margin-bottom: 20px; padding: 16px; background: rgba(99, 102, 241, 0.1); border-radius: 8px; color: #818cf8;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span class="material-icons">info</span>
+                <strong>Диагностика бота</strong>
+            </div>
+            <div style="font-size: 0.875rem; line-height: 1.5;">
+                Проверьте работу бота: наличие токена, подключённых преподавателей и расписание на сегодня.
+            </div>
+        </div>
+
+        <div class="test-buttons" style="margin-bottom: 24px;">
+            <button class="btn btn-primary" onclick="runBotDiagnostic()">
+                <span class="material-icons">bug_report</span>
+                Диагностика бота
             </button>
-            <button class="btn btn-primary" onclick="runTest('bot_attendance_partial')">
-                <span class="material-icons">how_to_reg</span>
-                Тест: Не все пришли
-            </button>
-            <button class="btn btn-primary" onclick="runTest('bot_check_formulas')">
-                <span class="material-icons">functions</span>
-                Проверка формул
-            </button>
-            <button class="btn btn-primary" onclick="openSendTestLessonModal()">
+            <button class="btn btn-primary" onclick="sendTestMessage()">
                 <span class="material-icons">send</span>
-                Отправить тестовый урок
+                Отправить тестовое сообщение
+            </button>
+            <button class="btn btn-primary" onclick="runCronManually()">
+                <span class="material-icons">schedule</span>
+                Запустить cron вручную
+            </button>
+            <button class="btn btn-secondary" onclick="openSendTestLessonModal()">
+                <span class="material-icons">quiz</span>
+                Отправить опрос посещаемости
             </button>
         </div>
+
+        <div id="bot-diagnostic-result" style="margin-top: 16px; display: none;"></div>
     </div>
 </div>
 
@@ -477,6 +489,174 @@ function log(message, type = 'info') {
 
 function clearLogs() {
     logsContainer.innerHTML = '<div style="color: #6A9955;">// Логи очищены</div>';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ДИАГНОСТИКА И ТЕСТЫ TELEGRAM БОТА
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function runBotDiagnostic() {
+    log('▶ Запуск диагностики бота...', 'info');
+
+    const resultDiv = document.getElementById('bot-diagnostic-result');
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '<div style="padding: 16px; background: rgba(129, 140, 248, 0.1); border-radius: 8px; color: #818cf8;"><span class="material-icons" style="vertical-align: middle;">hourglass_empty</span> Диагностика...</div>';
+
+    try {
+        const response = await fetch('/zarplata/api/bot_diagnostic.php?action=diagnostic');
+        const result = await response.json();
+
+        if (result.success) {
+            const d = result.data;
+
+            // Формируем отчёт
+            let html = '<div style="padding: 16px; background: var(--bg-elevated); border-radius: 8px;">';
+
+            // Токен
+            const tokenIcon = d.token.status === 'ok' ? '✅' : '❌';
+            html += `<div style="margin-bottom: 16px;"><strong>${tokenIcon} Токен бота:</strong> ${d.token.message}`;
+            if (d.bot_info) {
+                html += ` (${d.bot_info.username})`;
+            }
+            html += '</div>';
+
+            // Преподаватели
+            const teachersIcon = d.teachers.with_telegram > 0 ? '✅' : '❌';
+            html += `<div style="margin-bottom: 16px;"><strong>${teachersIcon} Преподаватели:</strong> ${d.teachers.with_telegram} из ${d.teachers.total} с Telegram</div>`;
+
+            if (d.teachers.list.length > 0) {
+                html += '<div style="margin-left: 20px; margin-bottom: 16px; font-size: 0.875rem;">';
+                d.teachers.list.forEach(t => {
+                    const icon = t.has_telegram ? '✅' : '❌';
+                    html += `${icon} ${t.name}`;
+                    if (t.telegram_username) html += ` (@${t.telegram_username})`;
+                    html += '<br>';
+                });
+                html += '</div>';
+            }
+
+            // Расписание
+            const scheduleIcon = d.schedule.lessons_count > 0 ? '✅' : '⚠️';
+            html += `<div style="margin-bottom: 16px;"><strong>${scheduleIcon} Расписание на сегодня (${d.schedule.day_name}):</strong> ${d.schedule.lessons_count} уроков</div>`;
+
+            if (d.schedule.lessons.length > 0) {
+                html += '<div style="margin-left: 20px; margin-bottom: 16px; font-size: 0.875rem;">';
+                d.schedule.lessons.forEach(l => {
+                    const icon = l.teacher_has_telegram ? '✅' : '❌';
+                    html += `${l.time} - ${l.teacher_name} ${icon} (${l.student_count} уч.)<br>`;
+                });
+                html += '</div>';
+            }
+
+            // Отправленные сообщения
+            const sentIcon = d.sent_today.count > 0 ? '✅' : '⚠️';
+            html += `<div style="margin-bottom: 16px;"><strong>${sentIcon} Отправлено сообщений сегодня:</strong> ${d.sent_today.count}</div>`;
+
+            // Окно cron
+            html += `<div style="margin-bottom: 16px;"><strong>🕐 Текущее время:</strong> ${d.cron_window.current_time}</div>`;
+            html += `<div style="margin-bottom: 16px;"><strong>📍 Окно cron:</strong> ${d.cron_window.window_from} - ${d.cron_window.window_to} (уроков в окне: ${d.cron_window.lessons_in_window})</div>`;
+
+            // Ближайший урок
+            if (d.next_lesson) {
+                const mins = d.next_lesson.minutes_until;
+                let timeText;
+                if (mins > 0) {
+                    timeText = `через ${mins} мин`;
+                } else {
+                    timeText = `${Math.abs(mins)} мин назад`;
+                }
+                html += `<div style="margin-bottom: 16px;"><strong>📍 Ближайший урок:</strong> ${d.next_lesson.time} (${timeText}) - ${d.next_lesson.teacher_name}</div>`;
+                if (mins > 0) {
+                    html += `<div style="color: #818cf8;">Сообщение будет отправлено примерно в ${d.next_lesson.message_will_be_sent_at}</div>`;
+                }
+            }
+
+            html += '</div>';
+            resultDiv.innerHTML = html;
+
+            // Логируем
+            log(`✅ Токен: ${d.token.message}`, d.token.status === 'ok' ? 'success' : 'error');
+            log(`👥 Преподаватели: ${d.teachers.with_telegram}/${d.teachers.total} с Telegram`, d.teachers.with_telegram > 0 ? 'success' : 'warning');
+            log(`📅 Уроки сегодня: ${d.schedule.lessons_count}`, 'info');
+            log(`📨 Отправлено сегодня: ${d.sent_today.count}`, 'info');
+            log(`🕐 Текущее время: ${d.cron_window.current_time}, окно: ${d.cron_window.window_from}-${d.cron_window.window_to}`, 'info');
+
+        } else {
+            resultDiv.innerHTML = `<div style="padding: 16px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; color: #ef4444;"><span class="material-icons" style="vertical-align: middle;">error</span> ${result.error}</div>`;
+            log(`✗ Ошибка: ${result.error}`, 'error');
+        }
+
+    } catch (error) {
+        resultDiv.innerHTML = `<div style="padding: 16px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; color: #ef4444;"><span class="material-icons" style="vertical-align: middle;">error</span> ${error.message}</div>`;
+        log(`✗ Ошибка: ${error.message}`, 'error');
+    }
+
+    log('─'.repeat(80), 'info');
+}
+
+async function sendTestMessage() {
+    log('▶ Отправка тестового сообщения...', 'info');
+
+    try {
+        const response = await fetch('/zarplata/api/bot_diagnostic.php?action=send_test', {
+            method: 'POST'
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            log(`✅ Сообщение отправлено: ${result.data.teacher} (chat_id: ${result.data.chat_id})`, 'success');
+            alert(`✅ Сообщение отправлено преподавателю ${result.data.teacher}`);
+        } else {
+            log(`✗ Ошибка: ${result.error}`, 'error');
+            alert(`❌ Ошибка: ${result.error}`);
+        }
+    } catch (error) {
+        log(`✗ Ошибка: ${error.message}`, 'error');
+        alert(`❌ Ошибка: ${error.message}`);
+    }
+
+    log('─'.repeat(80), 'info');
+}
+
+async function runCronManually() {
+    if (!confirm('Отправить опросы посещаемости для всех прошедших уроков сегодня?')) {
+        return;
+    }
+
+    log('▶ Запуск cron вручную...', 'info');
+
+    const resultDiv = document.getElementById('bot-diagnostic-result');
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '<div style="padding: 16px; background: rgba(129, 140, 248, 0.1); border-radius: 8px; color: #818cf8;"><span class="material-icons" style="vertical-align: middle;">hourglass_empty</span> Отправка сообщений...</div>';
+
+    try {
+        const response = await fetch('/zarplata/api/bot_diagnostic.php?action=run_cron', {
+            method: 'POST'
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            const d = result.data;
+            resultDiv.innerHTML = `<div style="padding: 16px; background: rgba(16, 185, 129, 0.1); border-radius: 8px; color: #10b981;"><span class="material-icons" style="vertical-align: middle;">check_circle</span> <strong>Готово!</strong> Отправлено: ${d.sent}, Пропущено: ${d.skipped}</div>`;
+
+            log(`✅ Cron выполнен`, 'success');
+            log(`   Всего уроков: ${d.total_lessons}`, 'info');
+            log(`   Отправлено: ${d.sent}`, 'success');
+            log(`   Пропущено: ${d.skipped}`, 'info');
+
+            if (d.errors && d.errors.length > 0) {
+                d.errors.forEach(err => log(`   ⚠️ ${err}`, 'warning'));
+            }
+        } else {
+            resultDiv.innerHTML = `<div style="padding: 16px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; color: #ef4444;"><span class="material-icons" style="vertical-align: middle;">error</span> ${result.error}</div>`;
+            log(`✗ Ошибка: ${result.error}`, 'error');
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div style="padding: 16px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; color: #ef4444;"><span class="material-icons" style="vertical-align: middle;">error</span> ${error.message}</div>`;
+        log(`✗ Ошибка: ${error.message}`, 'error');
+    }
+
+    log('─'.repeat(80), 'info');
 }
 
 async function runTest(testName) {
