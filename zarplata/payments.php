@@ -306,7 +306,9 @@ foreach ($dataByMonth as $monthKey => &$month) {
             $week['paid_percent'] = 0;
         }
     }
+    unset($week);  // ⚠️ КРИТИЧНО: разрываем ссылку после foreach
 }
+unset($month);  // ⚠️ КРИТИЧНО: разрываем ссылку после foreach
 
 // Общая статистика
 $totalStats = [
