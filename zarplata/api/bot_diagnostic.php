@@ -15,8 +15,8 @@ header('Content-Type: application/json; charset=utf-8');
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 $secretKey = $_GET['key'] ?? '';
 
-// Для run_cron разрешаем без авторизации (для вызова из cron или вручную)
-if ($action === 'run_cron' || $action === 'diagnostic') {
+// Для run_cron, diagnostic, send_test разрешаем без авторизации
+if ($action === 'run_cron' || $action === 'diagnostic' || $action === 'send_test') {
     // Разрешаем без авторизации
 } else {
     session_start();
