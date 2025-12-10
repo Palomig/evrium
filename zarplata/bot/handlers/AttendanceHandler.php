@@ -459,7 +459,8 @@ function handleAttAllPresent($chatId, $messageId, $telegramId, $lessonKey, $call
         }
 
         $teacherId = (int)$parts[0];
-        $time = $parts[1];
+        // Время приходит как "16-00", преобразуем обратно в "16:00"
+        $time = str_replace('-', ':', $parts[1]);
         $date = $parts[2];
         $dayOfWeek = (int)date('N', strtotime($date));
 
@@ -588,7 +589,8 @@ function handleAttSomeAbsent($chatId, $messageId, $telegramId, $lessonKey, $call
         }
 
         $teacherId = (int)$parts[0];
-        $time = $parts[1];
+        // Время приходит как "16-00", преобразуем обратно в "16:00"
+        $time = str_replace('-', ':', $parts[1]);
         $date = $parts[2];
         $dayOfWeek = (int)date('N', strtotime($date));
 
@@ -663,7 +665,8 @@ function handleAttCount($chatId, $messageId, $telegramId, $lessonKey, $attendedC
         }
 
         $teacherId = (int)$parts[0];
-        $time = $parts[1];
+        // Время приходит как "16-00", преобразуем обратно в "16:00"
+        $time = str_replace('-', ':', $parts[1]);
         $date = $parts[2];
         $dayOfWeek = (int)date('N', strtotime($date));
 
