@@ -14,11 +14,17 @@
 // ═══════════════════════════════════════════════════════════════════════════
 ob_start();
 
+// ⭐ ОТЛАДКА: Пишем в файл чтобы видеть что cron запускается
+$debugLogFile = __DIR__ . '/cron_debug.log';
+$debugMsg = date('Y-m-d H:i:s') . " - Cron started\n";
+file_put_contents($debugLogFile, $debugMsg, FILE_APPEND);
+
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/../config/student_helpers.php';
 
 // Логируем запуск
-error_log("[CRON v2025-12-09] Attendance cron started at " . date('Y-m-d H:i:s'));
+error_log("[CRON v2025-12-10] Attendance cron started at " . date('Y-m-d H:i:s'));
+file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - Config loaded OK\n", FILE_APPEND);
 
 // Получаем текущий день недели (1 = Понедельник, 7 = Воскресенье)
 $dayOfWeek = (int)date('N');
@@ -98,9 +104,12 @@ foreach ($allStudents as $student) {
 
 if (empty($uniqueLessons)) {
     error_log("[CRON] No lessons found for attendance polling in time window {$timeFrom}-{$timeTo}");
+    file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - No lessons in window {$timeFrom}-{$timeTo}, exiting\n", FILE_APPEND);
     ob_end_clean();
     exit(0);
 }
+
+file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - Found " . count($uniqueLessons) . " lessons in window\n", FILE_APPEND);
 
 error_log("[CRON] Found " . count($uniqueLessons) . " lessons for attendance polling");
 
@@ -173,6 +182,7 @@ foreach ($uniqueLessons as $key => $lesson) {
 }
 
 error_log("[CRON] Attendance cron finished");
+file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - Cron finished successfully\n", FILE_APPEND);
 
 // Очищаем буфер вывода
 ob_end_clean();
@@ -245,9 +255,13 @@ function sendAttendanceQuery($teacher, $lesson, $studentCount, $studentNames, $s
     // Отправляем сообщение
     $result = sendTelegramMessage($chatId, $message, $keyboard);
 
+    // ⭐ ОТЛАДКА: Пишем результат в файл
+    global $debugLogFile;
     if ($result) {
         error_log("✅ Attendance query sent to {$teacher['name']} for lesson at {$time}");
+        file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - ✅ Sent to {$teacher['name']} at {$time}\n", FILE_APPEND);
     } else {
         error_log("❌ Failed to send attendance query to {$teacher['name']} for lesson at {$time}");
+        file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - ❌ FAILED to send to {$teacher['name']} at {$time}\n", FILE_APPEND);
     }
 }
