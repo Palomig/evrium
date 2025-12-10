@@ -232,7 +232,9 @@ function sendAttendanceQuery($teacher, $lesson, $studentCount, $studentNames, $s
     $message .= "\n❓ <b>Все ученики пришли на урок?</b>";
 
     // Создаём уникальный идентификатор урока для callback
-    $lessonKey = "{$teacherId}_{$time}_{$today}";
+    // ВАЖНО: время без двоеточия, иначе explode(':') в webhook сломает парсинг
+    $timeForKey = str_replace(':', '-', $time);
+    $lessonKey = "{$teacherId}_{$timeForKey}_{$today}";
 
     // Inline кнопки
     $keyboard = [

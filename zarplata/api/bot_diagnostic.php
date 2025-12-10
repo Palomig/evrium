@@ -452,7 +452,9 @@ function runCronManually() {
 
         $message .= "\n❓ <b>Все ученики пришли на урок?</b>";
 
-        $lessonKey = "{$teacherId}_{$time}_{$today}";
+        // ВАЖНО: время без двоеточия, иначе explode(':') в webhook сломает парсинг
+        $timeForKey = str_replace(':', '-', $time);
+        $lessonKey = "{$teacherId}_{$timeForKey}_{$today}";
 
         $keyboard = [
             'inline_keyboard' => [
