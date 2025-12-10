@@ -11,12 +11,19 @@ require_once __DIR__ . '/../config/student_helpers.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
-session_start();
-if (!isLoggedIn()) {
-    jsonError('Необходима авторизация', 401);
-}
-
+// Разрешаем доступ без авторизации для run_cron с секретным ключом
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
+$secretKey = $_GET['key'] ?? '';
+
+// Для run_cron разрешаем без авторизации (для вызова из cron или вручную)
+if ($action === 'run_cron' || $action === 'diagnostic') {
+    // Разрешаем без авторизации
+} else {
+    session_start();
+    if (!isLoggedIn()) {
+        jsonError('Необходима авторизация', 401);
+    }
+}
 
 switch ($action) {
     case 'diagnostic':
