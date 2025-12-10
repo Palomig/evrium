@@ -407,6 +407,7 @@ function runCronManually() {
         }
 
         if (!$teacher['telegram_id']) {
+            $errors[] = "Урок {$time}: нет telegram_id у {$teacher['name']}";
             $skipped++;
             continue;
         }
@@ -423,6 +424,7 @@ function runCronManually() {
         );
 
         if ($existingQuery) {
+            $errors[] = "Урок {$time}: уже отправлено сегодня (audit_log #{$existingQuery['id']})";
             $skipped++;
             continue;
         }
@@ -433,6 +435,7 @@ function runCronManually() {
         $studentNames = array_column($studentsData['students'], 'name');
 
         if ($studentCount == 0) {
+            $errors[] = "Урок {$time}: 0 учеников найдено";
             $skipped++;
             continue;
         }
