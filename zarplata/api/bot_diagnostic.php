@@ -15,8 +15,8 @@ header('Content-Type: application/json; charset=utf-8');
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 $secretKey = $_GET['key'] ?? '';
 
-// Для run_cron, diagnostic, send_test разрешаем без авторизации
-if ($action === 'run_cron' || $action === 'diagnostic' || $action === 'send_test') {
+// Для run_cron, diagnostic, send_test, force_send разрешаем без авторизации
+if ($action === 'run_cron' || $action === 'diagnostic' || $action === 'send_test' || $action === 'force_send') {
     // Разрешаем без авторизации
 } else {
     session_start();
@@ -36,6 +36,10 @@ switch ($action) {
 
     case 'run_cron':
         runCronManually();
+        break;
+
+    case 'force_send':
+        forceSendMessages();
         break;
 
     default:
@@ -496,6 +500,143 @@ function runCronManually() {
         'total_lessons' => count($passedLessons),
         'sent' => $sent,
         'skipped' => $skipped,
+        'errors' => $errors
+    ]);
+}
+
+/**
+ * Принудительная отправка сообщений (игнорирует проверку дубликатов)
+ */
+function forceSendMessages() {
+    $dayOfWeek = (int)date('N');
+    $today = date('Y-m-d');
+    $currentTime = date('H:i');
+
+    $subjectMap = [
+        'Мат.' => 'Математика',
+        'Физ.' => 'Физика',
+        'Инф.' => 'Информатика'
+    ];
+
+    // Получаем все уроки на сегодня
+    $allStudents = dbQuery(
+        "SELECT id, name, class, schedule, teacher_id FROM students WHERE active = 1 AND schedule IS NOT NULL",
+        []
+    );
+
+    $uniqueLessons = [];
+    foreach ($allStudents as $student) {
+        $schedule = json_decode($student['schedule'], true);
+        if (!is_array($schedule)) continue;
+
+        $daySchedule = $schedule[$dayOfWeek] ?? $schedule[(string)$dayOfWeek] ?? null;
+        if (!$daySchedule || !is_array($daySchedule)) continue;
+
+        foreach ($daySchedule as $slot) {
+            if (!isset($slot['time'])) continue;
+            $time = substr($slot['time'], 0, 5);
+
+            $slotTeacherId = null;
+            if (isset($slot['teacher_id']) && $slot['teacher_id'] !== '' && $slot['teacher_id'] !== null) {
+                $slotTeacherId = (int)$slot['teacher_id'];
+            }
+            $teacherId = $slotTeacherId ?: (int)$student['teacher_id'];
+            if (!$teacherId) continue;
+
+            $key = "{$teacherId}_{$time}";
+            if (!isset($uniqueLessons[$key])) {
+                $uniqueLessons[$key] = [
+                    'teacher_id' => $teacherId,
+                    'time' => $time,
+                    'subject' => $slot['subject'] ?? 'Мат.',
+                    'room' => $slot['room'] ?? 1
+                ];
+            }
+        }
+    }
+
+    // Фильтруем только прошедшие уроки
+    $passedLessons = [];
+    foreach ($uniqueLessons as $key => $lesson) {
+        if ($lesson['time'] < $currentTime) {
+            $passedLessons[$key] = $lesson;
+        }
+    }
+
+    if (empty($passedLessons)) {
+        jsonError("Нет прошедших уроков сегодня (сейчас {$currentTime})");
+    }
+
+    // Получаем преподавателей
+    $teachers = [];
+    $teacherRows = dbQuery("SELECT * FROM teachers WHERE active = 1", []);
+    foreach ($teacherRows as $t) {
+        $teachers[$t['id']] = $t;
+    }
+
+    $sent = 0;
+    $errors = [];
+
+    foreach ($passedLessons as $key => $lesson) {
+        $teacherId = $lesson['teacher_id'];
+        $time = $lesson['time'];
+        $subject = $subjectMap[$lesson['subject']] ?? $lesson['subject'];
+        $room = $lesson['room'];
+
+        $teacher = $teachers[$teacherId] ?? null;
+        if (!$teacher || !$teacher['telegram_id']) {
+            $errors[] = "Урок {$time}: нет telegram у преподавателя";
+            continue;
+        }
+
+        // Получаем учеников
+        $studentsData = getStudentsForLesson($teacherId, $dayOfWeek, $time);
+        $studentCount = $studentsData['count'];
+        $studentNames = array_column($studentsData['students'], 'name');
+
+        if ($studentCount == 0) {
+            $errors[] = "Урок {$time}: 0 учеников";
+            continue;
+        }
+
+        // Формируем сообщение
+        $timeEnd = date('H:i', strtotime($time) + 3600);
+        $message = "📊 <b>Отметка посещаемости</b>\n\n";
+        $message .= "📚 <b>{$subject}</b>\n";
+        $message .= "🕐 <b>{$time} - {$timeEnd}</b>\n";
+        $message .= "🏫 Кабинет {$room}\n";
+        $message .= "👥 Ожидалось: <b>{$studentCount}</b> " . plural($studentCount, 'ученик', 'ученика', 'учеников') . "\n";
+
+        if (!empty($studentNames)) {
+            $message .= "📝 " . implode(', ', $studentNames) . "\n";
+        }
+
+        $message .= "\n❓ <b>Все ученики пришли на урок?</b>";
+
+        // ВАЖНО: время без двоеточия
+        $timeForKey = str_replace(':', '-', $time);
+        $lessonKey = "{$teacherId}_{$timeForKey}_{$today}";
+
+        $keyboard = [
+            'inline_keyboard' => [
+                [['text' => '✅ Да, все пришли', 'callback_data' => "att_all:{$lessonKey}"]],
+                [['text' => '❌ Нет, есть отсутствующие', 'callback_data' => "att_absent:{$lessonKey}"]]
+            ]
+        ];
+
+        $result = sendTelegramMessage($teacher['telegram_id'], $message, $keyboard);
+
+        if ($result && isset($result['ok']) && $result['ok']) {
+            $sent++;
+        } else {
+            $errors[] = "Урок {$time}: ошибка отправки";
+        }
+    }
+
+    jsonSuccess([
+        'message' => 'Принудительная отправка завершена',
+        'total_lessons' => count($passedLessons),
+        'sent' => $sent,
         'errors' => $errors
     ]);
 }
