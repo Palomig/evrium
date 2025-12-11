@@ -571,7 +571,10 @@ function handleAttAllPresent($chatId, $messageId, $telegramId, $lessonKey, $call
 
     } catch (Throwable $e) {
         error_log("[Telegram Bot] Error in handleAttAllPresent: " . $e->getMessage());
-        answerCallbackQuery($callbackQueryId, "Произошла ошибка", true);
+        error_log("[Telegram Bot] File: " . $e->getFile() . ":" . $e->getLine());
+        error_log("[Telegram Bot] Trace: " . $e->getTraceAsString());
+        // Показываем детали ошибки для отладки
+        answerCallbackQuery($callbackQueryId, "Ошибка: " . substr($e->getMessage(), 0, 100), true);
     }
 }
 
