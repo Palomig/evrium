@@ -34,9 +34,10 @@ $today = date('Y-m-d');
 // Получаем текущее время
 $currentTime = date('H:i');
 
-// Вычисляем время 15 минут назад (±3 минуты)
-$timeFrom = date('H:i', strtotime('-18 minutes'));
-$timeTo = date('H:i', strtotime('-12 minutes'));
+// ⭐ РАСШИРЕННОЕ ОКНО: уроки за последние 20 минут
+// Дубликаты отфильтруются через audit_log
+$timeFrom = date('H:i', strtotime('-20 minutes'));
+$timeTo = date('H:i');  // до текущего времени
 
 error_log("[CRON] Looking for lessons between {$timeFrom} and {$timeTo} on day {$dayOfWeek} ({$dayOfWeekStr})");
 

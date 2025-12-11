@@ -227,10 +227,10 @@ function runDiagnostic() {
         ];
     }
 
-    // 5. Окно cron
+    // 5. Окно cron (расширенное: последние 20 минут)
     $currentTime = date('H:i');
-    $timeFrom = date('H:i', strtotime('-18 minutes'));
-    $timeTo = date('H:i', strtotime('-12 minutes'));
+    $timeFrom = date('H:i', strtotime('-20 minutes'));
+    $timeTo = $currentTime;
 
     $result['cron_window'] = [
         'current_time' => $currentTime,
