@@ -11,6 +11,9 @@ if (!function_exists('getTeacherByTelegramId')) {
 if (!function_exists('getStudentsForLesson')) {
     require_once __DIR__ . '/../../config/student_helpers.php';
 }
+if (!function_exists('logAudit')) {
+    require_once __DIR__ . '/../../config/auth.php';
+}
 
 /**
  * Получить ID формулы для преподавателя
