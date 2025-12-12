@@ -132,7 +132,11 @@ $subjectMap = [
 ];
 
 // Для каждого урока проверяем и отправляем сообщение
+file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - Starting lesson loop...\n", FILE_APPEND);
+
 foreach ($uniqueLessons as $key => $lesson) {
+    file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - Processing lesson {$key}\n", FILE_APPEND);
+
     $teacherId = $lesson['teacher_id'];
     $time = $lesson['time'];
     $subject = $subjectMap[$lesson['subject']] ?? $lesson['subject'];
@@ -140,16 +144,18 @@ foreach ($uniqueLessons as $key => $lesson) {
 
     $teacher = $teachers[$teacherId] ?? null;
     if (!$teacher) {
-        error_log("[CRON] Teacher {$teacherId} not found, skipping");
+        file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - ❌ Teacher {$teacherId} not found, skipping\n", FILE_APPEND);
         continue;
     }
 
     if (!$teacher['telegram_id']) {
-        error_log("[CRON] Teacher {$teacherId} ({$teacher['name']}) has no telegram_id, skipping");
+        file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - ❌ Teacher {$teacherId} has no telegram_id, skipping\n", FILE_APPEND);
         continue;
     }
 
     // Проверяем, не отправляли ли уже сообщение сегодня
+    file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - Checking audit_log for {$key}...\n", FILE_APPEND);
+
     $existingQuery = dbQueryOne(
         "SELECT id FROM audit_log
          WHERE action_type = 'attendance_query_sent'
@@ -161,21 +167,23 @@ foreach ($uniqueLessons as $key => $lesson) {
     );
 
     if ($existingQuery) {
-        error_log("[CRON] Lesson {$key} - query already sent today (audit_log ID: {$existingQuery['id']}), skipping");
+        file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - ❌ Already sent (audit #{$existingQuery['id']}), skipping\n", FILE_APPEND);
         continue;
     }
 
     // Получаем учеников для этого урока
+    file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - Getting students for {$key}...\n", FILE_APPEND);
+
     $studentsData = getStudentsForLesson($teacherId, $dayOfWeek, $time);
     $studentCount = $studentsData['count'];
     $studentNames = array_column($studentsData['students'], 'name');
 
     if ($studentCount == 0) {
-        error_log("[CRON] Lesson {$key} has 0 students, skipping");
+        file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - ❌ 0 students found, skipping\n", FILE_APPEND);
         continue;
     }
 
-    error_log("[CRON] Sending query for lesson {$key}: {$studentCount} students ({$teacher['name']}, {$time})");
+    file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - ✅ Sending to {$teacher['name']} for {$time} ({$studentCount} students)\n", FILE_APPEND);
 
     // Отправляем опрос
     sendAttendanceQuery($teacher, $lesson, $studentCount, $studentNames, $subject);
