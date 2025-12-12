@@ -15,8 +15,8 @@ header('Content-Type: application/json; charset=utf-8');
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 $secretKey = $_GET['key'] ?? '';
 
-// Для run_cron, diagnostic, send_test, force_send разрешаем без авторизации
-if ($action === 'run_cron' || $action === 'diagnostic' || $action === 'send_test' || $action === 'force_send') {
+// Для run_cron, diagnostic, send_test, force_send, debug_cron разрешаем без авторизации
+if (in_array($action, ['run_cron', 'diagnostic', 'send_test', 'force_send', 'debug_cron'])) {
     // Разрешаем без авторизации
 } else {
     session_start();
@@ -40,6 +40,10 @@ switch ($action) {
 
     case 'force_send':
         forceSendMessages();
+        break;
+
+    case 'debug_cron':
+        debugCronStep();
         break;
 
     default:
@@ -639,4 +643,234 @@ function forceSendMessages() {
         'sent' => $sent,
         'errors' => $errors
     ]);
+}
+
+/**
+ * Пошаговая отладка cron - показывает ВСЁ что происходит
+ */
+function debugCronStep() {
+    $debug = [
+        'server_time' => date('Y-m-d H:i:s'),
+        'timezone' => date_default_timezone_get(),
+        'day_of_week' => (int)date('N'),
+        'day_name' => ['', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'][(int)date('N')],
+        'steps' => []
+    ];
+
+    $dayOfWeek = (int)date('N');
+    $dayOfWeekStr = (string)$dayOfWeek;
+    $today = date('Y-m-d');
+    $currentTime = date('H:i');
+
+    // Шаг 1: Получить всех студентов
+    $allStudents = dbQuery(
+        "SELECT id, name, class, schedule, teacher_id FROM students WHERE active = 1 AND schedule IS NOT NULL",
+        []
+    );
+    $debug['steps'][] = [
+        'step' => 1,
+        'name' => 'Получение студентов',
+        'total_students' => count($allStudents)
+    ];
+
+    // Шаг 2: Собрать все уроки на сегодня
+    $allLessonsToday = [];
+    $studentsWithTodayLessons = 0;
+
+    foreach ($allStudents as $student) {
+        $schedule = json_decode($student['schedule'], true);
+        if (!is_array($schedule)) continue;
+
+        $daySchedule = $schedule[$dayOfWeek] ?? $schedule[$dayOfWeekStr] ?? null;
+        if (!$daySchedule || !is_array($daySchedule)) continue;
+
+        $studentsWithTodayLessons++;
+
+        foreach ($daySchedule as $slot) {
+            if (!isset($slot['time'])) continue;
+            $time = substr($slot['time'], 0, 5);
+
+            $slotTeacherId = null;
+            if (isset($slot['teacher_id']) && $slot['teacher_id'] !== '' && $slot['teacher_id'] !== null) {
+                $slotTeacherId = (int)$slot['teacher_id'];
+            }
+            $teacherId = $slotTeacherId ?: (int)$student['teacher_id'];
+            if (!$teacherId) continue;
+
+            $key = "{$teacherId}_{$time}";
+            if (!isset($allLessonsToday[$key])) {
+                $allLessonsToday[$key] = [
+                    'teacher_id' => $teacherId,
+                    'time' => $time,
+                    'subject' => $slot['subject'] ?? 'Мат.',
+                    'room' => $slot['room'] ?? 1,
+                    'students' => []
+                ];
+            }
+            $allLessonsToday[$key]['students'][] = $student['name'];
+        }
+    }
+
+    // Сортируем по времени
+    uasort($allLessonsToday, fn($a, $b) => strcmp($a['time'], $b['time']));
+
+    $debug['steps'][] = [
+        'step' => 2,
+        'name' => 'Уроки на сегодня',
+        'students_with_lessons_today' => $studentsWithTodayLessons,
+        'total_unique_lessons' => count($allLessonsToday),
+        'lessons' => array_values($allLessonsToday)
+    ];
+
+    // Шаг 3: Получить преподавателей
+    $teachers = [];
+    $teacherRows = dbQuery(
+        "SELECT id, name, telegram_id, telegram_username FROM teachers WHERE active = 1",
+        []
+    );
+    foreach ($teacherRows as $t) {
+        $teachers[$t['id']] = $t;
+    }
+
+    $debug['steps'][] = [
+        'step' => 3,
+        'name' => 'Преподаватели',
+        'total' => count($teachers),
+        'with_telegram' => count(array_filter($teachers, fn($t) => !empty($t['telegram_id']))),
+        'list' => array_map(fn($t) => [
+            'id' => $t['id'],
+            'name' => $t['name'],
+            'has_telegram' => !empty($t['telegram_id']),
+            'telegram_id' => $t['telegram_id'] ?: null
+        ], $teachers)
+    ];
+
+    // Шаг 4: Проверить что уже отправлено сегодня
+    $sentToday = dbQuery(
+        "SELECT id, new_value, created_at FROM audit_log
+         WHERE action_type = 'attendance_query_sent' AND DATE(created_at) = ?
+         ORDER BY created_at",
+        [$today]
+    );
+
+    $sentLessonKeys = [];
+    foreach ($sentToday as $log) {
+        $data = json_decode($log['new_value'], true);
+        if ($data && isset($data['teacher_id']) && isset($data['time'])) {
+            $sentLessonKeys[] = "{$data['teacher_id']}_{$data['time']}";
+        }
+    }
+
+    $debug['steps'][] = [
+        'step' => 4,
+        'name' => 'Уже отправлено сегодня',
+        'count' => count($sentToday),
+        'lesson_keys' => $sentLessonKeys
+    ];
+
+    // Шаг 5: Анализ каждого урока
+    $lessonAnalysis = [];
+    foreach ($allLessonsToday as $key => $lesson) {
+        $teacherId = $lesson['teacher_id'];
+        $time = $lesson['time'];
+        $teacher = $teachers[$teacherId] ?? null;
+
+        $analysis = [
+            'key' => $key,
+            'time' => $time,
+            'teacher_id' => $teacherId,
+            'teacher_name' => $teacher['name'] ?? 'НЕ НАЙДЕН',
+            'student_count' => count($lesson['students']),
+            'students' => $lesson['students'],
+            'checks' => []
+        ];
+
+        // Проверка 1: Преподаватель существует
+        if (!$teacher) {
+            $analysis['checks'][] = ['check' => 'teacher_exists', 'passed' => false, 'reason' => 'Преподаватель не найден'];
+            $analysis['would_send'] = false;
+            $lessonAnalysis[] = $analysis;
+            continue;
+        }
+        $analysis['checks'][] = ['check' => 'teacher_exists', 'passed' => true];
+
+        // Проверка 2: У преподавателя есть telegram_id
+        if (!$teacher['telegram_id']) {
+            $analysis['checks'][] = ['check' => 'has_telegram', 'passed' => false, 'reason' => 'Нет telegram_id'];
+            $analysis['would_send'] = false;
+            $lessonAnalysis[] = $analysis;
+            continue;
+        }
+        $analysis['checks'][] = ['check' => 'has_telegram', 'passed' => true, 'telegram_id' => $teacher['telegram_id']];
+
+        // Проверка 3: Не отправлено ранее
+        $alreadySent = in_array($key, $sentLessonKeys);
+        if ($alreadySent) {
+            $analysis['checks'][] = ['check' => 'not_sent_yet', 'passed' => false, 'reason' => 'Уже отправлено сегодня'];
+            $analysis['would_send'] = false;
+            $lessonAnalysis[] = $analysis;
+            continue;
+        }
+        $analysis['checks'][] = ['check' => 'not_sent_yet', 'passed' => true];
+
+        // Проверка 4: Есть ученики
+        if (count($lesson['students']) == 0) {
+            $analysis['checks'][] = ['check' => 'has_students', 'passed' => false, 'reason' => '0 учеников'];
+            $analysis['would_send'] = false;
+            $lessonAnalysis[] = $analysis;
+            continue;
+        }
+        $analysis['checks'][] = ['check' => 'has_students', 'passed' => true, 'count' => count($lesson['students'])];
+
+        // Проверка 5: Время урока уже прошло (для cron)
+        $lessonPassed = $time <= $currentTime;
+        $analysis['checks'][] = [
+            'check' => 'time_passed',
+            'lesson_time' => $time,
+            'current_time' => $currentTime,
+            'passed' => $lessonPassed,
+            'reason' => $lessonPassed ? 'Урок начался, можно отправлять' : 'Урок ещё не начался'
+        ];
+
+        $analysis['would_send'] = $lessonPassed;
+        $lessonAnalysis[] = $analysis;
+    }
+
+    $debug['steps'][] = [
+        'step' => 5,
+        'name' => 'Анализ каждого урока',
+        'lessons' => $lessonAnalysis
+    ];
+
+    // Шаг 6: Итог - что должно быть отправлено
+    $shouldSend = array_filter($lessonAnalysis, fn($l) => $l['would_send'] === true);
+    $debug['steps'][] = [
+        'step' => 6,
+        'name' => 'Итог',
+        'should_send_count' => count($shouldSend),
+        'should_send' => array_map(fn($l) => [
+            'time' => $l['time'],
+            'teacher' => $l['teacher_name'],
+            'students' => $l['student_count']
+        ], $shouldSend)
+    ];
+
+    // Шаг 7: Проверить cron_debug.log
+    $cronLogPath = __DIR__ . '/../bot/cron_debug.log';
+    $cronLogContent = '';
+    if (file_exists($cronLogPath)) {
+        $cronLogContent = file_get_contents($cronLogPath);
+        // Последние 50 строк
+        $lines = explode("\n", trim($cronLogContent));
+        $cronLogContent = implode("\n", array_slice($lines, -50));
+    }
+
+    $debug['steps'][] = [
+        'step' => 7,
+        'name' => 'cron_debug.log (последние 50 строк)',
+        'exists' => file_exists($cronLogPath),
+        'content' => $cronLogContent
+    ];
+
+    jsonSuccess($debug);
 }
