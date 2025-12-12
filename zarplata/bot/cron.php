@@ -204,29 +204,37 @@ exit(0);
  * Отправить опрос о посещаемости
  */
 function sendAttendanceQuery($teacher, $lesson, $studentCount, $studentNames, $subject) {
-    global $today, $dayOfWeek;
+    global $today, $dayOfWeek, $debugLogFile;
 
     $teacherId = $teacher['id'];
     $chatId = $teacher['telegram_id'];
     $time = $lesson['time'];
     $room = $lesson['room'];
 
+    file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - [sendAttendanceQuery] Starting for {$time}...\n", FILE_APPEND);
+
     // Логируем ДО отправки (предотвращает дубликаты)
-    logAudit(
-        'attendance_query_sent',
-        'lesson_schedule',
-        null,
-        null,
-        [
+    // ⭐ Прямая вставка в audit_log (обходим возможные проблемы с logAudit)
+    try {
+        $auditData = json_encode([
             'teacher_id' => $teacherId,
             'telegram_id' => $chatId,
             'time' => $time,
             'expected_students' => $studentCount,
             'student_names' => $studentNames,
             'subject' => $subject
-        ],
-        'Отправка опроса о посещаемости'
-    );
+        ], JSON_UNESCAPED_UNICODE);
+
+        dbExecute(
+            "INSERT INTO audit_log (action_type, entity_type, entity_id, new_value, notes, created_at)
+             VALUES (?, ?, ?, ?, ?, NOW())",
+            ['attendance_query_sent', 'lesson_schedule', null, $auditData, 'Отправка опроса о посещаемости (cron)']
+        );
+        file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - [sendAttendanceQuery] audit_log INSERT OK\n", FILE_APPEND);
+    } catch (Exception $e) {
+        file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - [sendAttendanceQuery] audit_log ERROR: " . $e->getMessage() . "\n", FILE_APPEND);
+        // Продолжаем отправку даже если audit упал
+    }
 
     // Формируем сообщение
     $timeEnd = date('H:i', strtotime($time) + 3600);
@@ -267,15 +275,18 @@ function sendAttendanceQuery($teacher, $lesson, $studentCount, $studentNames, $s
     ];
 
     // Отправляем сообщение
-    $result = sendTelegramMessage($chatId, $message, $keyboard);
+    file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - [sendAttendanceQuery] Calling sendTelegramMessage...\n", FILE_APPEND);
 
-    // ⭐ ОТЛАДКА: Пишем результат в файл
-    global $debugLogFile;
-    if ($result) {
-        error_log("✅ Attendance query sent to {$teacher['name']} for lesson at {$time}");
-        file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - ✅ Sent to {$teacher['name']} at {$time}\n", FILE_APPEND);
-    } else {
-        error_log("❌ Failed to send attendance query to {$teacher['name']} for lesson at {$time}");
-        file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - ❌ FAILED to send to {$teacher['name']} at {$time}\n", FILE_APPEND);
+    try {
+        $result = sendTelegramMessage($chatId, $message, $keyboard);
+
+        if ($result && isset($result['ok']) && $result['ok']) {
+            file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - ✅ Sent to {$teacher['name']} at {$time}\n", FILE_APPEND);
+        } else {
+            $errorMsg = isset($result['description']) ? $result['description'] : 'Unknown error';
+            file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - ❌ FAILED to send to {$teacher['name']} at {$time}: {$errorMsg}\n", FILE_APPEND);
+        }
+    } catch (Exception $e) {
+        file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - ❌ EXCEPTION sending to {$teacher['name']}: " . $e->getMessage() . "\n", FILE_APPEND);
     }
 }
