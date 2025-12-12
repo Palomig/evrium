@@ -698,6 +698,43 @@ function handleAttCount($chatId, $messageId, $telegramId, $lessonKey, $attendedC
         $expectedStudents = $studentsData['count'];
         $subject = $studentsData['subject'] ?? 'Математика';
 
+        // ⭐ ИСПРАВЛЕНИЕ: Если 0 учеников пришло - урок отменён, выплата не создаётся
+        if ($attendedCount == 0) {
+            // Создаём lessons_instance со статусом cancelled
+            $timeEnd = date('H:i', strtotime($time) + 3600);
+            $studentNames = array_column($studentsData['students'], 'name');
+
+            $lessonInstanceId = dbExecute(
+                "INSERT INTO lessons_instance
+                 (teacher_id, lesson_date, time_start, time_end, lesson_type, subject,
+                  expected_students, actual_students, formula_id, status, notes, created_at)
+                 VALUES (?, ?, ?, ?, 'individual', ?, ?, 0, NULL, 'cancelled', ?, NOW())",
+                [
+                    $teacherId, $date, $time . ':00', $timeEnd . ':00',
+                    $subject, $expectedStudents,
+                    "Урок отменён - ученик не пришёл. Ожидались: " . implode(', ', $studentNames)
+                ]
+            );
+
+            // Логируем
+            logAudit('lesson_cancelled', 'lesson_schedule', $lessonInstanceId, null, [
+                'teacher_id' => $teacherId,
+                'expected' => $expectedStudents,
+                'reason' => 'Ученик не пришёл'
+            ], 'Урок отменён - 0 учеников');
+
+            // Отвечаем
+            $confirmationText =
+                "❌ <b>Урок отменён</b>\n\n" .
+                "📚 <b>{$subject}</b> ({$time})\n" .
+                "👥 Никто не пришёл (ожидалось: {$expectedStudents})\n\n" .
+                "💰 Выплата: <b>0 ₽</b> (урок не состоялся)";
+
+            answerCallbackQuery($callbackQueryId, "❌ Урок отменён - 0₽", true);
+            editTelegramMessage($chatId, $messageId, $confirmationText, ['inline_keyboard' => []]);
+            return;
+        }
+
         // Формула
         $lessonType = $attendedCount > 1 ? 'group' : 'individual';
         $formulaId = getFormulaIdForTeacher($teacher, $lessonType);
