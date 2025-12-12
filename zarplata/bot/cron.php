@@ -21,6 +21,7 @@ file_put_contents($debugLogFile, $debugMsg, FILE_APPEND);
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/../config/student_helpers.php';
+require_once __DIR__ . '/../config/auth.php';  // ⭐ Нужен для logAudit()
 
 // Логируем запуск
 error_log("[CRON v2025-12-10] Attendance cron started at " . date('Y-m-d H:i:s'));
@@ -108,6 +109,9 @@ if (empty($uniqueLessons)) {
     ob_end_clean();
     exit(0);
 }
+
+// ⭐ Сортируем уроки по времени (чтобы обрабатывать в правильном порядке)
+uasort($uniqueLessons, fn($a, $b) => strcmp($a['time'], $b['time']));
 
 file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - Found " . count($uniqueLessons) . " started lessons\n", FILE_APPEND);
 
