@@ -34,12 +34,11 @@ $today = date('Y-m-d');
 // Получаем текущее время
 $currentTime = date('H:i');
 
-// ⭐ РАСШИРЕННОЕ ОКНО: уроки за последние 20 минут
+// ⭐ НОВАЯ ЛОГИКА: Все уроки которые УЖЕ начались (без временного окна!)
 // Дубликаты отфильтруются через audit_log
-$timeFrom = date('H:i', strtotime('-20 minutes'));
-$timeTo = date('H:i');  // до текущего времени
+// Это гарантирует что ни один урок не будет пропущен
 
-error_log("[CRON] Looking for lessons between {$timeFrom} and {$timeTo} on day {$dayOfWeek} ({$dayOfWeekStr})");
+error_log("[CRON] Looking for all lessons that started before {$currentTime} on day {$dayOfWeek}");
 
 // ⭐ ЕДИНЫЙ ИСТОЧНИК: Получаем уроки из students.schedule
 $allStudents = dbQuery(
@@ -87,8 +86,8 @@ foreach ($allStudents as $student) {
 
         if (!$teacherId) continue;
 
-        // Проверяем, попадает ли время в окно
-        if ($time >= $timeFrom && $time <= $timeTo) {
+        // ⭐ НОВАЯ ЛОГИКА: Проверяем только что урок УЖЕ начался (время <= текущего)
+        if ($time <= $currentTime) {
             $key = "{$teacherId}_{$time}";
             if (!isset($uniqueLessons[$key])) {
                 $uniqueLessons[$key] = [
@@ -97,20 +96,20 @@ foreach ($allStudents as $student) {
                     'subject' => $slot['subject'] ?? 'Мат.',
                     'room' => $slot['room'] ?? 1
                 ];
-                error_log("[CRON] Found lesson in window: {$key}");
+                error_log("[CRON] Found started lesson: {$key}");
             }
         }
     }
 }
 
 if (empty($uniqueLessons)) {
-    error_log("[CRON] No lessons found for attendance polling in time window {$timeFrom}-{$timeTo}");
-    file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - No lessons in window {$timeFrom}-{$timeTo}, exiting\n", FILE_APPEND);
+    error_log("[CRON] No started lessons found for today");
+    file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - No started lessons today (current: {$currentTime}), exiting\n", FILE_APPEND);
     ob_end_clean();
     exit(0);
 }
 
-file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - Found " . count($uniqueLessons) . " lessons in window\n", FILE_APPEND);
+file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - Found " . count($uniqueLessons) . " started lessons\n", FILE_APPEND);
 
 error_log("[CRON] Found " . count($uniqueLessons) . " lessons for attendance polling");
 
