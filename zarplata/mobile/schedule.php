@@ -625,28 +625,41 @@ const teachers = <?= $teachersJson ?>;
 let currentDay = <?= $todayDayOfWeek ?>;
 let currentLesson = null;
 
-// Touch swipe handling
+// Touch swipe handling - only trigger on horizontal swipes
 let touchStartX = 0;
+let touchStartY = 0;
 let touchEndX = 0;
+let touchEndY = 0;
 
 document.getElementById('dayPanels').addEventListener('touchstart', e => {
     touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
 }, { passive: true });
 
 document.getElementById('dayPanels').addEventListener('touchend', e => {
     touchEndX = e.changedTouches[0].screenX;
+    touchEndY = e.changedTouches[0].screenY;
     handleSwipe();
 }, { passive: true });
 
 function handleSwipe() {
-    const diff = touchStartX - touchEndX;
-    const threshold = 50;
+    const diffX = touchStartX - touchEndX;
+    const diffY = touchStartY - touchEndY;
+    const threshold = 80; // Increased threshold
 
-    if (Math.abs(diff) < threshold) return;
+    // Ignore if vertical movement is greater than horizontal (scrolling)
+    if (Math.abs(diffY) > Math.abs(diffX)) return;
 
-    if (diff > 0 && currentDay < 7) {
+    // Ignore small movements
+    if (Math.abs(diffX) < threshold) return;
+
+    // Ignore if swipe angle is too steep (more than 30 degrees from horizontal)
+    const angle = Math.abs(Math.atan2(diffY, diffX) * 180 / Math.PI);
+    if (angle > 30 && angle < 150) return;
+
+    if (diffX > 0 && currentDay < 7) {
         switchDay(currentDay + 1);
-    } else if (diff < 0 && currentDay > 1) {
+    } else if (diffX < 0 && currentDay > 1) {
         switchDay(currentDay - 1);
     }
 }

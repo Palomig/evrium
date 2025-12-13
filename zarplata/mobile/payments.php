@@ -1,7 +1,7 @@
 <?php
 /**
  * Mobile Payments Page
- * Карточный вид выплат
+ * Карточный вид выплат с переключением недель
  */
 
 require_once __DIR__ . '/../config/db.php';
@@ -11,9 +11,28 @@ require_once __DIR__ . '/../config/helpers.php';
 requireAuth();
 $user = getCurrentUser();
 
+// Определяем текущую неделю
+$weekOffset = isset($_GET['week']) ? (int)$_GET['week'] : 0;
+$baseDate = new DateTime();
+if ($weekOffset !== 0) {
+    $baseDate->modify("{$weekOffset} weeks");
+}
+
+// Получаем понедельник и воскресенье выбранной недели
+$monday = clone $baseDate;
+$monday->modify('monday this week');
+$sunday = clone $monday;
+$sunday->modify('+6 days');
+
+$weekStart = $monday->format('Y-m-d');
+$weekEnd = $sunday->format('Y-m-d');
+
+// Форматирование для отображения
+$weekLabel = $monday->format('d') . '–' . $sunday->format('d M');
+$isCurrentWeek = ($weekOffset === 0);
+
 // Фильтры
 $statusFilter = $_GET['status'] ?? 'all';
-$teacherFilter = $_GET['teacher_id'] ?? '';
 
 // Получить преподавателей
 $teachers = dbQuery("
@@ -21,23 +40,18 @@ $teachers = dbQuery("
     FROM teachers WHERE active = 1 ORDER BY name
 ", []);
 
-// Строим запрос
-$where = [];
-$params = [];
+// Строим запрос с фильтром по неделе
+$where = ["(li.lesson_date BETWEEN ? AND ? OR (li.lesson_date IS NULL AND DATE(p.created_at) BETWEEN ? AND ?))"];
+$params = [$weekStart, $weekEnd, $weekStart, $weekEnd];
 
 if ($statusFilter !== 'all') {
     $where[] = "p.status = ?";
     $params[] = $statusFilter;
 }
 
-if ($teacherFilter) {
-    $where[] = "p.teacher_id = ?";
-    $params[] = $teacherFilter;
-}
+$whereClause = 'WHERE ' . implode(' AND ', $where);
 
-$whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
-
-// Получить выплаты
+// Получить выплаты за неделю
 $payments = dbQuery("
     SELECT p.*, COALESCE(t.display_name, t.name) as teacher_name,
            li.lesson_date, li.time_start, li.subject
@@ -45,19 +59,19 @@ $payments = dbQuery("
     LEFT JOIN teachers t ON p.teacher_id = t.id
     LEFT JOIN lessons_instance li ON p.lesson_instance_id = li.id
     $whereClause
-    ORDER BY p.created_at DESC
-    LIMIT 50
+    ORDER BY COALESCE(li.lesson_date, DATE(p.created_at)) DESC, li.time_start DESC
 ", $params);
 
-// Статистика
+// Статистика за выбранную неделю
 $stats = dbQueryOne("
     SELECT
-        COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) as pending,
-        COALESCE(SUM(CASE WHEN status = 'approved' THEN amount ELSE 0 END), 0) as approved,
-        COALESCE(SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END), 0) as paid
-    FROM payments
-    WHERE created_at >= DATE_FORMAT(NOW(), '%Y-%m-01')
-", []);
+        COALESCE(SUM(CASE WHEN p.status = 'pending' THEN p.amount ELSE 0 END), 0) as pending,
+        COALESCE(SUM(CASE WHEN p.status = 'approved' THEN p.amount ELSE 0 END), 0) as approved,
+        COALESCE(SUM(CASE WHEN p.status = 'paid' THEN p.amount ELSE 0 END), 0) as paid
+    FROM payments p
+    LEFT JOIN lessons_instance li ON p.lesson_instance_id = li.id
+    WHERE (li.lesson_date BETWEEN ? AND ? OR (li.lesson_date IS NULL AND DATE(p.created_at) BETWEEN ? AND ?))
+", [$weekStart, $weekEnd, $weekStart, $weekEnd]);
 
 define('PAGE_TITLE', 'Выплаты');
 define('ACTIVE_PAGE', 'payments');
@@ -70,9 +84,85 @@ $statusLabels = [
     'paid' => ['text' => 'Выплачено', 'class' => 'paid'],
     'cancelled' => ['text' => 'Отменено', 'class' => 'cancelled']
 ];
+
+// Функция для сохранения параметров при переходах
+function buildUrl($newParams = []) {
+    $params = $_GET;
+    foreach ($newParams as $k => $v) {
+        if ($v === null) {
+            unset($params[$k]);
+        } else {
+            $params[$k] = $v;
+        }
+    }
+    return '?' . http_build_query($params);
+}
 ?>
 
 <style>
+/* Week Navigator */
+.week-navigator {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+}
+
+.week-nav-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.week-nav-btn:active {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.week-nav-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+.week-nav-center {
+    text-align: center;
+}
+
+.week-nav-label {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.week-nav-sublabel {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.week-nav-today {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 4px 12px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+/* Payment cards */
 .payment-card {
     background: var(--bg-card);
     border: 1px solid var(--border);
@@ -157,26 +247,64 @@ $statusLabels = [
     color: var(--accent);
 }
 
-.payment-action-btn.approve {
-    color: var(--status-green);
-}
-
-.payment-action-btn.pay {
-    color: var(--status-blue);
-}
-
-.payment-action-btn.cancel {
-    color: var(--status-rose);
-}
+.payment-action-btn.approve { color: var(--status-green); }
+.payment-action-btn.pay { color: var(--status-blue); }
+.payment-action-btn.cancel { color: var(--status-rose); }
 
 .payment-action-btn svg {
     width: 18px;
     height: 18px;
 }
+
+/* Day separator */
+.day-separator {
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: var(--bg-dark);
+    margin: 0 -16px;
+    margin-top: 16px;
+}
+
+.day-separator:first-child {
+    margin-top: 0;
+}
 </style>
 
+<!-- Week Navigator -->
+<div class="week-navigator">
+    <a href="<?= buildUrl(['week' => $weekOffset - 1]) ?>" class="week-nav-btn">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+        </svg>
+    </a>
+
+    <div class="week-nav-center">
+        <div class="week-nav-label"><?= $weekLabel ?></div>
+        <div class="week-nav-sublabel">
+            <?php if ($isCurrentWeek): ?>
+                Текущая неделя
+            <?php else: ?>
+                <?= $monday->format('Y') ?>
+            <?php endif; ?>
+        </div>
+        <?php if (!$isCurrentWeek): ?>
+            <a href="<?= buildUrl(['week' => null]) ?>" class="week-nav-today">Сегодня</a>
+        <?php endif; ?>
+    </div>
+
+    <a href="<?= buildUrl(['week' => $weekOffset + 1]) ?>" class="week-nav-btn">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+    </a>
+</div>
+
 <div class="page-container">
-    <!-- Stats -->
+    <!-- Stats for selected week -->
     <div class="stats-grid">
         <div class="stat-card pending">
             <div class="stat-value"><?= number_format($stats['pending'], 0, '', ' ') ?> ₽</div>
@@ -192,12 +320,12 @@ $statusLabels = [
         </div>
     </div>
 
-    <!-- Filters -->
+    <!-- Status Filters -->
     <div class="filter-pills">
-        <a href="?status=all" class="filter-pill <?= $statusFilter === 'all' ? 'active' : '' ?>">Все</a>
-        <a href="?status=pending" class="filter-pill <?= $statusFilter === 'pending' ? 'active' : '' ?>">Ожидает</a>
-        <a href="?status=approved" class="filter-pill <?= $statusFilter === 'approved' ? 'active' : '' ?>">Одобрено</a>
-        <a href="?status=paid" class="filter-pill <?= $statusFilter === 'paid' ? 'active' : '' ?>">Выплачено</a>
+        <a href="<?= buildUrl(['status' => 'all']) ?>" class="filter-pill <?= $statusFilter === 'all' ? 'active' : '' ?>">Все</a>
+        <a href="<?= buildUrl(['status' => 'pending']) ?>" class="filter-pill <?= $statusFilter === 'pending' ? 'active' : '' ?>">Ожидает</a>
+        <a href="<?= buildUrl(['status' => 'approved']) ?>" class="filter-pill <?= $statusFilter === 'approved' ? 'active' : '' ?>">Одобрено</a>
+        <a href="<?= buildUrl(['status' => 'paid']) ?>" class="filter-pill <?= $statusFilter === 'paid' ? 'active' : '' ?>">Выплачено</a>
     </div>
 
     <!-- Payments List -->
@@ -208,10 +336,26 @@ $statusLabels = [
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
                 </svg>
                 <div class="empty-state-title">Нет выплат</div>
-                <p class="empty-state-text">Выплаты появятся после проведения уроков</p>
+                <p class="empty-state-text">За эту неделю выплат нет</p>
             </div>
         <?php else: ?>
-            <?php foreach ($payments as $payment): ?>
+            <?php
+            $currentDate = null;
+            $dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+            foreach ($payments as $payment):
+                $paymentDate = $payment['lesson_date'] ?? date('Y-m-d', strtotime($payment['created_at']));
+
+                // Day separator
+                if ($paymentDate !== $currentDate):
+                    $currentDate = $paymentDate;
+                    $dateObj = new DateTime($paymentDate);
+                    $dayOfWeek = $dayNames[(int)$dateObj->format('w')];
+            ?>
+                <div class="day-separator">
+                    <?= $dayOfWeek ?>, <?= $dateObj->format('d.m') ?>
+                </div>
+            <?php endif; ?>
+
                 <?php $status = $statusLabels[$payment['status']] ?? $statusLabels['pending']; ?>
                 <div class="payment-card" data-id="<?= $payment['id'] ?>">
                     <div class="payment-card-main">
@@ -219,14 +363,13 @@ $statusLabels = [
                             <div class="payment-teacher"><?= htmlspecialchars($payment['teacher_name']) ?></div>
                             <div class="payment-date">
                                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
-                                <?php if ($payment['lesson_date']): ?>
-                                    <?= date('d.m', strtotime($payment['lesson_date'])) ?>
+                                <?php if ($payment['time_start']): ?>
                                     <?= substr($payment['time_start'], 0, 5) ?>
                                     — <?= htmlspecialchars($payment['subject'] ?? 'Урок') ?>
                                 <?php else: ?>
-                                    <?= date('d.m.Y', strtotime($payment['created_at'])) ?>
+                                    Ручная выплата
                                 <?php endif; ?>
                             </div>
                         </div>
