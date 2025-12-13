@@ -159,12 +159,16 @@ require_once __DIR__ . '/templates/header.php';
     display: flex;
     width: 700%; /* 7 days */
     height: 100%;
-    transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    -webkit-transition: -webkit-transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1);
+    transition: transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1);
+    -webkit-transform: translateX(0);
+    transform: translateX(0);
     will-change: transform;
 }
 
 .day-panels-track.swiping {
-    transition: none;
+    -webkit-transition: none !important;
+    transition: none !important;
 }
 
 .day-panel {
@@ -643,26 +647,60 @@ let touchStartX = 0;
 let touchStartY = 0;
 let touchCurrentX = 0;
 let isDragging = false;
-let isScrolling = null; // null = undetermined, true = vertical scroll, false = horizontal swipe
+let isInsideScrollable = false; // Touch started inside scrollable grid
+let isScrolling = null; // null = undetermined, true = vertical/inner scroll, false = horizontal day swipe
 let startOffset = 0;
 let containerWidth = 0;
+let scrollableElement = null; // Reference to the scrollable wrapper
 
 // Swipe settings
-const SWIPE_THRESHOLD = 120; // Increased: need more effort to trigger
-const RESISTANCE = 0.35; // Fabric-like resistance at edges
-const ANGLE_THRESHOLD = 25; // Max angle from horizontal (degrees)
+const SWIPE_THRESHOLD = 100; // Pixels needed to trigger day change
+const RESISTANCE = 0.3; // Rubber band resistance at edges
+const ANGLE_THRESHOLD = 20; // Max angle from horizontal (degrees)
+
+// Check if element or parent is horizontally scrollable
+function findScrollableParent(el) {
+    while (el && el !== container) {
+        if (el.classList && el.classList.contains('schedule-grid-wrapper')) {
+            // Check if actually scrollable (content wider than container)
+            if (el.scrollWidth > el.clientWidth) {
+                return el;
+            }
+        }
+        el = el.parentElement;
+    }
+    return null;
+}
+
+// Check if inner scroll can still scroll in direction
+function canScrollInDirection(el, direction) {
+    if (!el) return false;
+    if (direction < 0) {
+        // Swiping left (want to scroll right) - check if not at right edge
+        return el.scrollLeft < (el.scrollWidth - el.clientWidth - 2);
+    } else {
+        // Swiping right (want to scroll left) - check if not at left edge
+        return el.scrollLeft > 2;
+    }
+}
 
 // Initialize position
 function updateTrackPosition(animated = true) {
     if (animated) {
         track.classList.remove('swiping');
+    } else {
+        track.classList.add('swiping');
     }
     const offset = -((currentDay - 1) / 7) * 100;
     track.style.transform = `translateX(${offset}%)`;
 }
 
-// Set initial position
+// Set initial position without animation
 updateTrackPosition(false);
+// Remove swiping class after initial position is set
+requestAnimationFrame(() => {
+    track.classList.remove('swiping');
+});
 
 container.addEventListener('touchstart', e => {
     const touch = e.touches[0];
@@ -673,6 +711,10 @@ container.addEventListener('touchstart', e => {
     isScrolling = null;
     containerWidth = container.offsetWidth;
     startOffset = -((currentDay - 1) / 7) * 100;
+
+    // Check if touch started inside scrollable grid
+    scrollableElement = findScrollableParent(e.target);
+    isInsideScrollable = !!scrollableElement;
 }, { passive: true });
 
 container.addEventListener('touchmove', e => {
@@ -682,26 +724,43 @@ container.addEventListener('touchmove', e => {
     const diffX = touch.clientX - touchStartX;
     const diffY = touch.clientY - touchStartY;
 
-    // Determine scroll direction on first significant move
-    if (isScrolling === null && (Math.abs(diffX) > 10 || Math.abs(diffY) > 10)) {
-        // Check angle
+    // Determine scroll type on first significant move
+    if (isScrolling === null && (Math.abs(diffX) > 8 || Math.abs(diffY) > 8)) {
         const angle = Math.abs(Math.atan2(diffY, diffX) * 180 / Math.PI);
-        // If angle is close to vertical (60-120 degrees), it's scrolling
-        isScrolling = angle > (90 - ANGLE_THRESHOLD) && angle < (90 + ANGLE_THRESHOLD);
+
+        // Vertical scroll (angle 70-110 degrees)
+        if (angle > 70 && angle < 110) {
+            isScrolling = true; // Vertical scroll - let browser handle
+            return;
+        }
+
+        // Horizontal movement - check if inside scrollable area
+        if (isInsideScrollable && scrollableElement) {
+            // If inner grid can scroll in this direction, let it scroll
+            if (canScrollInDirection(scrollableElement, diffX)) {
+                isScrolling = true; // Let inner scroll handle it
+                return;
+            }
+        }
+
+        // Horizontal swipe for day change
+        isScrolling = false;
     }
 
-    // If vertical scrolling, don't interfere
-    if (isScrolling) return;
+    // If scrolling (vertical or inner), don't interfere
+    if (isScrolling === true) return;
+
+    // If still undetermined, wait
+    if (isScrolling === null) return;
 
     touchCurrentX = touch.clientX;
 
     // Calculate drag with resistance at edges
     let dragOffset = (diffX / containerWidth) * (100 / 7);
 
-    // Apply resistance at edges (fabric effect)
-    const newDay = currentDay - (diffX / containerWidth) * 7;
-    if (newDay < 1 || newDay > 7) {
-        // Apply rubber band effect at edges
+    // Apply resistance at edges (rubber band effect)
+    const projectedDay = currentDay - (diffX / containerWidth) * 7;
+    if (projectedDay < 1 || projectedDay > 7) {
         dragOffset *= RESISTANCE;
     }
 
@@ -715,43 +774,43 @@ container.addEventListener('touchend', e => {
     if (!isDragging) return;
     isDragging = false;
 
-    // If was vertical scrolling, do nothing
-    if (isScrolling) {
+    // If was scrolling, just reset state
+    if (isScrolling === true || isScrolling === null) {
         isScrolling = null;
+        scrollableElement = null;
+        isInsideScrollable = false;
         return;
     }
 
     const diffX = touchCurrentX - touchStartX;
-    const diffY = e.changedTouches[0].clientY - touchStartY;
 
-    // Check if swipe was horizontal enough
-    const angle = Math.abs(Math.atan2(diffY, diffX) * 180 / Math.PI);
-    const isHorizontal = angle < ANGLE_THRESHOLD || angle > (180 - ANGLE_THRESHOLD);
-
-    // Determine if threshold reached
-    const thresholdReached = Math.abs(diffX) > SWIPE_THRESHOLD;
-
-    if (isHorizontal && thresholdReached) {
-        // Swipe to next/prev day
-        if (diffX < -SWIPE_THRESHOLD && currentDay < 7) {
+    // Check if threshold reached for day change
+    if (Math.abs(diffX) > SWIPE_THRESHOLD) {
+        if (diffX < 0 && currentDay < 7) {
+            // Swipe left -> next day
             switchDay(currentDay + 1);
-        } else if (diffX > SWIPE_THRESHOLD && currentDay > 1) {
+        } else if (diffX > 0 && currentDay > 1) {
+            // Swipe right -> prev day
             switchDay(currentDay - 1);
         } else {
-            // Snap back
+            // At edge, snap back
             updateTrackPosition(true);
         }
     } else {
-        // Snap back to current day
+        // Didn't reach threshold, snap back
         updateTrackPosition(true);
     }
 
     isScrolling = null;
+    scrollableElement = null;
+    isInsideScrollable = false;
 }, { passive: true });
 
 container.addEventListener('touchcancel', () => {
     isDragging = false;
     isScrolling = null;
+    scrollableElement = null;
+    isInsideScrollable = false;
     updateTrackPosition(true);
 }, { passive: true });
 
