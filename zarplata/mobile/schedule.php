@@ -148,22 +148,31 @@ require_once __DIR__ . '/templates/header.php';
     border-radius: 50%;
 }
 
-/* Day panels container */
+/* Day panels container - swipeable */
 .day-panels {
     flex: 1;
     overflow: hidden;
     position: relative;
 }
 
+.day-panels-track {
+    display: flex;
+    width: 700%; /* 7 days */
+    height: 100%;
+    transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    will-change: transform;
+}
+
+.day-panels-track.swiping {
+    transition: none;
+}
+
 .day-panel {
-    display: none;
+    width: calc(100% / 7);
     height: 100%;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-}
-
-.day-panel.active {
-    display: block;
+    flex-shrink: 0;
 }
 
 /* Room headers */
@@ -430,8 +439,9 @@ require_once __DIR__ . '/templates/header.php';
 
     <!-- Day Panels -->
     <div class="day-panels" id="dayPanels">
+        <div class="day-panels-track" id="dayPanelsTrack">
         <?php for ($d = 1; $d <= 7; $d++): ?>
-            <div class="day-panel<?= $d === $todayDayOfWeek ? ' active' : '' ?>" data-day="<?= $d ?>">
+            <div class="day-panel" data-day="<?= $d ?>">
                 <?php
                 $dayLessons = $scheduleByDay[$d];
                 if (empty($dayLessons)):
@@ -506,6 +516,7 @@ require_once __DIR__ . '/templates/header.php';
                 <?php endif; ?>
             </div>
         <?php endfor; ?>
+        </div>
     </div>
 </div>
 
@@ -625,44 +636,124 @@ const teachers = <?= $teachersJson ?>;
 let currentDay = <?= $todayDayOfWeek ?>;
 let currentLesson = null;
 
-// Touch swipe handling - only trigger on horizontal swipes
+// Swipe state
+const track = document.getElementById('dayPanelsTrack');
+const container = document.getElementById('dayPanels');
 let touchStartX = 0;
 let touchStartY = 0;
-let touchEndX = 0;
-let touchEndY = 0;
+let touchCurrentX = 0;
+let isDragging = false;
+let isScrolling = null; // null = undetermined, true = vertical scroll, false = horizontal swipe
+let startOffset = 0;
+let containerWidth = 0;
 
-document.getElementById('dayPanels').addEventListener('touchstart', e => {
-    touchStartX = e.changedTouches[0].screenX;
-    touchStartY = e.changedTouches[0].screenY;
-}, { passive: true });
+// Swipe settings
+const SWIPE_THRESHOLD = 120; // Increased: need more effort to trigger
+const RESISTANCE = 0.35; // Fabric-like resistance at edges
+const ANGLE_THRESHOLD = 25; // Max angle from horizontal (degrees)
 
-document.getElementById('dayPanels').addEventListener('touchend', e => {
-    touchEndX = e.changedTouches[0].screenX;
-    touchEndY = e.changedTouches[0].screenY;
-    handleSwipe();
-}, { passive: true });
-
-function handleSwipe() {
-    const diffX = touchStartX - touchEndX;
-    const diffY = touchStartY - touchEndY;
-    const threshold = 80; // Increased threshold
-
-    // Ignore if vertical movement is greater than horizontal (scrolling)
-    if (Math.abs(diffY) > Math.abs(diffX)) return;
-
-    // Ignore small movements
-    if (Math.abs(diffX) < threshold) return;
-
-    // Ignore if swipe angle is too steep (more than 30 degrees from horizontal)
-    const angle = Math.abs(Math.atan2(diffY, diffX) * 180 / Math.PI);
-    if (angle > 30 && angle < 150) return;
-
-    if (diffX > 0 && currentDay < 7) {
-        switchDay(currentDay + 1);
-    } else if (diffX < 0 && currentDay > 1) {
-        switchDay(currentDay - 1);
+// Initialize position
+function updateTrackPosition(animated = true) {
+    if (animated) {
+        track.classList.remove('swiping');
     }
+    const offset = -((currentDay - 1) / 7) * 100;
+    track.style.transform = `translateX(${offset}%)`;
 }
+
+// Set initial position
+updateTrackPosition(false);
+
+container.addEventListener('touchstart', e => {
+    const touch = e.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    touchCurrentX = touch.clientX;
+    isDragging = true;
+    isScrolling = null;
+    containerWidth = container.offsetWidth;
+    startOffset = -((currentDay - 1) / 7) * 100;
+}, { passive: true });
+
+container.addEventListener('touchmove', e => {
+    if (!isDragging) return;
+
+    const touch = e.touches[0];
+    const diffX = touch.clientX - touchStartX;
+    const diffY = touch.clientY - touchStartY;
+
+    // Determine scroll direction on first significant move
+    if (isScrolling === null && (Math.abs(diffX) > 10 || Math.abs(diffY) > 10)) {
+        // Check angle
+        const angle = Math.abs(Math.atan2(diffY, diffX) * 180 / Math.PI);
+        // If angle is close to vertical (60-120 degrees), it's scrolling
+        isScrolling = angle > (90 - ANGLE_THRESHOLD) && angle < (90 + ANGLE_THRESHOLD);
+    }
+
+    // If vertical scrolling, don't interfere
+    if (isScrolling) return;
+
+    touchCurrentX = touch.clientX;
+
+    // Calculate drag with resistance at edges
+    let dragOffset = (diffX / containerWidth) * (100 / 7);
+
+    // Apply resistance at edges (fabric effect)
+    const newDay = currentDay - (diffX / containerWidth) * 7;
+    if (newDay < 1 || newDay > 7) {
+        // Apply rubber band effect at edges
+        dragOffset *= RESISTANCE;
+    }
+
+    // Apply transform directly (no transition for immediate feedback)
+    track.classList.add('swiping');
+    const totalOffset = startOffset + dragOffset;
+    track.style.transform = `translateX(${totalOffset}%)`;
+}, { passive: true });
+
+container.addEventListener('touchend', e => {
+    if (!isDragging) return;
+    isDragging = false;
+
+    // If was vertical scrolling, do nothing
+    if (isScrolling) {
+        isScrolling = null;
+        return;
+    }
+
+    const diffX = touchCurrentX - touchStartX;
+    const diffY = e.changedTouches[0].clientY - touchStartY;
+
+    // Check if swipe was horizontal enough
+    const angle = Math.abs(Math.atan2(diffY, diffX) * 180 / Math.PI);
+    const isHorizontal = angle < ANGLE_THRESHOLD || angle > (180 - ANGLE_THRESHOLD);
+
+    // Determine if threshold reached
+    const thresholdReached = Math.abs(diffX) > SWIPE_THRESHOLD;
+
+    if (isHorizontal && thresholdReached) {
+        // Swipe to next/prev day
+        if (diffX < -SWIPE_THRESHOLD && currentDay < 7) {
+            switchDay(currentDay + 1);
+        } else if (diffX > SWIPE_THRESHOLD && currentDay > 1) {
+            switchDay(currentDay - 1);
+        } else {
+            // Snap back
+            updateTrackPosition(true);
+        }
+    } else {
+        // Snap back to current day
+        updateTrackPosition(true);
+    }
+
+    isScrolling = null;
+}, { passive: true });
+
+container.addEventListener('touchcancel', () => {
+    isDragging = false;
+    isScrolling = null;
+    updateTrackPosition(true);
+}, { passive: true });
 
 function switchDay(day) {
     currentDay = day;
@@ -676,10 +767,8 @@ function switchDay(day) {
     const activeTab = document.querySelector(`.day-tab[data-day="${day}"]`);
     activeTab?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
 
-    // Update panels
-    document.querySelectorAll('.day-panel').forEach(panel => {
-        panel.classList.toggle('active', parseInt(panel.dataset.day) === day);
-    });
+    // Animate to new position
+    updateTrackPosition(true);
 }
 
 function openLesson(id) {
