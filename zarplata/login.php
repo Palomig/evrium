@@ -8,6 +8,10 @@ require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/config/auth.php';
 require_once __DIR__ . '/config/helpers.php';
 
+// Автоматический редирект на мобильную версию
+require_once __DIR__ . '/mobile/config/mobile_detect.php';
+redirectToMobileIfNeeded('login.php');
+
 // Если уже авторизован, редирект на главную
 if (isLoggedIn()) {
     redirect('/zarplata/');

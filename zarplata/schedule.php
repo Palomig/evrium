@@ -8,6 +8,10 @@ require_once __DIR__ . '/config/auth.php';
 require_once __DIR__ . '/config/helpers.php';
 require_once __DIR__ . '/config/student_helpers.php';
 
+// Автоматический редирект на мобильную версию
+require_once __DIR__ . '/mobile/config/mobile_detect.php';
+redirectToMobileIfNeeded('schedule.php');
+
 requireAuth();
 $user = getCurrentUser();
 

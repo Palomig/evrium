@@ -9,6 +9,10 @@ require_once __DIR__ . '/config/auth.php';
 require_once __DIR__ . '/config/helpers.php';
 require_once __DIR__ . '/config/student_helpers.php'; // ⭐ Новый helper для динамического чтения студентов
 
+// Автоматический редирект на мобильную версию
+require_once __DIR__ . '/mobile/config/mobile_detect.php';
+redirectToMobileIfNeeded('payments.php');
+
 requireAuth();
 $user = getCurrentUser();
 
