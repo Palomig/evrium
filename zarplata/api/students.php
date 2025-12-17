@@ -39,6 +39,12 @@ switch ($action) {
     case 'toggle_active':
         handleToggleActive();
         break;
+    case 'toggle_sick':
+        handleToggleSick();
+        break;
+    case 'set_sick':
+        handleSetSick();
+        break;
     default:
         jsonError('Неизвестное действие', 400);
 }
@@ -792,5 +798,130 @@ function handleToggleActive() {
         jsonSuccess($student);
     } else {
         jsonError('Не удалось изменить статус ученика', 500);
+    }
+}
+
+/**
+ * Переключить статус "болеет" ученика
+ */
+function handleToggleSick() {
+    // Получаем данные
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+
+    if (!$data) {
+        $data = $_POST;
+    }
+
+    $id = filter_var($data['id'] ?? 0, FILTER_VALIDATE_INT);
+
+    if (!$id) {
+        jsonError('Неверный ID ученика', 400);
+    }
+
+    // Проверяем существование
+    $existing = dbQueryOne("SELECT * FROM students WHERE id = ?", [$id]);
+    if (!$existing) {
+        jsonError('Ученик не найден', 404);
+    }
+
+    // Переключаем статус болезни
+    $currentSick = $existing['is_sick'] ?? 0;
+    $newSick = $currentSick ? 0 : 1;
+
+    try {
+        $result = dbExecute(
+            "UPDATE students SET is_sick = ?, updated_at = NOW() WHERE id = ?",
+            [$newSick, $id]
+        );
+
+        if ($result !== false) {
+            logAudit(
+                $newSick ? 'student_sick' : 'student_recovered',
+                'student',
+                $id,
+                ['is_sick' => $currentSick],
+                ['is_sick' => $newSick],
+                $newSick ? 'Ученик отмечен как болеющий' : 'Ученик выздоровел'
+            );
+
+            $student = dbQueryOne("SELECT * FROM students WHERE id = ?", [$id]);
+            jsonSuccess($student);
+        } else {
+            jsonError('Не удалось изменить статус болезни', 500);
+        }
+    } catch (PDOException $e) {
+        // Если поля is_sick еще нет в базе
+        if (strpos($e->getMessage(), 'Unknown column') !== false) {
+            jsonError('Поле is_sick не найдено. Примените миграцию add_sick_status.sql', 500);
+        }
+        throw $e;
+    }
+}
+
+/**
+ * Установить конкретный статус "болеет" (для Telegram бота)
+ */
+function handleSetSick() {
+    // Получаем данные
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+
+    if (!$data) {
+        $data = $_POST;
+    }
+
+    $id = filter_var($data['id'] ?? 0, FILTER_VALIDATE_INT);
+    $isSick = isset($data['is_sick']) ? ($data['is_sick'] ? 1 : 0) : null;
+
+    if (!$id) {
+        jsonError('Неверный ID ученика', 400);
+    }
+
+    if ($isSick === null) {
+        jsonError('Не указан статус is_sick', 400);
+    }
+
+    // Проверяем существование
+    $existing = dbQueryOne("SELECT * FROM students WHERE id = ?", [$id]);
+    if (!$existing) {
+        jsonError('Ученик не найден', 404);
+    }
+
+    $currentSick = $existing['is_sick'] ?? 0;
+
+    // Если статус не меняется, просто возвращаем текущие данные
+    if ($currentSick == $isSick) {
+        jsonSuccess($existing);
+        return;
+    }
+
+    try {
+        $result = dbExecute(
+            "UPDATE students SET is_sick = ?, updated_at = NOW() WHERE id = ?",
+            [$isSick, $id]
+        );
+
+        if ($result !== false) {
+            logAudit(
+                $isSick ? 'student_sick' : 'student_recovered',
+                'student',
+                $id,
+                ['is_sick' => $currentSick],
+                ['is_sick' => $isSick],
+                $isSick ? 'Ученик отмечен как болеющий' : 'Ученик выздоровел'
+            );
+
+            $student = dbQueryOne("SELECT * FROM students WHERE id = ?", [$id]);
+            jsonSuccess($student);
+        } else {
+            jsonError('Не удалось изменить статус болезни', 500);
+        }
+    } catch (PDOException $e) {
+        // Если поля is_sick еще нет в базе
+        if (strpos($e->getMessage(), 'Unknown column') !== false) {
+            jsonError('Поле is_sick не найдено. Примените миграцию add_sick_status.sql', 500);
+        }
+        throw $e;
     }
 }

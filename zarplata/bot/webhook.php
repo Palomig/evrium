@@ -252,6 +252,15 @@ function handleCallbackQuery($callbackQuery) {
                 handleAttCount($chatId, $messageId, $telegramId, $parts[1], $parts[2], $callbackQueryId);
                 break;
 
+            // Обработка уведомлений о болеющих учениках
+            case 'sick_recovered':
+                handleSickRecovered($chatId, $messageId, $parts[1], $callbackQueryId);
+                break;
+
+            case 'sick_still':
+                handleSickStill($chatId, $messageId, $parts[1], $callbackQueryId);
+                break;
+
             default:
                 error_log("[Telegram Bot] Unknown callback action: $action");
                 answerCallbackQuery($callbackQueryId, "Неизвестное действие");
@@ -267,5 +276,126 @@ function handleCallbackQuery($callbackQuery) {
         } catch (Throwable $e2) {
             error_log("[Telegram Bot] Failed to answer callback: " . $e2->getMessage());
         }
+    }
+}
+
+/**
+ * Обработка: ученик выздоровел (кнопка "Придёт")
+ */
+function handleSickRecovered($chatId, $messageId, $studentId, $callbackQueryId) {
+    try {
+        $studentId = filter_var($studentId, FILTER_VALIDATE_INT);
+
+        if (!$studentId) {
+            answerCallbackQuery($callbackQueryId, "Неверный ID ученика", true);
+            return;
+        }
+
+        // Получаем данные ученика
+        $student = dbQueryOne("SELECT id, name, class, is_sick FROM students WHERE id = ?", [$studentId]);
+
+        if (!$student) {
+            answerCallbackQuery($callbackQueryId, "Ученик не найден", true);
+            return;
+        }
+
+        // Снимаем статус "болеет"
+        dbExecute(
+            "UPDATE students SET is_sick = 0, updated_at = NOW() WHERE id = ?",
+            [$studentId]
+        );
+
+        // Логируем в audit_log
+        try {
+            dbExecute(
+                "INSERT INTO audit_log (action_type, entity_type, entity_id, old_value, new_value, notes, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, NOW())",
+                [
+                    'student_recovered',
+                    'student',
+                    $studentId,
+                    json_encode(['is_sick' => 1]),
+                    json_encode(['is_sick' => 0]),
+                    'Ученик выздоровел (через Telegram)'
+                ]
+            );
+        } catch (Exception $e) {
+            error_log("[Telegram Bot] Failed to log recovery: " . $e->getMessage());
+        }
+
+        $studentName = $student['name'];
+        $classStr = $student['class'] ? " ({$student['class']} класс)" : "";
+
+        // Обновляем сообщение
+        $newText = "✅ <b>Ученик выздоровел!</b>\n\n";
+        $newText .= "👤 <b>{$studentName}</b>{$classStr}\n\n";
+        $newText .= "Статус \"болеет\" снят. Ученик придёт на занятия.";
+
+        editTelegramMessage($chatId, $messageId, $newText, null);
+
+        answerCallbackQuery($callbackQueryId, "Статус обновлён: ученик придёт");
+
+        error_log("[Telegram Bot] Student $studentId marked as recovered");
+
+    } catch (Throwable $e) {
+        error_log("[Telegram Bot] Error in handleSickRecovered: " . $e->getMessage());
+        answerCallbackQuery($callbackQueryId, "Произошла ошибка", true);
+    }
+}
+
+/**
+ * Обработка: ученик всё ещё болеет (кнопка "Всё ещё болеет")
+ */
+function handleSickStill($chatId, $messageId, $studentId, $callbackQueryId) {
+    try {
+        $studentId = filter_var($studentId, FILTER_VALIDATE_INT);
+
+        if (!$studentId) {
+            answerCallbackQuery($callbackQueryId, "Неверный ID ученика", true);
+            return;
+        }
+
+        // Получаем данные ученика
+        $student = dbQueryOne("SELECT id, name, class FROM students WHERE id = ?", [$studentId]);
+
+        if (!$student) {
+            answerCallbackQuery($callbackQueryId, "Ученик не найден", true);
+            return;
+        }
+
+        // Логируем подтверждение болезни
+        try {
+            dbExecute(
+                "INSERT INTO audit_log (action_type, entity_type, entity_id, new_value, notes, created_at)
+                 VALUES (?, ?, ?, ?, ?, NOW())",
+                [
+                    'sick_confirmed',
+                    'student',
+                    $studentId,
+                    json_encode(['is_sick' => 1]),
+                    'Подтверждено: ученик всё ещё болеет (через Telegram)'
+                ]
+            );
+        } catch (Exception $e) {
+            error_log("[Telegram Bot] Failed to log sick confirmation: " . $e->getMessage());
+        }
+
+        $studentName = $student['name'];
+        $classStr = $student['class'] ? " ({$student['class']} класс)" : "";
+
+        // Обновляем сообщение
+        $newText = "🤒 <b>Ученик всё ещё болеет</b>\n\n";
+        $newText .= "👤 <b>{$studentName}</b>{$classStr}\n\n";
+        $newText .= "Статус сохранён. Напоминание придёт перед следующим занятием.";
+
+        editTelegramMessage($chatId, $messageId, $newText, null);
+
+        answerCallbackQuery($callbackQueryId, "Понятно, ученик всё ещё болеет");
+
+        error_log("[Telegram Bot] Student $studentId confirmed still sick");
+
+    } catch (Throwable $e) {
+        error_log("[Telegram Bot] Error in handleSickStill: " . $e->getMessage());
+        answerCallbackQuery($callbackQueryId, "Произошла ошибка", true);
     }
 }
