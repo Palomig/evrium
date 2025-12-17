@@ -591,6 +591,44 @@ async function toggleStudentActive(id) {
     }
 }
 
+// Переключить статус "болеет" ученика
+async function toggleStudentSick(id) {
+    const row = document.querySelector(`tr[data-student-id="${id}"]`);
+    const currentSick = row?.getAttribute('data-is-sick') === '1';
+    const confirmMessage = currentSick
+        ? 'Отметить ученика как здорового?'
+        : 'Отметить ученика как болеющего?';
+
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/zarplata/api/students.php?action=toggle_sick', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ id: id })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            const newSick = result.data.is_sick;
+            showNotification(newSick ? 'Ученик отмечен как болеющий' : 'Ученик отмечен как здоровый', 'success');
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
+        } else {
+            showNotification(result.error || 'Ошибка при изменении статуса болезни', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification('Ошибка при изменении статуса болезни', 'error');
+    }
+}
+
 // Фильтрация
 function toggleClassFilter(button) {
     if (button.dataset.class === 'all') {

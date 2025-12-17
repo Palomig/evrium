@@ -136,6 +136,7 @@ require_once __DIR__ . '/templates/header.php';
                         data-type="<?= $student['lesson_type'] ?? 'group' ?>"
                         data-name="<?= mb_strtolower($student['name']) ?>"
                         data-teacher-id="<?= $student['teacher_id'] ?? 'none' ?>"
+                        data-is-sick="<?= $student['is_sick'] ?? 0 ?>"
                         class="student-row">
                         <td><?= $student['id'] ?></td>
                         <td>
@@ -294,7 +295,14 @@ require_once __DIR__ . '/templates/header.php';
                             </div>
                         </td>
                         <td>
-                            <?php if ($student['active']): ?>
+                            <?php
+                            $isSick = $student['is_sick'] ?? 0;
+                            if ($isSick): ?>
+                                <span class="badge badge-sick" title="Ученик болеет">
+                                    <span class="material-icons" style="font-size: 14px;">sick</span>
+                                    Болеет
+                                </span>
+                            <?php elseif ($student['active']): ?>
                                 <span class="badge badge-success">
                                     <span class="material-icons" style="font-size: 14px;">check_circle</span>
                                     Активен
@@ -312,6 +320,11 @@ require_once __DIR__ . '/templates/header.php';
                             </button>
                             <button class="btn btn-text" onclick="editStudent(<?= $student['id'] ?>)" title="Редактировать">
                                 <span class="material-icons" style="font-size: 18px;">edit</span>
+                            </button>
+                            <button class="btn btn-text btn-sick-toggle" onclick="toggleStudentSick(<?= $student['id'] ?>)" title="<?= $isSick ? 'Отметить как здорового' : 'Отметить как болеющего' ?>">
+                                <span class="material-icons" style="font-size: 18px; color: <?= $isSick ? '#4ade80' : '#f87171' ?>;">
+                                    <?= $isSick ? 'health_and_safety' : 'sick' ?>
+                                </span>
                             </button>
                             <button class="btn btn-text" onclick="toggleStudentActive(<?= $student['id'] ?>)" title="Изменить статус">
                                 <span class="material-icons" style="font-size: 18px;">
@@ -1153,6 +1166,17 @@ require_once __DIR__ . '/templates/header.php';
     .modal-footer .btn-primary:hover {
         transform: translateY(-2px);
         box-shadow: 0 10px 20px -10px rgba(20, 184, 166, 0.5);
+    }
+
+    /* Стили для статуса "Болеет" */
+    .badge-sick {
+        background-color: rgba(251, 146, 60, 0.15);
+        color: #fb923c;
+        border: 1px solid rgba(251, 146, 60, 0.3);
+    }
+
+    .btn-sick-toggle:hover {
+        background-color: rgba(251, 146, 60, 0.1);
     }
 </style>
 
