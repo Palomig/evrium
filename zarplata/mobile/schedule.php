@@ -206,35 +206,22 @@ require_once __DIR__ . '/templates/header.php';
     border-radius: 50%;
 }
 
-/* Day panels container - swipeable */
+/* Day panels container - simple show/hide */
 .day-panels {
     flex: 1;
     overflow: hidden;
     position: relative;
 }
 
-.day-panels-track {
-    display: flex;
-    width: 700%; /* 7 days */
-    height: 100%;
-    -webkit-transition: -webkit-transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1);
-    transition: transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1);
-    -webkit-transform: translateX(0);
-    transform: translateX(0);
-    will-change: transform;
-}
-
-.day-panels-track.swiping {
-    -webkit-transition: none !important;
-    transition: none !important;
-}
-
 .day-panel {
-    width: calc(100% / 7);
+    display: none;
     height: 100%;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    flex-shrink: 0;
+}
+
+.day-panel.active {
+    display: block;
 }
 
 /* Room headers */
@@ -514,9 +501,8 @@ require_once __DIR__ . '/templates/header.php';
 
     <!-- Day Panels -->
     <div class="day-panels" id="dayPanels">
-        <div class="day-panels-track" id="dayPanelsTrack">
         <?php for ($d = 1; $d <= 7; $d++): ?>
-            <div class="day-panel" data-day="<?= $d ?>">
+            <div class="day-panel<?= $d === $todayDayOfWeek ? ' active' : '' ?>" data-day="<?= $d ?>">
                 <?php
                 $dayLessons = $scheduleByDay[$d];
                 if (empty($dayLessons)):
@@ -591,7 +577,6 @@ require_once __DIR__ . '/templates/header.php';
                 <?php endif; ?>
             </div>
         <?php endfor; ?>
-        </div>
     </div>
 </div>
 
@@ -710,49 +695,41 @@ const templates = <?= $templatesJson ?>;
 const teachers = <?= $teachersJson ?>;
 const todayDay = <?= $todayDayOfWeek ?>;
 let currentDay = todayDay;
-let currentRoom = 'all'; // 'all', 1, 2, or 3
+let selectedRooms = [1, 2, 3]; // Массив выбранных кабинетов
 let currentLesson = null;
 
-// DOM elements
-const track = document.getElementById('dayPanelsTrack');
-const container = document.getElementById('dayPanels');
-
-// Swipe state
-let touchStartX = 0;
-let touchStartY = 0;
-let touchCurrentX = 0;
-let isDragging = false;
-let isInsideScrollable = false;
-let isScrolling = null;
-let startOffset = 0;
-let containerWidth = 0;
-let scrollableElement = null;
-
-// Swipe settings
-const SWIPE_THRESHOLD = 100;
-const RESISTANCE = 0.3;
-const ANGLE_THRESHOLD = 20;
-
-// ===== LocalStorage Functions =====
+// ===== LocalStorage =====
 function saveToStorage(key, value) {
-    try {
-        localStorage.setItem('schedule_' + key, JSON.stringify(value));
-    } catch (e) {}
+    try { localStorage.setItem('schedule_' + key, JSON.stringify(value)); } catch (e) {}
 }
 
 function loadFromStorage(key, defaultValue) {
     try {
         const val = localStorage.getItem('schedule_' + key);
         return val !== null ? JSON.parse(val) : defaultValue;
-    } catch (e) {
-        return defaultValue;
-    }
+    } catch (e) { return defaultValue; }
 }
 
-// ===== Room Filter =====
+// ===== Room Filter (Multiple Selection) =====
 function toggleRoomFilter(room) {
-    currentRoom = room;
-    saveToStorage('room', room);
+    if (room === 'all') {
+        // Выбрать все
+        selectedRooms = [1, 2, 3];
+    } else {
+        room = parseInt(room);
+        const idx = selectedRooms.indexOf(room);
+        if (idx > -1) {
+            // Убрать из выбранных (но не последний)
+            if (selectedRooms.length > 1) {
+                selectedRooms.splice(idx, 1);
+            }
+        } else {
+            // Добавить к выбранным
+            selectedRooms.push(room);
+            selectedRooms.sort();
+        }
+    }
+    saveToStorage('rooms', selectedRooms);
     applyRoomFilter();
     updateRoomFilterButtons();
 }
@@ -760,24 +737,24 @@ function toggleRoomFilter(room) {
 function applyRoomFilter() {
     document.querySelectorAll('.room-header[data-room], .room-cell[data-room]').forEach(el => {
         const r = parseInt(el.dataset.room);
-        if (currentRoom === 'all' || currentRoom === r) {
-            el.classList.remove('hidden');
-        } else {
-            el.classList.add('hidden');
-        }
+        el.classList.toggle('hidden', !selectedRooms.includes(r));
     });
 }
 
 function updateRoomFilterButtons() {
+    const allSelected = selectedRooms.length === 3;
     document.querySelectorAll('.room-filter').forEach(btn => {
         const r = btn.dataset.room;
-        const isActive = (r === 'all' && currentRoom === 'all') || (parseInt(r) === currentRoom);
-        btn.classList.toggle('active', isActive);
+        if (r === 'all') {
+            btn.classList.toggle('active', allSelected);
+        } else {
+            btn.classList.toggle('active', selectedRooms.includes(parseInt(r)));
+        }
     });
 }
 
-// ===== Day Switching =====
-function switchDay(day, animate = true) {
+// ===== Day Switching (Simple show/hide) =====
+function switchDay(day) {
     currentDay = day;
     saveToStorage('day', day);
 
@@ -790,181 +767,33 @@ function switchDay(day, animate = true) {
     const activeTab = document.querySelector(`.day-tab[data-day="${day}"]`);
     activeTab?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
 
-    // Animate to new position
-    updateTrackPosition(animate);
+    // Show/hide panels
+    document.querySelectorAll('.day-panel').forEach(panel => {
+        panel.classList.toggle('active', parseInt(panel.dataset.day) === day);
+    });
 }
-
-// ===== Track Position (Animation Fix) =====
-function updateTrackPosition(animated = true) {
-    const offset = -((currentDay - 1) / 7) * 100;
-
-    if (animated) {
-        // Remove swiping class to enable transition
-        track.classList.remove('swiping');
-        // Force reflow to ensure transition is applied
-        void track.offsetWidth;
-    } else {
-        track.classList.add('swiping');
-    }
-
-    track.style.webkitTransform = `translateX(${offset}%)`;
-    track.style.transform = `translateX(${offset}%)`;
-}
-
-// ===== Scrollable Detection =====
-function findScrollableParent(el) {
-    while (el && el !== container) {
-        if (el.classList && el.classList.contains('schedule-grid-wrapper')) {
-            if (el.scrollWidth > el.clientWidth) {
-                return el;
-            }
-        }
-        el = el.parentElement;
-    }
-    return null;
-}
-
-function canScrollInDirection(el, direction) {
-    if (!el) return false;
-    if (direction < 0) {
-        return el.scrollLeft < (el.scrollWidth - el.clientWidth - 2);
-    } else {
-        return el.scrollLeft > 2;
-    }
-}
-
-// ===== Touch Handlers =====
-container.addEventListener('touchstart', e => {
-    const touch = e.touches[0];
-    touchStartX = touch.clientX;
-    touchStartY = touch.clientY;
-    touchCurrentX = touch.clientX;
-    isDragging = true;
-    isScrolling = null;
-    containerWidth = container.offsetWidth;
-    startOffset = -((currentDay - 1) / 7) * 100;
-
-    scrollableElement = findScrollableParent(e.target);
-    isInsideScrollable = !!scrollableElement;
-
-    // Disable transition immediately on touch
-    track.classList.add('swiping');
-}, { passive: true });
-
-container.addEventListener('touchmove', e => {
-    if (!isDragging) return;
-
-    const touch = e.touches[0];
-    const diffX = touch.clientX - touchStartX;
-    const diffY = touch.clientY - touchStartY;
-
-    if (isScrolling === null && (Math.abs(diffX) > 8 || Math.abs(diffY) > 8)) {
-        const angle = Math.abs(Math.atan2(diffY, diffX) * 180 / Math.PI);
-
-        if (angle > 70 && angle < 110) {
-            isScrolling = true;
-            return;
-        }
-
-        if (isInsideScrollable && scrollableElement) {
-            if (canScrollInDirection(scrollableElement, diffX)) {
-                isScrolling = true;
-                return;
-            }
-        }
-
-        isScrolling = false;
-    }
-
-    if (isScrolling === true) return;
-    if (isScrolling === null) return;
-
-    touchCurrentX = touch.clientX;
-
-    let dragOffset = (diffX / containerWidth) * (100 / 7);
-
-    const projectedDay = currentDay - (diffX / containerWidth) * 7;
-    if (projectedDay < 1 || projectedDay > 7) {
-        dragOffset *= RESISTANCE;
-    }
-
-    const totalOffset = startOffset + dragOffset;
-    track.style.webkitTransform = `translateX(${totalOffset}%)`;
-    track.style.transform = `translateX(${totalOffset}%)`;
-}, { passive: true });
-
-container.addEventListener('touchend', e => {
-    if (!isDragging) return;
-    isDragging = false;
-
-    if (isScrolling === true || isScrolling === null) {
-        isScrolling = null;
-        scrollableElement = null;
-        isInsideScrollable = false;
-        // Restore position with animation
-        track.classList.remove('swiping');
-        return;
-    }
-
-    const diffX = touchCurrentX - touchStartX;
-
-    if (Math.abs(diffX) > SWIPE_THRESHOLD) {
-        if (diffX < 0 && currentDay < 7) {
-            switchDay(currentDay + 1, true);
-        } else if (diffX > 0 && currentDay > 1) {
-            switchDay(currentDay - 1, true);
-        } else {
-            updateTrackPosition(true);
-        }
-    } else {
-        updateTrackPosition(true);
-    }
-
-    isScrolling = null;
-    scrollableElement = null;
-    isInsideScrollable = false;
-}, { passive: true });
-
-container.addEventListener('touchcancel', () => {
-    isDragging = false;
-    isScrolling = null;
-    scrollableElement = null;
-    isInsideScrollable = false;
-    updateTrackPosition(true);
-}, { passive: true });
 
 // ===== Initialize =====
 (function init() {
-    // Load saved day (use today as fallback)
+    // Load saved day
     const savedDay = loadFromStorage('day', todayDay);
     currentDay = savedDay;
 
-    // Load saved room filter
-    const savedRoom = loadFromStorage('room', 'all');
-    currentRoom = savedRoom === 'all' ? 'all' : parseInt(savedRoom);
+    // Load saved rooms
+    const savedRooms = loadFromStorage('rooms', [1, 2, 3]);
+    selectedRooms = Array.isArray(savedRooms) ? savedRooms : [1, 2, 3];
 
     // Apply filters
     applyRoomFilter();
     updateRoomFilterButtons();
 
-    // Set initial position without animation
-    track.classList.add('swiping');
-    updateTrackPosition(false);
-
-    // Update day tabs
-    document.querySelectorAll('.day-tab').forEach(tab => {
-        tab.classList.toggle('active', parseInt(tab.dataset.day) === currentDay);
-    });
+    // Switch to saved day
+    switchDay(currentDay);
 
     // Scroll to active tab
     setTimeout(() => {
         const activeTab = document.querySelector(`.day-tab[data-day="${currentDay}"]`);
         activeTab?.scrollIntoView({ behavior: 'auto', inline: 'center', block: 'nearest' });
-
-        // Enable transitions after initial setup
-        requestAnimationFrame(() => {
-            track.classList.remove('swiping');
-        });
     }, 50);
 })();
 
