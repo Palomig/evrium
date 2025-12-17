@@ -78,17 +78,22 @@ async function loadTemplateData(templateId) {
                 document.getElementById('template-grades').value = template.grades;
             }
 
-            // Установить список учеников
-            if (template.students) {
+            // ⭐ НОВАЯ ЛОГИКА: Установить список учеников из students_array (динамические данные)
+            if (template.students_array && Array.isArray(template.students_array)) {
+                // Используем новый формат: [{id, name, class, display}, ...]
+                const studentsText = template.students_array
+                    .map(s => s.display || s.name)
+                    .join('\n');
+                document.getElementById('template-student-list').value = studentsText;
+            } else if (template.students) {
+                // Fallback на старый формат (для совместимости)
                 let studentsText = '';
                 try {
-                    // Если это JSON массив
                     const studentsArray = typeof template.students === 'string'
                         ? JSON.parse(template.students)
                         : template.students;
                     studentsText = studentsArray.join('\n');
                 } catch (e) {
-                    // Если это обычный текст
                     studentsText = template.students;
                 }
                 document.getElementById('template-student-list').value = studentsText;
@@ -634,34 +639,45 @@ function getLessonIdFromCard(card) {
 
 // Просмотр урока (модальное окно со списком учеников)
 function viewTemplate(lesson) {
-    // Парсим учеников
-    let students = [];
-    if (lesson.students) {
+    // ⭐ НОВАЯ ЛОГИКА: Используем students_array (динамические данные из таблицы students)
+    let studentsWithClasses = [];
+
+    if (lesson.students_array && Array.isArray(lesson.students_array)) {
+        // Новый формат: [{id, name, class, display}, ...]
+        studentsWithClasses = lesson.students_array.map(student => ({
+            name: student.name,
+            class: student.class || '',
+            displayName: student.display || student.name
+        }));
+    } else if (lesson.students) {
+        // Fallback на старый формат (для совместимости)
+        let students = [];
         try {
             students = typeof lesson.students === 'string' ? JSON.parse(lesson.students) : lesson.students;
         } catch (e) {
             students = lesson.students.split('\n').filter(s => s.trim());
         }
+
+        // Парсим учеников с классами из формата "Имя (N кл.)"
+        studentsWithClasses = students.map(studentName => {
+            const match = studentName.match(/^(.+?)\s*\((\d+)\s*кл\.\)\s*$/);
+            if (match) {
+                return {
+                    name: match[1].trim(),
+                    class: match[2],
+                    displayName: studentName
+                };
+            } else {
+                return {
+                    name: studentName.trim(),
+                    class: '',
+                    displayName: studentName.trim()
+                };
+            }
+        });
     }
 
-    // Парсим учеников с классами из формата "Имя (N кл.)"
-    const studentsWithClasses = students.map(studentName => {
-        // Проверяем есть ли класс в скобках: "Коля (2 кл.)"
-        const match = studentName.match(/^(.+?)\s*\((\d+)\s*кл\.\)\s*$/);
-        if (match) {
-            return {
-                name: match[1].trim(),
-                class: match[2],
-                displayName: studentName
-            };
-        } else {
-            return {
-                name: studentName.trim(),
-                class: '',
-                displayName: studentName.trim()
-            };
-        }
-    });
+    const students = studentsWithClasses; // Для обратной совместимости с кодом ниже
 
     // Создаём модальное окно
     const modal = document.createElement('div');

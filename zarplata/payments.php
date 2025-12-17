@@ -7,6 +7,11 @@
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/config/auth.php';
 require_once __DIR__ . '/config/helpers.php';
+require_once __DIR__ . '/config/student_helpers.php'; // ⭐ Новый helper для динамического чтения студентов
+
+// Автоматический редирект на мобильную версию
+require_once __DIR__ . '/mobile/config/mobile_detect.php';
+redirectToMobileIfNeeded('payments.php');
 
 requireAuth();
 $user = getCurrentUser();
@@ -55,8 +60,10 @@ $lessons = dbQuery(
         li.status,
         lt.tier,
         lt.grades,
-        lt.students as students_json,
         lt.room,
+        lt.teacher_id as template_teacher_id,
+        lt.day_of_week as template_day_of_week,
+        lt.time_start as template_time_start,
         COALESCE(li.formula_id, t.formula_id) as formula_id,
         pf.type as formula_type,
         pf.min_payment,
@@ -160,16 +167,17 @@ foreach ($lessons as $lesson) {
         $dataByMonth[$monthKey]['paid'] += $amount;
     }
 
-    // Инициализация недели
-    $weekStart = clone $date;
-    $weekStart->modify('monday this week');
-    $weekEnd = clone $date;
-    $weekEnd->modify('sunday this week');
-
+    // Инициализация недели - используем setISODate для точного расчёта
     if (!isset($dataByMonth[$monthKey]['weeks'][$weekNumber])) {
+        $year = (int)$date->format('o');  // ISO year (может отличаться от calendar year на границе годов)
+        $weekStartDate = new DateTime();
+        $weekStartDate->setISODate($year, $weekNumber, 1);  // 1 = Monday
+        $weekEndDate = new DateTime();
+        $weekEndDate->setISODate($year, $weekNumber, 7);    // 7 = Sunday
+
         $dataByMonth[$monthKey]['weeks'][$weekNumber] = [
-            'start' => $weekStart->format('d'),
-            'end' => $weekEnd->format('d'),
+            'start' => $weekStartDate->format('d'),
+            'end' => $weekEndDate->format('d'),
             'total' => 0,
             'paid' => 0
         ];
@@ -185,6 +193,7 @@ foreach ($lessons as $lesson) {
         $dataByMonth[$monthKey]['days'][$dayKey] = [
             'date' => $dayName,
             'weekday' => $dayWeekday,
+            'week_number' => $weekNumber,  // ⭐ Добавляем номер недели для фильтрации
             'total' => 0,
             'hours' => 0,
             'absences' => 0,
@@ -192,20 +201,15 @@ foreach ($lessons as $lesson) {
             'group_count' => 0,
             'subjects' => [],
             'lessons' => [],
-            'all_approved' => true
+            'all_approved' => true,
+            'payment_ids' => []  // Для массового одобрения
         ];
     }
 
     // Добавление данных дня
-    $duration = 0;
-    if ($lesson['time_start'] && $lesson['time_end']) {
-        $start = new DateTime($lesson['time_start']);
-        $end = new DateTime($lesson['time_end']);
-        $duration = ($end->getTimestamp() - $start->getTimestamp()) / 3600;
-    }
-
+    // Каждый урок = 1 час (фиксировано)
     $dataByMonth[$monthKey]['days'][$dayKey]['total'] += $amount;
-    $dataByMonth[$monthKey]['days'][$dayKey]['hours'] += $duration;
+    $dataByMonth[$monthKey]['days'][$dayKey]['hours'] += 1;  // 1 урок = 1 час
 
     // Определяем тип урока (с fallback на payment_type)
     $lessonType = $lesson['lesson_type'] ?: 'group';
@@ -239,12 +243,34 @@ foreach ($lessons as $lesson) {
         $dataByMonth[$monthKey]['days'][$dayKey]['all_approved'] = false;
     }
 
-    // Парсинг списка студентов
+    // Собираем payment_ids для массового одобрения
+    if ($lesson['payment_id']) {
+        $dataByMonth[$monthKey]['days'][$dayKey]['payment_ids'][] = $lesson['payment_id'];
+    }
+
+    // ⭐ НОВАЯ ЛОГИКА: Получаем студентов динамически из таблицы students
     $students = [];
-    if ($lesson['students_json']) {
-        $studentsData = json_decode($lesson['students_json'], true);
-        if (is_array($studentsData)) {
-            $students = $studentsData;
+    $studentNames = [];
+
+    // Определяем параметры для поиска студентов
+    // Приоритет: lessons_template -> lessons_instance
+    $teacherIdForStudents = $lesson['template_teacher_id'] ?: $lesson['teacher_id'];
+    $dayOfWeekForStudents = $lesson['template_day_of_week'] ?: (
+        $lesson['lesson_date'] ? (int)date('N', strtotime($lesson['lesson_date'])) : null
+    );
+    $timeStartForStudents = $lesson['template_time_start'] ?: $lesson['time_start'];
+
+    if ($teacherIdForStudents && $dayOfWeekForStudents && $timeStartForStudents) {
+        // Получаем студентов динамически
+        $studentsData = getStudentsForLesson(
+            $teacherIdForStudents,
+            $dayOfWeekForStudents,
+            substr($timeStartForStudents, 0, 5)
+        );
+        $students = $studentsData['students'];
+        // Преобразуем в массив имён для отображения
+        foreach ($students as $student) {
+            $studentNames[] = $student['name'];
         }
     }
 
@@ -263,18 +289,20 @@ foreach ($lessons as $lesson) {
         'time' => $time,
         'subject' => $subject,
         'type' => $lessonType,
-        'students' => $students,
+        'students' => $studentNames,  // Массив имён для отображения
         'amount' => $amount,
         'payment_id' => $lesson['payment_id'],
         'payment_status' => $lesson['payment_status'],
         'tier' => $lesson['tier'],
-        'duration' => $duration,
         'is_manual_payment' => !$lesson['lesson_id']  // Флаг для ручных выплат
     ];
 }
 
-// Подсчёт процента выплаченного для недель
+// Подсчёт процента выплаченного для недель + сортировка недель
 foreach ($dataByMonth as $monthKey => &$month) {
+    // Сортируем недели по номеру (первая неделя слева)
+    ksort($month['weeks']);
+
     foreach ($month['weeks'] as $weekNum => &$week) {
         if ($week['total'] > 0) {
             $week['paid_percent'] = round(($week['paid'] / $week['total']) * 100);
@@ -282,7 +310,9 @@ foreach ($dataByMonth as $monthKey => &$month) {
             $week['paid_percent'] = 0;
         }
     }
+    unset($week);  // ⚠️ КРИТИЧНО: разрываем ссылку после foreach
 }
+unset($month);  // ⚠️ КРИТИЧНО: разрываем ссылку после foreach
 
 // Общая статистика
 $totalStats = [
@@ -588,6 +618,15 @@ require_once __DIR__ . '/templates/header.php';
             border-color: var(--text-muted);
         }
 
+        .week-card.active {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+        }
+
+        .week-card.active .week-dates {
+            color: var(--accent);
+        }
+
         .week-dates {
             font-size: 13px;
             font-weight: 600;
@@ -626,7 +665,8 @@ require_once __DIR__ . '/templates/header.php';
 
         .table-header {
             display: grid;
-            grid-template-columns: 100px 1fr 120px 80px 80px 100px 50px;
+            /* дата | уроки | предмет | часы | неявки | сумма | кнопка */
+            grid-template-columns: 100px 1fr 150px 60px 60px 90px 40px;
             gap: 12px;
             padding: 12px 16px;
             background: var(--bg-dark);
@@ -648,7 +688,8 @@ require_once __DIR__ . '/templates/header.php';
 
         .day-header {
             display: grid;
-            grid-template-columns: 100px 1fr 120px 80px 80px 100px 50px;
+            /* дата | badges | предмет | часы | неявки | сумма | кнопка */
+            grid-template-columns: 100px 1fr 150px 60px 60px 90px 40px;
             gap: 12px;
             padding: 14px 16px;
             cursor: pointer;
@@ -755,6 +796,11 @@ require_once __DIR__ . '/templates/header.php';
             pointer-events: none;
         }
 
+        .approve-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         /* Lessons Container */
         .lessons-container {
             max-height: 0;
@@ -769,7 +815,8 @@ require_once __DIR__ . '/templates/header.php';
 
         .lesson-item {
             display: grid;
-            grid-template-columns: 100px 1fr 120px 80px 80px 100px 50px;
+            /* время | ученики | предмет | неявки | сумма | кнопка */
+            grid-template-columns: 60px 1fr 150px 60px 90px 40px;
             gap: 12px;
             padding: 12px 16px 12px 40px;
             border-top: 1px solid var(--border);
@@ -841,6 +888,46 @@ require_once __DIR__ . '/templates/header.php';
             background: var(--status-green);
             border-color: var(--status-green);
             color: white;
+        }
+
+        /* Кнопка редактирования выплаты */
+        .lesson-edit-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+        }
+
+        .lesson-edit-btn:hover {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: #6366f1;
+            color: #6366f1;
+        }
+
+        /* Бейдж "Выплачено" */
+        .lesson-paid-badge {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--status-green);
+        }
+
+        /* Ячейка с учениками */
+        .lesson-students-cell {
+            flex: 2;
+            min-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         /* Empty state */
@@ -949,15 +1036,20 @@ require_once __DIR__ . '/templates/header.php';
 
                         <!-- Weeks Grid -->
                         <?php if (!empty($month['weeks'])): ?>
-                            <div class="weeks-grid">
+                            <?php $isFirstWeek = true; ?>
+                            <div class="weeks-grid" data-month="<?= e($monthKey) ?>">
                                 <?php foreach ($month['weeks'] as $weekNum => $week): ?>
-                                    <div class="week-card">
+                                    <div class="week-card <?= $isFirstWeek ? 'active' : '' ?>"
+                                         data-week="<?= $weekNum ?>"
+                                         data-month="<?= e($monthKey) ?>"
+                                         onclick="selectWeek(this, '<?= e($monthKey) ?>', '<?= $weekNum ?>')">
                                         <div class="week-dates"><?= e($week['start']) ?> — <?= e($week['end']) ?></div>
                                         <div class="week-amount"><?= formatMoney($week['total']) ?></div>
                                         <div class="week-progress">
                                             <div class="week-progress-fill" style="width: <?= $week['paid_percent'] ?>%"></div>
                                         </div>
                                     </div>
+                                    <?php $isFirstWeek = false; ?>
                                 <?php endforeach; ?>
                             </div>
                         <?php endif; ?>
@@ -974,8 +1066,15 @@ require_once __DIR__ . '/templates/header.php';
                                 <div></div>
                             </div>
 
+                            <?php
+                            // Получаем первую неделю для начальной фильтрации
+                            $firstWeekNum = array_key_first($month['weeks']);
+                            ?>
                             <?php foreach ($month['days'] as $dayKey => $day): ?>
-                                <div class="day-row">
+                                <div class="day-row"
+                                     data-week="<?= $day['week_number'] ?>"
+                                     data-month="<?= e($monthKey) ?>"
+                                     style="<?= ($day['week_number'] != $firstWeekNum) ? 'display: none;' : '' ?>">
                                     <div class="day-header" onclick="toggleDay(this)">
                                         <div class="day-date">
                                             <svg class="expand-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1005,7 +1104,12 @@ require_once __DIR__ . '/templates/header.php';
                                         <div class="day-hours"><?= number_format($day['hours'], 1) ?> ч</div>
                                         <div class="day-absences"><?= $day['absences'] ?></div>
                                         <div class="day-amount"><?= formatMoney($day['total']) ?></div>
-                                        <button class="approve-btn <?= $day['all_approved'] ? 'approved' : '' ?>" onclick="event.stopPropagation()">
+                                        <button
+                                            class="approve-btn <?= $day['all_approved'] ? 'approved' : '' ?>"
+                                            onclick="event.stopPropagation(); approveDay(this, [<?= implode(',', $day['payment_ids']) ?>])"
+                                            title="<?= $day['all_approved'] ? 'Все выплаты одобрены' : 'Одобрить все выплаты за день' ?>"
+                                            <?= $day['all_approved'] ? 'disabled' : '' ?>
+                                        >
                                             <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
                                             </svg>
@@ -1017,14 +1121,13 @@ require_once __DIR__ . '/templates/header.php';
                                         <?php foreach ($day['lessons'] as $lesson): ?>
                                             <div class="lesson-item">
                                                 <div class="lesson-time"><?= e($lesson['time']) ?></div>
-                                                <div class="lesson-subject-cell">
+                                                <div class="lesson-students-cell">
                                                     <?php if (!empty($lesson['students'])): ?>
-                                                        <span style="color: var(--text-secondary)">
-                                                            <?= e(implode(', ', array_slice($lesson['students'], 0, 2))) ?>
-                                                            <?php if (count($lesson['students']) > 2): ?>
-                                                                +<?= count($lesson['students']) - 2 ?>
-                                                            <?php endif; ?>
+                                                        <span style="color: var(--text-secondary); font-size: 0.85em;">
+                                                            <?= e(implode(', ', $lesson['students'])) ?>
                                                         </span>
+                                                    <?php else: ?>
+                                                        <span style="color: var(--text-disabled);">—</span>
                                                     <?php endif; ?>
                                                 </div>
                                                 <div class="lesson-subject-cell">
@@ -1033,20 +1136,29 @@ require_once __DIR__ . '/templates/header.php';
                                                     </span>
                                                     <span class="lesson-subject-name"><?= e($lesson['subject']) ?></span>
                                                 </div>
-                                                <div class="day-hours"><?= number_format($lesson['duration'], 1) ?> ч</div>
                                                 <div class="day-absences">—</div>
                                                 <div class="lesson-amount">
                                                     <?= formatMoney($lesson['amount']) ?>
                                                 </div>
+                                                <?php if ($lesson['payment_id'] && $lesson['payment_status'] !== 'paid'): ?>
                                                 <button
-                                                    class="lesson-approve <?= in_array($lesson['payment_status'], ['approved', 'paid']) ? 'approved' : '' ?>"
-                                                    onclick="event.stopPropagation()"
-                                                    <?= !$lesson['payment_id'] ? 'disabled' : '' ?>
+                                                    class="lesson-edit-btn"
+                                                    onclick="event.stopPropagation(); openEditModal(<?= $lesson['payment_id'] ?>)"
+                                                    title="Редактировать выплату"
                                                 >
-                                                    <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                                     </svg>
                                                 </button>
+                                                <?php elseif ($lesson['payment_status'] === 'paid'): ?>
+                                                <span class="lesson-paid-badge" title="Выплачено">
+                                                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                                    </svg>
+                                                </span>
+                                                <?php else: ?>
+                                                <span style="width: 28px;"></span>
+                                                <?php endif; ?>
                                             </div>
                                         <?php endforeach; ?>
                                     </div>
@@ -1062,16 +1174,80 @@ require_once __DIR__ . '/templates/header.php';
     </div>
 
     <!-- Модальное окно журнала событий -->
+    <?php
+    // Маппинги для журнала
+    $journalFieldNames = [
+        'amount' => 'Сумма',
+        'status' => 'Статус',
+        'payment_status' => 'Статус выплаты',
+        'payment_type' => 'Тип выплаты',
+        'notes' => 'Примечание',
+        'description' => 'Описание',
+        'name' => 'Имя',
+        'teacher_id' => 'Преподаватель',
+        'student_id' => 'Ученик',
+        'lesson_date' => 'Дата урока',
+        'time_start' => 'Начало',
+        'time_end' => 'Окончание',
+        'subject' => 'Предмет',
+        'lesson_type' => 'Тип урока',
+        'actual_students' => 'Присутствовало',
+        'expected_students' => 'Ожидалось',
+        'formula_id' => 'Формула',
+        'attended' => 'Присутствовало',
+        'expected' => 'Ожидалось',
+        'payment_id' => 'ID выплаты',
+        'time' => 'Время',
+        'student_names' => 'Ученики'
+    ];
+
+    $journalValueTranslations = [
+        'pending' => 'Ожидает',
+        'approved' => 'Одобрено',
+        'paid' => 'Выплачено',
+        'cancelled' => 'Отменено',
+        'lesson' => 'Урок',
+        'bonus' => 'Бонус',
+        'penalty' => 'Штраф',
+        'adjustment' => 'Корректировка',
+        'group' => 'Групповой',
+        'individual' => 'Индивидуальный'
+    ];
+
+    function formatJournalValue($value, $translations) {
+        if ($value === null || $value === '') {
+            return '<span style="color: var(--text-disabled);">—</span>';
+        }
+        if (is_bool($value)) {
+            return $value ? 'Да' : 'Нет';
+        }
+        if (is_array($value)) {
+            if (empty($value)) {
+                return '<span style="color: var(--text-disabled);">(пусто)</span>';
+            }
+            return e(implode(', ', $value));
+        }
+        $strValue = (string)$value;
+        if (isset($translations[$strValue])) {
+            return e($translations[$strValue]);
+        }
+        if (is_numeric($strValue) && (int)$strValue > 100) {
+            return number_format((int)$strValue, 0, ',', ' ') . ' ₽';
+        }
+        return e($strValue);
+    }
+    ?>
+
     <div id="journalModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
-        <div class="modal-content" style="background: var(--bg-card); border-radius: 16px; max-width: 1200px; max-height: 80vh; width: 90%; overflow: hidden; display: flex; flex-direction: column;">
+        <div class="modal-content" style="background: var(--bg-card); border-radius: 16px; max-width: 1000px; max-height: 85vh; width: 95%; overflow: hidden; display: flex; flex-direction: column;">
             <!-- Header -->
-            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 24px 28px; border-bottom: 1px solid var(--border);">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid var(--border);">
                 <div>
-                    <h2 style="font-size: 24px; font-weight: 700; color: var(--text-high-emphasis); margin: 0;">
+                    <h2 style="font-size: 20px; font-weight: 700; color: var(--text-high-emphasis); margin: 0;">
                         Журнал событий
                     </h2>
-                    <p style="font-size: 14px; color: var(--text-medium-emphasis); margin: 4px 0 0 0;">
-                        История действий с выплатами и уроками
+                    <p style="font-size: 13px; color: var(--text-medium-emphasis); margin: 4px 0 0 0;">
+                        Нажмите на запись для просмотра деталей
                     </p>
                 </div>
                 <button onclick="closeJournalModal()" class="btn-icon" style="background: var(--bg-hover); border: none; border-radius: 8px; padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">
@@ -1080,95 +1256,201 @@ require_once __DIR__ . '/templates/header.php';
             </div>
 
             <!-- Body -->
-            <div class="modal-body" style="padding: 24px 28px; overflow-y: auto; flex: 1;">
+            <div class="modal-body" style="padding: 16px; overflow-y: auto; flex: 1;">
                 <?php if (empty($auditLogs)): ?>
                     <div class="empty-state">
                         <p>Журнал событий пуст</p>
                     </div>
                 <?php else: ?>
-                    <div class="audit-log-table" style="background: var(--bg-elevated); border-radius: 12px; overflow: hidden;">
-                        <div class="audit-header" style="display: grid; grid-template-columns: 180px 120px 1fr 150px 120px; gap: 16px; padding: 16px 20px; background: var(--bg-hover); border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 600; color: var(--text-medium-emphasis); text-transform: uppercase; letter-spacing: 0.5px;">
-                            <div>Дата и время</div>
-                            <div>Действие</div>
-                            <div>Описание</div>
-                            <div>Пользователь</div>
-                            <div>Тип</div>
-                        </div>
+                    <div class="journal-entries" style="display: flex; flex-direction: column; gap: 8px;">
+                        <?php foreach ($auditLogs as $logIndex => $log):
+                            $date = new DateTime($log['created_at']);
+                            $dateFormatted = $date->format('d.m.Y H:i');
 
-                        <div class="audit-log-entries">
-                            <?php foreach ($auditLogs as $log): ?>
-                                <?php
-                                // Форматируем дату
-                                $date = new DateTime($log['created_at']);
-                                $dateFormatted = $date->format('d.m.Y H:i');
+                            $actionIcons = [
+                                'payment_created' => ['icon' => 'add_circle', 'color' => '#10b981', 'class' => 'create'],
+                                'payment_updated' => ['icon' => 'edit', 'color' => '#f59e0b', 'class' => 'update'],
+                                'payment_deleted' => ['icon' => 'delete', 'color' => '#ef4444', 'class' => 'delete'],
+                                'payment_approved' => ['icon' => 'check_circle', 'color' => '#10b981', 'class' => 'approve'],
+                                'payment_paid' => ['icon' => 'payments', 'color' => '#14b8a6', 'class' => 'approve'],
+                                'adjustment_created' => ['icon' => 'tune', 'color' => '#8b5cf6', 'class' => 'info'],
+                                'lesson_completed' => ['icon' => 'done', 'color' => '#10b981', 'class' => 'approve'],
+                                'payments_cleared_all' => ['icon' => 'delete_sweep', 'color' => '#ef4444', 'class' => 'delete']
+                            ];
 
-                                // Определяем иконку и цвет по типу действия
-                                $actionIcons = [
-                                    'payment_created' => ['icon' => 'add_circle', 'color' => '#10b981'],
-                                    'payment_updated' => ['icon' => 'edit', 'color' => '#f59e0b'],
-                                    'payment_deleted' => ['icon' => 'delete', 'color' => '#ef4444'],
-                                    'payment_approved' => ['icon' => 'check_circle', 'color' => '#10b981'],
-                                    'payment_paid' => ['icon' => 'payments', 'color' => '#14b8a6'],
-                                    'adjustment_created' => ['icon' => 'tune', 'color' => '#8b5cf6'],
-                                    'lesson_completed' => ['icon' => 'done', 'color' => '#10b981'],
-                                    'payments_cleared_all' => ['icon' => 'delete_sweep', 'color' => '#ef4444']
-                                ];
+                            $actionInfo = $actionIcons[$log['action_type']] ?? ['icon' => 'info', 'color' => '#6366f1', 'class' => 'info'];
 
-                                $actionInfo = $actionIcons[$log['action_type']] ?? ['icon' => 'info', 'color' => '#6366f1'];
+                            $actionLabels = [
+                                'payment_created' => 'Создание',
+                                'payment_updated' => 'Изменение',
+                                'payment_deleted' => 'Удаление',
+                                'payment_approved' => 'Одобрение',
+                                'payment_paid' => 'Выплата',
+                                'adjustment_created' => 'Корректировка',
+                                'lesson_completed' => 'Урок завершён',
+                                'payments_cleared_all' => 'Полная очистка'
+                            ];
 
-                                // Определяем читаемое название действия
-                                $actionLabels = [
-                                    'payment_created' => 'Создание',
-                                    'payment_updated' => 'Изменение',
-                                    'payment_deleted' => 'Удаление',
-                                    'payment_approved' => 'Одобрение',
-                                    'payment_paid' => 'Выплата',
-                                    'adjustment_created' => 'Корректировка',
-                                    'lesson_completed' => 'Урок завершён',
-                                    'payments_cleared_all' => 'Полная очистка'
-                                ];
+                            $actionLabel = $actionLabels[$log['action_type']] ?? $log['action_type'];
 
-                                $actionLabel = $actionLabels[$log['action_type']] ?? $log['action_type'];
+                            $entityLabels = [
+                                'payment' => 'Выплата',
+                                'lesson' => 'Урок',
+                                'adjustment' => 'Корректировка'
+                            ];
 
-                                // Определяем тип сущности
-                                $entityLabels = [
-                                    'payment' => 'Выплата',
-                                    'lesson' => 'Урок',
-                                    'adjustment' => 'Корректировка'
-                                ];
+                            $entityLabel = $entityLabels[$log['entity_type']] ?? $log['entity_type'];
 
-                                $entityLabel = $entityLabels[$log['entity_type']] ?? $log['entity_type'];
-                                ?>
-
-                                <div class="audit-entry" style="display: grid; grid-template-columns: 180px 120px 1fr 150px 120px; gap: 16px; padding: 16px 20px; border-bottom: 1px solid var(--border); transition: background 0.2s; cursor: default;">
-                                    <div style="font-size: 13px; color: var(--text-medium-emphasis); font-family: 'JetBrains Mono', monospace;">
+                            // Парсим данные
+                            $oldValue = null;
+                            $newValue = null;
+                            if ($log['old_value']) {
+                                $oldValue = json_decode($log['old_value'], true);
+                                if (json_last_error() !== JSON_ERROR_NONE) {
+                                    $oldValue = $log['old_value'];
+                                }
+                            }
+                            if ($log['new_value']) {
+                                $newValue = json_decode($log['new_value'], true);
+                                if (json_last_error() !== JSON_ERROR_NONE) {
+                                    $newValue = $log['new_value'];
+                                }
+                            }
+                        ?>
+                            <div class="journal-entry" style="background: var(--bg-elevated); border-radius: 10px; overflow: hidden;">
+                                <!-- Заголовок записи (кликабельный) -->
+                                <div class="journal-entry-header" onclick="toggleJournalEntry(this)" style="display: grid; grid-template-columns: 130px 120px 1fr 100px 40px; gap: 12px; padding: 14px 16px; cursor: pointer; transition: background 0.2s; align-items: center;">
+                                    <div style="font-size: 12px; color: var(--text-medium-emphasis); font-family: monospace;">
                                         <?= e($dateFormatted) ?>
                                     </div>
                                     <div style="display: flex; align-items: center; gap: 6px;">
-                                        <span class="material-icons" style="font-size: 18px; color: <?= $actionInfo['color'] ?>;">
+                                        <span class="material-icons" style="font-size: 16px; color: <?= $actionInfo['color'] ?>;">
                                             <?= $actionInfo['icon'] ?>
                                         </span>
-                                        <span style="font-size: 13px; font-weight: 500; color: var(--text-high-emphasis);">
+                                        <span style="font-size: 12px; font-weight: 500; color: var(--text-high-emphasis);">
                                             <?= e($actionLabel) ?>
                                         </span>
                                     </div>
-                                    <div style="font-size: 13px; color: var(--text-medium-emphasis);">
-                                        <?= e($log['notes'] ?: '—') ?>
-                                        <?php if ($log['entity_id']): ?>
-                                            <span style="color: var(--text-disabled); font-size: 12px;">(ID: <?= $log['entity_id'] ?>)</span>
-                                        <?php endif; ?>
+                                    <div style="font-size: 12px; color: var(--text-medium-emphasis); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        <?= e($log['notes'] ?: $entityLabel . ($log['entity_id'] ? ' #' . $log['entity_id'] : '')) ?>
                                     </div>
-                                    <div style="font-size: 13px; color: var(--text-medium-emphasis);">
+                                    <div style="font-size: 12px; color: var(--text-medium-emphasis);">
                                         <?= e($log['user_name'] ?: 'Система') ?>
                                     </div>
-                                    <div>
-                                        <span style="display: inline-block; padding: 4px 10px; background: rgba(99, 102, 241, 0.1); color: #818cf8; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
-                                            <?= e($entityLabel) ?>
-                                        </span>
+                                    <div style="text-align: right;">
+                                        <span class="material-icons journal-chevron" style="font-size: 18px; color: var(--text-medium-emphasis); transition: transform 0.3s;">chevron_right</span>
                                     </div>
                                 </div>
-                            <?php endforeach; ?>
-                        </div>
+
+                                <!-- Детали записи (скрыты по умолчанию) -->
+                                <div class="journal-entry-details" style="display: none; padding: 16px; background: var(--bg-hover); border-top: 1px solid var(--border);">
+                                    <!-- Основная информация -->
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                                        <div style="padding: 10px; background: var(--bg-card); border-radius: 8px;">
+                                            <div style="font-size: 10px; color: var(--text-medium-emphasis); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Дата и время</div>
+                                            <div style="font-size: 13px; color: var(--text-high-emphasis); font-weight: 500;"><?= $date->format('d.m.Y H:i:s') ?></div>
+                                        </div>
+                                        <div style="padding: 10px; background: var(--bg-card); border-radius: 8px;">
+                                            <div style="font-size: 10px; color: var(--text-medium-emphasis); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Действие</div>
+                                            <div style="font-size: 13px; color: var(--text-high-emphasis); font-weight: 500;"><?= e($actionLabel) ?></div>
+                                        </div>
+                                        <div style="padding: 10px; background: var(--bg-card); border-radius: 8px;">
+                                            <div style="font-size: 10px; color: var(--text-medium-emphasis); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Тип</div>
+                                            <div style="font-size: 13px; color: var(--text-high-emphasis); font-weight: 500;"><?= e($entityLabel) ?><?= $log['entity_id'] ? ' #' . $log['entity_id'] : '' ?></div>
+                                        </div>
+                                        <div style="padding: 10px; background: var(--bg-card); border-radius: 8px;">
+                                            <div style="font-size: 10px; color: var(--text-medium-emphasis); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Пользователь</div>
+                                            <div style="font-size: 13px; color: var(--text-high-emphasis); font-weight: 500;"><?= e($log['user_name'] ?: 'Система') ?></div>
+                                        </div>
+                                    </div>
+
+                                    <?php if ($log['notes']): ?>
+                                        <div style="padding: 10px; background: var(--bg-card); border-radius: 8px; margin-bottom: 16px;">
+                                            <div style="font-size: 10px; color: var(--text-medium-emphasis); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Описание</div>
+                                            <div style="font-size: 13px; color: var(--text-high-emphasis);"><?= e($log['notes']) ?></div>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <!-- Данные изменений -->
+                                    <?php if ($oldValue || $newValue): ?>
+                                        <div style="margin-top: 12px;">
+                                            <?php if ($oldValue && $newValue && is_array($oldValue) && is_array($newValue)): ?>
+                                                <!-- Изменение -->
+                                                <div style="font-size: 11px; font-weight: 600; color: var(--text-medium-emphasis); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Изменения</div>
+                                                <div style="background: var(--bg-card); border-radius: 8px; overflow: hidden;">
+                                                    <div style="display: grid; grid-template-columns: 120px 1fr 1fr; gap: 8px; padding: 10px 12px; background: var(--bg-elevated); font-size: 11px; font-weight: 600; border-bottom: 1px solid var(--border);">
+                                                        <div>Поле</div>
+                                                        <div style="color: #ef4444;">Было</div>
+                                                        <div style="color: #10b981;">Стало</div>
+                                                    </div>
+                                                    <?php
+                                                    $allKeys = array_unique(array_merge(array_keys($oldValue), array_keys($newValue)));
+                                                    foreach ($allKeys as $key):
+                                                        $oldVal = $oldValue[$key] ?? null;
+                                                        $newVal = $newValue[$key] ?? null;
+                                                        if (json_encode($oldVal) !== json_encode($newVal)):
+                                                            $fieldLabel = $journalFieldNames[$key] ?? $key;
+                                                            $oldDisplay = formatJournalValue($oldVal, $journalValueTranslations);
+                                                            $newDisplay = formatJournalValue($newVal, $journalValueTranslations);
+                                                    ?>
+                                                        <div style="display: grid; grid-template-columns: 120px 1fr 1fr; gap: 8px; padding: 10px 12px; font-size: 12px; border-bottom: 1px solid var(--border);">
+                                                            <div style="color: var(--text-medium-emphasis); font-weight: 500;"><?= e($fieldLabel) ?></div>
+                                                            <div style="color: #ef4444;"><?= $oldDisplay ?></div>
+                                                            <div style="color: #10b981;"><?= $newDisplay ?></div>
+                                                        </div>
+                                                    <?php
+                                                        endif;
+                                                    endforeach;
+                                                    ?>
+                                                </div>
+
+                                            <?php elseif ($newValue && !$oldValue): ?>
+                                                <!-- Создание -->
+                                                <div style="font-size: 11px; font-weight: 600; color: var(--text-medium-emphasis); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Созданные данные</div>
+                                                <div style="padding: 12px; background: rgba(16, 185, 129, 0.08); border-left: 3px solid #10b981; border-radius: 0 8px 8px 0;">
+                                                    <?php if (is_array($newValue)):
+                                                        foreach ($newValue as $key => $val):
+                                                            $fieldLabel = $journalFieldNames[$key] ?? $key;
+                                                            $valDisplay = formatJournalValue($val, $journalValueTranslations);
+                                                    ?>
+                                                        <div style="display: grid; grid-template-columns: 120px 1fr; gap: 8px; padding: 4px 0; font-size: 12px;">
+                                                            <div style="color: var(--text-medium-emphasis);"><?= e($fieldLabel) ?></div>
+                                                            <div style="color: var(--text-high-emphasis);"><?= $valDisplay ?></div>
+                                                        </div>
+                                                    <?php endforeach;
+                                                    else: ?>
+                                                        <div style="font-size: 12px; color: var(--text-high-emphasis);"><?= e($newValue) ?></div>
+                                                    <?php endif; ?>
+                                                </div>
+
+                                            <?php elseif ($oldValue && !$newValue): ?>
+                                                <!-- Удаление -->
+                                                <div style="font-size: 11px; font-weight: 600; color: var(--text-medium-emphasis); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Удалённые данные</div>
+                                                <div style="padding: 12px; background: rgba(239, 68, 68, 0.08); border-left: 3px solid #ef4444; border-radius: 0 8px 8px 0;">
+                                                    <?php if (is_array($oldValue)):
+                                                        foreach ($oldValue as $key => $val):
+                                                            $fieldLabel = $journalFieldNames[$key] ?? $key;
+                                                            $valDisplay = formatJournalValue($val, $journalValueTranslations);
+                                                    ?>
+                                                        <div style="display: grid; grid-template-columns: 120px 1fr; gap: 8px; padding: 4px 0; font-size: 12px;">
+                                                            <div style="color: var(--text-medium-emphasis);"><?= e($fieldLabel) ?></div>
+                                                            <div style="color: var(--text-high-emphasis);"><?= $valDisplay ?></div>
+                                                        </div>
+                                                    <?php endforeach;
+                                                    else: ?>
+                                                        <div style="font-size: 12px; color: var(--text-high-emphasis);"><?= e($oldValue) ?></div>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php else: ?>
+                                        <div style="padding: 16px; text-align: center; color: var(--text-medium-emphasis); font-size: 12px; background: var(--bg-card); border-radius: 8px;">
+                                            Подробная информация не сохранена
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
             </div>
@@ -1176,11 +1458,14 @@ require_once __DIR__ . '/templates/header.php';
     </div>
 
     <style>
-        .audit-entry:hover {
+        .journal-entry-header:hover {
             background: var(--bg-hover);
         }
-        .audit-entry:last-child {
-            border-bottom: none;
+        .journal-entry-header.expanded {
+            background: var(--bg-hover);
+        }
+        .journal-entry-header.expanded .journal-chevron {
+            transform: rotate(90deg);
         }
         .btn-icon:hover {
             background: var(--bg-dark) !important;
@@ -1188,6 +1473,39 @@ require_once __DIR__ . '/templates/header.php';
     </style>
 
     <script>
+        // ========== Функция переключения недель ==========
+        function selectWeek(clickedCard, monthKey, weekNum) {
+            // Находим все карточки недель в этом месяце
+            const weeksGrid = clickedCard.parentElement;
+            const allWeekCards = weeksGrid.querySelectorAll('.week-card');
+
+            // Убираем active класс со всех карточек
+            allWeekCards.forEach(card => card.classList.remove('active'));
+
+            // Добавляем active класс на выбранную карточку
+            clickedCard.classList.add('active');
+
+            // Находим все строки дней в этом месяце
+            const monthSection = clickedCard.closest('.month-section');
+            const dayRows = monthSection.querySelectorAll('.day-row[data-month="' + monthKey + '"]');
+
+            // Показываем/скрываем дни в зависимости от выбранной недели
+            dayRows.forEach(row => {
+                if (row.dataset.week == weekNum) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                    // Закрываем развёрнутые уроки при переключении
+                    const header = row.querySelector('.day-header');
+                    const lessons = row.querySelector('.lessons-container');
+                    if (header && lessons) {
+                        header.classList.remove('expanded');
+                        lessons.classList.remove('expanded');
+                    }
+                }
+            });
+        }
+
         // Toggle day expansion
         function toggleDay(header) {
             const lessonsContainer = header.nextElementSibling;
@@ -1207,6 +1525,30 @@ require_once __DIR__ . '/templates/header.php';
             } else {
                 header.classList.add('expanded');
                 lessonsContainer.classList.add('expanded');
+            }
+        }
+
+        // Toggle journal entry expansion
+        function toggleJournalEntry(header) {
+            const entry = header.parentElement;
+            const details = entry.querySelector('.journal-entry-details');
+            const isExpanded = header.classList.contains('expanded');
+
+            // Close other expanded entries
+            document.querySelectorAll('.journal-entry-header.expanded').forEach(el => {
+                if (el !== header) {
+                    el.classList.remove('expanded');
+                    el.parentElement.querySelector('.journal-entry-details').style.display = 'none';
+                }
+            });
+
+            // Toggle current entry
+            if (isExpanded) {
+                header.classList.remove('expanded');
+                details.style.display = 'none';
+            } else {
+                header.classList.add('expanded');
+                details.style.display = 'block';
             }
         }
 
@@ -1307,6 +1649,21 @@ require_once __DIR__ . '/templates/header.php';
                 </button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Модальное окно редактирования выплаты -->
+<div id="edit-payment-modal" class="modal">
+    <div class="modal-content" style="max-width: 450px;">
+        <div class="modal-header">
+            <h3>✏️ Редактирование выплаты</h3>
+            <button class="modal-close" onclick="closeEditModal()">
+                ✕
+            </button>
+        </div>
+        <div class="modal-body" id="edit-payment-content">
+            <p style="text-align: center; padding: 20px;">Загрузка...</p>
+        </div>
     </div>
 </div>
 
@@ -1567,11 +1924,253 @@ require_once __DIR__ . '/templates/header.php';
 
     // Закрыть модалку при клике вне её
     window.onclick = function(event) {
-        const modal = document.getElementById('adjustment-modal');
-        if (event.target === modal) {
-            closeAdjustmentModal();
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            if (event.target === modal) {
+                modal.classList.remove('active');
+            }
+        });
+    }
+
+    // ========== Функция одобрения всех выплат за день ==========
+
+    async function approveDay(btn, paymentIds) {
+        if (!paymentIds || paymentIds.length === 0) {
+            alert('Нет выплат для одобрения');
+            return;
+        }
+
+        // Фильтруем только pending выплаты (на бэкенде тоже есть проверка)
+        if (!confirm(`Одобрить ${paymentIds.length} выплат за этот день?`)) {
+            return;
+        }
+
+        btn.disabled = true;
+        const originalContent = btn.innerHTML;
+        btn.innerHTML = '<span style="display: inline-block; animation: spin 1s linear infinite;">⟳</span>';
+
+        try {
+            const response = await fetch('/zarplata/api/payments.php?action=approve_bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: paymentIds })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                if (result.data.approved > 0) {
+                    btn.classList.add('approved');
+                    btn.title = 'Все выплаты одобрены';
+                    btn.innerHTML = originalContent;
+                    alert(`Одобрено выплат: ${result.data.approved} из ${result.data.total}`);
+                    // Перезагружаем страницу для обновления данных
+                    window.location.reload();
+                } else {
+                    btn.innerHTML = originalContent;
+                    btn.disabled = false;
+                    alert('Нет выплат для одобрения (все уже одобрены или выплачены)');
+                }
+            } else {
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+                alert(result.error || 'Ошибка одобрения');
+            }
+        } catch (error) {
+            console.error('Error approving payments:', error);
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+            alert('Ошибка при одобрении выплат');
         }
     }
+
+    // ========== Функции редактирования выплаты ==========
+
+    // Открыть модальное окно редактирования
+    async function openEditModal(paymentId) {
+        const modal = document.getElementById('edit-payment-modal');
+        const content = document.getElementById('edit-payment-content');
+
+        content.innerHTML = '<p style="text-align: center; padding: 20px;">Загрузка...</p>';
+        modal.classList.add('active');
+
+        try {
+            const response = await fetch(`/zarplata/api/payments.php?action=get&id=${paymentId}`);
+            const result = await response.json();
+
+            if (result.success) {
+                const payment = result.data;
+
+                // Парсим количество учеников из calculation_method
+                let attendedCount = '';
+                let expectedCount = '';
+                if (payment.calculation_method) {
+                    const match = payment.calculation_method.match(/(\d+)\s*из\s*(\d+)/iu);
+                    if (match) {
+                        attendedCount = match[1];
+                        expectedCount = match[2];
+                    }
+                }
+
+                content.innerHTML = `
+                    <form id="edit-payment-form" onsubmit="saveEditPayment(event)">
+                        <input type="hidden" id="edit-payment-id" value="${payment.id}">
+
+                        <div style="margin-bottom: 20px; padding: 16px; background: rgba(99, 102, 241, 0.1); border-radius: 8px; border-left: 3px solid #6366f1;">
+                            <div style="font-weight: 600; margin-bottom: 4px;">Выплата #${payment.id}</div>
+                            <div style="color: var(--text-medium-emphasis); font-size: 0.9em;">
+                                ${escapeHtml(payment.teacher_name || 'Преподаватель')} • ${formatDateRu(payment.lesson_date || payment.created_at)}
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Сумма выплаты (₽)</label>
+                            <input type="number" id="edit-amount" class="form-control"
+                                   value="${payment.amount}" min="0" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Пришло учеников</label>
+                            <input type="number" id="edit-attended" class="form-control"
+                                   value="${attendedCount}" min="0" placeholder="Количество">
+                            ${expectedCount ? `<small style="color: var(--text-medium-emphasis);">Ожидалось: ${expectedCount}</small>` : ''}
+                        </div>
+
+                        <div class="form-group">
+                            <label>Комментарий</label>
+                            <textarea id="edit-notes" class="form-control" rows="2"
+                                      placeholder="Причина изменения">${escapeHtml(payment.notes || '')}</textarea>
+                        </div>
+
+                        <div style="display: flex; gap: 12px; margin-top: 24px;">
+                            <button type="button" class="btn btn-outline" onclick="closeEditModal()" style="flex: 1;">
+                                Отмена
+                            </button>
+                            <button type="submit" id="edit-save-btn" class="btn btn-primary" style="flex: 1;">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right: 8px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                Сохранить
+                            </button>
+                        </div>
+
+                        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
+                            <button type="button" class="btn btn-outline" onclick="deletePayment(${payment.id})"
+                                    style="width: 100%; color: #ef4444; border-color: rgba(239, 68, 68, 0.3);">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right: 8px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                                Удалить выплату
+                            </button>
+                        </div>
+                    </form>
+                `;
+            } else {
+                content.innerHTML = `<p style="color: #ef4444; text-align: center;">${result.error || 'Ошибка загрузки'}</p>`;
+            }
+        } catch (error) {
+            console.error('Error loading payment:', error);
+            content.innerHTML = '<p style="color: #ef4444; text-align: center;">Ошибка загрузки данных</p>';
+        }
+    }
+
+    // Закрыть модальное окно
+    function closeEditModal() {
+        document.getElementById('edit-payment-modal').classList.remove('active');
+    }
+
+    // Сохранить изменения
+    async function saveEditPayment(event) {
+        event.preventDefault();
+
+        const paymentId = document.getElementById('edit-payment-id').value;
+        const amount = document.getElementById('edit-amount').value;
+        const attended = document.getElementById('edit-attended').value;
+        const notes = document.getElementById('edit-notes').value;
+
+        const saveBtn = document.getElementById('edit-save-btn');
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span style="display: inline-block; animation: spin 1s linear infinite;">⟳</span> Сохранение...';
+
+        try {
+            const data = { id: parseInt(paymentId) };
+
+            if (amount) data.amount = parseInt(amount);
+            if (attended) data.student_count = parseInt(attended);
+            if (notes !== undefined) data.notes = notes;
+
+            const response = await fetch('/zarplata/api/payments.php?action=update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('Выплата обновлена!');
+                closeEditModal();
+                window.location.reload();
+            } else {
+                alert(result.error || 'Ошибка сохранения');
+            }
+        } catch (error) {
+            console.error('Error updating payment:', error);
+            alert('Ошибка сохранения данных');
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '✓ Сохранить';
+        }
+    }
+
+    // Удалить выплату
+    async function deletePayment(paymentId) {
+        if (!confirm('Вы уверены, что хотите удалить эту выплату?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/zarplata/api/payments.php?action=delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: paymentId })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('Выплата удалена');
+                closeEditModal();
+                window.location.reload();
+            } else {
+                alert(result.error || 'Ошибка удаления');
+            }
+        } catch (error) {
+            console.error('Error deleting payment:', error);
+            alert('Ошибка удаления');
+        }
+    }
+
+    // Вспомогательные функции
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function formatDateRu(dateStr) {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('ru-RU');
+    }
 </script>
+
+<style>
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+</style>
 
 <?php require_once __DIR__ . '/templates/footer.php'; ?>

@@ -236,6 +236,22 @@ function handleCallbackQuery($callbackQuery) {
                 handleAttendanceCount($chatId, $messageId, $telegramId, $parts[1], $parts[2], $callbackQueryId);
                 break;
 
+            // ⭐ Новый формат callback из students.schedule
+            case 'att_all':
+                require_once __DIR__ . '/handlers/AttendanceHandler.php';
+                handleAttAllPresent($chatId, $messageId, $telegramId, $parts[1], $callbackQueryId);
+                break;
+
+            case 'att_absent':
+                require_once __DIR__ . '/handlers/AttendanceHandler.php';
+                handleAttSomeAbsent($chatId, $messageId, $telegramId, $parts[1], $callbackQueryId);
+                break;
+
+            case 'att_count':
+                require_once __DIR__ . '/handlers/AttendanceHandler.php';
+                handleAttCount($chatId, $messageId, $telegramId, $parts[1], $parts[2], $callbackQueryId);
+                break;
+
             default:
                 error_log("[Telegram Bot] Unknown callback action: $action");
                 answerCallbackQuery($callbackQueryId, "Неизвестное действие");

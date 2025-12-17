@@ -33,11 +33,17 @@ switch ($action) {
     case 'approve':
         handleApprove();
         break;
+    case 'approve_bulk':
+        handleApproveBulk();
+        break;
     case 'mark_paid':
         handleMarkPaid();
         break;
     case 'cancel':
         handleCancel();
+        break;
+    case 'update':
+        handleUpdate();
         break;
     case 'delete':
         handleDelete();
@@ -281,6 +287,74 @@ function handleApprove() {
 }
 
 /**
+ * Массовое одобрение выплат (для одобрения всех выплат за день)
+ */
+function handleApproveBulk() {
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+
+    if (!$data) {
+        $data = $_POST;
+    }
+
+    $ids = $data['ids'] ?? [];
+
+    if (empty($ids) || !is_array($ids)) {
+        jsonError('Не указаны ID выплат', 400);
+    }
+
+    // Фильтруем только числовые ID
+    $ids = array_filter(array_map('intval', $ids), function($id) {
+        return $id > 0;
+    });
+
+    if (empty($ids)) {
+        jsonError('Нет валидных ID выплат', 400);
+    }
+
+    $approved = 0;
+    $errors = [];
+
+    foreach ($ids as $id) {
+        $existing = dbQueryOne("SELECT * FROM payments WHERE id = ?", [$id]);
+
+        if (!$existing) {
+            $errors[] = "Выплата #$id не найдена";
+            continue;
+        }
+
+        if ($existing['status'] !== 'pending') {
+            // Пропускаем уже одобренные/выплаченные без ошибки
+            continue;
+        }
+
+        try {
+            $result = dbExecute(
+                "UPDATE payments SET status = 'approved', updated_at = NOW() WHERE id = ?",
+                [$id]
+            );
+
+            if ($result !== false) {
+                $approved++;
+                logAudit('payment_approved', 'payment', $id,
+                    ['status' => 'pending'],
+                    ['status' => 'approved'],
+                    'Выплата одобрена (массовое)'
+                );
+            }
+        } catch (Exception $e) {
+            $errors[] = "Ошибка одобрения #$id: " . $e->getMessage();
+        }
+    }
+
+    jsonSuccess([
+        'approved' => $approved,
+        'total' => count($ids),
+        'errors' => $errors
+    ]);
+}
+
+/**
  * Отметить как выплаченную
  */
 function handleMarkPaid() {
@@ -333,6 +407,107 @@ function handleMarkPaid() {
     } catch (Exception $e) {
         error_log("Failed to mark payment as paid: " . $e->getMessage());
         jsonError('Ошибка при отметке выплаты', 500);
+    }
+}
+
+/**
+ * Обновить выплату (изменить сумму или количество учеников)
+ */
+function handleUpdate() {
+    // Получаем данные
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+
+    if (!$data) {
+        $data = $_POST;
+    }
+
+    $id = filter_var($data['id'] ?? 0, FILTER_VALIDATE_INT);
+    $newAmount = isset($data['amount']) ? filter_var($data['amount'], FILTER_VALIDATE_INT) : null;
+    $newStudentCount = isset($data['student_count']) ? filter_var($data['student_count'], FILTER_VALIDATE_INT) : null;
+    $notes = $data['notes'] ?? null;
+
+    if (!$id) {
+        jsonError('Неверный ID выплаты', 400);
+    }
+
+    // Проверяем существование
+    $existing = dbQueryOne("SELECT * FROM payments WHERE id = ?", [$id]);
+    if (!$existing) {
+        jsonError('Выплата не найдена', 404);
+    }
+
+    // Нельзя редактировать уже выплаченную сумму
+    if ($existing['status'] === 'paid') {
+        jsonError('Нельзя редактировать уже выплаченную сумму. Создайте корректировку.', 400);
+    }
+
+    // Нужно указать хотя бы одно поле для обновления
+    if ($newAmount === null && $newStudentCount === null && $notes === null) {
+        jsonError('Укажите данные для обновления', 400);
+    }
+
+    // Формируем обновление
+    $updates = [];
+    $params = [];
+    $oldValues = [];
+    $newValues = [];
+
+    if ($newAmount !== null && $newAmount !== (int)$existing['amount']) {
+        $updates[] = "amount = ?";
+        $params[] = $newAmount;
+        $oldValues['amount'] = $existing['amount'];
+        $newValues['amount'] = $newAmount;
+    }
+
+    if ($newStudentCount !== null) {
+        // Обновляем calculation_method с новым количеством
+        $oldMethod = $existing['calculation_method'] ?? '';
+        // Парсим старый формат "Пришло X из Y" или "Все пришли (X из Y)"
+        if (preg_match('/из (\d+)/u', $oldMethod, $matches)) {
+            $expectedStudents = $matches[1];
+            $newMethod = "Пришло {$newStudentCount} из {$expectedStudents} (исправлено)";
+            $updates[] = "calculation_method = ?";
+            $params[] = $newMethod;
+            $oldValues['calculation_method'] = $oldMethod;
+            $newValues['calculation_method'] = $newMethod;
+        }
+    }
+
+    if ($notes !== null) {
+        $updates[] = "notes = ?";
+        $params[] = $notes;
+        $oldValues['notes'] = $existing['notes'];
+        $newValues['notes'] = $notes;
+    }
+
+    if (empty($updates)) {
+        jsonError('Нет изменений для сохранения', 400);
+    }
+
+    $updates[] = "updated_at = NOW()";
+    $params[] = $id;
+
+    // Обновляем выплату
+    try {
+        $result = dbExecute(
+            "UPDATE payments SET " . implode(', ', $updates) . " WHERE id = ?",
+            $params
+        );
+
+        if ($result !== false) {
+            logAudit('payment_updated', 'payment', $id, $oldValues, $newValues,
+                'Выплата отредактирована вручную'
+            );
+
+            $payment = dbQueryOne("SELECT * FROM payments WHERE id = ?", [$id]);
+            jsonSuccess($payment);
+        } else {
+            jsonError('Не удалось обновить выплату', 500);
+        }
+    } catch (Exception $e) {
+        error_log("Failed to update payment: " . $e->getMessage());
+        jsonError('Ошибка при обновлении выплаты', 500);
     }
 }
 

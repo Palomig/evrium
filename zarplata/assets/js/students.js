@@ -89,7 +89,7 @@ function toggleDay(button) {
         // Добавить день в расписание с одним уроком по умолчанию
         button.classList.add('active');
         schedule[day] = [
-            { time: '15:00', teacher_id: '', room: 1 } // Первый урок с кабинетом
+            { time: '15:00', teacher_id: '', subject: 'Мат.', room: 1 } // Первый урок с кабинетом и предметом
         ];
     }
 
@@ -173,8 +173,18 @@ function renderSchedule() {
                     </select>
                     <select
                         class="form-control"
+                        onchange="updateLessonSubject(${day}, ${index}, this.value)"
+                        style="width: 65px;"
+                        title="Предмет"
+                    >
+                        <option value="Мат." ${(lesson.subject === 'Мат.' || !lesson.subject) ? 'selected' : ''}>Мат.</option>
+                        <option value="Физ." ${lesson.subject === 'Физ.' ? 'selected' : ''}>Физ.</option>
+                        <option value="Инф." ${lesson.subject === 'Инф.' ? 'selected' : ''}>Инф.</option>
+                    </select>
+                    <select
+                        class="form-control"
                         onchange="updateLessonRoom(${day}, ${index}, this.value)"
-                        style="width: 95px;"
+                        style="width: 75px;"
                         title="Кабинет"
                     >
                         <option value="1" ${(lesson.room == 1 || !lesson.room) ? 'selected' : ''}>Каб 1</option>
@@ -216,6 +226,13 @@ function updateLessonRoom(day, index, room) {
     }
 }
 
+// Обновить предмет урока
+function updateLessonSubject(day, index, subject) {
+    if (schedule[day] && schedule[day][index]) {
+        schedule[day][index].subject = subject || 'Мат.';
+    }
+}
+
 // Добавить урок в день
 function addLessonToDay(day) {
     if (!schedule[day]) {
@@ -226,6 +243,7 @@ function addLessonToDay(day) {
     const lastLesson = schedule[day][schedule[day].length - 1];
     const lastTime = lastLesson ? lastLesson.time : '15:00';
     const lastRoom = lastLesson ? lastLesson.room : 1;
+    const lastSubject = lastLesson ? lastLesson.subject : 'Мат.';
     const [hours, minutes] = lastTime.split(':').map(Number);
     const newHours = (hours + 1) % 24;
     const newTime = String(newHours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
@@ -233,6 +251,7 @@ function addLessonToDay(day) {
     schedule[day].push({
         time: newTime,
         teacher_id: '',
+        subject: lastSubject, // Используем тот же предмет, что и в предыдущем уроке
         room: lastRoom // Используем тот же кабинет, что и в предыдущем уроке
     });
 

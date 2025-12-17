@@ -6,6 +6,11 @@
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/config/auth.php';
 require_once __DIR__ . '/config/helpers.php';
+require_once __DIR__ . '/config/student_helpers.php';
+
+// Автоматический редирект на мобильную версию
+require_once __DIR__ . '/mobile/config/mobile_detect.php';
+redirectToMobileIfNeeded('schedule.php');
 
 requireAuth();
 $user = getCurrentUser();
@@ -66,32 +71,47 @@ try {
 }
 
 // Добавляем поле room (кабинет) если его нет
-// И определяем классы учеников для каждого урока
+// И определяем классы учеников для каждого урока ДИНАМИЧЕСКИ из таблицы students
 foreach ($templates as &$template) {
     if (!isset($template['room'])) {
         $template['room'] = 1; // По умолчанию кабинет 1
     }
 
-    // Получаем классы учеников из формата "Имя (N кл.)"
-    $studentClasses = [];
-    if ($template['students']) {
-        $studentsNames = json_decode($template['students'], true);
-        if (is_array($studentsNames) && !empty($studentsNames)) {
-            foreach ($studentsNames as $studentName) {
-                // Извлекаем класс из скобок: "Коля (2 кл.)" -> 2
-                if (preg_match('/\((\d+)\s*кл\.\)/', $studentName, $matches)) {
-                    $studentClasses[] = (int)$matches[1];
-                }
-                // Если класса нет в скобках - не добавляем класс
-                // (это старые данные, которые нужно обновить вручную)
-            }
+    // ⭐ НОВАЯ ЛОГИКА: Используем функцию getStudentsForLesson()
+    // для получения студентов динамически из таблицы students
+    $studentsData = getStudentsForLesson(
+        $template['teacher_id'],
+        $template['day_of_week'],
+        substr($template['time_start'], 0, 5)
+    );
+
+    // Преобразуем формат для совместимости с фронтендом
+    $studentsForLesson = [];
+    foreach ($studentsData['students'] as $student) {
+        $displayName = $student['name'];
+        if ($student['class']) {
+            $displayName .= " ({$student['class']} кл.)";
         }
+        $studentsForLesson[] = [
+            'name' => $student['name'],
+            'class' => $student['class'],
+            'display' => $displayName
+        ];
     }
 
-    // Добавляем строку с классами (уникальные, отсортированные, через запятую)
-    $studentClasses = array_unique($studentClasses);
-    sort($studentClasses);
-    $template['student_classes'] = !empty($studentClasses) ? implode(', ', $studentClasses) : '';
+    // Добавляем данные к шаблону
+    $template['students_array'] = $studentsForLesson;
+    $template['actual_student_count'] = $studentsData['count'];
+    $template['student_classes'] = $studentsData['classes'];
+
+    // ⭐ Предмет из расписания учеников (если не задан в шаблоне)
+    if (empty($template['subject']) && $studentsData['subject']) {
+        $template['subject'] = $studentsData['subject'];
+    }
+    // Fallback: если предмет всё ещё не задан, ставим "Математика"
+    if (empty($template['subject'])) {
+        $template['subject'] = 'Математика';
+    }
 }
 
 define('PAGE_TITLE', '');
@@ -1751,23 +1771,33 @@ function createLessonCard(lesson) {
     card.dataset.teacherId = lesson.teacher_id;
     card.onclick = () => viewTemplate(lesson);
 
-    // Парсим учеников
-    let students = [];
-    if (lesson.students) {
-        try {
-            students = typeof lesson.students === 'string' ? JSON.parse(lesson.students) : lesson.students;
-        } catch (e) {
-            students = lesson.students.split('\n').filter(s => s.trim());
-        }
-    }
-
-    const currentStudents = students.length || 0;
-    const maxStudents = lesson.expected_students || 6;
-    const isFull = currentStudents >= maxStudents;
-    const capacityClass = isFull ? 'full' : 'available';
+    // ⭐ НОВАЯ ЛОГИКА: Используем students_array (динамические данные из таблицы students)
+    // вместо статического JSON из lessons_template.students
+    const students = lesson.students_array || [];
+    const currentStudents = lesson.actual_student_count || 0;
+    const lessonType = lesson.lesson_type || 'group';
     const tier = lesson.tier || 'C';
-    // Используем student_classes из базы данных (классы реальных учеников)
+
+    // Используем student_classes (динамически вычисленные классы реальных учеников)
     const studentClasses = lesson.student_classes || '';
+
+    // ⭐ НОВОЕ: Разное отображение для групповых и индивидуальных
+    let capacityHtml;
+    let capacityClass;
+
+    if (lessonType === 'individual') {
+        // Для индивидуальных - зелёная иконка если занято, серая если свободно
+        capacityClass = currentStudents > 0 ? 'full' : 'available';
+        capacityHtml = currentStudents > 0
+            ? '<i class="material-icons" style="color: #4caf50; font-size: 20px;">person</i>'
+            : '<i class="material-icons" style="color: #666; font-size: 20px;">person</i>';
+    } else {
+        // Для групповых - текущее отображение с числами
+        const maxStudents = lesson.expected_students || 6;
+        const isFull = currentStudents >= maxStudents;
+        capacityClass = isFull ? 'full' : 'available';
+        capacityHtml = `${currentStudents}/${maxStudents}`;
+    }
 
     card.innerHTML = `
         <div class="card-body">
@@ -1777,7 +1807,7 @@ function createLessonCard(lesson) {
                         <span class="tier-badge tier-${tier}">${tier}</span>
                     </div>
                     <div class="card-cell capacity ${capacityClass}">
-                        ${currentStudents}/${maxStudents}
+                        ${capacityHtml}
                     </div>
                 </div>
                 ${studentClasses ? `
