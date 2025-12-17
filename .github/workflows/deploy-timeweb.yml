@@ -24,3 +24,13 @@ jobs:
           protocol: ftps
           port: 21
           timeout: 60000
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            .DS_Store
+            **/.DS_Store
+            crm/**
+            1-6.zip
+            7-12.zip
+            69-74.zip
