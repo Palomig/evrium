@@ -28,9 +28,10 @@ jobs:
             **/.git*
             **/.git*/**
             **/node_modules/**
-            .DS_Store
             **/.DS_Store
+            crm
+            crm/*
             crm/**
-            1-6.zip
-            7-12.zip
-            69-74.zip
+            *.zip
+            **/*.zip
+            zarplata/database.sql
