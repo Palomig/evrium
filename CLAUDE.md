@@ -1047,4 +1047,29 @@ logAudit('template_created', 'template', $templateId, null, [
 
 ---
 
-**End of CLAUDE.md** - Last updated: 2025-11-17
+## ⚠️ CRITICAL WARNINGS
+
+### DO NOT MODIFY deploy-timeweb.yml
+
+**NEVER** change the `.github/workflows/deploy-timeweb.yml` file!
+
+Any modifications to this file (adding exclude patterns, changing versions, adding options) **WILL BREAK THE DEPLOYMENT**.
+
+The current working configuration is:
+```yaml
+uses: SamKirkland/FTP-Deploy-Action@4.0.0
+with:
+  server: ${{ secrets.FTP_SERVER }}
+  username: ${{ secrets.FTP_USERNAME }}
+  password: ${{ secrets.FTP_PASSWORD }}
+  server-dir: /PALOMATIKA/public_html/
+```
+
+If you need to exclude files from deployment:
+- Use `.gitignore` instead
+- Create folders manually on the server via FTP client
+- **DO NOT** add `exclude:`, `log-level:`, or change the action version
+
+---
+
+**End of CLAUDE.md** - Last updated: 2025-12-17
