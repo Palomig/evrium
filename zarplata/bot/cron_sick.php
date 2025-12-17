@@ -198,6 +198,7 @@ foreach ($sickStudents as $student) {
     ];
 
     // Логируем в audit_log ДО отправки (предотвращает дубликаты)
+    // КРИТИЧНО: если запись не удалась, пропускаем отправку чтобы избежать спама!
     try {
         dbExecute(
             "INSERT INTO audit_log (action_type, entity_type, entity_id, new_value, notes, created_at)
@@ -216,6 +217,8 @@ foreach ($sickStudents as $student) {
         );
     } catch (Exception $e) {
         error_log("[CRON SICK] Failed to log to audit_log: " . $e->getMessage());
+        file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - ❌ SKIP: audit_log failed, preventing spam\n", FILE_APPEND);
+        continue; // ВАЖНО: пропускаем отправку, чтобы не создать спам
     }
 
     // Отправляем сообщение
