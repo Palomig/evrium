@@ -1,0 +1,3 @@
+# SQLite database files (will be created on server)
+data/*.sqlite
+data/*.db
