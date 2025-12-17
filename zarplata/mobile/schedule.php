@@ -94,6 +94,62 @@ require_once __DIR__ . '/templates/header.php';
     overflow: hidden;
 }
 
+/* Filters bar */
+.filters-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.filter-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.room-filters {
+    display: flex;
+    gap: 4px;
+}
+
+.room-filter {
+    min-width: 36px;
+    height: 32px;
+    padding: 0 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    -webkit-transition: all 0.15s ease;
+    transition: all 0.15s ease;
+}
+
+.room-filter.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+/* Room visibility - controlled by JS */
+.room-header.hidden,
+.room-cell.hidden {
+    display: none !important;
+}
+
 /* Day tabs - horizontal scroll */
 .day-tabs {
     display: flex;
@@ -122,6 +178,7 @@ require_once __DIR__ . '/templates/header.php';
     background: var(--bg-elevated);
     border: 1px solid var(--border);
     cursor: pointer;
+    -webkit-transition: all 0.15s ease;
     transition: all 0.15s ease;
     text-align: center;
 }
@@ -141,6 +198,7 @@ require_once __DIR__ . '/templates/header.php';
     position: absolute;
     bottom: 6px;
     left: 50%;
+    -webkit-transform: translateX(-50%);
     transform: translateX(-50%);
     width: 5px;
     height: 5px;
@@ -430,10 +488,23 @@ require_once __DIR__ . '/templates/header.php';
 </style>
 
 <div class="schedule-container">
+    <!-- Filters Bar -->
+    <div class="filters-bar">
+        <div class="filter-group">
+            <span class="filter-label">Каб:</span>
+            <div class="room-filters" id="roomFilters">
+                <button class="room-filter active" data-room="all" onclick="toggleRoomFilter('all')">Все</button>
+                <button class="room-filter" data-room="1" onclick="toggleRoomFilter(1)">1</button>
+                <button class="room-filter" data-room="2" onclick="toggleRoomFilter(2)">2</button>
+                <button class="room-filter" data-room="3" onclick="toggleRoomFilter(3)">3</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Day Tabs -->
     <div class="day-tabs" id="dayTabs">
         <?php for ($d = 1; $d <= 7; $d++): ?>
-            <button class="day-tab<?= $d === $todayDayOfWeek ? ' today active' : '' ?>"
+            <button class="day-tab<?= $d === $todayDayOfWeek ? ' today' : '' ?>"
                     data-day="<?= $d ?>"
                     onclick="switchDay(<?= $d ?>)">
                 <?= $dayNames[$d] ?>
@@ -476,9 +547,9 @@ require_once __DIR__ . '/templates/header.php';
                         <!-- Room Headers -->
                         <div class="room-headers">
                             <div class="room-header-time">Время</div>
-                            <div class="room-header">Каб. 1</div>
-                            <div class="room-header">Каб. 2</div>
-                            <div class="room-header">Каб. 3</div>
+                            <div class="room-header" data-room="1">Каб. 1</div>
+                            <div class="room-header" data-room="2">Каб. 2</div>
+                            <div class="room-header" data-room="3">Каб. 3</div>
                         </div>
 
                         <!-- Schedule Grid -->
@@ -487,7 +558,7 @@ require_once __DIR__ . '/templates/header.php';
                                 <div class="schedule-row">
                                     <div class="time-cell"><?= $time ?></div>
                                     <?php for ($r = 1; $r <= 3; $r++): ?>
-                                        <div class="room-cell">
+                                        <div class="room-cell" data-room="<?= $r ?>">
                                             <?php if ($rooms[$r]):
                                                 $lesson = $rooms[$r];
                                             ?>
@@ -637,32 +708,113 @@ require_once __DIR__ . '/templates/header.php';
 // Data
 const templates = <?= $templatesJson ?>;
 const teachers = <?= $teachersJson ?>;
-let currentDay = <?= $todayDayOfWeek ?>;
+const todayDay = <?= $todayDayOfWeek ?>;
+let currentDay = todayDay;
+let currentRoom = 'all'; // 'all', 1, 2, or 3
 let currentLesson = null;
 
-// Swipe state
+// DOM elements
 const track = document.getElementById('dayPanelsTrack');
 const container = document.getElementById('dayPanels');
+
+// Swipe state
 let touchStartX = 0;
 let touchStartY = 0;
 let touchCurrentX = 0;
 let isDragging = false;
-let isInsideScrollable = false; // Touch started inside scrollable grid
-let isScrolling = null; // null = undetermined, true = vertical/inner scroll, false = horizontal day swipe
+let isInsideScrollable = false;
+let isScrolling = null;
 let startOffset = 0;
 let containerWidth = 0;
-let scrollableElement = null; // Reference to the scrollable wrapper
+let scrollableElement = null;
 
 // Swipe settings
-const SWIPE_THRESHOLD = 100; // Pixels needed to trigger day change
-const RESISTANCE = 0.3; // Rubber band resistance at edges
-const ANGLE_THRESHOLD = 20; // Max angle from horizontal (degrees)
+const SWIPE_THRESHOLD = 100;
+const RESISTANCE = 0.3;
+const ANGLE_THRESHOLD = 20;
 
-// Check if element or parent is horizontally scrollable
+// ===== LocalStorage Functions =====
+function saveToStorage(key, value) {
+    try {
+        localStorage.setItem('schedule_' + key, JSON.stringify(value));
+    } catch (e) {}
+}
+
+function loadFromStorage(key, defaultValue) {
+    try {
+        const val = localStorage.getItem('schedule_' + key);
+        return val !== null ? JSON.parse(val) : defaultValue;
+    } catch (e) {
+        return defaultValue;
+    }
+}
+
+// ===== Room Filter =====
+function toggleRoomFilter(room) {
+    currentRoom = room;
+    saveToStorage('room', room);
+    applyRoomFilter();
+    updateRoomFilterButtons();
+}
+
+function applyRoomFilter() {
+    document.querySelectorAll('.room-header[data-room], .room-cell[data-room]').forEach(el => {
+        const r = parseInt(el.dataset.room);
+        if (currentRoom === 'all' || currentRoom === r) {
+            el.classList.remove('hidden');
+        } else {
+            el.classList.add('hidden');
+        }
+    });
+}
+
+function updateRoomFilterButtons() {
+    document.querySelectorAll('.room-filter').forEach(btn => {
+        const r = btn.dataset.room;
+        const isActive = (r === 'all' && currentRoom === 'all') || (parseInt(r) === currentRoom);
+        btn.classList.toggle('active', isActive);
+    });
+}
+
+// ===== Day Switching =====
+function switchDay(day, animate = true) {
+    currentDay = day;
+    saveToStorage('day', day);
+
+    // Update tabs
+    document.querySelectorAll('.day-tab').forEach(tab => {
+        tab.classList.toggle('active', parseInt(tab.dataset.day) === day);
+    });
+
+    // Scroll tab into view
+    const activeTab = document.querySelector(`.day-tab[data-day="${day}"]`);
+    activeTab?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+
+    // Animate to new position
+    updateTrackPosition(animate);
+}
+
+// ===== Track Position (Animation Fix) =====
+function updateTrackPosition(animated = true) {
+    const offset = -((currentDay - 1) / 7) * 100;
+
+    if (animated) {
+        // Remove swiping class to enable transition
+        track.classList.remove('swiping');
+        // Force reflow to ensure transition is applied
+        void track.offsetWidth;
+    } else {
+        track.classList.add('swiping');
+    }
+
+    track.style.webkitTransform = `translateX(${offset}%)`;
+    track.style.transform = `translateX(${offset}%)`;
+}
+
+// ===== Scrollable Detection =====
 function findScrollableParent(el) {
     while (el && el !== container) {
         if (el.classList && el.classList.contains('schedule-grid-wrapper')) {
-            // Check if actually scrollable (content wider than container)
             if (el.scrollWidth > el.clientWidth) {
                 return el;
             }
@@ -672,36 +824,16 @@ function findScrollableParent(el) {
     return null;
 }
 
-// Check if inner scroll can still scroll in direction
 function canScrollInDirection(el, direction) {
     if (!el) return false;
     if (direction < 0) {
-        // Swiping left (want to scroll right) - check if not at right edge
         return el.scrollLeft < (el.scrollWidth - el.clientWidth - 2);
     } else {
-        // Swiping right (want to scroll left) - check if not at left edge
         return el.scrollLeft > 2;
     }
 }
 
-// Initialize position
-function updateTrackPosition(animated = true) {
-    if (animated) {
-        track.classList.remove('swiping');
-    } else {
-        track.classList.add('swiping');
-    }
-    const offset = -((currentDay - 1) / 7) * 100;
-    track.style.transform = `translateX(${offset}%)`;
-}
-
-// Set initial position without animation
-updateTrackPosition(false);
-// Remove swiping class after initial position is set
-requestAnimationFrame(() => {
-    track.classList.remove('swiping');
-});
-
+// ===== Touch Handlers =====
 container.addEventListener('touchstart', e => {
     const touch = e.touches[0];
     touchStartX = touch.clientX;
@@ -712,9 +844,11 @@ container.addEventListener('touchstart', e => {
     containerWidth = container.offsetWidth;
     startOffset = -((currentDay - 1) / 7) * 100;
 
-    // Check if touch started inside scrollable grid
     scrollableElement = findScrollableParent(e.target);
     isInsideScrollable = !!scrollableElement;
+
+    // Disable transition immediately on touch
+    track.classList.add('swiping');
 }, { passive: true });
 
 container.addEventListener('touchmove', e => {
@@ -724,49 +858,38 @@ container.addEventListener('touchmove', e => {
     const diffX = touch.clientX - touchStartX;
     const diffY = touch.clientY - touchStartY;
 
-    // Determine scroll type on first significant move
     if (isScrolling === null && (Math.abs(diffX) > 8 || Math.abs(diffY) > 8)) {
         const angle = Math.abs(Math.atan2(diffY, diffX) * 180 / Math.PI);
 
-        // Vertical scroll (angle 70-110 degrees)
         if (angle > 70 && angle < 110) {
-            isScrolling = true; // Vertical scroll - let browser handle
+            isScrolling = true;
             return;
         }
 
-        // Horizontal movement - check if inside scrollable area
         if (isInsideScrollable && scrollableElement) {
-            // If inner grid can scroll in this direction, let it scroll
             if (canScrollInDirection(scrollableElement, diffX)) {
-                isScrolling = true; // Let inner scroll handle it
+                isScrolling = true;
                 return;
             }
         }
 
-        // Horizontal swipe for day change
         isScrolling = false;
     }
 
-    // If scrolling (vertical or inner), don't interfere
     if (isScrolling === true) return;
-
-    // If still undetermined, wait
     if (isScrolling === null) return;
 
     touchCurrentX = touch.clientX;
 
-    // Calculate drag with resistance at edges
     let dragOffset = (diffX / containerWidth) * (100 / 7);
 
-    // Apply resistance at edges (rubber band effect)
     const projectedDay = currentDay - (diffX / containerWidth) * 7;
     if (projectedDay < 1 || projectedDay > 7) {
         dragOffset *= RESISTANCE;
     }
 
-    // Apply transform directly (no transition for immediate feedback)
-    track.classList.add('swiping');
     const totalOffset = startOffset + dragOffset;
+    track.style.webkitTransform = `translateX(${totalOffset}%)`;
     track.style.transform = `translateX(${totalOffset}%)`;
 }, { passive: true });
 
@@ -774,30 +897,26 @@ container.addEventListener('touchend', e => {
     if (!isDragging) return;
     isDragging = false;
 
-    // If was scrolling, just reset state
     if (isScrolling === true || isScrolling === null) {
         isScrolling = null;
         scrollableElement = null;
         isInsideScrollable = false;
+        // Restore position with animation
+        track.classList.remove('swiping');
         return;
     }
 
     const diffX = touchCurrentX - touchStartX;
 
-    // Check if threshold reached for day change
     if (Math.abs(diffX) > SWIPE_THRESHOLD) {
         if (diffX < 0 && currentDay < 7) {
-            // Swipe left -> next day
-            switchDay(currentDay + 1);
+            switchDay(currentDay + 1, true);
         } else if (diffX > 0 && currentDay > 1) {
-            // Swipe right -> prev day
-            switchDay(currentDay - 1);
+            switchDay(currentDay - 1, true);
         } else {
-            // At edge, snap back
             updateTrackPosition(true);
         }
     } else {
-        // Didn't reach threshold, snap back
         updateTrackPosition(true);
     }
 
@@ -814,21 +933,40 @@ container.addEventListener('touchcancel', () => {
     updateTrackPosition(true);
 }, { passive: true });
 
-function switchDay(day) {
-    currentDay = day;
+// ===== Initialize =====
+(function init() {
+    // Load saved day (use today as fallback)
+    const savedDay = loadFromStorage('day', todayDay);
+    currentDay = savedDay;
 
-    // Update tabs
+    // Load saved room filter
+    const savedRoom = loadFromStorage('room', 'all');
+    currentRoom = savedRoom === 'all' ? 'all' : parseInt(savedRoom);
+
+    // Apply filters
+    applyRoomFilter();
+    updateRoomFilterButtons();
+
+    // Set initial position without animation
+    track.classList.add('swiping');
+    updateTrackPosition(false);
+
+    // Update day tabs
     document.querySelectorAll('.day-tab').forEach(tab => {
-        tab.classList.toggle('active', parseInt(tab.dataset.day) === day);
+        tab.classList.toggle('active', parseInt(tab.dataset.day) === currentDay);
     });
 
-    // Scroll tab into view
-    const activeTab = document.querySelector(`.day-tab[data-day="${day}"]`);
-    activeTab?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    // Scroll to active tab
+    setTimeout(() => {
+        const activeTab = document.querySelector(`.day-tab[data-day="${currentDay}"]`);
+        activeTab?.scrollIntoView({ behavior: 'auto', inline: 'center', block: 'nearest' });
 
-    // Animate to new position
-    updateTrackPosition(true);
-}
+        // Enable transitions after initial setup
+        requestAnimationFrame(() => {
+            track.classList.remove('swiping');
+        });
+    }, 50);
+})();
 
 function openLesson(id) {
     const lesson = templates.find(t => t.id == id);
