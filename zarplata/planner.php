@@ -40,21 +40,16 @@ $templates = dbQuery("
 ", []);
 
 // Построить структуру данных для отображения
-// Ключ: "день_время_кабинет" => [студенты]
 $scheduleGrid = [];
 $daysOfWeek = [
-    1 => 'Понедельник',
-    2 => 'Вторник',
-    3 => 'Среда',
-    4 => 'Четверг',
-    5 => 'Пятница',
-    6 => 'Суббота',
-    7 => 'Воскресенье'
+    1 => ['name' => 'Понедельник', 'short' => 'Пн'],
+    2 => ['name' => 'Вторник', 'short' => 'Вт'],
+    3 => ['name' => 'Среда', 'short' => 'Ср'],
+    4 => ['name' => 'Четверг', 'short' => 'Чт'],
+    5 => ['name' => 'Пятница', 'short' => 'Пт'],
+    6 => ['name' => 'Суббота', 'short' => 'Сб'],
+    7 => ['name' => 'Воскресенье', 'short' => 'Вс']
 ];
-
-// Временные слоты
-$weekdaySlots = range(15, 21); // 15:00 - 21:00 для пн-пт
-$weekendSlots = range(8, 21);   // 08:00 - 21:00 для сб-вс
 
 // Собираем студентов по ячейкам расписания
 foreach ($students as $student) {
@@ -67,9 +62,7 @@ foreach ($students as $student) {
         $day = (int)$dayKey;
         if ($day < 1 || $day > 7) continue;
 
-        // Обрабатываем разные форматы расписания
         if (is_array($daySchedule)) {
-            // Формат 3: [{"time": "17:00", "room": 1, "subject": "Мат."}, ...]
             if (isset($daySchedule[0]) && is_array($daySchedule[0])) {
                 foreach ($daySchedule as $slot) {
                     $time = substr($slot['time'] ?? '00:00', 0, 5);
@@ -96,7 +89,6 @@ foreach ($students as $student) {
                     ];
                 }
             }
-            // Формат 1: {"day": "Monday", "time": "17:00"}
             elseif (isset($daySchedule['time'])) {
                 $time = substr($daySchedule['time'], 0, 5);
                 $room = (int)($daySchedule['room'] ?? 1);
@@ -122,7 +114,6 @@ foreach ($students as $student) {
                 ];
             }
         }
-        // Формат 2: "17:00" (просто время)
         elseif (is_string($daySchedule)) {
             $time = substr($daySchedule, 0, 5);
             $room = 1;
@@ -149,8 +140,8 @@ foreach ($students as $student) {
     }
 }
 
-define('PAGE_TITLE', 'Планировщик');
-define('PAGE_SUBTITLE', 'Drag & drop расписание учеников');
+define('PAGE_TITLE', '');
+define('PAGE_SUBTITLE', '');
 define('ACTIVE_PAGE', 'planner');
 
 require_once __DIR__ . '/templates/header.php';
@@ -158,8 +149,7 @@ require_once __DIR__ . '/templates/header.php';
 
 <style>
 /* Fonts */
-body, .planner-header, .filters-panel, .day-filter-btn, .room-filter-btn,
-select, button {
+body, .filters-panel, .day-filter-btn, .room-filter-btn, select, button {
     font-family: 'Nunito', sans-serif;
 }
 
@@ -167,14 +157,78 @@ select, button {
     font-family: 'JetBrains Mono', monospace;
 }
 
-/* Скрыть стандартный page-header если он пустой */
-.page-header:empty {
-    display: none;
+/* Скрыть стандартный page-header */
+.page-header {
+    display: none !important;
 }
 
 /* Запретить скролл всей страницы */
 body {
     overflow: hidden;
+}
+
+/* ========== СВОРАЧИВАЕМЫЙ SIDEBAR ========== */
+.sidebar {
+    transition: width 0.3s ease, min-width 0.3s ease;
+}
+
+.sidebar.collapsed {
+    width: 60px !important;
+    min-width: 60px !important;
+}
+
+.sidebar.collapsed .logo-text,
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .nav-item span {
+    display: none;
+}
+
+.sidebar.collapsed .logo {
+    justify-content: center;
+    padding: 16px 8px;
+}
+
+.sidebar.collapsed .nav-item {
+    justify-content: center;
+    padding: 12px;
+}
+
+.sidebar.collapsed .nav-icon {
+    margin-right: 0;
+}
+
+/* Кнопка сворачивания sidebar */
+.sidebar-toggle {
+    position: absolute;
+    top: 12px;
+    right: -14px;
+    width: 28px;
+    height: 28px;
+    background: var(--accent);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.sidebar-toggle:hover {
+    transform: scale(1.1);
+    background: var(--accent-hover);
+}
+
+.sidebar-toggle .material-icons {
+    font-size: 18px;
+    transition: transform 0.3s;
+}
+
+.sidebar.collapsed .sidebar-toggle .material-icons {
+    transform: rotate(180deg);
 }
 
 /* Основной контейнер */
@@ -183,83 +237,58 @@ body {
     overflow: hidden;
     display: flex;
     flex-direction: column;
-}
-
-/* Заголовок планировщика */
-.planner-header {
-    background-color: var(--bg-card);
-    border-radius: 12px;
-    padding: 16px 24px;
-    margin-bottom: 16px;
-    flex-shrink: 0;
-}
-
-.planner-header-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 16px;
-}
-
-.planner-title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin: 0;
-}
-
-.planner-subtitle {
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    margin-top: 4px;
+    transition: margin-left 0.3s ease;
 }
 
 /* Панель фильтров */
 .filters-panel {
     background-color: var(--bg-card);
     border-radius: 12px;
-    padding: 16px 20px;
-    margin-bottom: 16px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
     flex-shrink: 0;
 }
 
 .filters-content {
     display: flex;
-    gap: 16px;
+    gap: 12px;
     flex-wrap: wrap;
     align-items: center;
 }
 
 .filter-group {
     display: flex;
-    gap: 8px;
+    gap: 4px;
     align-items: center;
 }
 
 .filter-label {
     font-weight: 600;
     color: var(--text-secondary);
-    font-size: 0.875rem;
+    font-size: 0.8rem;
+    margin-right: 4px;
 }
 
+.day-filter-btn,
 .room-filter-btn {
-    padding: 8px 16px;
+    padding: 6px 12px;
     border: 2px solid var(--border);
-    border-radius: 8px;
+    border-radius: 6px;
     background-color: var(--bg-elevated);
     color: var(--text-secondary);
     cursor: pointer;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     font-weight: 600;
     transition: all 0.2s;
 }
 
+.day-filter-btn:hover,
 .room-filter-btn:hover {
     border-color: var(--accent);
     background-color: var(--bg-hover);
 }
 
+.day-filter-btn.active,
 .room-filter-btn.active {
     background-color: var(--accent-dim);
     border-color: var(--accent);
@@ -267,18 +296,18 @@ body {
 }
 
 .toggle-btn {
-    padding: 8px 16px;
+    padding: 6px 12px;
     border: 2px solid var(--border);
-    border-radius: 8px;
+    border-radius: 6px;
     background-color: var(--bg-elevated);
     color: var(--text-secondary);
     cursor: pointer;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     font-weight: 600;
     transition: all 0.2s;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
 }
 
 .toggle-btn:hover {
@@ -293,9 +322,9 @@ body {
 
 .filter-divider {
     width: 1px;
-    height: 32px;
+    height: 28px;
     background: var(--border);
-    margin: 0 8px;
+    margin: 0 4px;
 }
 
 /* Контейнер расписания */
@@ -304,14 +333,13 @@ body {
     overflow: auto;
     background-color: var(--bg-card);
     border-radius: 12px;
-    padding: 16px;
+    padding: 12px;
     flex: 1;
     min-height: 0;
 }
 
 .planner-grid {
     display: grid;
-    grid-template-columns: 60px repeat(7, minmax(180px, 1fr));
     gap: 1px;
     background: var(--border);
     border-radius: 8px;
@@ -321,10 +349,10 @@ body {
 /* Заголовки */
 .grid-header {
     background: var(--bg-hover);
-    padding: 12px 8px;
+    padding: 10px 6px;
     text-align: center;
     font-weight: 700;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     color: var(--text-primary);
 }
 
@@ -333,14 +361,18 @@ body {
     color: var(--text-muted);
 }
 
+.grid-header.hidden {
+    display: none;
+}
+
 /* Ячейки времени */
 .time-cell {
     background: var(--bg-elevated);
-    padding: 8px;
+    padding: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     font-weight: 600;
     color: var(--text-secondary);
 }
@@ -348,11 +380,15 @@ body {
 /* Ячейки расписания */
 .schedule-cell {
     background: var(--bg-card);
-    min-height: 60px;
-    padding: 4px;
+    min-height: 50px;
+    padding: 3px;
     display: flex;
     flex-direction: column;
     gap: 2px;
+}
+
+.schedule-cell.hidden {
+    display: none;
 }
 
 .schedule-cell.drag-over {
@@ -371,8 +407,8 @@ body {
 .room-slot {
     background: var(--bg-elevated);
     border-radius: 4px;
-    padding: 4px;
-    min-height: 50px;
+    padding: 3px;
+    min-height: 45px;
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -389,10 +425,10 @@ body {
 }
 
 .room-slot-header {
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     color: var(--text-muted);
     text-align: center;
-    padding: 2px;
+    padding: 1px;
     border-bottom: 1px solid var(--border);
     margin-bottom: 2px;
 }
@@ -400,15 +436,15 @@ body {
 /* Карточка ученика */
 .student-card {
     background: var(--bg-card);
-    border-radius: 4px;
-    padding: 4px 6px;
-    font-size: 0.7rem;
+    border-radius: 3px;
+    padding: 3px 5px;
+    font-size: 0.65rem;
     cursor: grab;
     transition: all 0.2s;
     border-left: 3px solid var(--accent);
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
     white-space: nowrap;
     overflow: hidden;
 }
@@ -428,10 +464,10 @@ body {
 }
 
 .student-tier {
-    font-size: 0.6rem;
+    font-size: 0.55rem;
     font-weight: 700;
-    padding: 1px 4px;
-    border-radius: 3px;
+    padding: 1px 3px;
+    border-radius: 2px;
     flex-shrink: 0;
 }
 
@@ -458,25 +494,6 @@ body {
     flex-shrink: 0;
 }
 
-/* Пустой слот */
-.empty-slot {
-    min-height: 30px;
-    border: 1px dashed var(--border);
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-muted);
-    font-size: 0.65rem;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.empty-slot:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-}
-
 /* Уведомления */
 .notification {
     position: fixed;
@@ -484,11 +501,11 @@ body {
     right: 24px;
     background-color: var(--bg-card);
     color: var(--text-primary);
-    padding: 16px 24px;
+    padding: 12px 20px;
     border-radius: 8px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     z-index: 10000;
     opacity: 0;
     transform: translateY(20px);
@@ -509,7 +526,7 @@ body {
 }
 
 .notification .material-icons {
-    font-size: 24px;
+    font-size: 20px;
 }
 
 .notification-success .material-icons {
@@ -536,55 +553,35 @@ body {
     border-radius: 4px;
 }
 
-/* Легенда тиров */
-.tier-legend {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    padding: 8px 12px;
-    background: var(--bg-elevated);
-    border-radius: 8px;
-}
-
-.tier-legend-item {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 0.75rem;
+/* Счётчик учеников */
+.student-count {
+    font-size: 0.8rem;
     color: var(--text-secondary);
 }
 
-/* Адаптивность для широких экранов */
-@media (min-width: 1600px) {
-    .planner-grid {
-        grid-template-columns: 70px repeat(7, minmax(220px, 1fr));
-    }
+.student-count strong {
+    color: var(--accent);
 }
 </style>
-
-<!-- Заголовок -->
-<div class="planner-header">
-    <div class="planner-header-top">
-        <div>
-            <h1 class="planner-title">Планировщик расписания</h1>
-            <p class="planner-subtitle">Перетаскивайте учеников между днями и временем</p>
-        </div>
-        <div class="tier-legend">
-            <span class="filter-label">Тиры:</span>
-            <div class="tier-legend-item"><span class="student-tier tier-S">S</span></div>
-            <div class="tier-legend-item"><span class="student-tier tier-A">A</span></div>
-            <div class="tier-legend-item"><span class="student-tier tier-B">B</span></div>
-            <div class="tier-legend-item"><span class="student-tier tier-C">C</span></div>
-            <div class="tier-legend-item"><span class="student-tier tier-D">D</span></div>
-        </div>
-    </div>
-</div>
 
 <!-- Панель фильтров -->
 <div class="filters-panel">
     <div class="filters-content">
         <div class="filter-group">
-            <span class="filter-label">Кабинеты:</span>
+            <span class="filter-label">Дни:</span>
+            <button class="day-filter-btn active" data-day="1" onclick="toggleDayFilter(this)">Пн</button>
+            <button class="day-filter-btn active" data-day="2" onclick="toggleDayFilter(this)">Вт</button>
+            <button class="day-filter-btn active" data-day="3" onclick="toggleDayFilter(this)">Ср</button>
+            <button class="day-filter-btn active" data-day="4" onclick="toggleDayFilter(this)">Чт</button>
+            <button class="day-filter-btn active" data-day="5" onclick="toggleDayFilter(this)">Пт</button>
+            <button class="day-filter-btn active" data-day="6" onclick="toggleDayFilter(this)">Сб</button>
+            <button class="day-filter-btn active" data-day="7" onclick="toggleDayFilter(this)">Вс</button>
+        </div>
+
+        <div class="filter-divider"></div>
+
+        <div class="filter-group">
+            <span class="filter-label">Каб:</span>
             <button class="room-filter-btn active" data-room="1" onclick="toggleRoomFilter(this)">1</button>
             <button class="room-filter-btn active" data-room="2" onclick="toggleRoomFilter(this)">2</button>
             <button class="room-filter-btn active" data-room="3" onclick="toggleRoomFilter(this)">3</button>
@@ -594,16 +591,14 @@ body {
 
         <div class="filter-group">
             <button class="toggle-btn active" id="tierToggle" onclick="toggleTierDisplay()">
-                <span class="material-icons" style="font-size: 18px;">label</span>
-                Показать тиры
+                <span class="material-icons" style="font-size: 16px;">label</span>
+                Тиры
             </button>
         </div>
 
         <div class="filter-divider"></div>
 
-        <div class="filter-group">
-            <span class="filter-label">Ученики: <strong id="studentCount"><?= count($students) ?></strong></span>
-        </div>
+        <span class="student-count">Учеников: <strong id="studentCount"><?= count($students) ?></strong></span>
     </div>
 </div>
 
@@ -612,20 +607,18 @@ body {
     <div class="planner-grid" id="plannerGrid">
         <!-- Заголовки дней -->
         <div class="grid-header time-header">Время</div>
-        <?php foreach ($daysOfWeek as $dayNum => $dayName): ?>
-            <div class="grid-header" data-day="<?= $dayNum ?>"><?= $dayName ?></div>
+        <?php foreach ($daysOfWeek as $dayNum => $day): ?>
+            <div class="grid-header day-header" data-day="<?= $dayNum ?>"><?= $day['name'] ?></div>
         <?php endforeach; ?>
 
         <!-- Строки времени -->
         <?php
-        // Генерируем все временные слоты (08:00 - 21:00)
         for ($hour = 8; $hour <= 21; $hour++):
             $time = sprintf('%02d:00', $hour);
         ?>
             <div class="time-cell"><?= $time ?></div>
 
-            <?php foreach ($daysOfWeek as $dayNum => $dayName):
-                // Определяем доступные часы для дня
+            <?php foreach ($daysOfWeek as $dayNum => $day):
                 $isWeekend = ($dayNum >= 6);
                 $minHour = $isWeekend ? 8 : 15;
                 $isDisabled = ($hour < $minHour);
@@ -638,7 +631,7 @@ body {
                             $cellData = $scheduleGrid[$key] ?? null;
                         ?>
                             <div class="room-slot" data-room="<?= $room ?>" data-day="<?= $dayNum ?>" data-time="<?= $time ?>">
-                                <div class="room-slot-header">Каб. <?= $room ?></div>
+                                <div class="room-slot-header"><?= $room ?></div>
                                 <?php if ($cellData && !empty($cellData['students'])): ?>
                                     <?php foreach ($cellData['students'] as $student): ?>
                                         <div class="student-card"
@@ -679,18 +672,42 @@ const scheduleData = <?= json_encode($scheduleGrid, JSON_UNESCAPED_UNICODE) ?>;
 const studentsData = <?= json_encode($students, JSON_UNESCAPED_UNICODE) ?>;
 const teachersData = <?= json_encode($teachers, JSON_UNESCAPED_UNICODE) ?>;
 
-console.log('Planner loaded:', {
-    scheduleData,
-    studentsData: studentsData.length,
-    teachersData: teachersData.length
+// ========== SIDEBAR TOGGLE ==========
+
+// Добавляем кнопку сворачивания sidebar
+document.addEventListener('DOMContentLoaded', function() {
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+        // Создаём кнопку
+        const toggleBtn = document.createElement('button');
+        toggleBtn.className = 'sidebar-toggle';
+        toggleBtn.innerHTML = '<span class="material-icons">chevron_left</span>';
+        toggleBtn.onclick = toggleSidebar;
+        sidebar.style.position = 'relative';
+        sidebar.appendChild(toggleBtn);
+
+        // Восстанавливаем состояние
+        if (localStorage.getItem('plannerSidebarCollapsed') === 'true') {
+            sidebar.classList.add('collapsed');
+        }
+    }
+
+    initDragAndDrop();
+    restoreFilters();
+    updateGridColumns();
 });
+
+function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    sidebar.classList.toggle('collapsed');
+    localStorage.setItem('plannerSidebarCollapsed', sidebar.classList.contains('collapsed'));
+}
 
 // ========== DRAG AND DROP ==========
 
 let draggedCard = null;
 let sourceSlot = null;
 
-// Инициализация drag and drop
 function initDragAndDrop() {
     const cards = document.querySelectorAll('.student-card');
     const slots = document.querySelectorAll('.room-slot');
@@ -730,7 +747,6 @@ function handleDragEnd(e) {
     draggedCard = null;
     sourceSlot = null;
 
-    // Убираем все индикаторы
     document.querySelectorAll('.drag-over').forEach(el => {
         el.classList.remove('drag-over');
     });
@@ -766,18 +782,10 @@ async function handleDrop(e) {
     const toTime = slot.dataset.time;
     const toRoom = slot.dataset.room;
 
-    // Если перетащили в тот же слот - ничего не делаем
     if (data.fromDay === toDay && data.fromTime === toTime && data.fromRoom === toRoom) {
         return;
     }
 
-    console.log('Moving student:', {
-        studentId: data.studentId,
-        from: `${data.fromDay}_${data.fromTime}_${data.fromRoom}`,
-        to: `${toDay}_${toTime}_${toRoom}`
-    });
-
-    // Отправляем на сервер
     try {
         const response = await fetch('/zarplata/api/planner.php?action=move_student', {
             method: 'POST',
@@ -797,17 +805,12 @@ async function handleDrop(e) {
         const result = await response.json();
 
         if (result.success) {
-            // Перемещаем карточку в DOM
             if (draggedCard) {
-                // Обновляем data-атрибуты
                 draggedCard.dataset.day = toDay;
                 draggedCard.dataset.time = toTime;
                 draggedCard.dataset.room = toRoom;
-
-                // Перемещаем в новый слот
                 slot.appendChild(draggedCard);
             }
-
             showNotification('Ученик перемещён', 'success');
         } else {
             showNotification(result.error || 'Ошибка перемещения', 'error');
@@ -819,6 +822,46 @@ async function handleDrop(e) {
 }
 
 // ========== ФИЛЬТРЫ ==========
+
+function toggleDayFilter(button) {
+    button.classList.toggle('active');
+    updateVisibleDays();
+    updateGridColumns();
+    saveFilters();
+}
+
+function updateVisibleDays() {
+    const activeDays = Array.from(document.querySelectorAll('.day-filter-btn.active'))
+        .map(btn => parseInt(btn.dataset.day));
+
+    // Скрываем/показываем заголовки дней
+    document.querySelectorAll('.grid-header.day-header').forEach(header => {
+        const day = parseInt(header.dataset.day);
+        if (activeDays.length === 0 || activeDays.includes(day)) {
+            header.classList.remove('hidden');
+        } else {
+            header.classList.add('hidden');
+        }
+    });
+
+    // Скрываем/показываем ячейки
+    document.querySelectorAll('.schedule-cell').forEach(cell => {
+        const day = parseInt(cell.dataset.day);
+        if (activeDays.length === 0 || activeDays.includes(day)) {
+            cell.classList.remove('hidden');
+        } else {
+            cell.classList.add('hidden');
+        }
+    });
+}
+
+function updateGridColumns() {
+    const activeDays = Array.from(document.querySelectorAll('.day-filter-btn.active'));
+    const visibleDays = activeDays.length === 0 ? 7 : activeDays.length;
+
+    const grid = document.getElementById('plannerGrid');
+    grid.style.gridTemplateColumns = `50px repeat(${visibleDays}, minmax(120px, 1fr))`;
+}
 
 function toggleRoomFilter(button) {
     button.classList.toggle('active');
@@ -839,7 +882,6 @@ function updateVisibleRooms() {
         }
     });
 
-    // Обновляем grid-template-columns для rooms-container
     const visibleCount = activeRooms.length === 0 ? 3 : activeRooms.length;
     document.querySelectorAll('.rooms-container').forEach(container => {
         container.style.gridTemplateColumns = `repeat(${visibleCount}, 1fr)`;
@@ -855,10 +897,6 @@ function toggleTierDisplay() {
         tier.classList.toggle('hidden', !showTier);
     });
 
-    btn.innerHTML = showTier
-        ? '<span class="material-icons" style="font-size: 18px;">label</span> Показать тиры'
-        : '<span class="material-icons" style="font-size: 18px;">label_off</span> Скрыть тиры';
-
     saveFilters();
 }
 
@@ -866,6 +904,8 @@ function toggleTierDisplay() {
 
 function saveFilters() {
     const filters = {
+        days: Array.from(document.querySelectorAll('.day-filter-btn.active'))
+            .map(btn => btn.dataset.day),
         rooms: Array.from(document.querySelectorAll('.room-filter-btn.active'))
             .map(btn => btn.dataset.room),
         showTier: document.getElementById('tierToggle').classList.contains('active')
@@ -880,8 +920,20 @@ function restoreFilters() {
     try {
         const filters = JSON.parse(saved);
 
+        // Восстанавливаем дни
+        if (filters.days && filters.days.length > 0 && filters.days.length < 7) {
+            document.querySelectorAll('.day-filter-btn').forEach(btn => {
+                if (filters.days.includes(btn.dataset.day)) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            updateVisibleDays();
+        }
+
         // Восстанавливаем кабинеты
-        if (filters.rooms && filters.rooms.length > 0) {
+        if (filters.rooms && filters.rooms.length > 0 && filters.rooms.length < 3) {
             document.querySelectorAll('.room-filter-btn').forEach(btn => {
                 if (filters.rooms.includes(btn.dataset.room)) {
                     btn.classList.add('active');
@@ -892,7 +944,7 @@ function restoreFilters() {
             updateVisibleRooms();
         }
 
-        // Восстанавливаем отображение тиров
+        // Восстанавливаем тиры
         if (filters.showTier === false) {
             toggleTierDisplay();
         }
@@ -918,13 +970,6 @@ function showNotification(message, type = 'success') {
         notification.classList.remove('show');
     }, 3000);
 }
-
-// ========== ИНИЦИАЛИЗАЦИЯ ==========
-
-document.addEventListener('DOMContentLoaded', function() {
-    initDragAndDrop();
-    restoreFilters();
-});
 </script>
 
 <?php require_once __DIR__ . '/templates/footer.php'; ?>
