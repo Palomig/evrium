@@ -820,12 +820,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const layout = document.querySelector('.layout');
 
     if (sidebar && layout) {
-        // Создаём кнопку
+        // Создаём кнопку (sidebar остаётся position: fixed!)
         const toggleBtn = document.createElement('button');
         toggleBtn.className = 'sidebar-toggle';
         toggleBtn.innerHTML = '<span class="material-icons">chevron_left</span>';
         toggleBtn.onclick = toggleSidebar;
-        sidebar.style.position = 'relative';
         sidebar.appendChild(toggleBtn);
 
         // Восстанавливаем состояние
