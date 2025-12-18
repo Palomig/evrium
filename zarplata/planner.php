@@ -343,11 +343,20 @@ body {
 .planner-wrapper {
     display: flex;
     gap: 16px;
-    min-width: max-content;
+    width: 100%;
 }
 
 .planner-section {
-    flex-shrink: 0;
+    flex: 1;
+    min-width: 0;
+}
+
+.planner-section#weekdaysSection {
+    flex: 5; /* 5 дней */
+}
+
+.planner-section#weekendsSection {
+    flex: 2; /* 2 дня */
 }
 
 .section-title {
@@ -370,11 +379,11 @@ body {
 }
 
 .planner-grid.weekdays {
-    grid-template-columns: 50px repeat(5, minmax(100px, 1fr));
+    grid-template-columns: 50px repeat(5, 1fr);
 }
 
 .planner-grid.weekends {
-    grid-template-columns: 50px repeat(2, minmax(100px, 1fr));
+    grid-template-columns: 50px repeat(2, 1fr);
 }
 
 /* Заголовки */
@@ -438,11 +447,11 @@ body {
 .room-slot {
     background: var(--bg-elevated);
     border-radius: 4px;
-    padding: 3px;
-    min-height: 45px;
+    padding: 4px;
+    min-height: 50px;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 3px;
     transition: all 0.2s;
 }
 
@@ -467,15 +476,15 @@ body {
 /* Карточка ученика */
 .student-card {
     background: var(--bg-card);
-    border-radius: 3px;
-    padding: 3px 5px;
-    font-size: 0.65rem;
+    border-radius: 4px;
+    padding: 4px 6px;
+    font-size: 0.75rem;
     cursor: grab;
     transition: all 0.2s;
     border-left: 3px solid var(--accent);
     display: flex;
     align-items: center;
-    gap: 3px;
+    gap: 4px;
     white-space: nowrap;
     overflow: hidden;
 }
@@ -495,10 +504,10 @@ body {
 }
 
 .student-tier {
-    font-size: 0.55rem;
+    font-size: 0.65rem;
     font-weight: 700;
-    padding: 1px 3px;
-    border-radius: 2px;
+    padding: 2px 4px;
+    border-radius: 3px;
     flex-shrink: 0;
 }
 
@@ -978,7 +987,7 @@ function updateGridColumns() {
 
     const weekdaysGrid = document.getElementById('weekdaysGrid');
     if (weekdaysGrid && visibleWeekdays > 0) {
-        weekdaysGrid.style.gridTemplateColumns = `50px repeat(${visibleWeekdays}, minmax(100px, 1fr))`;
+        weekdaysGrid.style.gridTemplateColumns = `50px repeat(${visibleWeekdays}, 1fr)`;
     }
 
     // Выходные
@@ -987,7 +996,7 @@ function updateGridColumns() {
 
     const weekendsGrid = document.getElementById('weekendsGrid');
     if (weekendsGrid && visibleWeekends > 0) {
-        weekendsGrid.style.gridTemplateColumns = `50px repeat(${visibleWeekends}, minmax(100px, 1fr))`;
+        weekendsGrid.style.gridTemplateColumns = `50px repeat(${visibleWeekends}, 1fr)`;
     }
 }
 
