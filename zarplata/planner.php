@@ -792,6 +792,28 @@ const teachersData = <?= json_encode($teachers, JSON_UNESCAPED_UNICODE) ?>;
 
 // ========== SIDEBAR TOGGLE ==========
 
+// Применяем стили напрямую к элементам (обход CSS конфликтов)
+function applyLayoutStyles() {
+    const sidebar = document.querySelector('.sidebar');
+    const mainContent = document.querySelector('.main-content');
+    const layout = document.querySelector('.layout');
+
+    if (!mainContent || !sidebar) return;
+
+    const isCollapsed = sidebar.classList.contains('collapsed');
+    const sidebarWidth = isCollapsed ? 60 : 220;
+
+    mainContent.style.marginLeft = sidebarWidth + 'px';
+    mainContent.style.width = 'calc(100vw - ' + sidebarWidth + 'px)';
+    mainContent.style.maxWidth = 'calc(100vw - ' + sidebarWidth + 'px)';
+    mainContent.style.padding = '12px 8px';
+    mainContent.style.boxSizing = 'border-box';
+    mainContent.style.height = '100vh';
+    mainContent.style.overflow = 'hidden';
+    mainContent.style.display = 'flex';
+    mainContent.style.flexDirection = 'column';
+}
+
 // Добавляем кнопку сворачивания sidebar
 document.addEventListener('DOMContentLoaded', function() {
     const sidebar = document.querySelector('.sidebar');
@@ -813,6 +835,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Применяем стили сразу
+    applyLayoutStyles();
+
     initDragAndDrop();
     restoreFilters();
     updateGridColumns();
@@ -826,6 +851,9 @@ function toggleSidebar() {
     layout.classList.toggle('sidebar-collapsed');
 
     localStorage.setItem('plannerSidebarCollapsed', sidebar.classList.contains('collapsed'));
+
+    // Применяем стили после переключения
+    applyLayoutStyles();
 }
 
 // ========== DRAG AND DROP ==========
