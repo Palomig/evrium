@@ -227,12 +227,6 @@ body {
     transition: all 0.3s ease;
 }
 
-.layout.sidebar-collapsed .main-content {
-    margin-left: 60px;
-    width: calc(100% - 60px);
-    max-width: calc(100vw - 60px);
-}
-
 /* Основной контейнер - переопределяем стили из teal-theme.css */
 .main-content {
     height: 100vh;
@@ -240,14 +234,17 @@ body {
     display: flex;
     flex-direction: column;
     transition: all 0.3s ease;
-    padding: 12px 16px !important;
-    max-width: none !important;
+    padding: 12px 8px !important;
+    margin-left: 220px !important;
     width: calc(100vw - 220px) !important;
+    max-width: calc(100vw - 220px) !important;
+    box-sizing: border-box !important;
 }
 
 .layout.sidebar-collapsed .main-content {
     margin-left: 60px !important;
     width: calc(100vw - 60px) !important;
+    max-width: calc(100vw - 60px) !important;
 }
 
 /* Панель фильтров */
