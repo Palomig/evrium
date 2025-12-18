@@ -233,13 +233,21 @@ body {
     max-width: calc(100vw - 60px);
 }
 
-/* Основной контейнер */
+/* Основной контейнер - переопределяем стили из teal-theme.css */
 .main-content {
     height: 100vh;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     transition: all 0.3s ease;
+    padding: 12px 16px !important;
+    max-width: none !important;
+    width: calc(100vw - 220px) !important;
+}
+
+.layout.sidebar-collapsed .main-content {
+    margin-left: 60px !important;
+    width: calc(100vw - 60px) !important;
 }
 
 /* Панель фильтров */
