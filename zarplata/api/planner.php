@@ -128,6 +128,11 @@ function handleMoveStudent() {
         // Проверяем/создаём lessons_template для нового слота
         ensureLessonTemplate($toDay, $toTime, $toRoom, $teacherId ?: $student['teacher_id'], $subject);
 
+        // Проверяем и удаляем пустой шаблон из исходного слота
+        if ($fromDay && $fromTime && $fromRoom) {
+            cleanupEmptyTemplate($fromDay, $fromTime, $fromRoom);
+        }
+
         // Логируем действие
         logAudit('student_schedule_moved', 'student', $studentId, [
             'from' => ['day' => $fromDay, 'time' => $fromTime, 'room' => $fromRoom],
@@ -314,6 +319,86 @@ function ensureLessonTemplate($day, $time, $room, $teacherId, $subject) {
         error_log("Failed to create lesson template: " . $e->getMessage());
         // Не прерываем выполнение - перемещение ученика важнее
         return null;
+    }
+}
+
+/**
+ * Проверить и удалить пустой шаблон урока
+ * Если в слоте больше нет учеников - деактивируем шаблон
+ */
+function cleanupEmptyTemplate($day, $time, $room) {
+    $timeStart = substr($time, 0, 5) . ':00';
+
+    // Проверяем есть ли ещё ученики в этом слоте
+    $students = dbQuery("
+        SELECT id, schedule FROM students WHERE active = 1 AND schedule IS NOT NULL
+    ", []);
+
+    $hasStudents = false;
+    foreach ($students as $student) {
+        $schedule = json_decode($student['schedule'], true);
+        if (!is_array($schedule)) continue;
+
+        // Проверяем оба варианта ключа
+        $dayKey = isset($schedule[(string)$day]) ? (string)$day : (isset($schedule[$day]) ? $day : null);
+        if ($dayKey === null) continue;
+
+        $daySchedule = $schedule[$dayKey];
+
+        // Формат 3: массив слотов
+        if (is_array($daySchedule) && isset($daySchedule[0]) && is_array($daySchedule[0])) {
+            foreach ($daySchedule as $slot) {
+                $slotTime = substr($slot['time'] ?? '', 0, 5);
+                $slotRoom = (int)($slot['room'] ?? 1);
+                if ($slotTime === substr($time, 0, 5) && $slotRoom === (int)$room) {
+                    $hasStudents = true;
+                    break 2;
+                }
+            }
+        }
+        // Формат 1: одиночный объект
+        elseif (is_array($daySchedule) && isset($daySchedule['time'])) {
+            $slotTime = substr($daySchedule['time'], 0, 5);
+            $slotRoom = (int)($daySchedule['room'] ?? 1);
+            if ($slotTime === substr($time, 0, 5) && $slotRoom === (int)$room) {
+                $hasStudents = true;
+                break;
+            }
+        }
+        // Формат 2: просто время
+        elseif (is_string($daySchedule)) {
+            $slotTime = substr($daySchedule, 0, 5);
+            if ($slotTime === substr($time, 0, 5) && (int)$room === 1) {
+                $hasStudents = true;
+                break;
+            }
+        }
+    }
+
+    // Если учеников больше нет - деактивируем шаблон
+    if (!$hasStudents) {
+        try {
+            $template = dbQueryOne(
+                "SELECT id FROM lessons_template
+                 WHERE day_of_week = ? AND time_start = ? AND room = ? AND active = 1",
+                [$day, $timeStart, $room]
+            );
+
+            if ($template) {
+                dbExecute(
+                    "UPDATE lessons_template SET active = 0, updated_at = NOW() WHERE id = ?",
+                    [$template['id']]
+                );
+
+                logAudit('template_auto_deactivated', 'template', $template['id'],
+                    ['active' => 1],
+                    ['active' => 0],
+                    'Шаблон деактивирован автоматически (нет учеников)'
+                );
+            }
+        } catch (Exception $e) {
+            error_log("Failed to cleanup empty template: " . $e->getMessage());
+        }
     }
 }
 

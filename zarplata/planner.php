@@ -968,12 +968,41 @@ async function handleDrop(e) {
         const result = await response.json();
 
         if (result.success) {
+            // Находим исходный слот ДО перемещения карточки
+            const sourceSlotEl = document.querySelector(
+                `.room-slot[data-day="${data.fromDay}"][data-time="${data.fromTime}"][data-room="${data.fromRoom}"]`
+            );
+
             if (cardToMove) {
                 cardToMove.dataset.day = toDay;
                 cardToMove.dataset.time = toTime;
                 cardToMove.dataset.room = toRoom;
                 slot.appendChild(cardToMove);
             }
+
+            // Проверяем, остались ли ученики в исходном слоте
+            if (sourceSlotEl) {
+                const remainingCards = sourceSlotEl.querySelectorAll('.student-card');
+                if (remainingCards.length === 0) {
+                    // Удаляем пустой слот
+                    const parentCell = sourceSlotEl.closest('.schedule-cell');
+                    sourceSlotEl.remove();
+
+                    // Проверяем, остались ли слоты в ячейке
+                    if (parentCell) {
+                        const remainingSlots = parentCell.querySelectorAll('.room-slot');
+                        if (remainingSlots.length === 0) {
+                            // Если ячейка пустая, показываем сообщение
+                            const emptyMsg = document.createElement('div');
+                            emptyMsg.className = 'empty-cell-message';
+                            emptyMsg.textContent = 'Нет занятий';
+                            emptyMsg.style.cssText = 'color: #6b7280; font-size: 12px; text-align: center; padding: 8px;';
+                            parentCell.appendChild(emptyMsg);
+                        }
+                    }
+                }
+            }
+
             showNotification('Ученик перемещён', 'success');
         } else {
             showNotification(result.error || 'Ошибка перемещения', 'error');
