@@ -338,12 +338,15 @@ body {
     padding: 12px;
     flex: 1;
     min-height: 0;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .planner-wrapper {
     display: flex;
     gap: 16px;
     width: 100%;
+    min-width: 100%;
 }
 
 .planner-section {
@@ -475,23 +478,27 @@ body {
 
 /* Карточка ученика */
 .student-card {
-    background: var(--bg-card);
+    background: linear-gradient(135deg, #1a2a3a 0%, #0d1a26 100%);
+    border: 1px solid var(--accent);
+    border-left: 3px solid var(--accent);
     border-radius: 4px;
     padding: 4px 6px;
     font-size: 0.75rem;
     cursor: grab;
     transition: all 0.2s;
-    border-left: 3px solid var(--accent);
     display: flex;
     align-items: center;
     gap: 4px;
     white-space: nowrap;
     overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .student-card:hover {
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+    border-color: var(--accent-hover);
+    background: linear-gradient(135deg, #1f3344 0%, #122533 100%);
 }
 
 .student-card:active {
