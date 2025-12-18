@@ -431,12 +431,16 @@ body {
 
 /* Ячейки расписания */
 .schedule-cell {
-    background: var(--bg-card);
+    background: #080a0e;
     min-height: 50px;
     padding: 3px;
     display: flex;
     flex-direction: column;
     gap: 2px;
+}
+
+.schedule-cell:nth-child(even) {
+    background: #0c0f14;
 }
 
 .schedule-cell.hidden {
@@ -457,7 +461,8 @@ body {
 }
 
 .room-slot {
-    background: var(--bg-elevated);
+    background: #1a1f28;
+    border: 1px solid #2d3544;
     border-radius: 4px;
     padding: 4px;
     min-height: 50px;
@@ -478,18 +483,19 @@ body {
 
 .room-slot-header {
     font-size: 0.6rem;
-    color: var(--text-muted);
+    background: #2a3241;
+    color: #9ca3af;
     text-align: center;
-    padding: 1px;
-    border-bottom: 1px solid var(--border);
+    padding: 2px;
+    border-radius: 2px;
     margin-bottom: 2px;
 }
 
 /* Карточка ученика */
 .student-card {
-    background: linear-gradient(135deg, #1a2a3a 0%, #0d1a26 100%);
-    border: 1px solid var(--accent);
-    border-left: 3px solid var(--accent);
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.35) 0%, rgba(20, 184, 166, 0.15) 100%);
+    border: 1px solid rgba(20, 184, 166, 0.6);
+    border-left: 3px solid rgba(20, 184, 166, 0.8);
     border-radius: 4px;
     padding: 4px 6px;
     font-size: 0.75rem;
@@ -506,8 +512,8 @@ body {
 .student-card:hover {
     transform: translateY(-1px);
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
-    border-color: var(--accent-hover);
-    background: linear-gradient(135deg, #1f3344 0%, #122533 100%);
+    border-color: #14b8a6;
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.45) 0%, rgba(20, 184, 166, 0.25) 100%);
 }
 
 .student-card:active {
@@ -541,11 +547,11 @@ body {
     flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
-    color: var(--text-primary);
+    color: #ecfdf5;
 }
 
 .student-class {
-    color: var(--accent);
+    color: #5eead4;
     font-weight: 600;
     flex-shrink: 0;
 }
