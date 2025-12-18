@@ -360,6 +360,7 @@ body {
 .planner-section {
     flex: 1;
     min-width: 0;
+    width: 100%;
 }
 
 .planner-section#weekdaysSection {
@@ -379,6 +380,8 @@ body {
     padding: 6px;
     background: var(--bg-elevated);
     border-radius: 6px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .planner-grid {
@@ -387,6 +390,7 @@ body {
     background: var(--border);
     border-radius: 8px;
     overflow: hidden;
+    width: 100%;
 }
 
 .planner-grid.weekdays {
