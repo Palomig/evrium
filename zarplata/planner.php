@@ -30,15 +30,6 @@ $teachers = dbQuery("
     ORDER BY name
 ", []);
 
-// Получить все шаблоны уроков
-$templates = dbQuery("
-    SELECT lt.*, t.name as teacher_name
-    FROM lessons_template lt
-    LEFT JOIN teachers t ON lt.teacher_id = t.id
-    WHERE lt.active = 1
-    ORDER BY lt.day_of_week, lt.time_start
-", []);
-
 // Построить структуру данных для отображения
 $scheduleGrid = [];
 $daysOfWeek = [
@@ -231,13 +222,24 @@ body {
     transform: rotate(180deg);
 }
 
+/* ========== АДАПТАЦИЯ MAIN-CONTENT ПРИ СКРЫТОМ SIDEBAR ========== */
+.layout {
+    transition: all 0.3s ease;
+}
+
+.layout.sidebar-collapsed .main-content {
+    margin-left: 60px;
+    width: calc(100% - 60px);
+    max-width: calc(100vw - 60px);
+}
+
 /* Основной контейнер */
 .main-content {
     height: 100vh;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    transition: margin-left 0.3s ease;
+    transition: all 0.3s ease;
 }
 
 /* Панель фильтров */
@@ -327,7 +329,7 @@ body {
     margin: 0 4px;
 }
 
-/* Контейнер расписания */
+/* Контейнер расписания - два грида рядом */
 .planner-container {
     position: relative;
     overflow: auto;
@@ -338,12 +340,41 @@ body {
     min-height: 0;
 }
 
+.planner-wrapper {
+    display: flex;
+    gap: 16px;
+    min-width: max-content;
+}
+
+.planner-section {
+    flex-shrink: 0;
+}
+
+.section-title {
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--accent);
+    margin-bottom: 8px;
+    padding: 6px;
+    background: var(--bg-elevated);
+    border-radius: 6px;
+}
+
 .planner-grid {
     display: grid;
     gap: 1px;
     background: var(--border);
     border-radius: 8px;
     overflow: hidden;
+}
+
+.planner-grid.weekdays {
+    grid-template-columns: 50px repeat(5, minmax(100px, 1fr));
+}
+
+.planner-grid.weekends {
+    grid-template-columns: 50px repeat(2, minmax(100px, 1fr));
 }
 
 /* Заголовки */
@@ -562,18 +593,29 @@ body {
 .student-count strong {
     color: var(--accent);
 }
+
+/* Пустая строка для выравнивания выходных */
+.empty-row {
+    background: var(--bg-card);
+    opacity: 0.3;
+    min-height: 50px;
+}
 </style>
 
 <!-- Панель фильтров -->
 <div class="filters-panel">
     <div class="filters-content">
         <div class="filter-group">
-            <span class="filter-label">Дни:</span>
+            <span class="filter-label">Будни:</span>
             <button class="day-filter-btn active" data-day="1" onclick="toggleDayFilter(this)">Пн</button>
             <button class="day-filter-btn active" data-day="2" onclick="toggleDayFilter(this)">Вт</button>
             <button class="day-filter-btn active" data-day="3" onclick="toggleDayFilter(this)">Ср</button>
             <button class="day-filter-btn active" data-day="4" onclick="toggleDayFilter(this)">Чт</button>
             <button class="day-filter-btn active" data-day="5" onclick="toggleDayFilter(this)">Пт</button>
+        </div>
+
+        <div class="filter-group">
+            <span class="filter-label">Выходные:</span>
             <button class="day-filter-btn active" data-day="6" onclick="toggleDayFilter(this)">Сб</button>
             <button class="day-filter-btn active" data-day="7" onclick="toggleDayFilter(this)">Вс</button>
         </div>
@@ -602,61 +644,112 @@ body {
     </div>
 </div>
 
-<!-- Сетка планировщика -->
+<!-- Сетка планировщика - две секции -->
 <div class="planner-container">
-    <div class="planner-grid" id="plannerGrid">
-        <!-- Заголовки дней -->
-        <div class="grid-header time-header">Время</div>
-        <?php foreach ($daysOfWeek as $dayNum => $day): ?>
-            <div class="grid-header day-header" data-day="<?= $dayNum ?>"><?= $day['name'] ?></div>
-        <?php endforeach; ?>
+    <div class="planner-wrapper">
+        <!-- Секция будних дней (Пн-Пт): 15:00-21:00 -->
+        <div class="planner-section" id="weekdaysSection">
+            <div class="section-title">Будни (15:00 - 21:00)</div>
+            <div class="planner-grid weekdays" id="weekdaysGrid">
+                <!-- Заголовки дней -->
+                <div class="grid-header time-header">Время</div>
+                <?php for ($d = 1; $d <= 5; $d++): ?>
+                    <div class="grid-header day-header" data-day="<?= $d ?>"><?= $daysOfWeek[$d]['name'] ?></div>
+                <?php endfor; ?>
 
-        <!-- Строки времени -->
-        <?php
-        for ($hour = 8; $hour <= 21; $hour++):
-            $time = sprintf('%02d:00', $hour);
-        ?>
-            <div class="time-cell"><?= $time ?></div>
+                <!-- Строки времени: 15:00-21:00 (7 строк) -->
+                <?php for ($hour = 15; $hour <= 21; $hour++):
+                    $time = sprintf('%02d:00', $hour);
+                ?>
+                    <div class="time-cell"><?= $time ?></div>
 
-            <?php foreach ($daysOfWeek as $dayNum => $day):
-                $isWeekend = ($dayNum >= 6);
-                $minHour = $isWeekend ? 8 : 15;
-                $isDisabled = ($hour < $minHour);
-            ?>
-                <div class="schedule-cell" data-day="<?= $dayNum ?>" data-time="<?= $time ?>" <?= $isDisabled ? 'style="opacity: 0.3; pointer-events: none;"' : '' ?>>
-                    <?php if (!$isDisabled): ?>
-                    <div class="rooms-container">
-                        <?php for ($room = 1; $room <= 3; $room++):
-                            $key = "{$dayNum}_{$time}_{$room}";
-                            $cellData = $scheduleGrid[$key] ?? null;
-                        ?>
-                            <div class="room-slot" data-room="<?= $room ?>" data-day="<?= $dayNum ?>" data-time="<?= $time ?>">
-                                <div class="room-slot-header"><?= $room ?></div>
-                                <?php if ($cellData && !empty($cellData['students'])): ?>
-                                    <?php foreach ($cellData['students'] as $student): ?>
-                                        <div class="student-card"
-                                             draggable="true"
-                                             data-student-id="<?= $student['id'] ?>"
-                                             data-student-name="<?= e($student['name']) ?>"
-                                             data-student-class="<?= $student['class'] ?>"
-                                             data-student-tier="<?= $student['tier'] ?>"
-                                             data-teacher-id="<?= $student['teacher_id'] ?>"
-                                             data-day="<?= $dayNum ?>"
-                                             data-time="<?= $time ?>"
-                                             data-room="<?= $room ?>">
-                                            <span class="student-tier tier-<?= $student['tier'] ?>"><?= $student['tier'] ?></span>
-                                            <span class="student-name"><?= e($student['name']) ?></span>
-                                            <span class="student-class"><?= $student['class'] ?></span>
-                                        </div>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
+                    <?php for ($dayNum = 1; $dayNum <= 5; $dayNum++): ?>
+                        <div class="schedule-cell" data-day="<?= $dayNum ?>" data-time="<?= $time ?>">
+                            <div class="rooms-container">
+                                <?php for ($room = 1; $room <= 3; $room++):
+                                    $key = "{$dayNum}_{$time}_{$room}";
+                                    $cellData = $scheduleGrid[$key] ?? null;
+                                ?>
+                                    <div class="room-slot" data-room="<?= $room ?>" data-day="<?= $dayNum ?>" data-time="<?= $time ?>">
+                                        <div class="room-slot-header"><?= $room ?></div>
+                                        <?php if ($cellData && !empty($cellData['students'])): ?>
+                                            <?php foreach ($cellData['students'] as $student): ?>
+                                                <div class="student-card"
+                                                     draggable="true"
+                                                     data-student-id="<?= $student['id'] ?>"
+                                                     data-student-name="<?= e($student['name']) ?>"
+                                                     data-student-class="<?= $student['class'] ?>"
+                                                     data-student-tier="<?= $student['tier'] ?>"
+                                                     data-teacher-id="<?= $student['teacher_id'] ?>"
+                                                     data-day="<?= $dayNum ?>"
+                                                     data-time="<?= $time ?>"
+                                                     data-room="<?= $room ?>">
+                                                    <span class="student-tier tier-<?= $student['tier'] ?>"><?= $student['tier'] ?></span>
+                                                    <span class="student-name"><?= e($student['name']) ?></span>
+                                                    <span class="student-class"><?= $student['class'] ?></span>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endfor; ?>
                             </div>
-                        <?php endfor; ?>
-                    </div>
-                    <?php endif; ?>
-                </div>
-            <?php endforeach; ?>
-        <?php endfor; ?>
+                        </div>
+                    <?php endfor; ?>
+                <?php endfor; ?>
+            </div>
+        </div>
+
+        <!-- Секция выходных (Сб-Вс): 08:00-21:00 -->
+        <div class="planner-section" id="weekendsSection">
+            <div class="section-title">Выходные (08:00 - 21:00)</div>
+            <div class="planner-grid weekends" id="weekendsGrid">
+                <!-- Заголовки дней -->
+                <div class="grid-header time-header">Время</div>
+                <?php for ($d = 6; $d <= 7; $d++): ?>
+                    <div class="grid-header day-header" data-day="<?= $d ?>"><?= $daysOfWeek[$d]['name'] ?></div>
+                <?php endfor; ?>
+
+                <!-- Строки времени: 08:00-21:00 (14 строк) -->
+                <?php for ($hour = 8; $hour <= 21; $hour++):
+                    $time = sprintf('%02d:00', $hour);
+                ?>
+                    <div class="time-cell"><?= $time ?></div>
+
+                    <?php for ($dayNum = 6; $dayNum <= 7; $dayNum++): ?>
+                        <div class="schedule-cell" data-day="<?= $dayNum ?>" data-time="<?= $time ?>">
+                            <div class="rooms-container">
+                                <?php for ($room = 1; $room <= 3; $room++):
+                                    $key = "{$dayNum}_{$time}_{$room}";
+                                    $cellData = $scheduleGrid[$key] ?? null;
+                                ?>
+                                    <div class="room-slot" data-room="<?= $room ?>" data-day="<?= $dayNum ?>" data-time="<?= $time ?>">
+                                        <div class="room-slot-header"><?= $room ?></div>
+                                        <?php if ($cellData && !empty($cellData['students'])): ?>
+                                            <?php foreach ($cellData['students'] as $student): ?>
+                                                <div class="student-card"
+                                                     draggable="true"
+                                                     data-student-id="<?= $student['id'] ?>"
+                                                     data-student-name="<?= e($student['name']) ?>"
+                                                     data-student-class="<?= $student['class'] ?>"
+                                                     data-student-tier="<?= $student['tier'] ?>"
+                                                     data-teacher-id="<?= $student['teacher_id'] ?>"
+                                                     data-day="<?= $dayNum ?>"
+                                                     data-time="<?= $time ?>"
+                                                     data-room="<?= $room ?>">
+                                                    <span class="student-tier tier-<?= $student['tier'] ?>"><?= $student['tier'] ?></span>
+                                                    <span class="student-name"><?= e($student['name']) ?></span>
+                                                    <span class="student-class"><?= $student['class'] ?></span>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endfor; ?>
+                            </div>
+                        </div>
+                    <?php endfor; ?>
+                <?php endfor; ?>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -677,7 +770,9 @@ const teachersData = <?= json_encode($teachers, JSON_UNESCAPED_UNICODE) ?>;
 // Добавляем кнопку сворачивания sidebar
 document.addEventListener('DOMContentLoaded', function() {
     const sidebar = document.querySelector('.sidebar');
-    if (sidebar) {
+    const layout = document.querySelector('.layout');
+
+    if (sidebar && layout) {
         // Создаём кнопку
         const toggleBtn = document.createElement('button');
         toggleBtn.className = 'sidebar-toggle';
@@ -689,6 +784,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Восстанавливаем состояние
         if (localStorage.getItem('plannerSidebarCollapsed') === 'true') {
             sidebar.classList.add('collapsed');
+            layout.classList.add('sidebar-collapsed');
         }
     }
 
@@ -699,7 +795,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function toggleSidebar() {
     const sidebar = document.querySelector('.sidebar');
+    const layout = document.querySelector('.layout');
+
     sidebar.classList.toggle('collapsed');
+    layout.classList.toggle('sidebar-collapsed');
+
     localStorage.setItem('plannerSidebarCollapsed', sidebar.classList.contains('collapsed'));
 }
 
@@ -834,7 +934,23 @@ function updateVisibleDays() {
     const activeDays = Array.from(document.querySelectorAll('.day-filter-btn.active'))
         .map(btn => parseInt(btn.dataset.day));
 
-    // Скрываем/показываем заголовки дней
+    // Скрываем/показываем секции
+    const weekdaysSection = document.getElementById('weekdaysSection');
+    const weekendsSection = document.getElementById('weekendsSection');
+
+    const hasWeekdays = activeDays.some(d => d >= 1 && d <= 5);
+    const hasWeekends = activeDays.some(d => d >= 6 && d <= 7);
+
+    // Если нет активных - показываем всё
+    if (activeDays.length === 0) {
+        weekdaysSection.style.display = '';
+        weekendsSection.style.display = '';
+    } else {
+        weekdaysSection.style.display = hasWeekdays ? '' : 'none';
+        weekendsSection.style.display = hasWeekends ? '' : 'none';
+    }
+
+    // Скрываем/показываем заголовки дней внутри секций
     document.querySelectorAll('.grid-header.day-header').forEach(header => {
         const day = parseInt(header.dataset.day);
         if (activeDays.length === 0 || activeDays.includes(day)) {
@@ -856,11 +972,23 @@ function updateVisibleDays() {
 }
 
 function updateGridColumns() {
-    const activeDays = Array.from(document.querySelectorAll('.day-filter-btn.active'));
-    const visibleDays = activeDays.length === 0 ? 7 : activeDays.length;
+    // Будние дни
+    const activeWeekdays = Array.from(document.querySelectorAll('.day-filter-btn.active[data-day="1"], .day-filter-btn.active[data-day="2"], .day-filter-btn.active[data-day="3"], .day-filter-btn.active[data-day="4"], .day-filter-btn.active[data-day="5"]'));
+    const visibleWeekdays = activeWeekdays.length === 0 ? 5 : activeWeekdays.length;
 
-    const grid = document.getElementById('plannerGrid');
-    grid.style.gridTemplateColumns = `50px repeat(${visibleDays}, minmax(120px, 1fr))`;
+    const weekdaysGrid = document.getElementById('weekdaysGrid');
+    if (weekdaysGrid && visibleWeekdays > 0) {
+        weekdaysGrid.style.gridTemplateColumns = `50px repeat(${visibleWeekdays}, minmax(100px, 1fr))`;
+    }
+
+    // Выходные
+    const activeWeekends = Array.from(document.querySelectorAll('.day-filter-btn.active[data-day="6"], .day-filter-btn.active[data-day="7"]'));
+    const visibleWeekends = activeWeekends.length === 0 ? 2 : activeWeekends.length;
+
+    const weekendsGrid = document.getElementById('weekendsGrid');
+    if (weekendsGrid && visibleWeekends > 0) {
+        weekendsGrid.style.gridTemplateColumns = `50px repeat(${visibleWeekends}, minmax(100px, 1fr))`;
+    }
 }
 
 function toggleRoomFilter(button) {
