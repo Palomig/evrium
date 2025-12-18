@@ -895,6 +895,11 @@ async function handleDrop(e) {
         return;
     }
 
+    // Сохраняем ссылку на карточку ДО async запроса (draggedCard обнулится в handleDragEnd)
+    const cardToMove = document.querySelector(
+        `.student-card[data-student-id="${data.studentId}"][data-day="${data.fromDay}"][data-time="${data.fromTime}"][data-room="${data.fromRoom}"]`
+    );
+
     try {
         const response = await fetch('/zarplata/api/planner.php?action=move_student', {
             method: 'POST',
@@ -914,11 +919,11 @@ async function handleDrop(e) {
         const result = await response.json();
 
         if (result.success) {
-            if (draggedCard) {
-                draggedCard.dataset.day = toDay;
-                draggedCard.dataset.time = toTime;
-                draggedCard.dataset.room = toRoom;
-                slot.appendChild(draggedCard);
+            if (cardToMove) {
+                cardToMove.dataset.day = toDay;
+                cardToMove.dataset.time = toTime;
+                cardToMove.dataset.room = toRoom;
+                slot.appendChild(cardToMove);
             }
             showNotification('Ученик перемещён', 'success');
         } else {
