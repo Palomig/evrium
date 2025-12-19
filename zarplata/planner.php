@@ -493,9 +493,6 @@ body {
 
 /* Карточка ученика */
 .student-card {
-    background: linear-gradient(135deg, rgba(20, 184, 166, 0.35) 0%, rgba(20, 184, 166, 0.15) 100%);
-    border: 1px solid rgba(20, 184, 166, 0.6);
-    border-left: 3px solid rgba(20, 184, 166, 0.8);
     border-radius: 4px;
     padding: 4px 6px;
     font-size: 0.75rem;
@@ -512,8 +509,6 @@ body {
 .student-card:hover {
     transform: translateY(-1px);
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
-    border-color: #14b8a6;
-    background: linear-gradient(135deg, rgba(20, 184, 166, 0.45) 0%, rgba(20, 184, 166, 0.25) 100%);
 }
 
 .student-card:active {
@@ -524,6 +519,122 @@ body {
     opacity: 0.5;
     transform: rotate(2deg);
 }
+
+/* Цвета преподавателей */
+.student-card.teacher-1 {
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.35) 0%, rgba(20, 184, 166, 0.15) 100%);
+    border: 1px solid rgba(20, 184, 166, 0.6);
+    border-left: 3px solid rgba(20, 184, 166, 0.9);
+}
+.student-card.teacher-1:hover {
+    border-color: #14b8a6;
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.45) 0%, rgba(20, 184, 166, 0.25) 100%);
+}
+
+.student-card.teacher-2 {
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.35) 0%, rgba(168, 85, 247, 0.15) 100%);
+    border: 1px solid rgba(168, 85, 247, 0.6);
+    border-left: 3px solid rgba(168, 85, 247, 0.9);
+}
+.student-card.teacher-2:hover {
+    border-color: #a855f7;
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.45) 0%, rgba(168, 85, 247, 0.25) 100%);
+}
+
+.student-card.teacher-3 {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.35) 0%, rgba(59, 130, 246, 0.15) 100%);
+    border: 1px solid rgba(59, 130, 246, 0.6);
+    border-left: 3px solid rgba(59, 130, 246, 0.9);
+}
+.student-card.teacher-3:hover {
+    border-color: #3b82f6;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.45) 0%, rgba(59, 130, 246, 0.25) 100%);
+}
+
+.student-card.teacher-4 {
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.35) 0%, rgba(249, 115, 22, 0.15) 100%);
+    border: 1px solid rgba(249, 115, 22, 0.6);
+    border-left: 3px solid rgba(249, 115, 22, 0.9);
+}
+.student-card.teacher-4:hover {
+    border-color: #f97316;
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.45) 0%, rgba(249, 115, 22, 0.25) 100%);
+}
+
+.student-card.teacher-5 {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.35) 0%, rgba(236, 72, 153, 0.15) 100%);
+    border: 1px solid rgba(236, 72, 153, 0.6);
+    border-left: 3px solid rgba(236, 72, 153, 0.9);
+}
+.student-card.teacher-5:hover {
+    border-color: #ec4899;
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.45) 0%, rgba(236, 72, 153, 0.25) 100%);
+}
+
+.student-card.teacher-6 {
+    background: linear-gradient(135deg, rgba(234, 179, 8, 0.35) 0%, rgba(234, 179, 8, 0.15) 100%);
+    border: 1px solid rgba(234, 179, 8, 0.6);
+    border-left: 3px solid rgba(234, 179, 8, 0.9);
+}
+.student-card.teacher-6:hover {
+    border-color: #eab308;
+    background: linear-gradient(135deg, rgba(234, 179, 8, 0.45) 0%, rgba(234, 179, 8, 0.25) 100%);
+}
+
+.student-card.teacher-7 {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.35) 0%, rgba(34, 197, 94, 0.15) 100%);
+    border: 1px solid rgba(34, 197, 94, 0.6);
+    border-left: 3px solid rgba(34, 197, 94, 0.9);
+}
+.student-card.teacher-7:hover {
+    border-color: #22c55e;
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.45) 0%, rgba(34, 197, 94, 0.25) 100%);
+}
+
+.student-card.teacher-8 {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.35) 0%, rgba(239, 68, 68, 0.15) 100%);
+    border: 1px solid rgba(239, 68, 68, 0.6);
+    border-left: 3px solid rgba(239, 68, 68, 0.9);
+}
+.student-card.teacher-8:hover {
+    border-color: #ef4444;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.45) 0%, rgba(239, 68, 68, 0.25) 100%);
+}
+
+/* Легенда преподавателей */
+.teacher-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 8px 12px;
+    background: #1a1f28;
+    border-radius: 6px;
+    margin-bottom: 12px;
+}
+
+.teacher-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: #d1d5db;
+}
+
+.teacher-color-box {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.teacher-color-1 { background: rgba(20, 184, 166, 0.6); }
+.teacher-color-2 { background: rgba(168, 85, 247, 0.6); }
+.teacher-color-3 { background: rgba(59, 130, 246, 0.6); }
+.teacher-color-4 { background: rgba(249, 115, 22, 0.6); }
+.teacher-color-5 { background: rgba(236, 72, 153, 0.6); }
+.teacher-color-6 { background: rgba(234, 179, 8, 0.6); }
+.teacher-color-7 { background: rgba(34, 197, 94, 0.6); }
+.teacher-color-8 { background: rgba(239, 68, 68, 0.6); }
 
 .student-tier {
     font-size: 0.65rem;
@@ -675,6 +786,19 @@ body {
     </div>
 </div>
 
+<!-- Легенда преподавателей -->
+<div class="teacher-legend">
+    <span style="color: #9ca3af; font-size: 0.75rem; margin-right: 4px;">Преподаватели:</span>
+    <?php foreach ($teachers as $teacher):
+        $colorIndex = ($teacher['id'] % 8) ?: 8;
+    ?>
+        <div class="teacher-legend-item">
+            <div class="teacher-color-box teacher-color-<?= $colorIndex ?>"></div>
+            <span><?= e($teacher['display_name'] ?: $teacher['name']) ?></span>
+        </div>
+    <?php endforeach; ?>
+</div>
+
 <!-- Сетка планировщика - две секции -->
 <div class="planner-container">
     <div class="planner-wrapper">
@@ -704,8 +828,10 @@ body {
                                     <div class="room-slot" data-room="<?= $room ?>" data-day="<?= $dayNum ?>" data-time="<?= $time ?>">
                                         <div class="room-slot-header"><?= $room ?></div>
                                         <?php if ($cellData && !empty($cellData['students'])): ?>
-                                            <?php foreach ($cellData['students'] as $student): ?>
-                                                <div class="student-card"
+                                            <?php foreach ($cellData['students'] as $student):
+                                                $teacherColorIndex = ($student['teacher_id'] % 8) ?: 8;
+                                            ?>
+                                                <div class="student-card teacher-<?= $teacherColorIndex ?>"
                                                      draggable="true"
                                                      data-student-id="<?= $student['id'] ?>"
                                                      data-student-name="<?= e($student['name']) ?>"
@@ -756,8 +882,10 @@ body {
                                     <div class="room-slot" data-room="<?= $room ?>" data-day="<?= $dayNum ?>" data-time="<?= $time ?>">
                                         <div class="room-slot-header"><?= $room ?></div>
                                         <?php if ($cellData && !empty($cellData['students'])): ?>
-                                            <?php foreach ($cellData['students'] as $student): ?>
-                                                <div class="student-card"
+                                            <?php foreach ($cellData['students'] as $student):
+                                                $teacherColorIndex = ($student['teacher_id'] % 8) ?: 8;
+                                            ?>
+                                                <div class="student-card teacher-<?= $teacherColorIndex ?>"
                                                      draggable="true"
                                                      data-student-id="<?= $student['id'] ?>"
                                                      data-student-name="<?= e($student['name']) ?>"
