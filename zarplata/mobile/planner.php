@@ -782,7 +782,7 @@ require_once __DIR__ . '/templates/header.php';
     <div class="move-sheet">
         <div class="move-header">
             <span class="move-title" id="moveTitle">Переместить</span>
-            <button type="button" class="move-close" id="closeModalBtn">Закрыть</button>
+            <button type="button" class="move-close" id="closeModalBtn" onclick="document.getElementById('moveModal').style.display='none'">Закрыть</button>
         </div>
         <div class="move-info" id="moveInfo"></div>
 
@@ -1070,20 +1070,10 @@ function showToast(message, type = 'success') {
 // Init
 loadFilters();
 
-// Explicit event listeners for mobile touch
-const closeBtn = document.getElementById('closeModalBtn');
-closeBtn.addEventListener('click', function(e) {
-    e.stopPropagation();
-    closeModal();
-});
-closeBtn.addEventListener('touchstart', function(e) {
-    e.stopPropagation();
-});
-closeBtn.addEventListener('touchend', function(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    closeModal();
-});
+// Close button - simple direct approach
+document.getElementById('closeModalBtn').ontouchend = function() {
+    document.getElementById('moveModal').style.display = 'none';
+};
 </script>
 
 <?php require_once __DIR__ . '/templates/footer.php'; ?>
