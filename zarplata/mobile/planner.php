@@ -1014,9 +1014,21 @@ function backToStep1() {
 
 // Close modal
 function closeModal() {
-    document.getElementById('moveModal').classList.remove('active');
-    document.querySelectorAll('.student-card.selected').forEach(c => c.classList.remove('selected'));
-    selectedStudent = null;
+    console.log('closeModal called');
+    try {
+        const modal = document.getElementById('moveModal');
+        console.log('Modal element:', modal);
+        console.log('Modal classes before:', modal.className);
+        modal.classList.remove('active');
+        console.log('Modal classes after:', modal.className);
+
+        document.querySelectorAll('.student-card.selected').forEach(c => c.classList.remove('selected'));
+        selectedStudent = null;
+        selectedMoveDay = null;
+    } catch(e) {
+        console.error('Error in closeModal:', e);
+        alert('Error: ' + e.message);
+    }
 }
 
 // Move student
