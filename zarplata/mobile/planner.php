@@ -460,8 +460,8 @@ require_once __DIR__ . '/templates/header.php';
 }
 
 .move-close {
-    width: 28px;
-    height: 28px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     background: var(--bg-elevated);
     border: none;
@@ -470,6 +470,10 @@ require_once __DIR__ . '/templates/header.php';
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    font-size: 18px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    z-index: 10;
 }
 
 .move-info {
@@ -766,7 +770,7 @@ require_once __DIR__ . '/templates/header.php';
     <div class="move-sheet">
         <div class="move-header">
             <span class="move-title" id="moveTitle">Переместить</span>
-            <button class="move-close" onclick="closeModal()">✕</button>
+            <button type="button" class="move-close" onclick="closeModal()">✕</button>
         </div>
         <div class="move-info" id="moveInfo"></div>
 
@@ -1047,6 +1051,13 @@ function showToast(message, type = 'success') {
 
 // Init
 loadFilters();
+
+// Explicit event listeners for mobile touch
+document.querySelector('.move-close').addEventListener('click', closeModal);
+document.querySelector('.move-close').addEventListener('touchend', function(e) {
+    e.preventDefault();
+    closeModal();
+});
 </script>
 
 <?php require_once __DIR__ . '/templates/footer.php'; ?>
