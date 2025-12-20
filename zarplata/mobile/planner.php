@@ -465,9 +465,9 @@ require_once __DIR__ . '/templates/header.php';
 }
 
 .move-close {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
+    min-width: 80px;
+    height: 44px;
+    border-radius: 8px;
     background: var(--status-rose);
     border: none;
     color: #fff;
@@ -475,7 +475,8 @@ require_once __DIR__ . '/templates/header.php';
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 18px;
+    font-size: 14px;
+    font-weight: 600;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
     z-index: 10;
@@ -483,7 +484,7 @@ require_once __DIR__ . '/templates/header.php';
 }
 
 .move-close:active {
-    transform: scale(0.9);
+    transform: scale(0.95);
     opacity: 0.8;
 }
 
@@ -781,7 +782,7 @@ require_once __DIR__ . '/templates/header.php';
     <div class="move-sheet">
         <div class="move-header">
             <span class="move-title" id="moveTitle">Переместить</span>
-            <button type="button" class="move-close" onclick="closeModal()">✕</button>
+            <button type="button" class="move-close" id="closeModalBtn">Закрыть</button>
         </div>
         <div class="move-info" id="moveInfo"></div>
 
@@ -1064,9 +1065,17 @@ function showToast(message, type = 'success') {
 loadFilters();
 
 // Explicit event listeners for mobile touch
-document.querySelector('.move-close').addEventListener('click', closeModal);
-document.querySelector('.move-close').addEventListener('touchend', function(e) {
+const closeBtn = document.getElementById('closeModalBtn');
+closeBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    closeModal();
+});
+closeBtn.addEventListener('touchstart', function(e) {
+    e.stopPropagation();
+});
+closeBtn.addEventListener('touchend', function(e) {
     e.preventDefault();
+    e.stopPropagation();
     closeModal();
 });
 </script>
