@@ -222,10 +222,12 @@ require_once __DIR__ . '/templates/header.php';
     -webkit-overflow-scrolling: touch;
 }
 
-/* Schedule table */
+/* Schedule table - explicit table layout */
 .schedule-table {
-    min-width: 100%;
     border-collapse: collapse;
+    table-layout: fixed;
+    width: max-content;
+    min-width: 100%;
 }
 
 .schedule-table th,
@@ -240,8 +242,8 @@ require_once __DIR__ . '/templates/header.php';
     top: 0;
     z-index: 10;
     background: var(--bg-card);
-    padding: 6px 4px;
-    font-size: 11px;
+    padding: 8px 4px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--text-secondary);
     text-align: center;
@@ -252,13 +254,14 @@ require_once __DIR__ . '/templates/header.php';
     position: sticky;
     left: 0;
     z-index: 20;
-    width: 45px;
-    min-width: 45px;
+    width: 50px;
+    min-width: 50px;
     background: var(--bg-card);
 }
 
 .schedule-table th.day-col {
-    min-width: 80px;
+    width: 130px;
+    min-width: 130px;
 }
 
 /* Time cells */
@@ -266,10 +269,12 @@ require_once __DIR__ . '/templates/header.php';
     position: sticky;
     left: 0;
     z-index: 5;
+    width: 50px;
+    min-width: 50px;
     background: var(--bg-card);
-    padding: 4px;
+    padding: 6px 4px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--accent);
     text-align: center;
@@ -278,36 +283,40 @@ require_once __DIR__ . '/templates/header.php';
 
 /* Day cells */
 .schedule-table td.day-cell {
-    padding: 3px;
-    min-width: 80px;
+    width: 130px;
+    min-width: 130px;
+    padding: 4px;
     background: var(--bg-dark);
 }
 
 .schedule-table td.day-cell:nth-child(even) {
-    background: var(--bg-elevated);
+    background: #0f1318;
 }
 
-/* Room slots */
+/* Room slots - horizontal like desktop */
 .room-slots {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     gap: 2px;
+    min-height: 40px;
 }
 
 .room-slot {
     background: var(--bg-card);
     border-radius: 4px;
-    padding: 2px;
-    min-height: 24px;
+    padding: 3px;
+    min-height: 36px;
+    border: 1px solid var(--border);
 }
 
 .room-slot-header {
-    font-size: 9px;
+    font-size: 8px;
     color: var(--text-muted);
     text-align: center;
-    padding: 1px 0;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 2px;
+    padding: 2px 0;
+    background: var(--bg-elevated);
+    border-radius: 2px;
+    margin-bottom: 3px;
 }
 
 /* Student cards - compact */
