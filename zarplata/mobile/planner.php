@@ -452,6 +452,11 @@ require_once __DIR__ . '/templates/header.php';
     align-items: center;
     justify-content: space-between;
     margin-bottom: 12px;
+    position: sticky;
+    top: 0;
+    background: var(--bg-card);
+    padding: 4px 0;
+    z-index: 5;
 }
 
 .move-title {
@@ -463,9 +468,9 @@ require_once __DIR__ . '/templates/header.php';
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background: var(--bg-elevated);
+    background: var(--status-rose);
     border: none;
-    color: var(--text-secondary);
+    color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -474,6 +479,12 @@ require_once __DIR__ . '/templates/header.php';
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
     z-index: 10;
+    pointer-events: auto;
+}
+
+.move-close:active {
+    transform: scale(0.9);
+    opacity: 0.8;
 }
 
 .move-info {
