@@ -965,7 +965,9 @@ function showMoveModal() {
     }
     document.getElementById('moveDaysGrid').innerHTML = daysHtml;
 
-    document.getElementById('moveModal').classList.add('active');
+    const modal = document.getElementById('moveModal');
+    modal.style.display = 'flex';
+    modal.classList.add('active');
 }
 
 // Step 1 → Step 2: After selecting a day
@@ -1014,21 +1016,13 @@ function backToStep1() {
 
 // Close modal
 function closeModal() {
-    console.log('closeModal called');
-    try {
-        const modal = document.getElementById('moveModal');
-        console.log('Modal element:', modal);
-        console.log('Modal classes before:', modal.className);
-        modal.classList.remove('active');
-        console.log('Modal classes after:', modal.className);
+    const modal = document.getElementById('moveModal');
+    modal.classList.remove('active');
+    modal.style.display = 'none';
 
-        document.querySelectorAll('.student-card.selected').forEach(c => c.classList.remove('selected'));
-        selectedStudent = null;
-        selectedMoveDay = null;
-    } catch(e) {
-        console.error('Error in closeModal:', e);
-        alert('Error: ' + e.message);
-    }
+    document.querySelectorAll('.student-card.selected').forEach(c => c.classList.remove('selected'));
+    selectedStudent = null;
+    selectedMoveDay = null;
 }
 
 // Move student
