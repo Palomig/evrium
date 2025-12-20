@@ -1,7 +1,7 @@
 <?php
 /**
  * Mobile Planner Page - Table View
- * Compact table layout with all days, filters, tap-to-move
+ * Two sections: Weekdays (15:00-21:00) and Weekends (08:00-21:00)
  */
 
 require_once __DIR__ . '/../config/db.php';
@@ -108,6 +108,34 @@ foreach ($students as $student) {
     }
 }
 
+function getTeacherColor($index) {
+    $colors = [
+        1 => 'rgba(20, 184, 166, 0.8)',
+        2 => 'rgba(168, 85, 247, 0.8)',
+        3 => 'rgba(59, 130, 246, 0.8)',
+        4 => 'rgba(249, 115, 22, 0.8)',
+        5 => 'rgba(236, 72, 153, 0.8)',
+        6 => 'rgba(234, 179, 8, 0.8)',
+        7 => 'rgba(34, 197, 94, 0.8)',
+        8 => 'rgba(239, 68, 68, 0.8)',
+    ];
+    return $colors[$index] ?? $colors[1];
+}
+
+function getTeacherBg($index) {
+    $colors = [
+        1 => 'rgba(20, 184, 166, 0.25)',
+        2 => 'rgba(168, 85, 247, 0.25)',
+        3 => 'rgba(59, 130, 246, 0.25)',
+        4 => 'rgba(249, 115, 22, 0.25)',
+        5 => 'rgba(236, 72, 153, 0.25)',
+        6 => 'rgba(234, 179, 8, 0.25)',
+        7 => 'rgba(34, 197, 94, 0.25)',
+        8 => 'rgba(239, 68, 68, 0.25)',
+    ];
+    return $colors[$index] ?? $colors[1];
+}
+
 define('PAGE_TITLE', 'Планировщик');
 define('ACTIVE_PAGE', 'planner');
 
@@ -128,7 +156,7 @@ require_once __DIR__ . '/templates/header.php';
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    padding: 10px 12px;
+    padding: 8px 12px;
     background: var(--bg-card);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
@@ -141,17 +169,17 @@ require_once __DIR__ . '/templates/header.php';
 }
 
 .filter-label {
-    font-size: 11px;
+    font-size: 10px;
     color: var(--text-muted);
-    margin-right: 4px;
+    margin-right: 2px;
 }
 
 .day-btn {
-    min-width: 32px;
-    height: 28px;
-    padding: 0 8px;
+    min-width: 28px;
+    height: 26px;
+    padding: 0 6px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--text-secondary);
     background: var(--bg-elevated);
@@ -167,10 +195,10 @@ require_once __DIR__ . '/templates/header.php';
 }
 
 .room-btn {
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--text-secondary);
     background: var(--bg-elevated);
@@ -185,7 +213,7 @@ require_once __DIR__ . '/templates/header.php';
     border-color: var(--accent);
 }
 
-/* Teacher legend - compact */
+/* Teacher legend */
 .teacher-legend {
     display: flex;
     overflow-x: auto;
@@ -215,122 +243,132 @@ require_once __DIR__ . '/templates/header.php';
     border-radius: 2px;
 }
 
-/* Table wrapper */
-.table-wrapper {
+/* Sections wrapper */
+.sections-wrapper {
     flex: 1;
     overflow: auto;
     -webkit-overflow-scrolling: touch;
+    padding: 8px;
 }
 
-/* Schedule table - explicit table layout */
-.schedule-table {
-    border-collapse: collapse;
-    table-layout: fixed;
-    width: max-content;
-    min-width: 100%;
+/* Section */
+.planner-section {
+    margin-bottom: 16px;
 }
 
-.schedule-table th,
-.schedule-table td {
-    border: 1px solid var(--border);
-    vertical-align: top;
-}
-
-/* Header cells */
-.schedule-table th {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background: var(--bg-card);
-    padding: 8px 4px;
+.section-title {
     font-size: 12px;
     font-weight: 600;
-    color: var(--text-secondary);
-    text-align: center;
-    white-space: nowrap;
+    color: var(--text-muted);
+    padding: 6px 8px;
+    background: var(--bg-elevated);
+    border-radius: 6px;
+    margin-bottom: 8px;
 }
 
-.schedule-table th.time-col {
-    position: sticky;
-    left: 0;
-    z-index: 20;
-    width: 50px;
-    min-width: 50px;
-    background: var(--bg-card);
+/* Schedule grid */
+.schedule-grid {
+    display: grid;
+    gap: 1px;
+    background: var(--border);
+    border-radius: 6px;
+    overflow: hidden;
 }
 
-.schedule-table th.day-col {
-    width: 130px;
-    min-width: 130px;
+.schedule-grid.weekdays {
+    grid-template-columns: 40px repeat(5, 1fr);
 }
 
-/* Time cells */
-.schedule-table td.time-cell {
-    position: sticky;
-    left: 0;
-    z-index: 5;
-    width: 50px;
-    min-width: 50px;
+.schedule-grid.weekends {
+    grid-template-columns: 40px repeat(2, 1fr);
+}
+
+/* Grid header */
+.grid-header {
     background: var(--bg-card);
     padding: 6px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.grid-header.time-header {
+    color: var(--text-muted);
+}
+
+.grid-header.day-header {
+    color: var(--text-secondary);
+}
+
+.grid-header.hidden {
+    display: none;
+}
+
+/* Time cell */
+.time-cell {
+    background: var(--bg-card);
+    padding: 4px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 600;
     color: var(--accent);
     text-align: center;
-    white-space: nowrap;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
 }
 
-/* Day cells */
-.schedule-table td.day-cell {
-    width: 130px;
-    min-width: 130px;
-    padding: 4px;
+/* Schedule cell */
+.schedule-cell {
     background: var(--bg-dark);
+    padding: 3px;
+    min-height: 50px;
 }
 
-.schedule-table td.day-cell:nth-child(even) {
-    background: #0f1318;
+.schedule-cell.hidden {
+    display: none;
 }
 
-/* Room slots - horizontal like desktop */
+/* Room slots */
 .room-slots {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 2px;
-    min-height: 40px;
 }
 
 .room-slot {
     background: var(--bg-card);
-    border-radius: 4px;
-    padding: 3px;
-    min-height: 36px;
-    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 2px;
+    min-height: 30px;
+}
+
+.room-slot.hidden {
+    display: none;
 }
 
 .room-slot-header {
-    font-size: 8px;
+    font-size: 7px;
     color: var(--text-muted);
     text-align: center;
-    padding: 2px 0;
+    padding: 1px 0;
     background: var(--bg-elevated);
     border-radius: 2px;
-    margin-bottom: 3px;
+    margin-bottom: 2px;
 }
 
-/* Student cards - compact */
+/* Student cards */
 .student-card {
     display: flex;
     align-items: center;
-    gap: 3px;
-    padding: 3px 4px;
+    gap: 2px;
+    padding: 2px 3px;
     margin-bottom: 2px;
     border-radius: 3px;
     border-left: 2px solid var(--accent);
     cursor: pointer;
     transition: all 0.15s ease;
-    font-size: 10px;
+    font-size: 9px;
 }
 
 .student-card:last-child {
@@ -346,9 +384,9 @@ require_once __DIR__ . '/templates/header.php';
 }
 
 .student-tier {
-    font-size: 8px;
+    font-size: 7px;
     font-weight: 700;
-    padding: 1px 3px;
+    padding: 1px 2px;
     border-radius: 2px;
     flex-shrink: 0;
 }
@@ -368,24 +406,9 @@ require_once __DIR__ . '/templates/header.php';
 }
 
 .student-class {
-    font-size: 9px;
+    font-size: 8px;
     color: var(--text-muted);
     flex-shrink: 0;
-}
-
-/* Hidden elements */
-.day-col.hidden,
-.day-cell.hidden,
-.room-slot.hidden {
-    display: none !important;
-}
-
-/* Empty slot message */
-.empty-slot {
-    font-size: 9px;
-    color: var(--text-muted);
-    text-align: center;
-    padding: 4px;
 }
 
 /* Move modal */
@@ -449,54 +472,59 @@ require_once __DIR__ . '/templates/header.php';
     font-size: 13px;
 }
 
-.move-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
+.move-section {
     margin-bottom: 12px;
 }
 
-.move-day-header {
-    font-size: 10px;
+.move-section-title {
+    font-size: 11px;
     font-weight: 600;
     color: var(--text-muted);
-    text-align: center;
-    padding: 4px;
+    margin-bottom: 6px;
 }
 
-.move-times {
-    max-height: 200px;
-    overflow-y: auto;
-}
-
-.move-time-row {
+.move-grid {
     display: grid;
-    grid-template-columns: 45px repeat(7, 1fr);
-    gap: 3px;
-    margin-bottom: 3px;
+    gap: 2px;
+    font-size: 9px;
+}
+
+.move-grid.weekdays {
+    grid-template-columns: 35px repeat(5, 1fr);
+}
+
+.move-grid.weekends {
+    grid-template-columns: 35px repeat(2, 1fr);
+}
+
+.move-day-header {
+    text-align: center;
+    color: var(--text-muted);
+    font-weight: 600;
+    padding: 4px 2px;
 }
 
 .move-time-label {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
     color: var(--accent);
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 2px;
 }
 
 .move-cell {
     display: flex;
-    gap: 2px;
+    gap: 1px;
 }
 
 .move-room-btn {
     flex: 1;
-    padding: 6px 2px;
-    border-radius: 4px;
+    padding: 4px 1px;
+    border-radius: 3px;
     background: var(--bg-elevated);
     border: 1px solid var(--border);
-    font-size: 9px;
+    font-size: 8px;
     color: var(--text-secondary);
     cursor: pointer;
     transition: all 0.15s ease;
@@ -570,34 +598,32 @@ require_once __DIR__ . '/templates/header.php';
         <?php endforeach; ?>
     </div>
 
-    <!-- Table -->
-    <div class="table-wrapper">
-        <table class="schedule-table">
-            <thead>
-                <tr>
-                    <th class="time-col">Время</th>
-                    <?php for ($d = 1; $d <= 7; $d++): ?>
-                        <th class="day-col" data-day="<?= $d ?>"><?= $daysOfWeek[$d]['short'] ?></th>
-                    <?php endfor; ?>
-                </tr>
-            </thead>
-            <tbody>
-                <?php
-                // Все часы от 8 до 21
-                for ($hour = 8; $hour <= 21; $hour++):
+    <!-- Sections -->
+    <div class="sections-wrapper">
+        <!-- Weekdays section: 15:00-21:00 -->
+        <div class="planner-section" id="weekdaysSection">
+            <div class="section-title">Будни (15:00 - 21:00)</div>
+            <div class="schedule-grid weekdays" id="weekdaysGrid">
+                <!-- Headers -->
+                <div class="grid-header time-header"></div>
+                <?php for ($d = 1; $d <= 5; $d++): ?>
+                    <div class="grid-header day-header" data-day="<?= $d ?>"><?= $daysOfWeek[$d]['short'] ?></div>
+                <?php endfor; ?>
+
+                <!-- Time rows: 15:00-21:00 -->
+                <?php for ($hour = 15; $hour <= 21; $hour++):
                     $time = sprintf('%02d:00', $hour);
                 ?>
-                <tr>
-                    <td class="time-cell"><?= $time ?></td>
-                    <?php for ($d = 1; $d <= 7; $d++): ?>
-                        <td class="day-cell" data-day="<?= $d ?>">
+                    <div class="time-cell"><?= $time ?></div>
+                    <?php for ($d = 1; $d <= 5; $d++): ?>
+                        <div class="schedule-cell" data-day="<?= $d ?>">
                             <div class="room-slots">
                                 <?php for ($room = 1; $room <= 3; $room++):
                                     $key = "{$d}_{$time}_{$room}";
                                     $cellData = $scheduleGrid[$key] ?? null;
                                 ?>
                                     <div class="room-slot" data-room="<?= $room ?>" data-day="<?= $d ?>" data-time="<?= $time ?>">
-                                        <div class="room-slot-header">К<?= $room ?></div>
+                                        <div class="room-slot-header"><?= $room ?></div>
                                         <?php if ($cellData && !empty($cellData['students'])): ?>
                                             <?php foreach ($cellData['students'] as $student):
                                                 $colorIndex = ($student['teacher_id'] % 8) ?: 8;
@@ -620,12 +646,63 @@ require_once __DIR__ . '/templates/header.php';
                                     </div>
                                 <?php endfor; ?>
                             </div>
-                        </td>
+                        </div>
                     <?php endfor; ?>
-                </tr>
                 <?php endfor; ?>
-            </tbody>
-        </table>
+            </div>
+        </div>
+
+        <!-- Weekends section: 08:00-21:00 -->
+        <div class="planner-section" id="weekendsSection">
+            <div class="section-title">Выходные (08:00 - 21:00)</div>
+            <div class="schedule-grid weekends" id="weekendsGrid">
+                <!-- Headers -->
+                <div class="grid-header time-header"></div>
+                <?php for ($d = 6; $d <= 7; $d++): ?>
+                    <div class="grid-header day-header" data-day="<?= $d ?>"><?= $daysOfWeek[$d]['short'] ?></div>
+                <?php endfor; ?>
+
+                <!-- Time rows: 08:00-21:00 -->
+                <?php for ($hour = 8; $hour <= 21; $hour++):
+                    $time = sprintf('%02d:00', $hour);
+                ?>
+                    <div class="time-cell"><?= $time ?></div>
+                    <?php for ($d = 6; $d <= 7; $d++): ?>
+                        <div class="schedule-cell" data-day="<?= $d ?>">
+                            <div class="room-slots">
+                                <?php for ($room = 1; $room <= 3; $room++):
+                                    $key = "{$d}_{$time}_{$room}";
+                                    $cellData = $scheduleGrid[$key] ?? null;
+                                ?>
+                                    <div class="room-slot" data-room="<?= $room ?>" data-day="<?= $d ?>" data-time="<?= $time ?>">
+                                        <div class="room-slot-header"><?= $room ?></div>
+                                        <?php if ($cellData && !empty($cellData['students'])): ?>
+                                            <?php foreach ($cellData['students'] as $student):
+                                                $colorIndex = ($student['teacher_id'] % 8) ?: 8;
+                                            ?>
+                                                <div class="student-card"
+                                                     style="background: <?= getTeacherBg($colorIndex) ?>; border-left-color: <?= getTeacherColor($colorIndex) ?>;"
+                                                     data-student-id="<?= $student['id'] ?>"
+                                                     data-student-name="<?= e($student['name']) ?>"
+                                                     data-day="<?= $d ?>"
+                                                     data-time="<?= $time ?>"
+                                                     data-room="<?= $room ?>"
+                                                     data-teacher-id="<?= $student['teacher_id'] ?>"
+                                                     onclick="selectStudent(this)">
+                                                    <span class="student-tier tier-<?= $student['tier'] ?>"><?= $student['tier'] ?></span>
+                                                    <span class="student-name"><?= e($student['name']) ?></span>
+                                                    <span class="student-class"><?= $student['class'] ?></span>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endfor; ?>
+                            </div>
+                        </div>
+                    <?php endfor; ?>
+                <?php endfor; ?>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -637,42 +714,23 @@ require_once __DIR__ . '/templates/header.php';
             <button class="move-close" onclick="closeModal()">✕</button>
         </div>
         <div class="move-info" id="moveInfo"></div>
-        <div class="move-times" id="moveTimes"></div>
+
+        <!-- Weekdays move options -->
+        <div class="move-section">
+            <div class="move-section-title">Будни (15:00-21:00)</div>
+            <div class="move-grid weekdays" id="moveWeekdays"></div>
+        </div>
+
+        <!-- Weekends move options -->
+        <div class="move-section">
+            <div class="move-section-title">Выходные (08:00-21:00)</div>
+            <div class="move-grid weekends" id="moveWeekends"></div>
+        </div>
     </div>
 </div>
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
-
-<?php
-function getTeacherColor($index) {
-    $colors = [
-        1 => 'rgba(20, 184, 166, 0.8)',
-        2 => 'rgba(168, 85, 247, 0.8)',
-        3 => 'rgba(59, 130, 246, 0.8)',
-        4 => 'rgba(249, 115, 22, 0.8)',
-        5 => 'rgba(236, 72, 153, 0.8)',
-        6 => 'rgba(234, 179, 8, 0.8)',
-        7 => 'rgba(34, 197, 94, 0.8)',
-        8 => 'rgba(239, 68, 68, 0.8)',
-    ];
-    return $colors[$index] ?? $colors[1];
-}
-
-function getTeacherBg($index) {
-    $colors = [
-        1 => 'rgba(20, 184, 166, 0.25)',
-        2 => 'rgba(168, 85, 247, 0.25)',
-        3 => 'rgba(59, 130, 246, 0.25)',
-        4 => 'rgba(249, 115, 22, 0.25)',
-        5 => 'rgba(236, 72, 153, 0.25)',
-        6 => 'rgba(234, 179, 8, 0.25)',
-        7 => 'rgba(34, 197, 94, 0.25)',
-        8 => 'rgba(239, 68, 68, 0.25)',
-    ];
-    return $colors[$index] ?? $colors[1];
-}
-?>
 
 <script>
 const daysOfWeek = <?= json_encode($daysOfWeek, JSON_UNESCAPED_UNICODE) ?>;
@@ -684,9 +742,17 @@ function toggleDay(day) {
     btn.classList.toggle('active');
 
     const isActive = btn.classList.contains('active');
-    document.querySelectorAll(`.day-col[data-day="${day}"], .day-cell[data-day="${day}"]`).forEach(el => {
+
+    // Hide/show day header and cells
+    document.querySelectorAll(`.day-header[data-day="${day}"], .schedule-cell[data-day="${day}"]`).forEach(el => {
         el.classList.toggle('hidden', !isActive);
     });
+
+    // Update grid columns
+    updateGridColumns();
+
+    // Show/hide sections
+    updateSectionVisibility();
 
     saveFilters();
 }
@@ -704,6 +770,32 @@ function toggleRoom(room) {
     saveFilters();
 }
 
+// Update grid columns based on visible days
+function updateGridColumns() {
+    const activeWeekdays = document.querySelectorAll('.day-btn.active[data-day="1"], .day-btn.active[data-day="2"], .day-btn.active[data-day="3"], .day-btn.active[data-day="4"], .day-btn.active[data-day="5"]').length;
+    const activeWeekends = document.querySelectorAll('.day-btn.active[data-day="6"], .day-btn.active[data-day="7"]').length;
+
+    const weekdaysGrid = document.getElementById('weekdaysGrid');
+    const weekendsGrid = document.getElementById('weekendsGrid');
+
+    if (weekdaysGrid && activeWeekdays > 0) {
+        weekdaysGrid.style.gridTemplateColumns = `40px repeat(${activeWeekdays}, 1fr)`;
+    }
+
+    if (weekendsGrid && activeWeekends > 0) {
+        weekendsGrid.style.gridTemplateColumns = `40px repeat(${activeWeekends}, 1fr)`;
+    }
+}
+
+// Show/hide sections based on active days
+function updateSectionVisibility() {
+    const hasWeekdays = document.querySelectorAll('.day-btn.active[data-day="1"], .day-btn.active[data-day="2"], .day-btn.active[data-day="3"], .day-btn.active[data-day="4"], .day-btn.active[data-day="5"]').length > 0;
+    const hasWeekends = document.querySelectorAll('.day-btn.active[data-day="6"], .day-btn.active[data-day="7"]').length > 0;
+
+    document.getElementById('weekdaysSection').style.display = hasWeekdays ? '' : 'none';
+    document.getElementById('weekendsSection').style.display = hasWeekends ? '' : 'none';
+}
+
 // Save filters to localStorage
 function saveFilters() {
     const days = Array.from(document.querySelectorAll('.day-btn.active')).map(b => b.dataset.day);
@@ -715,26 +807,42 @@ function saveFilters() {
 function loadFilters() {
     try {
         const saved = JSON.parse(localStorage.getItem('mobilePlannerFilters'));
-        if (saved) {
+        if (saved && saved.days && saved.days.length > 0) {
             // Reset all
-            document.querySelectorAll('.day-btn, .room-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.day-col, .day-cell').forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll('.room-slot').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.day-btn').forEach(b => {
+                b.classList.remove('active');
+            });
+            document.querySelectorAll('.room-btn').forEach(b => {
+                b.classList.remove('active');
+            });
 
-            // Apply saved
+            // Apply saved days
             saved.days.forEach(d => {
-                document.querySelector(`.day-btn[data-day="${d}"]`)?.classList.add('active');
-                document.querySelectorAll(`.day-col[data-day="${d}"], .day-cell[data-day="${d}"]`).forEach(el => {
-                    el.classList.remove('hidden');
-                });
+                const btn = document.querySelector(`.day-btn[data-day="${d}"]`);
+                if (btn) btn.classList.add('active');
             });
 
+            // Apply saved rooms
             saved.rooms.forEach(r => {
-                document.querySelector(`.room-btn[data-room="${r}"]`)?.classList.add('active');
-                document.querySelectorAll(`.room-slot[data-room="${r}"]`).forEach(el => {
-                    el.classList.remove('hidden');
-                });
+                const btn = document.querySelector(`.room-btn[data-room="${r}"]`);
+                if (btn) btn.classList.add('active');
             });
+
+            // Update visibility
+            document.querySelectorAll('.day-header, .schedule-cell').forEach(el => {
+                const day = el.dataset.day;
+                const isActive = saved.days.includes(day);
+                el.classList.toggle('hidden', !isActive);
+            });
+
+            document.querySelectorAll('.room-slot').forEach(el => {
+                const room = el.dataset.room;
+                const isActive = saved.rooms.includes(room);
+                el.classList.toggle('hidden', !isActive);
+            });
+
+            updateGridColumns();
+            updateSectionVisibility();
         }
     } catch(e) {}
 }
@@ -765,33 +873,50 @@ function showMoveModal() {
         `<strong>${selectedStudent.name}</strong><br>
          ${daysOfWeek[selectedStudent.day].name}, ${selectedStudent.time}, Каб. ${selectedStudent.room}`;
 
-    // Build compact grid
-    let html = '<div style="display:grid;grid-template-columns:45px repeat(7,1fr);gap:2px;font-size:10px;">';
-
-    // Day headers
-    html += '<div></div>';
-    for (let d = 1; d <= 7; d++) {
-        html += `<div style="text-align:center;color:var(--text-muted);font-weight:600;">${daysOfWeek[d].short}</div>`;
+    // Build weekdays grid (15:00-21:00)
+    let weekdaysHtml = '<div></div>';
+    for (let d = 1; d <= 5; d++) {
+        weekdaysHtml += `<div class="move-day-header">${daysOfWeek[d].short}</div>`;
     }
 
-    // Time rows
-    for (let h = 8; h <= 21; h++) {
+    for (let h = 15; h <= 21; h++) {
         const time = String(h).padStart(2, '0') + ':00';
-        html += `<div style="color:var(--accent);font-family:monospace;display:flex;align-items:center;justify-content:center;">${time}</div>`;
+        weekdaysHtml += `<div class="move-time-label">${time}</div>`;
 
-        for (let d = 1; d <= 7; d++) {
-            html += '<div style="display:flex;gap:1px;">';
+        for (let d = 1; d <= 5; d++) {
+            weekdaysHtml += '<div class="move-cell">';
             for (let r = 1; r <= 3; r++) {
                 const isCurrent = d === selectedStudent.day && time === selectedStudent.time && r === selectedStudent.room;
-                html += `<button class="move-room-btn ${isCurrent ? 'current' : ''}"
-                         onclick="moveStudent(${d},'${time}',${r})">${r}</button>`;
+                weekdaysHtml += `<button class="move-room-btn ${isCurrent ? 'current' : ''}" onclick="moveStudent(${d},'${time}',${r})">${r}</button>`;
             }
-            html += '</div>';
+            weekdaysHtml += '</div>';
         }
     }
 
-    html += '</div>';
-    document.getElementById('moveTimes').innerHTML = html;
+    document.getElementById('moveWeekdays').innerHTML = weekdaysHtml;
+
+    // Build weekends grid (08:00-21:00)
+    let weekendsHtml = '<div></div>';
+    for (let d = 6; d <= 7; d++) {
+        weekendsHtml += `<div class="move-day-header">${daysOfWeek[d].short}</div>`;
+    }
+
+    for (let h = 8; h <= 21; h++) {
+        const time = String(h).padStart(2, '0') + ':00';
+        weekendsHtml += `<div class="move-time-label">${time}</div>`;
+
+        for (let d = 6; d <= 7; d++) {
+            weekendsHtml += '<div class="move-cell">';
+            for (let r = 1; r <= 3; r++) {
+                const isCurrent = d === selectedStudent.day && time === selectedStudent.time && r === selectedStudent.room;
+                weekendsHtml += `<button class="move-room-btn ${isCurrent ? 'current' : ''}" onclick="moveStudent(${d},'${time}',${r})">${r}</button>`;
+            }
+            weekendsHtml += '</div>';
+        }
+    }
+
+    document.getElementById('moveWeekends').innerHTML = weekendsHtml;
+
     document.getElementById('moveModal').classList.add('active');
 }
 
