@@ -266,6 +266,13 @@ require_once __DIR__ . '/templates/header.php';
     margin-bottom: 8px;
 }
 
+/* Grid wrapper for horizontal scroll */
+.grid-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 6px;
+}
+
 /* Schedule grid */
 .schedule-grid {
     display: grid;
@@ -273,14 +280,15 @@ require_once __DIR__ . '/templates/header.php';
     background: var(--border);
     border-radius: 6px;
     overflow: hidden;
+    min-width: max-content;
 }
 
 .schedule-grid.weekdays {
-    grid-template-columns: 40px repeat(5, 1fr);
+    grid-template-columns: 40px repeat(5, 90px);
 }
 
 .schedule-grid.weekends {
-    grid-template-columns: 40px repeat(2, 1fr);
+    grid-template-columns: 40px repeat(2, 90px);
 }
 
 /* Grid header */
@@ -472,62 +480,104 @@ require_once __DIR__ . '/templates/header.php';
     font-size: 13px;
 }
 
-.move-section {
+.move-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+.move-step {
     margin-bottom: 12px;
 }
 
-.move-section-title {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text-muted);
-    margin-bottom: 6px;
+.move-step-back {
+    font-size: 13px;
+    color: var(--accent);
+    margin-bottom: 12px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
-.move-grid {
+/* Day selection grid - large buttons */
+.move-days-grid {
     display: grid;
-    gap: 2px;
-    font-size: 9px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
 }
 
-.move-grid.weekdays {
-    grid-template-columns: 35px repeat(5, 1fr);
-}
-
-.move-grid.weekends {
-    grid-template-columns: 35px repeat(2, 1fr);
-}
-
-.move-day-header {
+.move-day-btn {
+    padding: 16px 8px;
+    border-radius: 12px;
+    background: var(--bg-elevated);
+    border: 2px solid var(--border);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
     text-align: center;
+}
+
+.move-day-btn .day-short {
+    font-size: 16px;
+    font-weight: 700;
+    display: block;
+}
+
+.move-day-btn .day-full {
+    font-size: 10px;
     color: var(--text-muted);
-    font-weight: 600;
-    padding: 4px 2px;
+    display: block;
+    margin-top: 2px;
+}
+
+.move-day-btn:active {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.move-day-btn.current {
+    opacity: 0.4;
+    border-style: dashed;
+}
+
+/* Time/room selection grid */
+.move-times-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+.move-time-row {
+    display: grid;
+    grid-template-columns: 50px 1fr 1fr 1fr;
+    gap: 6px;
+    align-items: center;
 }
 
 .move-time-label {
     font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
     color: var(--accent);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 2px;
-}
-
-.move-cell {
-    display: flex;
-    gap: 1px;
 }
 
 .move-room-btn {
-    flex: 1;
-    padding: 4px 1px;
-    border-radius: 3px;
+    padding: 14px 8px;
+    border-radius: 10px;
     background: var(--bg-elevated);
-    border: 1px solid var(--border);
-    font-size: 8px;
+    border: 2px solid var(--border);
+    font-size: 14px;
+    font-weight: 600;
     color: var(--text-secondary);
     cursor: pointer;
     transition: all 0.15s ease;
+    text-align: center;
 }
 
 .move-room-btn:active {
@@ -539,6 +589,7 @@ require_once __DIR__ . '/templates/header.php';
 .move-room-btn.current {
     opacity: 0.3;
     pointer-events: none;
+    border-style: dashed;
 }
 
 /* Toast */
@@ -603,6 +654,7 @@ require_once __DIR__ . '/templates/header.php';
         <!-- Weekdays section: 15:00-21:00 -->
         <div class="planner-section" id="weekdaysSection">
             <div class="section-title">Будни (15:00 - 21:00)</div>
+            <div class="grid-wrapper">
             <div class="schedule-grid weekdays" id="weekdaysGrid">
                 <!-- Headers -->
                 <div class="grid-header time-header"></div>
@@ -650,11 +702,13 @@ require_once __DIR__ . '/templates/header.php';
                     <?php endfor; ?>
                 <?php endfor; ?>
             </div>
+            </div>
         </div>
 
         <!-- Weekends section: 08:00-21:00 -->
         <div class="planner-section" id="weekendsSection">
             <div class="section-title">Выходные (08:00 - 21:00)</div>
+            <div class="grid-wrapper">
             <div class="schedule-grid weekends" id="weekendsGrid">
                 <!-- Headers -->
                 <div class="grid-header time-header"></div>
@@ -702,29 +756,31 @@ require_once __DIR__ . '/templates/header.php';
                     <?php endfor; ?>
                 <?php endfor; ?>
             </div>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Move modal -->
+<!-- Move modal - Step by step -->
 <div class="move-modal" id="moveModal" onclick="if(event.target===this)closeModal()">
     <div class="move-sheet">
         <div class="move-header">
-            <span class="move-title">Переместить</span>
+            <span class="move-title" id="moveTitle">Переместить</span>
             <button class="move-close" onclick="closeModal()">✕</button>
         </div>
         <div class="move-info" id="moveInfo"></div>
 
-        <!-- Weekdays move options -->
-        <div class="move-section">
-            <div class="move-section-title">Будни (15:00-21:00)</div>
-            <div class="move-grid weekdays" id="moveWeekdays"></div>
+        <!-- Step 1: Select day -->
+        <div class="move-step" id="moveStep1">
+            <div class="move-section-title">Выберите день</div>
+            <div class="move-days-grid" id="moveDaysGrid"></div>
         </div>
 
-        <!-- Weekends move options -->
-        <div class="move-section">
-            <div class="move-section-title">Выходные (08:00-21:00)</div>
-            <div class="move-grid weekends" id="moveWeekends"></div>
+        <!-- Step 2: Select time & room -->
+        <div class="move-step" id="moveStep2" style="display:none;">
+            <div class="move-step-back" onclick="backToStep1()">← Назад</div>
+            <div class="move-section-title" id="moveStep2Title">Выберите время и кабинет</div>
+            <div class="move-times-grid" id="moveTimesGrid"></div>
         </div>
     </div>
 </div>
@@ -865,7 +921,9 @@ function selectStudent(card) {
     showMoveModal();
 }
 
-// Show move modal
+let selectedMoveDay = null;
+
+// Show move modal - Step 1: Day selection
 function showMoveModal() {
     if (!selectedStudent) return;
 
@@ -873,51 +931,69 @@ function showMoveModal() {
         `<strong>${selectedStudent.name}</strong><br>
          ${daysOfWeek[selectedStudent.day].name}, ${selectedStudent.time}, Каб. ${selectedStudent.room}`;
 
-    // Build weekdays grid (15:00-21:00)
-    let weekdaysHtml = '<div></div>';
-    for (let d = 1; d <= 5; d++) {
-        weekdaysHtml += `<div class="move-day-header">${daysOfWeek[d].short}</div>`;
+    // Reset to step 1
+    document.getElementById('moveStep1').style.display = '';
+    document.getElementById('moveStep2').style.display = 'none';
+    selectedMoveDay = null;
+
+    // Build day selection grid
+    let daysHtml = '';
+    for (let d = 1; d <= 7; d++) {
+        const isCurrent = d === selectedStudent.day;
+        daysHtml += `
+            <button class="move-day-btn ${isCurrent ? 'current' : ''}" onclick="selectMoveDay(${d})">
+                <span class="day-short">${daysOfWeek[d].short}</span>
+                <span class="day-full">${daysOfWeek[d].name}</span>
+            </button>
+        `;
     }
-
-    for (let h = 15; h <= 21; h++) {
-        const time = String(h).padStart(2, '0') + ':00';
-        weekdaysHtml += `<div class="move-time-label">${time}</div>`;
-
-        for (let d = 1; d <= 5; d++) {
-            weekdaysHtml += '<div class="move-cell">';
-            for (let r = 1; r <= 3; r++) {
-                const isCurrent = d === selectedStudent.day && time === selectedStudent.time && r === selectedStudent.room;
-                weekdaysHtml += `<button class="move-room-btn ${isCurrent ? 'current' : ''}" onclick="moveStudent(${d},'${time}',${r})">${r}</button>`;
-            }
-            weekdaysHtml += '</div>';
-        }
-    }
-
-    document.getElementById('moveWeekdays').innerHTML = weekdaysHtml;
-
-    // Build weekends grid (08:00-21:00)
-    let weekendsHtml = '<div></div>';
-    for (let d = 6; d <= 7; d++) {
-        weekendsHtml += `<div class="move-day-header">${daysOfWeek[d].short}</div>`;
-    }
-
-    for (let h = 8; h <= 21; h++) {
-        const time = String(h).padStart(2, '0') + ':00';
-        weekendsHtml += `<div class="move-time-label">${time}</div>`;
-
-        for (let d = 6; d <= 7; d++) {
-            weekendsHtml += '<div class="move-cell">';
-            for (let r = 1; r <= 3; r++) {
-                const isCurrent = d === selectedStudent.day && time === selectedStudent.time && r === selectedStudent.room;
-                weekendsHtml += `<button class="move-room-btn ${isCurrent ? 'current' : ''}" onclick="moveStudent(${d},'${time}',${r})">${r}</button>`;
-            }
-            weekendsHtml += '</div>';
-        }
-    }
-
-    document.getElementById('moveWeekends').innerHTML = weekendsHtml;
+    document.getElementById('moveDaysGrid').innerHTML = daysHtml;
 
     document.getElementById('moveModal').classList.add('active');
+}
+
+// Step 1 → Step 2: After selecting a day
+function selectMoveDay(day) {
+    selectedMoveDay = day;
+
+    document.getElementById('moveStep1').style.display = 'none';
+    document.getElementById('moveStep2').style.display = '';
+    document.getElementById('moveStep2Title').textContent =
+        `${daysOfWeek[day].name} — выберите время и кабинет`;
+
+    // Determine time range based on day
+    const isWeekend = day >= 6;
+    const startHour = isWeekend ? 8 : 15;
+    const endHour = 21;
+
+    // Build time/room grid
+    let timesHtml = '';
+    for (let h = startHour; h <= endHour; h++) {
+        const time = String(h).padStart(2, '0') + ':00';
+        timesHtml += `<div class="move-time-row">`;
+        timesHtml += `<div class="move-time-label">${time}</div>`;
+
+        for (let r = 1; r <= 3; r++) {
+            const isCurrent = day === selectedStudent.day &&
+                             time === selectedStudent.time &&
+                             r === selectedStudent.room;
+            timesHtml += `
+                <button class="move-room-btn ${isCurrent ? 'current' : ''}"
+                        onclick="moveStudent(${day},'${time}',${r})">
+                    Каб. ${r}
+                </button>
+            `;
+        }
+        timesHtml += '</div>';
+    }
+    document.getElementById('moveTimesGrid').innerHTML = timesHtml;
+}
+
+// Back to step 1
+function backToStep1() {
+    document.getElementById('moveStep1').style.display = '';
+    document.getElementById('moveStep2').style.display = 'none';
+    selectedMoveDay = null;
 }
 
 // Close modal
