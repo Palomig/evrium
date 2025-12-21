@@ -27,6 +27,12 @@ switch ($action) {
     case 'get_schedule':
         handleGetSchedule();
         break;
+    case 'get_students_by_class':
+        handleGetStudentsByClass();
+        break;
+    case 'add_student_schedule':
+        handleAddStudentSchedule();
+        break;
     default:
         jsonError('Неизвестное действие', 400);
 }
@@ -515,4 +521,128 @@ function handleGetSchedule() {
         'schedule' => $scheduleGrid,
         'student_count' => count($students)
     ]);
+}
+
+/**
+ * Получить учеников по классу
+ */
+function handleGetStudentsByClass() {
+    $class = filter_var($_GET['class'] ?? 0, FILTER_VALIDATE_INT);
+
+    if (!$class || $class < 2 || $class > 11) {
+        jsonError('Неверный класс', 400);
+    }
+
+    $students = dbQuery("
+        SELECT id, name, class, tier, teacher_id
+        FROM students
+        WHERE active = 1 AND class = ?
+        ORDER BY name
+    ", [$class]);
+
+    jsonSuccess([
+        'students' => $students,
+        'count' => count($students)
+    ]);
+}
+
+/**
+ * Добавить расписание ученику
+ * Добавляет к существующему расписанию (не перезаписывает)
+ */
+function handleAddStudentSchedule() {
+    // Получаем данные
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+
+    if (!$data) {
+        $data = $_POST;
+    }
+
+    // Валидация
+    $studentId = filter_var($data['student_id'] ?? 0, FILTER_VALIDATE_INT);
+    $subject = $data['subject'] ?? 'Мат.';
+    $newSchedule = $data['schedule'] ?? [];
+
+    if (!$studentId) {
+        jsonError('Неверный ID ученика', 400);
+    }
+
+    if (!is_array($newSchedule) || empty($newSchedule)) {
+        jsonError('Расписание не указано', 400);
+    }
+
+    // Валидируем предмет
+    $allowedSubjects = ['Мат.', 'Физ.', 'Инф.', 'Рус.', 'Англ.'];
+    if (!in_array($subject, $allowedSubjects)) {
+        $subject = 'Мат.';
+    }
+
+    // Получаем текущие данные ученика
+    $student = dbQueryOne(
+        "SELECT id, name, class, schedule, teacher_id, tier FROM students WHERE id = ? AND active = 1",
+        [$studentId]
+    );
+
+    if (!$student) {
+        jsonError('Ученик не найден', 404);
+    }
+
+    // Парсим текущее расписание
+    $schedule = $student['schedule'] ? json_decode($student['schedule'], true) : [];
+    if (!is_array($schedule)) {
+        $schedule = [];
+    }
+
+    // Добавляем новые слоты
+    $addedSlots = [];
+    foreach ($newSchedule as $slot) {
+        $day = filter_var($slot['day'] ?? 0, FILTER_VALIDATE_INT);
+        $time = $slot['time'] ?? '';
+        $room = filter_var($slot['room'] ?? 1, FILTER_VALIDATE_INT);
+
+        // Валидация
+        if ($day < 1 || $day > 7) continue;
+        if (!preg_match('/^\d{2}:\d{2}$/', $time)) continue;
+        if ($room < 1 || $room > 3) continue;
+
+        // Добавляем слот (используем существующую функцию)
+        $schedule = addSlotToSchedule($schedule, $day, $time, $room, $subject, $student['teacher_id']);
+
+        // Создаём/проверяем шаблон урока
+        ensureLessonTemplate($day, $time, $room, $student['teacher_id'], $subject);
+
+        $addedSlots[] = ['day' => $day, 'time' => $time, 'room' => $room];
+    }
+
+    if (empty($addedSlots)) {
+        jsonError('Не удалось добавить ни одного слота', 400);
+    }
+
+    // Сохраняем обновлённое расписание
+    try {
+        $scheduleJson = json_encode($schedule, JSON_UNESCAPED_UNICODE);
+
+        dbExecute(
+            "UPDATE students SET schedule = ?, updated_at = NOW() WHERE id = ?",
+            [$scheduleJson, $studentId]
+        );
+
+        // Логируем действие
+        logAudit('student_schedule_added', 'student', $studentId, null, [
+            'added_slots' => $addedSlots,
+            'subject' => $subject
+        ], 'Добавлено расписание через модальное окно');
+
+        jsonSuccess([
+            'message' => 'Расписание добавлено',
+            'student_id' => $studentId,
+            'added_slots' => $addedSlots,
+            'new_schedule' => $schedule
+        ]);
+
+    } catch (Exception $e) {
+        error_log("Failed to add student schedule: " . $e->getMessage());
+        jsonError('Ошибка при сохранении расписания', 500);
+    }
 }
