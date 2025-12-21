@@ -742,6 +742,295 @@ body {
     opacity: 0.3;
     min-height: 50px;
 }
+
+/* ========== КНОПКА ДОБАВИТЬ УЧЕНИКА ========== */
+.add-student-btn {
+    margin-left: auto;
+    padding: 8px 16px;
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+    font-family: 'Nunito', sans-serif;
+}
+
+.add-student-btn:hover {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(20, 184, 166, 0.3);
+}
+
+.add-student-btn .material-icons {
+    font-size: 18px;
+}
+
+/* ========== МОДАЛЬНОЕ ОКНО ========== */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-content {
+    background: var(--bg-card);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.modal-close:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.form-group select,
+.modal-body select {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg-elevated);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    font-family: 'Nunito', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.form-group select:hover,
+.modal-body select:hover {
+    border-color: var(--accent);
+}
+
+.form-group select:focus,
+.modal-body select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.2);
+}
+
+.form-group select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Schedule section */
+.schedule-section {
+    margin-top: 20px;
+}
+
+.schedule-section > label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+.days-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.day-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--bg-elevated);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+}
+
+.day-row:hover {
+    border-color: var(--accent);
+}
+
+.day-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    min-width: 130px;
+}
+
+.day-checkbox input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+.day-name {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.day-options {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+    opacity: 0.4;
+    transition: opacity 0.2s;
+}
+
+.day-options.active {
+    opacity: 1;
+}
+
+.day-options select {
+    padding: 6px 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.time-select {
+    width: 90px;
+}
+
+.room-select {
+    width: 80px;
+}
+
+/* Modal footer */
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-elevated);
+    border-radius: 0 0 16px 16px;
+}
+
+.btn-cancel,
+.btn-save {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Nunito', sans-serif;
+}
+
+.btn-cancel {
+    background: transparent;
+    border: 2px solid var(--border);
+    color: var(--text-secondary);
+}
+
+.btn-cancel:hover {
+    border-color: var(--text-secondary);
+    color: var(--text-primary);
+}
+
+.btn-save {
+    background: var(--accent);
+    border: none;
+    color: white;
+}
+
+.btn-save:hover {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(20, 184, 166, 0.3);
+}
+
+.btn-save:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
 </style>
 
 <!-- Панель фильтров -->
@@ -783,6 +1072,11 @@ body {
         <div class="filter-divider"></div>
 
         <span class="student-count">Учеников: <strong id="studentCount"><?= count($students) ?></strong></span>
+
+        <button class="add-student-btn" onclick="openAddStudentModal()">
+            <span class="material-icons">person_add</span>
+            Добавить ученика
+        </button>
     </div>
 </div>
 
@@ -908,6 +1202,92 @@ body {
                     <?php endfor; ?>
                 <?php endfor; ?>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно добавления ученика -->
+<div id="addStudentModal" class="modal-overlay" onclick="closeAddStudentModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h3>Добавить ученика в расписание</h3>
+            <button class="modal-close" onclick="closeAddStudentModal()">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="modalClass">Класс</label>
+                    <select id="modalClass" onchange="loadStudentsByClass()">
+                        <option value="">Выберите класс</option>
+                        <?php for ($c = 2; $c <= 11; $c++): ?>
+                            <option value="<?= $c ?>"><?= $c ?> класс</option>
+                        <?php endfor; ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="modalStudent">Ученик</label>
+                    <select id="modalStudent" disabled>
+                        <option value="">Сначала выберите класс</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="modalSubject">Предмет</label>
+                <select id="modalSubject">
+                    <option value="Мат.">Математика</option>
+                    <option value="Физ.">Физика</option>
+                    <option value="Инф.">Информатика</option>
+                    <option value="Рус.">Русский язык</option>
+                    <option value="Англ.">Английский язык</option>
+                </select>
+            </div>
+
+            <div class="schedule-section">
+                <label>Расписание</label>
+                <div class="days-list">
+                    <?php
+                    $dayNames = [
+                        1 => 'Понедельник',
+                        2 => 'Вторник',
+                        3 => 'Среда',
+                        4 => 'Четверг',
+                        5 => 'Пятница',
+                        6 => 'Суббота',
+                        7 => 'Воскресенье'
+                    ];
+                    foreach ($dayNames as $dayNum => $dayName):
+                        $isWeekend = $dayNum >= 6;
+                        $startHour = $isWeekend ? 8 : 15;
+                        $endHour = 21;
+                    ?>
+                    <div class="day-row">
+                        <label class="day-checkbox">
+                            <input type="checkbox" name="day" value="<?= $dayNum ?>" onchange="toggleDayRow(this)">
+                            <span class="day-name"><?= $dayName ?></span>
+                        </label>
+                        <div class="day-options" data-day="<?= $dayNum ?>">
+                            <select class="time-select" name="time_<?= $dayNum ?>" disabled>
+                                <?php for ($h = $startHour; $h <= $endHour; $h++): ?>
+                                    <option value="<?= sprintf('%02d:00', $h) ?>"><?= sprintf('%02d:00', $h) ?></option>
+                                <?php endfor; ?>
+                            </select>
+                            <select class="room-select" name="room_<?= $dayNum ?>" disabled>
+                                <option value="1">Каб. 1</option>
+                                <option value="2">Каб. 2</option>
+                                <option value="3">Каб. 3</option>
+                            </select>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeAddStudentModal()">Отмена</button>
+            <button class="btn-save" onclick="saveStudentSchedule()">Сохранить</button>
         </div>
     </div>
 </div>
@@ -1318,6 +1698,251 @@ function showNotification(message, type = 'success') {
         notification.classList.remove('show');
     }, 3000);
 }
+
+// ========== МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ УЧЕНИКА ==========
+
+function openAddStudentModal() {
+    const modal = document.getElementById('addStudentModal');
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+
+    // Сбрасываем форму
+    resetAddStudentForm();
+}
+
+function closeAddStudentModal(event) {
+    // Если кликнули на overlay (не на контент), закрываем
+    if (event && event.target !== event.currentTarget) return;
+
+    const modal = document.getElementById('addStudentModal');
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+function resetAddStudentForm() {
+    document.getElementById('modalClass').value = '';
+    document.getElementById('modalStudent').value = '';
+    document.getElementById('modalStudent').disabled = true;
+    document.getElementById('modalStudent').innerHTML = '<option value="">Сначала выберите класс</option>';
+    document.getElementById('modalSubject').value = 'Мат.';
+
+    // Сбрасываем все чекбоксы дней
+    document.querySelectorAll('.day-checkbox input[type="checkbox"]').forEach(cb => {
+        cb.checked = false;
+    });
+
+    // Деактивируем все селекты времени и кабинета
+    document.querySelectorAll('.day-options').forEach(opts => {
+        opts.classList.remove('active');
+        opts.querySelectorAll('select').forEach(sel => sel.disabled = true);
+    });
+}
+
+async function loadStudentsByClass() {
+    const classSelect = document.getElementById('modalClass');
+    const studentSelect = document.getElementById('modalStudent');
+    const selectedClass = classSelect.value;
+
+    if (!selectedClass) {
+        studentSelect.disabled = true;
+        studentSelect.innerHTML = '<option value="">Сначала выберите класс</option>';
+        return;
+    }
+
+    studentSelect.disabled = true;
+    studentSelect.innerHTML = '<option value="">Загрузка...</option>';
+
+    try {
+        const response = await fetch(`/zarplata/api/planner.php?action=get_students_by_class&class=${selectedClass}`);
+        const result = await response.json();
+
+        if (result.success && result.data.students) {
+            const students = result.data.students;
+
+            if (students.length === 0) {
+                studentSelect.innerHTML = '<option value="">Нет учеников в этом классе</option>';
+                return;
+            }
+
+            studentSelect.innerHTML = '<option value="">Выберите ученика</option>';
+            students.forEach(student => {
+                const option = document.createElement('option');
+                option.value = student.id;
+                option.textContent = student.name;
+                option.dataset.teacherId = student.teacher_id;
+                option.dataset.tier = student.tier || 'C';
+                studentSelect.appendChild(option);
+            });
+
+            studentSelect.disabled = false;
+        } else {
+            studentSelect.innerHTML = '<option value="">Ошибка загрузки</option>';
+            showNotification(result.error || 'Ошибка загрузки учеников', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading students:', error);
+        studentSelect.innerHTML = '<option value="">Ошибка сети</option>';
+        showNotification('Ошибка сети', 'error');
+    }
+}
+
+function toggleDayRow(checkbox) {
+    const dayRow = checkbox.closest('.day-row');
+    const dayOptions = dayRow.querySelector('.day-options');
+    const selects = dayOptions.querySelectorAll('select');
+
+    if (checkbox.checked) {
+        dayOptions.classList.add('active');
+        selects.forEach(sel => sel.disabled = false);
+    } else {
+        dayOptions.classList.remove('active');
+        selects.forEach(sel => sel.disabled = true);
+    }
+}
+
+async function saveStudentSchedule() {
+    const studentSelect = document.getElementById('modalStudent');
+    const studentId = studentSelect.value;
+    const subject = document.getElementById('modalSubject').value;
+
+    if (!studentId) {
+        showNotification('Выберите ученика', 'error');
+        return;
+    }
+
+    // Собираем выбранные дни
+    const schedule = [];
+    document.querySelectorAll('.day-checkbox input[type="checkbox"]:checked').forEach(cb => {
+        const dayNum = cb.value;
+        const dayOptions = cb.closest('.day-row').querySelector('.day-options');
+        const time = dayOptions.querySelector('.time-select').value;
+        const room = dayOptions.querySelector('.room-select').value;
+
+        schedule.push({
+            day: parseInt(dayNum),
+            time: time,
+            room: parseInt(room)
+        });
+    });
+
+    if (schedule.length === 0) {
+        showNotification('Выберите хотя бы один день', 'error');
+        return;
+    }
+
+    // Получаем teacher_id из выбранного ученика
+    const selectedOption = studentSelect.options[studentSelect.selectedIndex];
+    const teacherId = selectedOption.dataset.teacherId;
+    const tier = selectedOption.dataset.tier;
+    const studentName = selectedOption.textContent;
+    const studentClass = document.getElementById('modalClass').value;
+
+    // Отправляем на сервер
+    const saveBtn = document.querySelector('.btn-save');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Сохранение...';
+
+    try {
+        const response = await fetch('/zarplata/api/planner.php?action=add_student_schedule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                student_id: studentId,
+                subject: subject,
+                schedule: schedule
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showNotification('Ученик добавлен в расписание', 'success');
+            closeAddStudentModal();
+
+            // Добавляем карточки ученика на страницу
+            schedule.forEach(slot => {
+                addStudentCardToGrid(studentId, studentName, studentClass, tier, teacherId, slot.day, slot.time, slot.room, subject);
+            });
+
+            // Обновляем счётчик
+            updateStudentCount();
+
+        } else {
+            showNotification(result.error || 'Ошибка сохранения', 'error');
+        }
+    } catch (error) {
+        console.error('Save error:', error);
+        showNotification('Ошибка сети', 'error');
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Сохранить';
+    }
+}
+
+function addStudentCardToGrid(studentId, studentName, studentClass, tier, teacherId, day, time, room, subject) {
+    // Находим нужный слот
+    const roomSlot = document.querySelector(
+        `.room-slot[data-day="${day}"][data-time="${time}"][data-room="${room}"]`
+    );
+
+    if (!roomSlot) {
+        console.warn(`Slot not found: day=${day}, time=${time}, room=${room}`);
+        return;
+    }
+
+    // Проверяем, нет ли уже такой карточки
+    const existingCard = roomSlot.querySelector(`.student-card[data-student-id="${studentId}"]`);
+    if (existingCard) {
+        return; // Уже есть
+    }
+
+    // Создаём карточку
+    const teacherColorIndex = (parseInt(teacherId) % 8) || 8;
+    const card = document.createElement('div');
+    card.className = `student-card teacher-${teacherColorIndex}`;
+    card.draggable = true;
+    card.dataset.studentId = studentId;
+    card.dataset.studentName = studentName;
+    card.dataset.studentClass = studentClass;
+    card.dataset.studentTier = tier;
+    card.dataset.teacherId = teacherId;
+    card.dataset.day = day;
+    card.dataset.time = time;
+    card.dataset.room = room;
+
+    const showTier = document.getElementById('tierToggle').classList.contains('active');
+
+    card.innerHTML = `
+        <span class="student-tier tier-${tier}${showTier ? '' : ' hidden'}">${tier}</span>
+        <span class="student-name">${studentName}</span>
+        <span class="student-class">${studentClass}</span>
+    `;
+
+    // Добавляем события drag & drop
+    card.addEventListener('dragstart', handleDragStart);
+    card.addEventListener('dragend', handleDragEnd);
+
+    roomSlot.appendChild(card);
+}
+
+function updateStudentCount() {
+    const countEl = document.getElementById('studentCount');
+    const uniqueStudents = new Set();
+    document.querySelectorAll('.student-card').forEach(card => {
+        uniqueStudents.add(card.dataset.studentId);
+    });
+    countEl.textContent = uniqueStudents.size;
+}
+
+// Закрытие модалки по Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('addStudentModal');
+        if (modal.classList.contains('active')) {
+            closeAddStudentModal();
+        }
+    }
+});
 </script>
 
 <?php require_once __DIR__ . '/templates/footer.php'; ?>
