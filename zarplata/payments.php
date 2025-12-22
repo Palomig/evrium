@@ -361,6 +361,7 @@ if ($teacherFilter > 0) {
     $templates = dbQuery(
         "SELECT
             lt.id,
+            lt.day_of_week,
             lt.expected_students,
             lt.formula_id,
             t.formula_id as teacher_formula_id,
@@ -379,15 +380,22 @@ if ($teacherFilter > 0) {
         [$teacherFilter]
     );
 
-    // Количество недель в текущем месяце
+    // Считаем количество вхождений каждого дня недели в текущем месяце
     $currentMonth = date('n');
     $currentYear = date('Y');
     $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $currentMonth, $currentYear);
-    $weeksInMonth = ceil($daysInMonth / 7);
+
+    // Подсчитываем сколько раз каждый день недели встречается в месяце
+    $dayOfWeekCounts = [];
+    for ($day = 1; $day <= $daysInMonth; $day++) {
+        $dayOfWeek = date('N', mktime(0, 0, 0, $currentMonth, $day, $currentYear));
+        $dayOfWeekCounts[$dayOfWeek] = ($dayOfWeekCounts[$dayOfWeek] ?? 0) + 1;
+    }
 
     // Считаем потенциальную зарплату за месяц
     foreach ($templates as $template) {
         $expectedStudents = (int)($template['expected_students'] ?? 1);
+        $dayOfWeek = (int)$template['day_of_week'];
 
         // Формируем массив формулы для calculatePayment
         $formula = [
@@ -403,8 +411,9 @@ if ($teacherFilter > 0) {
         // Рассчитываем оплату за один урок
         $lessonPayment = calculatePayment($formula, $expectedStudents);
 
-        // Умножаем на количество недель в месяце (урок проходит раз в неделю)
-        $potentialSalary += $lessonPayment * $weeksInMonth;
+        // Умножаем на количество таких дней в месяце
+        $lessonsInMonth = $dayOfWeekCounts[$dayOfWeek] ?? 0;
+        $potentialSalary += $lessonPayment * $lessonsInMonth;
     }
 }
 
