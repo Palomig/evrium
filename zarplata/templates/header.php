@@ -33,6 +33,88 @@ if (!defined('ACTIVE_PAGE')) {
     <link rel="stylesheet" href="assets/css/teal-theme.css">
 </head>
 <body>
+    <!-- Preloader (shows once per day) -->
+    <div id="preloader" class="preloader">
+        <h1 class="preloader-text">
+            <span class="word">Здарова</span>
+            <span class="word">Руслан</span>
+        </h1>
+    </div>
+    <style>
+        .preloader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-dark, #0c0f14);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+        .preloader.hidden {
+            display: none;
+        }
+        .preloader-text {
+            font-family: 'Nunito', sans-serif;
+            font-weight: 800;
+            font-size: 3.8em;
+            text-transform: uppercase;
+            letter-spacing: 0.3em;
+            color: var(--accent, #14b8a6);
+            text-align: center;
+        }
+        .preloader-text .word {
+            display: inline-block;
+            line-height: 1em;
+            margin: 0 0.1em;
+        }
+        @media (max-width: 768px) {
+            .preloader-text {
+                font-size: 2em;
+                letter-spacing: 0.15em;
+            }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/2.0.2/anime.min.js"></script>
+    <script>
+        (function() {
+            const preloader = document.getElementById('preloader');
+            const today = new Date().toDateString();
+            const lastShown = localStorage.getItem('preloader_shown_date');
+
+            if (lastShown === today) {
+                preloader.classList.add('hidden');
+                return;
+            }
+
+            localStorage.setItem('preloader_shown_date', today);
+
+            anime.timeline({loop: false})
+                .add({
+                    targets: '.preloader-text .word',
+                    scale: [14, 1],
+                    opacity: [0, 1],
+                    easing: "easeOutCirc",
+                    duration: 800,
+                    delay: (el, i) => 800 * i
+                })
+                .add({
+                    targets: '.preloader',
+                    opacity: 0,
+                    duration: 600,
+                    easing: "easeOutExpo",
+                    delay: 800,
+                    complete: function() {
+                        preloader.classList.add('hidden');
+                    }
+                });
+        })();
+    </script>
+
     <div class="layout">
         <!-- Sidebar -->
         <aside class="sidebar">
