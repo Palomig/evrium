@@ -71,6 +71,8 @@ if (!defined('ACTIVE_PAGE')) {
             display: inline-block;
             line-height: 1em;
             margin: 0 0.1em;
+            opacity: 0;
+            transform: scale(14);
         }
         @media (max-width: 768px) {
             .preloader-text {
