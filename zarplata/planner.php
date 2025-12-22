@@ -1031,6 +1031,106 @@ body {
     transform: none;
     box-shadow: none;
 }
+
+/* ========== КОНТЕКСТНОЕ МЕНЮ ========== */
+.context-menu {
+    display: none;
+    position: fixed;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    min-width: 200px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    z-index: 10001;
+    animation: contextMenuFadeIn 0.15s ease;
+}
+
+.context-menu.active {
+    display: block;
+}
+
+@keyframes contextMenuFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    transition: all 0.15s;
+}
+
+.context-menu-item:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+}
+
+.context-menu-item .material-icons {
+    font-size: 18px;
+    color: #f87171;
+}
+
+/* ========== UNDO TOAST ========== */
+.undo-toast {
+    display: none;
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #1f2937;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    align-items: center;
+    gap: 12px;
+    z-index: 10002;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    transition: transform 0.3s ease;
+}
+
+.undo-toast.show {
+    display: flex;
+    transform: translateX(-50%) translateY(0);
+}
+
+.undo-text {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.undo-btn {
+    background: var(--accent);
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.undo-btn:hover {
+    background: var(--accent-hover);
+}
+
+.undo-hint {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
 </style>
 
 <!-- Панель фильтров -->
@@ -1290,6 +1390,21 @@ body {
             <button class="btn-save" onclick="saveStudentSchedule()">Сохранить</button>
         </div>
     </div>
+</div>
+
+<!-- Контекстное меню -->
+<div id="contextMenu" class="context-menu">
+    <div class="context-menu-item" onclick="deleteStudentSlot()">
+        <span class="material-icons">delete</span>
+        <span>Удалить из расписания</span>
+    </div>
+</div>
+
+<!-- Undo Toast -->
+<div id="undoToast" class="undo-toast">
+    <span class="undo-text">Ученик удалён из расписания</span>
+    <button class="undo-btn" onclick="undoDelete()">Отменить</button>
+    <span class="undo-hint">(Ctrl+Z)</span>
 </div>
 
 <!-- Уведомления -->
@@ -1941,8 +2056,234 @@ document.addEventListener('keydown', function(e) {
         if (modal.classList.contains('active')) {
             closeAddStudentModal();
         }
+        // Закрываем контекстное меню
+        hideContextMenu();
     }
 });
+
+// ========== КОНТЕКСТНОЕ МЕНЮ ==========
+
+let contextMenuTarget = null; // Карточка на которой открыто меню
+let lastDeletedStudent = null; // Данные последнего удалённого ученика для undo
+let undoTimeout = null;
+
+// Добавляем контекстное меню на все карточки
+document.addEventListener('DOMContentLoaded', function() {
+    initContextMenu();
+});
+
+function initContextMenu() {
+    document.querySelectorAll('.student-card').forEach(card => {
+        card.addEventListener('contextmenu', handleContextMenu);
+    });
+}
+
+function handleContextMenu(e) {
+    e.preventDefault();
+
+    const card = e.target.closest('.student-card');
+    if (!card) return;
+
+    contextMenuTarget = card;
+
+    const contextMenu = document.getElementById('contextMenu');
+
+    // Позиционируем меню
+    let x = e.clientX;
+    let y = e.clientY;
+
+    // Показываем меню чтобы получить его размеры
+    contextMenu.classList.add('active');
+
+    // Проверяем не выходит ли за границы экрана
+    const menuRect = contextMenu.getBoundingClientRect();
+    if (x + menuRect.width > window.innerWidth) {
+        x = window.innerWidth - menuRect.width - 10;
+    }
+    if (y + menuRect.height > window.innerHeight) {
+        y = window.innerHeight - menuRect.height - 10;
+    }
+
+    contextMenu.style.left = x + 'px';
+    contextMenu.style.top = y + 'px';
+}
+
+function hideContextMenu() {
+    const contextMenu = document.getElementById('contextMenu');
+    contextMenu.classList.remove('active');
+    contextMenuTarget = null;
+}
+
+// Закрытие меню при клике вне его
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.context-menu')) {
+        hideContextMenu();
+    }
+});
+
+// Удаление ученика из слота
+async function deleteStudentSlot() {
+    if (!contextMenuTarget) return;
+
+    const card = contextMenuTarget;
+    const studentId = card.dataset.studentId;
+    const studentName = card.dataset.studentName;
+    const studentClass = card.dataset.studentClass;
+    const studentTier = card.dataset.studentTier;
+    const teacherId = card.dataset.teacherId;
+    const day = card.dataset.day;
+    const time = card.dataset.time;
+    const room = card.dataset.room;
+
+    hideContextMenu();
+
+    // Сохраняем данные для undo
+    lastDeletedStudent = {
+        studentId,
+        studentName,
+        studentClass,
+        studentTier,
+        teacherId,
+        day,
+        time,
+        room,
+        parentSlot: card.parentElement
+    };
+
+    // Удаляем карточку из DOM
+    card.remove();
+
+    // Отправляем запрос на сервер
+    try {
+        const response = await fetch('/zarplata/api/planner.php?action=remove_student_slot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                student_id: studentId,
+                day: day,
+                time: time,
+                room: room
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Показываем undo toast
+            showUndoToast();
+            updateStudentCount();
+        } else {
+            // Ошибка - возвращаем карточку
+            restoreDeletedCard();
+            showNotification(result.error || 'Ошибка удаления', 'error');
+        }
+    } catch (error) {
+        console.error('Delete error:', error);
+        restoreDeletedCard();
+        showNotification('Ошибка сети', 'error');
+    }
+}
+
+function showUndoToast() {
+    const toast = document.getElementById('undoToast');
+    toast.classList.add('show');
+
+    // Автоматически скрываем через 5 секунд
+    if (undoTimeout) clearTimeout(undoTimeout);
+    undoTimeout = setTimeout(() => {
+        hideUndoToast();
+        lastDeletedStudent = null; // Очищаем данные, undo больше невозможен
+    }, 5000);
+}
+
+function hideUndoToast() {
+    const toast = document.getElementById('undoToast');
+    toast.classList.remove('show');
+}
+
+async function undoDelete() {
+    if (!lastDeletedStudent) return;
+
+    hideUndoToast();
+    if (undoTimeout) clearTimeout(undoTimeout);
+
+    const data = lastDeletedStudent;
+
+    // Восстанавливаем карточку в DOM
+    restoreDeletedCard();
+
+    // Отправляем запрос на восстановление
+    try {
+        const response = await fetch('/zarplata/api/planner.php?action=add_student_schedule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                student_id: data.studentId,
+                subject: 'Мат.', // По умолчанию
+                schedule: [{
+                    day: parseInt(data.day),
+                    time: data.time,
+                    room: parseInt(data.room)
+                }]
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showNotification('Отменено', 'success');
+            updateStudentCount();
+        } else {
+            showNotification(result.error || 'Ошибка восстановления', 'error');
+        }
+    } catch (error) {
+        console.error('Undo error:', error);
+        showNotification('Ошибка сети', 'error');
+    }
+
+    lastDeletedStudent = null;
+}
+
+function restoreDeletedCard() {
+    if (!lastDeletedStudent) return;
+
+    const data = lastDeletedStudent;
+    addStudentCardToGrid(
+        data.studentId,
+        data.studentName,
+        data.studentClass,
+        data.studentTier,
+        data.teacherId,
+        data.day,
+        data.time,
+        data.room,
+        'Мат.'
+    );
+}
+
+// Ctrl+Z для undo
+document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        if (lastDeletedStudent) {
+            e.preventDefault();
+            undoDelete();
+        }
+    }
+});
+
+// Добавляем контекстное меню на новые карточки
+const originalAddStudentCardToGrid = addStudentCardToGrid;
+addStudentCardToGrid = function(studentId, studentName, studentClass, tier, teacherId, day, time, room, subject) {
+    originalAddStudentCardToGrid(studentId, studentName, studentClass, tier, teacherId, day, time, room, subject);
+
+    // Добавляем контекстное меню на новую карточку
+    const newCard = document.querySelector(
+        `.student-card[data-student-id="${studentId}"][data-day="${day}"][data-time="${time}"][data-room="${room}"]`
+    );
+    if (newCard) {
+        newCard.addEventListener('contextmenu', handleContextMenu);
+    }
+};
 </script>
 
 <?php require_once __DIR__ . '/templates/footer.php'; ?>
