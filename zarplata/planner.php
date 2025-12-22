@@ -379,6 +379,9 @@ body {
     border-radius: 6px;
     width: 100%;
     box-sizing: border-box;
+    position: sticky;
+    top: 0;
+    z-index: 11;
 }
 
 .planner-grid {
@@ -406,6 +409,9 @@ body {
     font-weight: 700;
     font-size: 0.8rem;
     color: var(--text-primary);
+    position: sticky;
+    top: 38px; /* Ниже заголовка секции */
+    z-index: 10;
 }
 
 .grid-header.time-header {
