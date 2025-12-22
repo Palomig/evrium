@@ -86,6 +86,11 @@ if (!defined('ACTIVE_PAGE')) {
             const today = new Date().toDateString();
             const lastShown = localStorage.getItem('preloader_shown_date');
 
+            function hidePreloader() {
+                preloader.style.opacity = '0';
+                setTimeout(() => preloader.classList.add('hidden'), 300);
+            }
+
             if (lastShown === today) {
                 preloader.classList.add('hidden');
                 return;
@@ -93,25 +98,29 @@ if (!defined('ACTIVE_PAGE')) {
 
             localStorage.setItem('preloader_shown_date', today);
 
-            anime.timeline({loop: false})
-                .add({
-                    targets: '.preloader-text .word',
-                    scale: [14, 1],
-                    opacity: [0, 1],
-                    easing: "easeOutCirc",
-                    duration: 800,
-                    delay: (el, i) => 800 * i
-                })
-                .add({
-                    targets: '.preloader',
-                    opacity: 0,
-                    duration: 600,
-                    easing: "easeOutExpo",
-                    delay: 800,
-                    complete: function() {
-                        preloader.classList.add('hidden');
-                    }
-                });
+            // Fallback: hide after 5 seconds no matter what
+            setTimeout(hidePreloader, 5000);
+
+            // Animation
+            if (typeof anime !== 'undefined') {
+                anime.timeline({loop: false})
+                    .add({
+                        targets: '.preloader-text .word',
+                        scale: [14, 1],
+                        opacity: [0, 1],
+                        easing: "easeOutCirc",
+                        duration: 800,
+                        delay: (el, i) => 800 * i
+                    })
+                    .add({
+                        targets: '.preloader',
+                        opacity: 0,
+                        duration: 600,
+                        easing: "easeOutExpo",
+                        delay: 2600,
+                        complete: hidePreloader
+                    });
+            }
         })();
     </script>
 
