@@ -2064,7 +2064,8 @@ document.addEventListener('keydown', function(e) {
 // ========== КОНТЕКСТНОЕ МЕНЮ ==========
 
 let contextMenuTarget = null; // Карточка на которой открыто меню
-let lastDeletedStudent = null; // Данные последнего удалённого ученика для undo
+let undoHistory = []; // Стек истории удалений для undo
+const MAX_UNDO_HISTORY = 50; // Максимум записей в истории
 let undoTimeout = null;
 
 // Добавляем контекстное меню на все карточки
@@ -2137,8 +2138,8 @@ async function deleteStudentSlot() {
 
     hideContextMenu();
 
-    // Сохраняем данные для undo
-    lastDeletedStudent = {
+    // Сохраняем данные в историю для undo
+    const undoData = {
         studentId,
         studentName,
         studentClass,
@@ -2147,7 +2148,7 @@ async function deleteStudentSlot() {
         day,
         time,
         room,
-        parentSlot: card.parentElement
+        timestamp: Date.now()
     };
 
     // Удаляем карточку из DOM
@@ -2169,17 +2170,23 @@ async function deleteStudentSlot() {
         const result = await response.json();
 
         if (result.success) {
+            // Добавляем в историю undo
+            undoHistory.push(undoData);
+            if (undoHistory.length > MAX_UNDO_HISTORY) {
+                undoHistory.shift(); // Удаляем самую старую запись
+            }
+
             // Показываем undo toast
             showUndoToast();
             updateStudentCount();
         } else {
             // Ошибка - возвращаем карточку
-            restoreDeletedCard();
+            restoreStudentCard(undoData);
             showNotification(result.error || 'Ошибка удаления', 'error');
         }
     } catch (error) {
         console.error('Delete error:', error);
-        restoreDeletedCard();
+        restoreStudentCard(undoData);
         showNotification('Ошибка сети', 'error');
     }
 }
@@ -2188,11 +2195,11 @@ function showUndoToast() {
     const toast = document.getElementById('undoToast');
     toast.classList.add('show');
 
-    // Автоматически скрываем через 5 секунд
+    // Автоматически скрываем через 5 секунд (но история остаётся!)
     if (undoTimeout) clearTimeout(undoTimeout);
     undoTimeout = setTimeout(() => {
         hideUndoToast();
-        lastDeletedStudent = null; // Очищаем данные, undo больше невозможен
+        // История НЕ очищается - Ctrl+Z работает всегда
     }, 5000);
 }
 
@@ -2202,15 +2209,16 @@ function hideUndoToast() {
 }
 
 async function undoDelete() {
-    if (!lastDeletedStudent) return;
+    if (undoHistory.length === 0) return;
 
     hideUndoToast();
     if (undoTimeout) clearTimeout(undoTimeout);
 
-    const data = lastDeletedStudent;
+    // Берём последнюю запись из истории
+    const data = undoHistory.pop();
 
     // Восстанавливаем карточку в DOM
-    restoreDeletedCard();
+    restoreStudentCard(data);
 
     // Отправляем запрос на восстановление
     try {
@@ -2231,23 +2239,29 @@ async function undoDelete() {
         const result = await response.json();
 
         if (result.success) {
-            showNotification('Отменено', 'success');
+            const remaining = undoHistory.length;
+            if (remaining > 0) {
+                showNotification(`Отменено (ещё ${remaining} в истории)`, 'success');
+            } else {
+                showNotification('Отменено', 'success');
+            }
             updateStudentCount();
         } else {
+            // Возвращаем в историю если не удалось
+            undoHistory.push(data);
             showNotification(result.error || 'Ошибка восстановления', 'error');
         }
     } catch (error) {
         console.error('Undo error:', error);
+        // Возвращаем в историю если не удалось
+        undoHistory.push(data);
         showNotification('Ошибка сети', 'error');
     }
-
-    lastDeletedStudent = null;
 }
 
-function restoreDeletedCard() {
-    if (!lastDeletedStudent) return;
+function restoreStudentCard(data) {
+    if (!data) return;
 
-    const data = lastDeletedStudent;
     addStudentCardToGrid(
         data.studentId,
         data.studentName,
@@ -2261,10 +2275,10 @@ function restoreDeletedCard() {
     );
 }
 
-// Ctrl+Z для undo
+// Ctrl+Z для undo (работает всегда, пока есть история)
 document.addEventListener('keydown', function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-        if (lastDeletedStudent) {
+        if (undoHistory.length > 0) {
             e.preventDefault();
             undoDelete();
         }
