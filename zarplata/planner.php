@@ -386,7 +386,6 @@ body {
     gap: 1px;
     background: var(--border);
     border-radius: 8px;
-    overflow: hidden;
     width: 100%;
 }
 
