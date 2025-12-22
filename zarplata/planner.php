@@ -1083,53 +1083,166 @@ body {
     color: #f87171;
 }
 
-/* ========== UNDO TOAST ========== */
-.undo-toast {
+/* ========== КНОПКА ИСТОРИЯ ========== */
+.history-btn {
+    padding: 8px 16px;
+    background: transparent;
+    border: 2px solid var(--accent);
+    border-radius: 8px;
+    color: var(--accent);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+    font-family: 'Nunito', sans-serif;
+    position: relative;
+}
+
+.history-btn:hover {
+    background: var(--accent-dim);
+}
+
+.history-btn .material-icons {
+    font-size: 18px;
+}
+
+.history-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: #f43f5e;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+}
+
+.history-badge.hidden {
     display: none;
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%) translateY(100px);
-    background: #1f2937;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 12px 16px;
+}
+
+/* ========== МОДАЛКА ИСТОРИИ ========== */
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.history-item {
+    display: flex;
     align-items: center;
     gap: 12px;
-    z-index: 10002;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-    transition: transform 0.3s ease;
+    padding: 12px 16px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    transition: all 0.2s;
+    cursor: pointer;
 }
 
-.undo-toast.show {
+.history-item:hover {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+}
+
+.history-item-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.2);
     display: flex;
-    transform: translateX(-50%) translateY(0);
+    align-items: center;
+    justify-content: center;
 }
 
-.undo-text {
-    color: var(--text-primary);
+.history-item-icon .material-icons {
+    font-size: 18px;
+    color: #f87171;
+}
+
+.history-item-content {
+    flex: 1;
+}
+
+.history-item-title {
     font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
 }
 
-.undo-btn {
+.history-item-details {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.history-item-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.history-item-restore {
+    padding: 6px 12px;
     background: var(--accent);
     border: none;
     border-radius: 6px;
-    padding: 6px 14px;
     color: white;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.history-item-restore:hover {
+    background: var(--accent-hover);
+}
+
+.history-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-secondary);
+}
+
+.history-empty .material-icons {
+    font-size: 48px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+
+.history-empty p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.history-clear-btn {
+    width: 100%;
+    margin-top: 16px;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
     cursor: pointer;
     transition: all 0.2s;
 }
 
-.undo-btn:hover {
-    background: var(--accent-hover);
-}
-
-.undo-hint {
-    color: var(--text-muted);
-    font-size: 0.75rem;
+.history-clear-btn:hover {
+    border-color: #f43f5e;
+    color: #f87171;
+    background: rgba(239, 68, 68, 0.1);
 }
 </style>
 
@@ -1172,6 +1285,12 @@ body {
         <div class="filter-divider"></div>
 
         <span class="student-count">Учеников: <strong id="studentCount"><?= count($students) ?></strong></span>
+
+        <button class="history-btn" onclick="openHistoryModal()">
+            <span class="material-icons">history</span>
+            История
+            <span id="historyBadge" class="history-badge hidden">0</span>
+        </button>
 
         <button class="add-student-btn" onclick="openAddStudentModal()">
             <span class="material-icons">person_add</span>
@@ -1400,11 +1519,19 @@ body {
     </div>
 </div>
 
-<!-- Undo Toast -->
-<div id="undoToast" class="undo-toast">
-    <span class="undo-text">Ученик удалён из расписания</span>
-    <button class="undo-btn" onclick="undoDelete()">Отменить</button>
-    <span class="undo-hint">(Ctrl+Z)</span>
+<!-- Модальное окно истории -->
+<div id="historyModal" class="modal-overlay" onclick="closeHistoryModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 560px;">
+        <div class="modal-header">
+            <h3>История изменений</h3>
+            <button class="modal-close" onclick="closeHistoryModal()">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <div class="modal-body" id="historyModalBody">
+            <!-- Список истории будет заполнен JS -->
+        </div>
+    </div>
 </div>
 
 <!-- Уведомления -->
@@ -2052,9 +2179,13 @@ function updateStudentCount() {
 // Закрытие модалки по Escape
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
-        const modal = document.getElementById('addStudentModal');
-        if (modal.classList.contains('active')) {
+        const addModal = document.getElementById('addStudentModal');
+        if (addModal.classList.contains('active')) {
             closeAddStudentModal();
+        }
+        const historyModal = document.getElementById('historyModal');
+        if (historyModal.classList.contains('active')) {
+            closeHistoryModal();
         }
         // Закрываем контекстное меню
         hideContextMenu();
@@ -2066,7 +2197,6 @@ document.addEventListener('keydown', function(e) {
 let contextMenuTarget = null; // Карточка на которой открыто меню
 let undoHistory = []; // Стек истории удалений для undo
 const MAX_UNDO_HISTORY = 50; // Максимум записей в истории
-let undoTimeout = null;
 
 // Добавляем контекстное меню на все карточки
 document.addEventListener('DOMContentLoaded', function() {
@@ -2176,9 +2306,10 @@ async function deleteStudentSlot() {
                 undoHistory.shift(); // Удаляем самую старую запись
             }
 
-            // Показываем undo toast
-            showUndoToast();
+            // Обновляем badge истории
+            updateHistoryBadge();
             updateStudentCount();
+            showNotification('Ученик удалён из расписания', 'success');
         } else {
             // Ошибка - возвращаем карточку
             restoreStudentCard(undoData);
@@ -2191,34 +2322,116 @@ async function deleteStudentSlot() {
     }
 }
 
-function showUndoToast() {
-    const toast = document.getElementById('undoToast');
-    toast.classList.add('show');
+// ========== МОДАЛКА ИСТОРИИ ==========
 
-    // Автоматически скрываем через 5 секунд (но история остаётся!)
-    if (undoTimeout) clearTimeout(undoTimeout);
-    undoTimeout = setTimeout(() => {
-        hideUndoToast();
-        // История НЕ очищается - Ctrl+Z работает всегда
-    }, 5000);
+function openHistoryModal() {
+    const modal = document.getElementById('historyModal');
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    renderHistoryList();
 }
 
-function hideUndoToast() {
-    const toast = document.getElementById('undoToast');
-    toast.classList.remove('show');
+function closeHistoryModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    const modal = document.getElementById('historyModal');
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
 }
 
-async function undoDelete() {
-    if (undoHistory.length === 0) return;
+function renderHistoryList() {
+    const container = document.getElementById('historyModalBody');
 
-    hideUndoToast();
-    if (undoTimeout) clearTimeout(undoTimeout);
+    if (undoHistory.length === 0) {
+        container.innerHTML = `
+            <div class="history-empty">
+                <span class="material-icons">history</span>
+                <p>История пуста</p>
+            </div>
+        `;
+        return;
+    }
 
-    // Берём последнюю запись из истории
-    const data = undoHistory.pop();
+    const dayNames = ['', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
+    let html = '<div class="history-list">';
+
+    // Показываем историю от новых к старым
+    for (let i = undoHistory.length - 1; i >= 0; i--) {
+        const item = undoHistory[i];
+        const timeAgo = getTimeAgo(item.timestamp);
+        const dayName = dayNames[parseInt(item.day)] || item.day;
+
+        html += `
+            <div class="history-item" data-index="${i}">
+                <div class="history-item-icon">
+                    <span class="material-icons">person_remove</span>
+                </div>
+                <div class="history-item-content">
+                    <div class="history-item-title">${escapeHtml(item.studentName)}</div>
+                    <div class="history-item-details">
+                        ${dayName} ${item.time}, Каб. ${item.room}
+                    </div>
+                </div>
+                <div class="history-item-time">${timeAgo}</div>
+                <button class="history-item-restore" onclick="restoreFromHistory(${i}); event.stopPropagation();">
+                    Восстановить
+                </button>
+            </div>
+        `;
+    }
+
+    html += '</div>';
+
+    html += `
+        <button class="history-clear-btn" onclick="clearHistory()">
+            Очистить историю
+        </button>
+    `;
+
+    container.innerHTML = html;
+}
+
+function getTimeAgo(timestamp) {
+    const now = Date.now();
+    const diff = now - timestamp;
+
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+
+    if (seconds < 60) return 'только что';
+    if (minutes < 60) return `${minutes} мин. назад`;
+    if (hours < 24) return `${hours} ч. назад`;
+
+    return 'давно';
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+async function restoreFromHistory(index) {
+    if (index < 0 || index >= undoHistory.length) return;
+
+    const data = undoHistory[index];
+
+    // Удаляем из истории
+    undoHistory.splice(index, 1);
 
     // Восстанавливаем карточку в DOM
-    restoreStudentCard(data);
+    addStudentCardToGrid(
+        data.studentId,
+        data.studentName,
+        data.studentClass,
+        data.studentTier,
+        data.teacherId,
+        data.day,
+        data.time,
+        data.room,
+        'Мат.'
+    );
 
     // Отправляем запрос на восстановление
     try {
@@ -2227,7 +2440,7 @@ async function undoDelete() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 student_id: data.studentId,
-                subject: 'Мат.', // По умолчанию
+                subject: 'Мат.',
                 schedule: [{
                     day: parseInt(data.day),
                     time: data.time,
@@ -2239,29 +2452,55 @@ async function undoDelete() {
         const result = await response.json();
 
         if (result.success) {
-            const remaining = undoHistory.length;
-            if (remaining > 0) {
-                showNotification(`Отменено (ещё ${remaining} в истории)`, 'success');
-            } else {
-                showNotification('Отменено', 'success');
-            }
+            showNotification('Ученик восстановлен', 'success');
             updateStudentCount();
+            updateHistoryBadge();
+            renderHistoryList(); // Перерисовываем список
         } else {
             // Возвращаем в историю если не удалось
-            undoHistory.push(data);
+            undoHistory.splice(index, 0, data);
+            // Удаляем карточку из DOM
+            const card = document.querySelector(
+                `.student-card[data-student-id="${data.studentId}"][data-day="${data.day}"][data-time="${data.time}"][data-room="${data.room}"]`
+            );
+            if (card) card.remove();
             showNotification(result.error || 'Ошибка восстановления', 'error');
+            renderHistoryList();
         }
     } catch (error) {
-        console.error('Undo error:', error);
-        // Возвращаем в историю если не удалось
-        undoHistory.push(data);
+        console.error('Restore error:', error);
+        undoHistory.splice(index, 0, data);
+        const card = document.querySelector(
+            `.student-card[data-student-id="${data.studentId}"][data-day="${data.day}"][data-time="${data.time}"][data-room="${data.room}"]`
+        );
+        if (card) card.remove();
         showNotification('Ошибка сети', 'error');
+        renderHistoryList();
     }
 }
 
+function clearHistory() {
+    undoHistory = [];
+    updateHistoryBadge();
+    renderHistoryList();
+    showNotification('История очищена', 'success');
+}
+
+function updateHistoryBadge() {
+    const badge = document.getElementById('historyBadge');
+    const count = undoHistory.length;
+
+    if (count > 0) {
+        badge.textContent = count > 99 ? '99+' : count;
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+}
+
+// Вспомогательная функция для восстановления карточки
 function restoreStudentCard(data) {
     if (!data) return;
-
     addStudentCardToGrid(
         data.studentId,
         data.studentName,
@@ -2274,16 +2513,6 @@ function restoreStudentCard(data) {
         'Мат.'
     );
 }
-
-// Ctrl+Z для undo (работает всегда, пока есть история)
-document.addEventListener('keydown', function(e) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-        if (undoHistory.length > 0) {
-            e.preventDefault();
-            undoDelete();
-        }
-    }
-});
 
 // Добавляем контекстное меню на новые карточки
 const originalAddStudentCardToGrid = addStudentCardToGrid;
