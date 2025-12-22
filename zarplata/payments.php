@@ -354,6 +354,60 @@ foreach ($teachers as $teacher) {
 // Месяцы в порядке убывания
 $dataByMonth = array_reverse($dataByMonth, true);
 
+// ⭐ Расчёт потенциальной зарплаты за месяц (только для выбранного преподавателя)
+$potentialSalary = 0;
+if ($teacherFilter > 0) {
+    // Получаем все активные шаблоны уроков для выбранного преподавателя
+    $templates = dbQuery(
+        "SELECT
+            lt.id,
+            lt.expected_students,
+            lt.formula_id,
+            t.formula_id as teacher_formula_id,
+            pf.id as pf_id,
+            pf.type as formula_type,
+            pf.min_payment,
+            pf.per_student,
+            pf.threshold,
+            pf.fixed_amount,
+            pf.expression,
+            pf.active as formula_active
+        FROM lessons_template lt
+        JOIN teachers t ON lt.teacher_id = t.id
+        LEFT JOIN payment_formulas pf ON COALESCE(lt.formula_id, t.formula_id) = pf.id
+        WHERE lt.teacher_id = ? AND lt.active = 1",
+        [$teacherFilter]
+    );
+
+    // Количество недель в текущем месяце
+    $currentMonth = date('n');
+    $currentYear = date('Y');
+    $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $currentMonth, $currentYear);
+    $weeksInMonth = ceil($daysInMonth / 7);
+
+    // Считаем потенциальную зарплату за месяц
+    foreach ($templates as $template) {
+        $expectedStudents = (int)($template['expected_students'] ?? 1);
+
+        // Формируем массив формулы для calculatePayment
+        $formula = [
+            'type' => $template['formula_type'],
+            'min_payment' => $template['min_payment'],
+            'per_student' => $template['per_student'],
+            'threshold' => $template['threshold'],
+            'fixed_amount' => $template['fixed_amount'],
+            'expression' => $template['expression'],
+            'active' => $template['formula_active'] ?? 1
+        ];
+
+        // Рассчитываем оплату за один урок
+        $lessonPayment = calculatePayment($formula, $expectedStudents);
+
+        // Умножаем на количество недель в месяце (урок проходит раз в неделю)
+        $potentialSalary += $lessonPayment * $weeksInMonth;
+    }
+}
+
 // Получить последние события из журнала аудита (связанные с выплатами)
 $auditLogs = dbQuery(
     "SELECT
@@ -516,6 +570,7 @@ require_once __DIR__ . '/templates/header.php';
         .minimal-item.approved .minimal-value { color: var(--status-blue); }
         .minimal-item.paid .minimal-value { color: var(--status-green); }
         .minimal-item.total .minimal-value { color: var(--text-primary); }
+        .minimal-item.potential .minimal-value { color: #a78bfa; }
 
         .minimal-label {
             font-size: 11px;
@@ -1005,6 +1060,12 @@ require_once __DIR__ . '/templates/header.php';
                     <div class="minimal-value"><?= formatMoney($totalStats['total']) ?></div>
                     <div class="minimal-label">Всего</div>
                 </div>
+                <?php if ($teacherFilter > 0 && $potentialSalary > 0): ?>
+                <div class="minimal-item potential">
+                    <div class="minimal-value"><?= formatMoney($potentialSalary) ?></div>
+                    <div class="minimal-label">Потенциальная</div>
+                </div>
+                <?php endif; ?>
             </div>
 
             <?php if (empty($dataByMonth)): ?>
