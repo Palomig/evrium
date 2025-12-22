@@ -33,6 +33,9 @@ switch ($action) {
     case 'add_student_schedule':
         handleAddStudentSchedule();
         break;
+    case 'remove_student_slot':
+        handleRemoveStudentSlot();
+        break;
     default:
         jsonError('Неизвестное действие', 400);
 }
@@ -644,5 +647,89 @@ function handleAddStudentSchedule() {
     } catch (Exception $e) {
         error_log("Failed to add student schedule: " . $e->getMessage());
         jsonError('Ошибка при сохранении расписания', 500);
+    }
+}
+
+/**
+ * Удалить слот из расписания ученика
+ * Удаляет только конкретный слот (день+время+кабинет), остальные дни остаются
+ */
+function handleRemoveStudentSlot() {
+    // Получаем данные
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+
+    if (!$data) {
+        $data = $_POST;
+    }
+
+    // Валидация
+    $studentId = filter_var($data['student_id'] ?? 0, FILTER_VALIDATE_INT);
+    $day = filter_var($data['day'] ?? 0, FILTER_VALIDATE_INT);
+    $time = $data['time'] ?? '';
+    $room = filter_var($data['room'] ?? 0, FILTER_VALIDATE_INT);
+
+    if (!$studentId) {
+        jsonError('Неверный ID ученика', 400);
+    }
+
+    if ($day < 1 || $day > 7) {
+        jsonError('Неверный день недели', 400);
+    }
+
+    if (!preg_match('/^\d{2}:\d{2}$/', $time)) {
+        jsonError('Неверный формат времени', 400);
+    }
+
+    if ($room < 1 || $room > 3) {
+        jsonError('Неверный номер кабинета', 400);
+    }
+
+    // Получаем текущие данные ученика
+    $student = dbQueryOne(
+        "SELECT id, name, schedule FROM students WHERE id = ? AND active = 1",
+        [$studentId]
+    );
+
+    if (!$student) {
+        jsonError('Ученик не найден', 404);
+    }
+
+    // Парсим текущее расписание
+    $schedule = $student['schedule'] ? json_decode($student['schedule'], true) : [];
+    if (!is_array($schedule)) {
+        $schedule = [];
+    }
+
+    // Удаляем слот (используем существующую функцию)
+    $schedule = removeSlotFromSchedule($schedule, $day, $time, $room);
+
+    // Сохраняем обновлённое расписание
+    try {
+        $scheduleJson = empty($schedule) ? null : json_encode($schedule, JSON_UNESCAPED_UNICODE);
+
+        dbExecute(
+            "UPDATE students SET schedule = ?, updated_at = NOW() WHERE id = ?",
+            [$scheduleJson, $studentId]
+        );
+
+        // Проверяем и удаляем пустой шаблон урока
+        cleanupEmptyTemplate($day, $time, $room);
+
+        // Логируем действие
+        logAudit('student_slot_removed', 'student', $studentId, [
+            'slot' => ['day' => $day, 'time' => $time, 'room' => $room]
+        ], null, 'Удалён слот из расписания ученика');
+
+        jsonSuccess([
+            'message' => 'Слот удалён из расписания',
+            'student_id' => $studentId,
+            'removed_slot' => ['day' => $day, 'time' => $time, 'room' => $room],
+            'new_schedule' => $schedule
+        ]);
+
+    } catch (Exception $e) {
+        error_log("Failed to remove student slot: " . $e->getMessage());
+        jsonError('Ошибка при удалении слота', 500);
     }
 }
