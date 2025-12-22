@@ -20,6 +20,9 @@ if (!defined('ACTIVE_PAGE')) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= PAGE_TITLE ?> — Эвриум</title>
 
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
+
     <!-- Google Fonts: Nunito + JetBrains Mono + Material Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
