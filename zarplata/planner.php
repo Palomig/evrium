@@ -340,7 +340,7 @@ body {
     overflow: auto;
     background-color: var(--bg-card);
     border-radius: 12px;
-    padding: 12px;
+    padding: 0 12px 12px 12px;
     flex: 1;
     min-height: 0;
     width: 100%;
@@ -369,16 +369,7 @@ body {
 }
 
 .section-title {
-    text-align: center;
-    font-weight: 700;
-    font-size: 0.9rem;
-    color: var(--accent);
-    margin-bottom: 8px;
-    padding: 6px;
-    background: var(--bg-elevated);
-    border-radius: 6px;
-    width: 100%;
-    box-sizing: border-box;
+    display: none; /* Скрываем заголовки секций */
 }
 
 .planner-grid {
@@ -611,7 +602,7 @@ body {
     padding: 8px 12px;
     background: #1a1f28;
     border-radius: 6px;
-    margin-bottom: 12px;
+    margin-bottom: 0;
 }
 
 .teacher-legend-item {
