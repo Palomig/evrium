@@ -329,6 +329,16 @@ foreach ($dataByMonth as $month) {
     $totalStats['total'] += $month['total'];
 }
 
+// Добавляем выплаты типа 'payout' (они не привязаны к урокам)
+$payoutQuery = "SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE payment_type = 'payout' AND status = 'paid'";
+$payoutParams = [];
+if ($teacherFilter > 0) {
+    $payoutQuery .= " AND teacher_id = ?";
+    $payoutParams[] = $teacherFilter;
+}
+$payoutTotal = dbQueryOne($payoutQuery, $payoutParams);
+$totalStats['paid'] += (int)($payoutTotal['total'] ?? 0);
+
 // Статистика по преподавателям
 $teacherStats = [];
 foreach ($teachers as $teacher) {
