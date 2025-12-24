@@ -240,38 +240,26 @@ require_once __DIR__ . '/templates/header.php';
 <style>
 /* Статистика */
 .stats-row {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
+    display: flex;
+    justify-content: center;
+    gap: 48px;
     margin-bottom: 24px;
 }
 
-.stat-card {
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 24px 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+.stat-item {
     text-align: center;
-    gap: 12px;
-    min-height: 160px;
 }
 
-.stat-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
+.stat-value.success {
+    color: #22c55e;
 }
 
-.stat-icon .material-icons {
-    font-size: 24px;
+.stat-value.danger {
+    color: #ef4444;
+}
+
+.stat-value.purple {
+    color: #a855f7;
 }
 
 .stat-value {
