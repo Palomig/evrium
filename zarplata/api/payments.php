@@ -51,6 +51,18 @@ switch ($action) {
     case 'add_adjustment':
         handleAddAdjustment();
         break;
+    case 'teacher_stats':
+        handleTeacherStats();
+        break;
+    case 'payout_arbitrary':
+        handlePayoutArbitrary();
+        break;
+    case 'payout_weeks':
+        handlePayoutWeeks();
+        break;
+    case 'payout_month':
+        handlePayoutMonth();
+        break;
     default:
         jsonError('Неизвестное действие', 400);
 }
@@ -685,5 +697,358 @@ function handleAddAdjustment() {
     } catch (Exception $e) {
         error_log("Failed to add payment adjustment: " . $e->getMessage());
         jsonError('Ошибка при создании корректировки: ' . $e->getMessage(), 500);
+    }
+}
+
+/**
+ * Получить статистику выплат преподавателя для модалки выплат
+ */
+function handleTeacherStats() {
+    $teacherId = filter_input(INPUT_GET, 'teacher_id', FILTER_VALIDATE_INT);
+
+    if (!$teacherId) {
+        jsonError('Не указан преподаватель', 400);
+    }
+
+    // Проверяем существование преподавателя
+    $teacher = dbQueryOne("SELECT id, name FROM teachers WHERE id = ? AND active = 1", [$teacherId]);
+    if (!$teacher) {
+        jsonError('Преподаватель не найден', 404);
+    }
+
+    // Получаем общую статистику
+    $stats = dbQueryOne(
+        "SELECT
+            COALESCE(SUM(CASE WHEN status = 'approved' THEN amount ELSE 0 END), 0) as approved,
+            COALESCE(SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END), 0) as paid
+         FROM payments
+         WHERE teacher_id = ?
+           AND payment_type = 'lesson'",
+        [$teacherId]
+    );
+
+    $approved = (int)$stats['approved'];
+    $paid = (int)$stats['paid'];
+    $balance = $approved; // Баланс = всё одобренное (выплаченное уже не в счёт)
+
+    // Получаем данные по неделям
+    $weeksData = dbQuery(
+        "SELECT
+            YEARWEEK(li.lesson_date, 1) as year_week,
+            DATE_FORMAT(li.lesson_date, '%Y-%m') as month_key,
+            WEEK(li.lesson_date, 1) as week_num,
+            MIN(li.lesson_date) as week_start,
+            MAX(li.lesson_date) as week_end,
+            COALESCE(SUM(CASE WHEN p.status = 'pending' THEN p.amount ELSE 0 END), 0) as pending,
+            COALESCE(SUM(CASE WHEN p.status = 'approved' THEN p.amount ELSE 0 END), 0) as approved,
+            COALESCE(SUM(CASE WHEN p.status = 'paid' THEN p.amount ELSE 0 END), 0) as paid
+         FROM payments p
+         LEFT JOIN lessons_instance li ON p.lesson_instance_id = li.id
+         WHERE p.teacher_id = ?
+           AND p.payment_type = 'lesson'
+           AND li.lesson_date IS NOT NULL
+         GROUP BY year_week, month_key, week_num
+         ORDER BY year_week DESC",
+        [$teacherId]
+    );
+
+    $weeks = [];
+    foreach ($weeksData as $week) {
+        $startDate = new DateTime($week['week_start']);
+        $endDate = new DateTime($week['week_end']);
+
+        $weeks[] = [
+            'week_num' => $week['week_num'],
+            'month_key' => $week['month_key'],
+            'dates' => $startDate->format('d') . ' — ' . $endDate->format('d M'),
+            'pending' => (int)$week['pending'],
+            'approved' => (int)$week['approved'],
+            'paid' => (int)$week['paid']
+        ];
+    }
+
+    // Получаем данные по месяцам
+    $monthsData = dbQuery(
+        "SELECT
+            DATE_FORMAT(li.lesson_date, '%Y-%m') as month_key,
+            DATE_FORMAT(li.lesson_date, '%M %Y') as month_name,
+            COALESCE(SUM(CASE WHEN p.status = 'pending' THEN p.amount ELSE 0 END), 0) as pending,
+            COALESCE(SUM(CASE WHEN p.status = 'approved' THEN p.amount ELSE 0 END), 0) as approved,
+            COALESCE(SUM(CASE WHEN p.status = 'paid' THEN p.amount ELSE 0 END), 0) as paid
+         FROM payments p
+         LEFT JOIN lessons_instance li ON p.lesson_instance_id = li.id
+         WHERE p.teacher_id = ?
+           AND p.payment_type = 'lesson'
+           AND li.lesson_date IS NOT NULL
+         GROUP BY month_key, month_name
+         ORDER BY month_key DESC",
+        [$teacherId]
+    );
+
+    $monthNames = [
+        'January' => 'Январь', 'February' => 'Февраль', 'March' => 'Март',
+        'April' => 'Апрель', 'May' => 'Май', 'June' => 'Июнь',
+        'July' => 'Июль', 'August' => 'Август', 'September' => 'Сентябрь',
+        'October' => 'Октябрь', 'November' => 'Ноябрь', 'December' => 'Декабрь'
+    ];
+
+    $months = [];
+    foreach ($monthsData as $month) {
+        $nameParts = explode(' ', $month['month_name']);
+        $ruName = ($monthNames[$nameParts[0]] ?? $nameParts[0]) . ' ' . $nameParts[1];
+
+        $months[] = [
+            'key' => $month['month_key'],
+            'name' => $ruName,
+            'pending' => (int)$month['pending'],
+            'approved' => (int)$month['approved'],
+            'paid' => (int)$month['paid']
+        ];
+    }
+
+    jsonSuccess([
+        'teacher_id' => $teacherId,
+        'teacher_name' => $teacher['name'],
+        'approved' => $approved,
+        'paid' => $paid,
+        'balance' => $balance,
+        'weeks' => $weeks,
+        'months' => $months
+    ]);
+}
+
+/**
+ * Произвольная выплата (аванс)
+ */
+function handlePayoutArbitrary() {
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+
+    if (!$data) {
+        $data = $_POST;
+    }
+
+    $teacherId = filter_var($data['teacher_id'] ?? 0, FILTER_VALIDATE_INT);
+    $amount = filter_var($data['amount'] ?? 0, FILTER_VALIDATE_INT);
+    $notes = trim($data['notes'] ?? 'Выплата');
+
+    if (!$teacherId) {
+        jsonError('Выберите преподавателя', 400);
+    }
+
+    if (!$amount || $amount <= 0) {
+        jsonError('Укажите корректную сумму', 400);
+    }
+
+    // Проверяем преподавателя
+    $teacher = dbQueryOne("SELECT id, name FROM teachers WHERE id = ? AND active = 1", [$teacherId]);
+    if (!$teacher) {
+        jsonError('Преподаватель не найден', 404);
+    }
+
+    try {
+        // Создаём запись о выплате (без привязки к уроку)
+        $paymentId = dbExecute(
+            "INSERT INTO payments
+             (teacher_id, lesson_instance_id, amount, payment_type, status, notes, paid_at, created_at)
+             VALUES (?, NULL, ?, 'payout', 'paid', ?, NOW(), NOW())",
+            [$teacherId, $amount, $notes]
+        );
+
+        if ($paymentId) {
+            logAudit('payout_created', 'payment', $paymentId, null, [
+                'teacher_id' => $teacherId,
+                'amount' => $amount,
+                'type' => 'arbitrary',
+                'notes' => $notes
+            ], "Произвольная выплата: {$amount}₽");
+
+            jsonSuccess([
+                'id' => $paymentId,
+                'amount' => $amount,
+                'message' => 'Выплата успешно оформлена'
+            ]);
+        } else {
+            jsonError('Не удалось создать выплату', 500);
+        }
+    } catch (Exception $e) {
+        error_log("Failed to create arbitrary payout: " . $e->getMessage());
+        jsonError('Ошибка при создании выплаты', 500);
+    }
+}
+
+/**
+ * Выплата по неделям (помечает все approved уроки как paid)
+ */
+function handlePayoutWeeks() {
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+
+    if (!$data) {
+        jsonError('Неверные данные', 400);
+    }
+
+    $teacherId = filter_var($data['teacher_id'] ?? 0, FILTER_VALIDATE_INT);
+    $weeks = $data['weeks'] ?? [];
+
+    if (!$teacherId) {
+        jsonError('Выберите преподавателя', 400);
+    }
+
+    if (empty($weeks)) {
+        jsonError('Выберите хотя бы одну неделю', 400);
+    }
+
+    // Проверяем преподавателя
+    $teacher = dbQueryOne("SELECT id, name FROM teachers WHERE id = ? AND active = 1", [$teacherId]);
+    if (!$teacher) {
+        jsonError('Преподаватель не найден', 404);
+    }
+
+    $totalAmount = 0;
+    $paymentsCount = 0;
+    $errors = [];
+
+    try {
+        foreach ($weeks as $week) {
+            $weekNum = filter_var($week['week_num'] ?? 0, FILTER_VALIDATE_INT);
+            $monthKey = $week['month_key'] ?? '';
+
+            if (!$weekNum || !$monthKey) {
+                $errors[] = "Некорректные данные недели";
+                continue;
+            }
+
+            // Проверяем, нет ли pending выплат на этой неделе
+            $pendingCheck = dbQueryOne(
+                "SELECT COUNT(*) as cnt
+                 FROM payments p
+                 JOIN lessons_instance li ON p.lesson_instance_id = li.id
+                 WHERE p.teacher_id = ?
+                   AND p.status = 'pending'
+                   AND p.payment_type = 'lesson'
+                   AND WEEK(li.lesson_date, 1) = ?
+                   AND DATE_FORMAT(li.lesson_date, '%Y-%m') = ?",
+                [$teacherId, $weekNum, $monthKey]
+            );
+
+            if ($pendingCheck && $pendingCheck['cnt'] > 0) {
+                $errors[] = "На неделе $weekNum есть неподтверждённые выплаты";
+                continue;
+            }
+
+            // Получаем все approved выплаты за эту неделю
+            $payments = dbQuery(
+                "SELECT p.id, p.amount
+                 FROM payments p
+                 JOIN lessons_instance li ON p.lesson_instance_id = li.id
+                 WHERE p.teacher_id = ?
+                   AND p.status = 'approved'
+                   AND p.payment_type = 'lesson'
+                   AND WEEK(li.lesson_date, 1) = ?
+                   AND DATE_FORMAT(li.lesson_date, '%Y-%m') = ?",
+                [$teacherId, $weekNum, $monthKey]
+            );
+
+            foreach ($payments as $payment) {
+                $result = dbExecute(
+                    "UPDATE payments SET status = 'paid', paid_at = NOW(), updated_at = NOW() WHERE id = ?",
+                    [$payment['id']]
+                );
+
+                if ($result !== false) {
+                    $totalAmount += (int)$payment['amount'];
+                    $paymentsCount++;
+
+                    logAudit('payment_paid', 'payment', $payment['id'],
+                        ['status' => 'approved'],
+                        ['status' => 'paid'],
+                        'Выплата по неделям'
+                    );
+                }
+            }
+        }
+
+        jsonSuccess([
+            'total_amount' => $totalAmount,
+            'payments_count' => $paymentsCount,
+            'errors' => $errors
+        ]);
+    } catch (Exception $e) {
+        error_log("Failed to process weeks payout: " . $e->getMessage());
+        jsonError('Ошибка при оформлении выплаты: ' . $e->getMessage(), 500);
+    }
+}
+
+/**
+ * Выплата за месяц (помечает все approved уроки месяца как paid)
+ */
+function handlePayoutMonth() {
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+
+    if (!$data) {
+        jsonError('Неверные данные', 400);
+    }
+
+    $teacherId = filter_var($data['teacher_id'] ?? 0, FILTER_VALIDATE_INT);
+    $monthKey = $data['month_key'] ?? '';
+
+    if (!$teacherId) {
+        jsonError('Выберите преподавателя', 400);
+    }
+
+    if (!$monthKey || !preg_match('/^\d{4}-\d{2}$/', $monthKey)) {
+        jsonError('Выберите месяц', 400);
+    }
+
+    // Проверяем преподавателя
+    $teacher = dbQueryOne("SELECT id, name FROM teachers WHERE id = ? AND active = 1", [$teacherId]);
+    if (!$teacher) {
+        jsonError('Преподаватель не найден', 404);
+    }
+
+    try {
+        // Получаем все approved выплаты за этот месяц
+        $payments = dbQuery(
+            "SELECT p.id, p.amount
+             FROM payments p
+             JOIN lessons_instance li ON p.lesson_instance_id = li.id
+             WHERE p.teacher_id = ?
+               AND p.status = 'approved'
+               AND p.payment_type = 'lesson'
+               AND DATE_FORMAT(li.lesson_date, '%Y-%m') = ?",
+            [$teacherId, $monthKey]
+        );
+
+        $totalAmount = 0;
+        $paymentsCount = 0;
+
+        foreach ($payments as $payment) {
+            $result = dbExecute(
+                "UPDATE payments SET status = 'paid', paid_at = NOW(), updated_at = NOW() WHERE id = ?",
+                [$payment['id']]
+            );
+
+            if ($result !== false) {
+                $totalAmount += (int)$payment['amount'];
+                $paymentsCount++;
+
+                logAudit('payment_paid', 'payment', $payment['id'],
+                    ['status' => 'approved'],
+                    ['status' => 'paid'],
+                    'Выплата за месяц'
+                );
+            }
+        }
+
+        jsonSuccess([
+            'total_amount' => $totalAmount,
+            'payments_count' => $paymentsCount,
+            'month_key' => $monthKey
+        ]);
+    } catch (Exception $e) {
+        error_log("Failed to process month payout: " . $e->getMessage());
+        jsonError('Ошибка при оформлении выплаты: ' . $e->getMessage(), 500);
     }
 }

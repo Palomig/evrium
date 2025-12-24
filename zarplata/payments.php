@@ -1005,11 +1005,11 @@ require_once __DIR__ . '/templates/header.php';
 
 <!-- Add header actions to page-header -->
 <div class="header-actions" style="position: absolute; top: 28px; right: 32px; display: flex; gap: 12px;">
-                    <button onclick="openAdjustmentModal()" class="btn btn-primary">
+                    <button onclick="openPayoutModal()" class="btn btn-primary">
                         <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
                         </svg>
-                        Корректировка
+                        Выплатить
                     </button>
                     <a href="?export=xlsx" class="btn btn-secondary">
                         <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1681,82 +1681,137 @@ require_once __DIR__ . '/templates/header.php';
         });
     </script>
 
-<!-- Модальное окно корректировки выплат -->
-<div id="adjustment-modal" class="modal">
-    <div class="modal-content" style="max-width: 500px;">
+<!-- Модальное окно выплаты -->
+<div id="payout-modal" class="modal">
+    <div class="modal-content" style="max-width: 600px;">
         <div class="modal-header">
-            <h3>Корректировка выплаты</h3>
-            <button class="modal-close" onclick="closeAdjustmentModal()">
+            <h3>💰 Выплата зарплаты</h3>
+            <button class="modal-close" onclick="closePayoutModal()">
                 <span class="material-icons">close</span>
             </button>
         </div>
-        <form id="adjustment-form" onsubmit="saveAdjustment(event)">
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="adjustment-teacher">Преподаватель *</label>
-                    <select id="adjustment-teacher" name="teacher_id" required>
-                        <option value="">Выберите преподавателя</option>
-                        <?php foreach ($teachers as $teacher): ?>
-                            <option value="<?= $teacher['id'] ?>"><?= e($teacher['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
+        <div class="modal-body">
+            <!-- Выбор преподавателя -->
+            <div class="form-group">
+                <label for="payout-teacher">Преподаватель</label>
+                <select id="payout-teacher" onchange="onPayoutTeacherChange()">
+                    <option value="">Выберите преподавателя</option>
+                    <?php foreach ($teachers as $teacher): ?>
+                        <option value="<?= $teacher['id'] ?>"
+                            <?= $teacherFilter === $teacher['id'] ? 'selected' : '' ?>
+                        ><?= e($teacher['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
 
-                <div class="form-group">
-                    <label for="adjustment-type">Тип корректировки *</label>
-                    <select id="adjustment-type" name="payment_type" required>
-                        <option value="bonus">Премия</option>
-                        <option value="penalty">Штраф</option>
-                        <option value="adjustment">Корректировка</option>
-                    </select>
+            <!-- Статистика преподавателя -->
+            <div id="payout-stats" class="payout-stats" style="display: none;">
+                <div class="stat-item">
+                    <span class="stat-label">Одобрено:</span>
+                    <span class="stat-value" id="payout-approved">0 ₽</span>
                 </div>
-
-                <div class="form-group">
-                    <label for="adjustment-amount">Сумма (₽) *</label>
-                    <input
-                        type="number"
-                        id="adjustment-amount"
-                        name="amount"
-                        required
-                        placeholder="Введите сумму"
-                        step="1"
-                    >
-                    <small>Для штрафа введите отрицательное значение (например: -500)</small>
+                <div class="stat-item">
+                    <span class="stat-label">Уже выплачено:</span>
+                    <span class="stat-value" id="payout-paid">0 ₽</span>
                 </div>
-
-                <div class="form-group">
-                    <label for="adjustment-date">Дата *</label>
-                    <input
-                        type="date"
-                        id="adjustment-date"
-                        name="date"
-                        required
-                    >
-                </div>
-
-                <div class="form-group">
-                    <label for="adjustment-notes">Примечание</label>
-                    <textarea
-                        id="adjustment-notes"
-                        name="notes"
-                        rows="3"
-                        placeholder="Опишите причину корректировки"
-                    ></textarea>
+                <div class="stat-item highlight">
+                    <span class="stat-label">К выплате:</span>
+                    <span class="stat-value" id="payout-balance">0 ₽</span>
                 </div>
             </div>
 
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline" onclick="closeAdjustmentModal()">
-                    Отмена
+            <!-- Табы -->
+            <div class="payout-tabs" id="payout-tabs" style="display: none;">
+                <button class="payout-tab active" data-tab="arbitrary" onclick="switchPayoutTab('arbitrary')">
+                    Произвольная сумма
                 </button>
-                <button type="submit" class="btn btn-primary">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                    </svg>
-                    Сохранить
+                <button class="payout-tab" data-tab="weeks" onclick="switchPayoutTab('weeks')">
+                    По неделям
+                </button>
+                <button class="payout-tab" data-tab="month" onclick="switchPayoutTab('month')">
+                    За месяц
                 </button>
             </div>
-        </form>
+
+            <!-- Контент табов -->
+            <div id="payout-content" style="display: none;">
+                <!-- Таб: Произвольная сумма -->
+                <div class="payout-tab-content active" data-tab="arbitrary">
+                    <div class="form-group">
+                        <label for="payout-amount">Сумма выплаты (₽)</label>
+                        <input type="number" id="payout-amount" placeholder="Введите сумму" min="1">
+                        <small>Введите сумму для выплаты (аванс или частичная выплата)</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="payout-notes">Комментарий</label>
+                        <input type="text" id="payout-notes" placeholder="Например: Аванс за декабрь">
+                    </div>
+                    <button class="btn btn-primary btn-full" onclick="processArbitraryPayout()">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Выплатить
+                    </button>
+                </div>
+
+                <!-- Таб: По неделям -->
+                <div class="payout-tab-content" data-tab="weeks">
+                    <p class="payout-hint">Выберите недели для выплаты (можно несколько):</p>
+                    <div id="payout-weeks-list" class="payout-weeks-list">
+                        <!-- Заполняется динамически -->
+                    </div>
+                    <div class="payout-weeks-total" id="payout-weeks-total" style="display: none;">
+                        <span>Итого к выплате:</span>
+                        <strong id="payout-weeks-sum">0 ₽</strong>
+                    </div>
+                    <button class="btn btn-primary btn-full" id="payout-weeks-btn" onclick="processWeeksPayout()" disabled>
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Выплатить выбранные недели
+                    </button>
+                </div>
+
+                <!-- Таб: За месяц -->
+                <div class="payout-tab-content" data-tab="month">
+                    <div class="form-group">
+                        <label for="payout-month-select">Выберите месяц</label>
+                        <select id="payout-month-select" onchange="onPayoutMonthChange()">
+                            <option value="">Выберите месяц</option>
+                            <?php foreach ($dataByMonth as $monthKey => $month): ?>
+                                <option value="<?= $monthKey ?>"><?= e($month['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div id="payout-month-info" class="payout-month-info" style="display: none;">
+                        <div class="month-stat">
+                            <span>Одобрено за месяц:</span>
+                            <span id="payout-month-approved">0 ₽</span>
+                        </div>
+                        <div class="month-stat">
+                            <span>Уже выплачено:</span>
+                            <span id="payout-month-paid">0 ₽</span>
+                        </div>
+                        <div class="month-stat highlight">
+                            <span>Остаток к выплате:</span>
+                            <strong id="payout-month-remaining">0 ₽</strong>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-full" id="payout-month-btn" onclick="processMonthPayout()" disabled>
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Выплатить остаток за месяц
+                    </button>
+                </div>
+            </div>
+
+            <!-- Сообщение когда преподаватель не выбран -->
+            <div id="payout-placeholder" class="payout-placeholder">
+                <span class="material-icons">person_search</span>
+                <p>Выберите преподавателя для оформления выплаты</p>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -1976,58 +2031,560 @@ require_once __DIR__ . '/templates/header.php';
         background: rgba(255, 255, 255, 0.12);
         color: #ffffff;
     }
+
+    /* ========== Стили модалки выплат ========== */
+    .payout-stats {
+        display: flex;
+        gap: 16px;
+        padding: 16px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        margin-bottom: 20px;
+    }
+
+    .payout-stats .stat-item {
+        flex: 1;
+        text-align: center;
+    }
+
+    .payout-stats .stat-label {
+        display: block;
+        font-size: 12px;
+        color: #9ca3af;
+        margin-bottom: 4px;
+    }
+
+    .payout-stats .stat-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: #e5e7eb;
+    }
+
+    .payout-stats .stat-item.highlight .stat-value {
+        color: #10b981;
+    }
+
+    .payout-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        background: rgba(255, 255, 255, 0.05);
+        padding: 6px;
+        border-radius: 12px;
+    }
+
+    .payout-tab {
+        flex: 1;
+        padding: 10px 16px;
+        border: none;
+        background: transparent;
+        color: #9ca3af;
+        font-size: 13px;
+        font-weight: 600;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .payout-tab:hover {
+        color: #e5e7eb;
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .payout-tab.active {
+        background: #14b8a6;
+        color: #ffffff;
+    }
+
+    .payout-tab-content {
+        display: none;
+    }
+
+    .payout-tab-content.active {
+        display: block;
+    }
+
+    .payout-hint {
+        font-size: 13px;
+        color: #9ca3af;
+        margin-bottom: 12px;
+    }
+
+    .payout-weeks-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 16px;
+        max-height: 250px;
+        overflow-y: auto;
+    }
+
+    .payout-week-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 2px solid transparent;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .payout-week-item:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .payout-week-item.selected {
+        background: rgba(20, 184, 166, 0.15);
+        border-color: #14b8a6;
+    }
+
+    .payout-week-item.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .payout-week-item.disabled:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: transparent;
+    }
+
+    .payout-week-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .payout-week-dates {
+        font-weight: 600;
+        color: #e5e7eb;
+    }
+
+    .payout-week-status {
+        font-size: 12px;
+        color: #9ca3af;
+    }
+
+    .payout-week-status.has-pending {
+        color: #f59e0b;
+    }
+
+    .payout-week-amount {
+        font-weight: 700;
+        color: #10b981;
+    }
+
+    .payout-weeks-total {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        background: rgba(16, 185, 129, 0.1);
+        border-radius: 10px;
+        margin-bottom: 16px;
+        color: #e5e7eb;
+    }
+
+    .payout-weeks-total strong {
+        font-size: 18px;
+        color: #10b981;
+    }
+
+    .payout-month-info {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .payout-month-info .month-stat {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        color: #9ca3af;
+    }
+
+    .payout-month-info .month-stat:last-child {
+        border-bottom: none;
+    }
+
+    .payout-month-info .month-stat.highlight {
+        color: #e5e7eb;
+        padding-top: 12px;
+        margin-top: 4px;
+    }
+
+    .payout-month-info .month-stat.highlight strong {
+        color: #10b981;
+        font-size: 18px;
+    }
+
+    .payout-placeholder {
+        text-align: center;
+        padding: 40px 20px;
+        color: #6b7280;
+    }
+
+    .payout-placeholder .material-icons {
+        font-size: 48px;
+        margin-bottom: 12px;
+        opacity: 0.5;
+    }
+
+    .payout-placeholder p {
+        margin: 0;
+        font-size: 14px;
+    }
+
+    .btn-full {
+        width: 100%;
+        justify-content: center;
+    }
 </style>
 
 <script>
-    function openAdjustmentModal() {
-        const modal = document.getElementById('adjustment-modal');
+    // ========== Данные для модалки выплат ==========
+    const payoutData = <?= json_encode([
+        'months' => array_map(function($monthKey, $month) {
+            return [
+                'key' => $monthKey,
+                'name' => $month['name'],
+                'approved' => $month['approved'],
+                'paid' => $month['paid'],
+                'pending' => $month['pending'],
+                'weeks' => $month['weeks']
+            ];
+        }, array_keys($dataByMonth), array_values($dataByMonth)),
+        'currentTeacher' => $teacherFilter
+    ]) ?>;
+
+    // Данные преподавателей по месяцам (будем загружать через API)
+    let teacherPayoutStats = null;
+
+    // ========== Функции модалки выплат ==========
+
+    function openPayoutModal() {
+        const modal = document.getElementById('payout-modal');
         modal.classList.add('active');
 
-        // Установить сегодняшнюю дату
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('adjustment-date').value = today;
+        // Если преподаватель уже выбран в фильтре - загружаем его данные
+        const teacherSelect = document.getElementById('payout-teacher');
+        if (teacherSelect.value) {
+            onPayoutTeacherChange();
+        }
     }
 
-    function closeAdjustmentModal() {
-        const modal = document.getElementById('adjustment-modal');
+    function closePayoutModal() {
+        const modal = document.getElementById('payout-modal');
         modal.classList.remove('active');
-        document.getElementById('adjustment-form').reset();
+
+        // Сбрасываем форму
+        document.getElementById('payout-amount').value = '';
+        document.getElementById('payout-notes').value = '';
+        document.getElementById('payout-month-select').value = '';
+
+        // Сбрасываем выбранные недели
+        document.querySelectorAll('.payout-week-item.selected').forEach(el => {
+            el.classList.remove('selected');
+        });
+        updateWeeksTotal();
     }
 
-    async function saveAdjustment(event) {
-        event.preventDefault();
+    async function onPayoutTeacherChange() {
+        const teacherId = document.getElementById('payout-teacher').value;
+        const statsEl = document.getElementById('payout-stats');
+        const tabsEl = document.getElementById('payout-tabs');
+        const contentEl = document.getElementById('payout-content');
+        const placeholderEl = document.getElementById('payout-placeholder');
 
-        const formData = new FormData(event.target);
-        const data = {
-            teacher_id: parseInt(formData.get('teacher_id')),
-            payment_type: formData.get('payment_type'),
-            amount: parseInt(formData.get('amount')),
-            date: formData.get('date'),
-            notes: formData.get('notes') || null
-        };
+        if (!teacherId) {
+            statsEl.style.display = 'none';
+            tabsEl.style.display = 'none';
+            contentEl.style.display = 'none';
+            placeholderEl.style.display = 'block';
+            return;
+        }
+
+        // Загружаем статистику преподавателя
+        try {
+            const response = await fetch(`/zarplata/api/payments.php?action=teacher_stats&teacher_id=${teacherId}`);
+            const result = await response.json();
+
+            if (result.success) {
+                teacherPayoutStats = result.data;
+
+                // Отображаем статистику
+                document.getElementById('payout-approved').textContent = formatMoney(teacherPayoutStats.approved);
+                document.getElementById('payout-paid').textContent = formatMoney(teacherPayoutStats.paid);
+                document.getElementById('payout-balance').textContent = formatMoney(teacherPayoutStats.balance);
+
+                statsEl.style.display = 'flex';
+                tabsEl.style.display = 'flex';
+                contentEl.style.display = 'block';
+                placeholderEl.style.display = 'none';
+
+                // Обновляем список недель
+                renderPayoutWeeks();
+            } else {
+                alert(result.error || 'Ошибка загрузки данных');
+            }
+        } catch (error) {
+            console.error('Error loading teacher stats:', error);
+            alert('Ошибка загрузки данных преподавателя');
+        }
+    }
+
+    function switchPayoutTab(tabName) {
+        // Переключаем табы
+        document.querySelectorAll('.payout-tab').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.tab === tabName);
+        });
+
+        // Переключаем контент
+        document.querySelectorAll('.payout-tab-content').forEach(content => {
+            content.classList.toggle('active', content.dataset.tab === tabName);
+        });
+    }
+
+    function renderPayoutWeeks() {
+        const container = document.getElementById('payout-weeks-list');
+        container.innerHTML = '';
+
+        if (!teacherPayoutStats || !teacherPayoutStats.weeks) {
+            container.innerHTML = '<p class="payout-hint">Нет данных о неделях</p>';
+            return;
+        }
+
+        teacherPayoutStats.weeks.forEach(week => {
+            const hasPending = week.pending > 0;
+            const approvedAmount = week.approved;
+
+            const item = document.createElement('div');
+            item.className = 'payout-week-item' + (hasPending ? ' disabled' : '');
+            item.dataset.weekNum = week.week_num;
+            item.dataset.monthKey = week.month_key;
+            item.dataset.amount = approvedAmount;
+            item.dataset.hasPending = hasPending ? '1' : '0';
+
+            item.innerHTML = `
+                <div class="payout-week-info">
+                    <span class="payout-week-dates">${week.dates}</span>
+                    <span class="payout-week-status ${hasPending ? 'has-pending' : ''}">
+                        ${hasPending ? '⚠ Есть неподтверждённые' : '✓ Все одобрены'}
+                    </span>
+                </div>
+                <span class="payout-week-amount">${formatMoney(approvedAmount)}</span>
+            `;
+
+            if (!hasPending) {
+                item.onclick = () => toggleWeekSelection(item);
+            } else {
+                item.onclick = () => alert('На этой неделе есть неподтверждённые выплаты. Сначала одобрите их.');
+            }
+
+            container.appendChild(item);
+        });
+    }
+
+    function toggleWeekSelection(item) {
+        if (item.dataset.hasPending === '1') return;
+
+        item.classList.toggle('selected');
+        updateWeeksTotal();
+    }
+
+    function updateWeeksTotal() {
+        const selected = document.querySelectorAll('.payout-week-item.selected');
+        let total = 0;
+
+        selected.forEach(item => {
+            total += parseInt(item.dataset.amount) || 0;
+        });
+
+        const totalEl = document.getElementById('payout-weeks-total');
+        const sumEl = document.getElementById('payout-weeks-sum');
+        const btn = document.getElementById('payout-weeks-btn');
+
+        sumEl.textContent = formatMoney(total);
+        totalEl.style.display = selected.length > 0 ? 'flex' : 'none';
+        btn.disabled = selected.length === 0;
+    }
+
+    function onPayoutMonthChange() {
+        const monthKey = document.getElementById('payout-month-select').value;
+        const infoEl = document.getElementById('payout-month-info');
+        const btn = document.getElementById('payout-month-btn');
+
+        if (!monthKey || !teacherPayoutStats) {
+            infoEl.style.display = 'none';
+            btn.disabled = true;
+            return;
+        }
+
+        // Находим данные месяца
+        const monthData = teacherPayoutStats.months.find(m => m.key === monthKey);
+
+        if (monthData) {
+            document.getElementById('payout-month-approved').textContent = formatMoney(monthData.approved);
+            document.getElementById('payout-month-paid').textContent = formatMoney(monthData.paid);
+            const remaining = monthData.approved - monthData.paid;
+            document.getElementById('payout-month-remaining').textContent = formatMoney(remaining);
+
+            infoEl.style.display = 'block';
+            btn.disabled = remaining <= 0;
+        } else {
+            infoEl.style.display = 'none';
+            btn.disabled = true;
+        }
+    }
+
+    // ========== Функции обработки выплат ==========
+
+    async function processArbitraryPayout() {
+        const teacherId = document.getElementById('payout-teacher').value;
+        const amount = parseInt(document.getElementById('payout-amount').value);
+        const notes = document.getElementById('payout-notes').value || 'Выплата';
+
+        if (!teacherId) {
+            alert('Выберите преподавателя');
+            return;
+        }
+
+        if (!amount || amount <= 0) {
+            alert('Введите корректную сумму');
+            return;
+        }
+
+        if (!confirm(`Выплатить ${formatMoney(amount)}?`)) {
+            return;
+        }
 
         try {
-            const response = await fetch('/zarplata/api/payments.php?action=add_adjustment', {
+            const response = await fetch('/zarplata/api/payments.php?action=payout_arbitrary', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ teacher_id: teacherId, amount, notes })
             });
 
             const result = await response.json();
 
             if (result.success) {
-                alert('Корректировка успешно добавлена!');
-                closeAdjustmentModal();
+                alert('Выплата успешно оформлена!');
+                closePayoutModal();
                 reloadWithWeekParams();
             } else {
-                alert(result.error || 'Ошибка при сохранении корректировки');
+                alert(result.error || 'Ошибка при оформлении выплаты');
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Ошибка при сохранении корректировки');
+            alert('Ошибка при оформлении выплаты');
         }
+    }
+
+    async function processWeeksPayout() {
+        const teacherId = document.getElementById('payout-teacher').value;
+        const selected = document.querySelectorAll('.payout-week-item.selected');
+
+        if (!teacherId) {
+            alert('Выберите преподавателя');
+            return;
+        }
+
+        if (selected.length === 0) {
+            alert('Выберите хотя бы одну неделю');
+            return;
+        }
+
+        const weeks = [];
+        let totalAmount = 0;
+
+        selected.forEach(item => {
+            weeks.push({
+                week_num: item.dataset.weekNum,
+                month_key: item.dataset.monthKey
+            });
+            totalAmount += parseInt(item.dataset.amount) || 0;
+        });
+
+        if (!confirm(`Выплатить ${formatMoney(totalAmount)} за ${weeks.length} нед.?`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/zarplata/api/payments.php?action=payout_weeks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ teacher_id: teacherId, weeks })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert(`Выплачено: ${formatMoney(result.data.total_amount)} (${result.data.payments_count} выплат)`);
+                closePayoutModal();
+                reloadWithWeekParams();
+            } else {
+                alert(result.error || 'Ошибка при оформлении выплаты');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Ошибка при оформлении выплаты');
+        }
+    }
+
+    async function processMonthPayout() {
+        const teacherId = document.getElementById('payout-teacher').value;
+        const monthKey = document.getElementById('payout-month-select').value;
+
+        if (!teacherId) {
+            alert('Выберите преподавателя');
+            return;
+        }
+
+        if (!monthKey) {
+            alert('Выберите месяц');
+            return;
+        }
+
+        const monthData = teacherPayoutStats.months.find(m => m.key === monthKey);
+        const remaining = monthData ? (monthData.approved - monthData.paid) : 0;
+
+        if (remaining <= 0) {
+            alert('Нет остатка к выплате за этот месяц');
+            return;
+        }
+
+        if (!confirm(`Выплатить остаток ${formatMoney(remaining)} за ${monthData.name}?`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/zarplata/api/payments.php?action=payout_month', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ teacher_id: teacherId, month_key: monthKey })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert(`Выплачено: ${formatMoney(result.data.total_amount)} (${result.data.payments_count} выплат)`);
+                closePayoutModal();
+                reloadWithWeekParams();
+            } else {
+                alert(result.error || 'Ошибка при оформлении выплаты');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Ошибка при оформлении выплаты');
+        }
+    }
+
+    function formatMoney(amount) {
+        return new Intl.NumberFormat('ru-RU').format(amount) + ' ₽';
     }
 
     // Закрыть модалку при клике вне её
