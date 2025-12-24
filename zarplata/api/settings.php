@@ -33,6 +33,9 @@ switch ($action) {
     case 'update_system':
         handleUpdateSystem();
         break;
+    case 'update_payment':
+        handleUpdatePayment();
+        break;
     case 'change_password':
         handleChangePassword();
         break;
@@ -173,6 +176,45 @@ function handleUpdateSystem() {
         jsonSuccess(['message' => 'Системные настройки обновлены']);
     } catch (Exception $e) {
         error_log("Failed to update system settings: " . $e->getMessage());
+        jsonError('Ошибка при обновлении настроек', 500);
+    }
+}
+
+/**
+ * Обновить настройки оплаты от учеников
+ */
+function handleUpdatePayment() {
+    // Получаем данные
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+
+    if (!$data) {
+        $data = $_POST;
+    }
+
+    // Валидация
+    $cardNumber = trim($data['payment_card_number'] ?? '');
+    $reminderTemplate = trim($data['payment_reminder_template'] ?? '');
+
+    // Форматируем номер карты (убираем лишние пробелы)
+    $cardNumber = preg_replace('/\s+/', ' ', $cardNumber);
+
+    if (mb_strlen($reminderTemplate) > 2000) {
+        jsonError('Шаблон напоминания слишком длинный (максимум 2000 символов)', 400);
+    }
+
+    // Обновляем настройки
+    try {
+        updateSetting('payment_card_number', $cardNumber);
+        updateSetting('payment_reminder_template', $reminderTemplate);
+
+        logAudit('settings_updated', 'settings', null, null, [
+            'section' => 'payment'
+        ], 'Обновлены настройки оплаты от учеников');
+
+        jsonSuccess(['message' => 'Настройки оплаты обновлены']);
+    } catch (Exception $e) {
+        error_log("Failed to update payment settings: " . $e->getMessage());
         jsonError('Ошибка при обновлении настроек', 500);
     }
 }

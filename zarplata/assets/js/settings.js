@@ -197,6 +197,43 @@ async function saveSystemSettings(event) {
     }
 }
 
+// Сохранить настройки оплаты
+async function savePaymentSettings(event) {
+    event.preventDefault();
+
+    const form = event.target;
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+
+    const saveBtn = document.getElementById('save-payment-btn');
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="material-icons rotating" style="margin-right: 8px; font-size: 18px;">sync</span>Сохранение...';
+
+    try {
+        const response = await fetch('/zarplata/api/settings.php?action=update_payment', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showNotification('Настройки оплаты сохранены', 'success');
+        } else {
+            showNotification(result.error || 'Ошибка сохранения', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving payment settings:', error);
+        showNotification('Ошибка сохранения настроек', 'error');
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<span class="material-icons" style="margin-right: 8px; font-size: 18px;">save</span>Сохранить настройки оплаты';
+    }
+}
+
 // Изменить пароль
 async function changePassword(event) {
     event.preventDefault();
