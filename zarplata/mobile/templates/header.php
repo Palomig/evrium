@@ -19,8 +19,25 @@ if (!defined('SHOW_BOTTOM_NAV')) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#0c0f14">
+    <meta name="theme-color" content="#14b8a6">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Зарплата">
+    <meta name="apple-mobile-web-app-title" content="Зарплата">
+    <meta name="msapplication-TileColor" content="#14b8a6">
+    <meta name="msapplication-TileImage" content="assets/icons/icon-144x144.png">
+
     <title><?= htmlspecialchars(PAGE_TITLE) ?> — Эвриум</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+
+    <!-- App Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/icon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/icons/icon-72x72.png">
+    <link rel="apple-touch-icon" href="assets/icons/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="assets/icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="assets/icons/icon-192x192.png">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">

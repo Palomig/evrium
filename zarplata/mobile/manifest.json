@@ -1,0 +1,90 @@
+{
+  "name": "Эвриум Зарплата",
+  "short_name": "Зарплата",
+  "description": "Система учета зарплат преподавателей",
+  "start_url": "/zarplata/mobile/",
+  "scope": "/zarplata/mobile/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0c0f14",
+  "theme_color": "#14b8a6",
+  "lang": "ru",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "assets/icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icons/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Расписание",
+      "short_name": "Расписание",
+      "url": "/zarplata/mobile/schedule.php",
+      "icons": [{"src": "assets/icons/icon-96x96.png", "sizes": "96x96"}]
+    },
+    {
+      "name": "Выплаты",
+      "short_name": "Выплаты",
+      "url": "/zarplata/mobile/payments.php",
+      "icons": [{"src": "assets/icons/icon-96x96.png", "sizes": "96x96"}]
+    },
+    {
+      "name": "Ученики",
+      "short_name": "Ученики",
+      "url": "/zarplata/mobile/students.php",
+      "icons": [{"src": "assets/icons/icon-96x96.png", "sizes": "96x96"}]
+    }
+  ]
+}
