@@ -32,6 +32,31 @@ require_once __DIR__ . '/templates/header.php';
         </div>
     </div>
 
+    <!-- Install PWA -->
+    <div class="card mb-2" id="pwa-install-card" style="display: none;">
+        <div class="card-header">
+            <span class="card-title">Приложение</span>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            <div class="list-item" id="pwa-install-btn" style="cursor: pointer;">
+                <div style="width: 44px; height: 44px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), #0d9488); display: flex; align-items: center; justify-content: center; color: white;">
+                    <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                    </svg>
+                </div>
+                <div class="list-item-content">
+                    <div class="list-item-title" style="color: var(--accent);">Установить приложение</div>
+                    <div class="list-item-subtitle">Добавить на главный экран</div>
+                </div>
+                <div class="list-item-action" style="color: var(--accent);">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Version Switch -->
     <div class="card mb-2">
         <div class="card-header">

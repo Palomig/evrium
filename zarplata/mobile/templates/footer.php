@@ -51,31 +51,50 @@
     <!-- PWA Install Prompt -->
     <script>
     let deferredPrompt;
+
     window.addEventListener('beforeinstallprompt', (e) => {
+        console.log('beforeinstallprompt fired');
         e.preventDefault();
         deferredPrompt = e;
 
-        // Показываем кнопку установки если есть
+        // Показываем карточку и кнопку установки
+        const installCard = document.getElementById('pwa-install-card');
         const installBtn = document.getElementById('pwa-install-btn');
+
+        if (installCard) {
+            installCard.style.display = 'block';
+        }
+
         if (installBtn) {
-            installBtn.style.display = 'block';
-            installBtn.addEventListener('click', () => {
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then((choice) => {
-                    if (choice.outcome === 'accepted') {
-                        console.log('PWA installed');
-                    }
-                    deferredPrompt = null;
-                    installBtn.style.display = 'none';
-                });
-            });
+            installBtn.onclick = function() {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    deferredPrompt.userChoice.then((choice) => {
+                        console.log('User choice:', choice.outcome);
+                        if (choice.outcome === 'accepted') {
+                            console.log('PWA installed');
+                            if (installCard) installCard.style.display = 'none';
+                        }
+                        deferredPrompt = null;
+                    });
+                }
+            };
         }
     });
 
     window.addEventListener('appinstalled', () => {
         console.log('PWA was installed');
         deferredPrompt = null;
+        const installCard = document.getElementById('pwa-install-card');
+        if (installCard) installCard.style.display = 'none';
     });
+
+    // Проверяем, установлено ли уже приложение
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+        console.log('Running as installed PWA');
+        const installCard = document.getElementById('pwa-install-card');
+        if (installCard) installCard.style.display = 'none';
+    }
     </script>
 
     <!-- Page-specific JS -->
