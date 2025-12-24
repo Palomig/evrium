@@ -49,37 +49,29 @@ require_once __DIR__ . '/templates/header.php';
         <div class="stat-icon" style="background: rgba(20, 184, 166, 0.15); color: #14b8a6;">
             <span class="material-icons">people</span>
         </div>
-        <div class="stat-content">
-            <div class="stat-value" id="stat-total">—</div>
-            <div class="stat-label">Всего учеников</div>
-        </div>
+        <div class="stat-value" id="stat-total">—</div>
+        <div class="stat-label">ВСЕГО УЧЕНИКОВ</div>
     </div>
     <div class="stat-card">
         <div class="stat-icon" style="background: rgba(34, 197, 94, 0.15); color: #22c55e;">
             <span class="material-icons">check_circle</span>
         </div>
-        <div class="stat-content">
-            <div class="stat-value" id="stat-paid">—</div>
-            <div class="stat-label">Оплатили</div>
-        </div>
+        <div class="stat-value" id="stat-paid">—</div>
+        <div class="stat-label">ОПЛАТИЛИ</div>
     </div>
     <div class="stat-card">
         <div class="stat-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
             <span class="material-icons">pending</span>
         </div>
-        <div class="stat-content">
-            <div class="stat-value" id="stat-unpaid">—</div>
-            <div class="stat-label">Не оплатили</div>
-        </div>
+        <div class="stat-value" id="stat-unpaid">—</div>
+        <div class="stat-label">НЕ ОПЛАТИЛИ</div>
     </div>
     <div class="stat-card">
         <div class="stat-icon" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">
             <span class="material-icons">account_balance_wallet</span>
         </div>
-        <div class="stat-content">
-            <div class="stat-value" id="stat-amount">—</div>
-            <div class="stat-label">Получено</div>
-        </div>
+        <div class="stat-value" id="stat-amount">—</div>
+        <div class="stat-label">ПОЛУЧЕНО</div>
     </div>
 </div>
 
@@ -269,11 +261,15 @@ require_once __DIR__ . '/templates/header.php';
 .stat-card {
     background: var(--bg-elevated);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
+    border-radius: 16px;
+    padding: 24px 20px;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 16px;
+    justify-content: center;
+    text-align: center;
+    gap: 12px;
+    min-height: 160px;
 }
 
 .stat-icon {
@@ -283,6 +279,7 @@ require_once __DIR__ . '/templates/header.php';
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
 .stat-icon .material-icons {
@@ -290,16 +287,19 @@ require_once __DIR__ . '/templates/header.php';
 }
 
 .stat-value {
-    font-size: 1.75rem;
+    font-size: 2rem;
     font-weight: 700;
     color: var(--text-primary);
     font-family: 'JetBrains Mono', monospace;
+    line-height: 1;
 }
 
 .stat-label {
-    font-size: 0.875rem;
+    font-size: 0.7rem;
+    font-weight: 600;
     color: var(--text-secondary);
-    margin-top: 4px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
 }
 
 /* Выбор месяца */
