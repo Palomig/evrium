@@ -1543,6 +1543,44 @@ require_once __DIR__ . '/templates/header.php';
     </style>
 
     <script>
+        // ========== Функция перезагрузки с сохранением выбранной недели ==========
+        function reloadWithWeekParams() {
+            const activeWeekCard = document.querySelector('.week-card.active');
+            if (activeWeekCard) {
+                const week = activeWeekCard.dataset.week;
+                const month = activeWeekCard.dataset.month;
+                const url = new URL(window.location.href);
+                url.searchParams.set('month', month);
+                url.searchParams.set('week', week);
+                window.location.href = url.toString();
+            } else {
+                window.location.reload();
+            }
+        }
+
+        // ========== Восстановление выбранной недели из URL при загрузке ==========
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const savedMonth = urlParams.get('month');
+            const savedWeek = urlParams.get('week');
+
+            if (savedMonth && savedWeek) {
+                // Находим нужную карточку недели
+                const weekCard = document.querySelector(
+                    `.week-card[data-month="${savedMonth}"][data-week="${savedWeek}"]`
+                );
+                if (weekCard) {
+                    // Имитируем клик для активации недели
+                    selectWeek(weekCard, savedMonth, savedWeek);
+                    // Скроллим к выбранному месяцу
+                    const monthSection = weekCard.closest('.month-section');
+                    if (monthSection) {
+                        monthSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+            }
+        });
+
         // ========== Функция переключения недель ==========
         function selectWeek(clickedCard, monthKey, weekNum) {
             // Находим все карточки недель в этом месяце
@@ -1982,7 +2020,7 @@ require_once __DIR__ . '/templates/header.php';
             if (result.success) {
                 alert('Корректировка успешно добавлена!');
                 closeAdjustmentModal();
-                window.location.reload();
+                reloadWithWeekParams();
             } else {
                 alert(result.error || 'Ошибка при сохранении корректировки');
             }
@@ -2035,7 +2073,7 @@ require_once __DIR__ . '/templates/header.php';
                     btn.innerHTML = originalContent;
                     alert(`Одобрено выплат: ${result.data.approved} из ${result.data.total}`);
                     // Перезагружаем страницу для обновления данных
-                    window.location.reload();
+                    reloadWithWeekParams();
                 } else {
                     btn.innerHTML = originalContent;
                     btn.disabled = false;
@@ -2180,7 +2218,7 @@ require_once __DIR__ . '/templates/header.php';
             if (result.success) {
                 alert('Выплата обновлена!');
                 closeEditModal();
-                window.location.reload();
+                reloadWithWeekParams();
             } else {
                 alert(result.error || 'Ошибка сохранения');
             }
@@ -2211,7 +2249,7 @@ require_once __DIR__ . '/templates/header.php';
             if (result.success) {
                 alert('Выплата удалена');
                 closeEditModal();
-                window.location.reload();
+                reloadWithWeekParams();
             } else {
                 alert(result.error || 'Ошибка удаления');
             }
