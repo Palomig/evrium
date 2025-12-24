@@ -45,32 +45,20 @@ require_once __DIR__ . '/templates/header.php';
 
 <!-- Статистика -->
 <div class="stats-row" id="stats-row">
-    <div class="stat-card">
-        <div class="stat-icon" style="background: rgba(20, 184, 166, 0.15); color: #14b8a6;">
-            <span class="material-icons">people</span>
-        </div>
+    <div class="stat-item">
         <div class="stat-value" id="stat-total">—</div>
-        <div class="stat-label">ВСЕГО УЧЕНИКОВ</div>
+        <div class="stat-label">УЧЕНИКОВ</div>
     </div>
-    <div class="stat-card">
-        <div class="stat-icon" style="background: rgba(34, 197, 94, 0.15); color: #22c55e;">
-            <span class="material-icons">check_circle</span>
-        </div>
-        <div class="stat-value" id="stat-paid">—</div>
+    <div class="stat-item">
+        <div class="stat-value success" id="stat-paid">0</div>
         <div class="stat-label">ОПЛАТИЛИ</div>
     </div>
-    <div class="stat-card">
-        <div class="stat-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
-            <span class="material-icons">pending</span>
-        </div>
-        <div class="stat-value" id="stat-unpaid">—</div>
+    <div class="stat-item">
+        <div class="stat-value danger" id="stat-unpaid">—</div>
         <div class="stat-label">НЕ ОПЛАТИЛИ</div>
     </div>
-    <div class="stat-card">
-        <div class="stat-icon" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">
-            <span class="material-icons">account_balance_wallet</span>
-        </div>
-        <div class="stat-value" id="stat-amount">—</div>
+    <div class="stat-item">
+        <div class="stat-value purple" id="stat-amount">0 ₽</div>
         <div class="stat-label">ПОЛУЧЕНО</div>
     </div>
 </div>
