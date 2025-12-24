@@ -60,6 +60,20 @@ require_once __DIR__ . '/templates/header.php';
 ?>
 
 <div class="page-container">
+    <!-- PWA Install Banner -->
+    <div class="pwa-install-banner" id="pwa-install-card" style="display: none;">
+        <div class="pwa-install-icon">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+        </div>
+        <div class="pwa-install-text">
+            <strong>Установить приложение</strong>
+            <span>Быстрый доступ с главного экрана</span>
+        </div>
+        <button class="pwa-install-action" id="pwa-install-btn">Установить</button>
+    </div>
+
     <!-- Stats Grid -->
     <div class="stats-grid">
         <div class="stat-card">
