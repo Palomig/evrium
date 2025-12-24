@@ -27,7 +27,7 @@ $teachers = dbQuery(
 
 // Базовый SQL для выборки выплат
 // Начинаем запрос с таблицы payments, чтобы показать ВСЕ выплаты (даже не привязанные к урокам)
-$whereClauses = ["p.payment_type IN ('lesson', 'bonus', 'penalty', 'adjustment')"];
+$whereClauses = ["p.payment_type IN ('lesson', 'bonus', 'penalty', 'adjustment', 'payout')"];
 $params = [];
 
 if ($teacherFilter > 0) {
@@ -338,7 +338,7 @@ foreach ($teachers as $teacher) {
             SUM(p.amount) as total_amount
         FROM payments p
         WHERE p.teacher_id = ?
-            AND p.payment_type IN ('lesson', 'bonus', 'penalty', 'adjustment')
+            AND p.payment_type IN ('lesson', 'bonus', 'penalty', 'adjustment', 'payout')
             AND p.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)
         GROUP BY p.teacher_id",
         [$teacher['id']]
