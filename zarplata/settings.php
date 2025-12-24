@@ -123,6 +123,65 @@ require_once __DIR__ . '/templates/header.php';
     </div>
 </div>
 
+<!-- Настройки оплаты от учеников -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h3 style="margin: 0;">
+            <span class="material-icons" style="vertical-align: middle;">credit_card</span>
+            Оплата от учеников
+        </h3>
+    </div>
+    <div class="card-body">
+        <form id="payment-settings-form" onsubmit="savePaymentSettings(event)">
+            <div class="form-group">
+                <label class="form-label" for="payment_card_number">
+                    <span class="material-icons" style="font-size: 16px; vertical-align: middle;">credit_card</span>
+                    Номер карты для переводов
+                </label>
+                <input
+                    type="text"
+                    class="form-control"
+                    id="payment_card_number"
+                    name="payment_card_number"
+                    value="<?= e($settingsMap['payment_card_number'] ?? '') ?>"
+                    placeholder="0000 0000 0000 0000"
+                    maxlength="19"
+                >
+                <small style="color: var(--text-medium-emphasis); display: block; margin-top: 8px;">
+                    Номер карты, на которую родители переводят оплату
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="payment_reminder_template">
+                    <span class="material-icons" style="font-size: 16px; vertical-align: middle;">message</span>
+                    Шаблон напоминания об оплате
+                </label>
+                <textarea
+                    class="form-control"
+                    id="payment_reminder_template"
+                    name="payment_reminder_template"
+                    rows="6"
+                    placeholder="Текст напоминания..."
+                ><?= e($settingsMap['payment_reminder_template'] ?? 'Здравствуйте! Напоминаем об оплате занятий за {month}.
+
+Ученик: {student_name}
+Сумма: {amount} ₽
+
+Способ оплаты: перевод на карту {card_number}') ?></textarea>
+                <small style="color: var(--text-medium-emphasis); display: block; margin-top: 8px;">
+                    Доступные переменные: <code>{student_name}</code>, <code>{month}</code>, <code>{amount}</code>, <code>{card_number}</code>
+                </small>
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="save-payment-btn">
+                <span class="material-icons" style="margin-right: 8px; font-size: 18px;">save</span>
+                Сохранить настройки оплаты
+            </button>
+        </form>
+    </div>
+</div>
+
 <!-- Системные настройки -->
 <div class="card mb-4">
     <div class="card-header">
