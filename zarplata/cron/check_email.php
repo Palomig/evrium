@@ -2,7 +2,7 @@
 /**
  * Проверка почты Gmail на уведомления о переводах Сбербанка
  * Запускать через cron каждые 5 минут:
- * */5 * * * * php /path/to/zarplata/cron/check_email.php
+ * Cron: 0,5,10,15,20,25,30,35,40,45,50,55 * * * * php /path/to/zarplata/cron/check_email.php
  */
 
 require_once __DIR__ . '/../config/db.php';
