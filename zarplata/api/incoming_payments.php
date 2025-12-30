@@ -57,6 +57,12 @@ switch ($action) {
     case 'regenerate_token':
         handleRegenerateToken();
         break;
+    case 'add_cash':
+        handleAddCash();
+        break;
+    case 'delete_cash':
+        handleDeleteCash();
+        break;
     default:
         jsonError('Неизвестное действие', 400);
 }
@@ -671,4 +677,111 @@ function handleRegenerateToken() {
     logAudit('api_token_regenerated', 'settings', null, null, null, 'API токен перегенерирован');
 
     jsonSuccess(['token' => $token]);
+}
+
+/**
+ * Добавить ручной/наличный платёж
+ */
+function handleAddCash() {
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true) ?: $_POST;
+
+    $studentId = filter_var($data['student_id'] ?? 0, FILTER_VALIDATE_INT);
+    $senderName = trim($data['sender_name'] ?? 'Ученик');
+    $amount = filter_var($data['amount'] ?? 0, FILTER_VALIDATE_INT);
+    $paymentDate = trim($data['payment_date'] ?? date('Y-m-d'));
+    $bankName = trim($data['bank_name'] ?? 'Наличные');
+    $notes = trim($data['notes'] ?? '');
+    $month = trim($data['month'] ?? date('Y-m'));
+
+    if (!$studentId) {
+        jsonError('Выберите ученика', 400);
+    }
+
+    if (!$amount || $amount < 1) {
+        jsonError('Укажите сумму', 400);
+    }
+
+    // Получаем имя ученика для отображения
+    $student = dbQueryOne("SELECT name FROM students WHERE id = ?", [$studentId]);
+    if (!$student) {
+        jsonError('Ученик не найден', 404);
+    }
+
+    // Если имя плательщика не указано, используем имя ученика
+    if ($senderName === 'Ученик' || empty($senderName)) {
+        $senderName = $student['name'];
+    }
+
+    try {
+        $paymentId = dbExecute(
+            "INSERT INTO incoming_payments
+             (student_id, sender_name, amount, bank_name, raw_notification,
+              status, month, match_confidence, matched_by, notes, received_at)
+             VALUES (?, ?, ?, ?, ?, 'confirmed', ?, 100, 'manual', ?, ?)",
+            [
+                $studentId,
+                $senderName,
+                $amount,
+                $bankName,
+                'Ручной ввод: ' . $bankName,
+                $month,
+                $notes ?: null,
+                $paymentDate . ' ' . date('H:i:s')
+            ]
+        );
+
+        if ($paymentId) {
+            logAudit('cash_payment_added', 'incoming_payment', $paymentId, null, [
+                'student_id' => $studentId,
+                'amount' => $amount,
+                'type' => $bankName
+            ], 'Добавлен ручной платёж');
+
+            jsonSuccess(['id' => $paymentId, 'message' => 'Платёж добавлен']);
+        } else {
+            jsonError('Ошибка сохранения', 500);
+        }
+    } catch (Exception $e) {
+        error_log("Failed to add cash payment: " . $e->getMessage());
+        jsonError('Ошибка базы данных', 500);
+    }
+}
+
+/**
+ * Удалить ручной платёж
+ */
+function handleDeleteCash() {
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true) ?: $_POST;
+
+    $paymentId = filter_var($data['payment_id'] ?? 0, FILTER_VALIDATE_INT);
+
+    if (!$paymentId) {
+        jsonError('Укажите ID платежа', 400);
+    }
+
+    // Проверяем, что это ручной платёж
+    $payment = dbQueryOne(
+        "SELECT * FROM incoming_payments WHERE id = ? AND bank_name IN ('Наличные', 'Ручной ввод', 'Другое')",
+        [$paymentId]
+    );
+
+    if (!$payment) {
+        jsonError('Платёж не найден или не является ручным', 404);
+    }
+
+    try {
+        dbExecute("DELETE FROM incoming_payments WHERE id = ?", [$paymentId]);
+
+        logAudit('cash_payment_deleted', 'incoming_payment', $paymentId, [
+            'amount' => $payment['amount'],
+            'student_id' => $payment['student_id']
+        ], null, 'Удалён ручной платёж');
+
+        jsonSuccess(['message' => 'Платёж удален']);
+    } catch (Exception $e) {
+        error_log("Failed to delete cash payment: " . $e->getMessage());
+        jsonError('Ошибка удаления', 500);
+    }
 }

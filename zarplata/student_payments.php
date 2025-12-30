@@ -74,6 +74,31 @@ $payers = dbQuery(
     []
 );
 
+// Получаем ручные платежи (cash и manual)
+$manualPayments = dbQuery(
+    "SELECT ip.*,
+            sp.name as payer_name,
+            sp.relation as payer_relation,
+            s.name as student_name,
+            s.class as student_class
+     FROM incoming_payments ip
+     LEFT JOIN student_payers sp ON ip.payer_id = sp.id
+     LEFT JOIN students s ON ip.student_id = s.id
+     WHERE ip.month = ? AND ip.bank_name IN ('Наличные', 'Ручной ввод', 'Другое')
+     ORDER BY ip.received_at DESC",
+    [$month]
+);
+
+// Статистика по наличным
+$cashStats = dbQueryOne(
+    "SELECT
+        COUNT(*) as total,
+        COALESCE(SUM(amount), 0) as total_amount
+     FROM incoming_payments
+     WHERE month = ? AND bank_name IN ('Наличные', 'Ручной ввод', 'Другое')",
+    [$month]
+);
+
 // API Token для webhook
 $apiToken = getSetting('automate_api_token', '');
 if (empty($apiToken)) {
@@ -707,6 +732,7 @@ require_once __DIR__ . '/templates/header.php';
 <!-- Tabs -->
 <div class="tabs">
     <a href="?month=<?= $month ?>&view=incoming&status=<?= $statusFilter ?>" class="tab <?= $view === 'incoming' ? 'active' : '' ?>">Входящие платежи</a>
+    <a href="?month=<?= $month ?>&view=manual" class="tab <?= $view === 'manual' ? 'active' : '' ?>">Наличные / Ручной ввод</a>
     <a href="?month=<?= $month ?>&view=payers" class="tab <?= $view === 'payers' ? 'active' : '' ?>">Плательщики</a>
     <a href="?month=<?= $month ?>&view=setup" class="tab <?= $view === 'setup' ? 'active' : '' ?>">Настройка</a>
 </div>
@@ -814,6 +840,93 @@ require_once __DIR__ . '/templates/header.php';
                                             </svg>
                                         </button>
                                     <?php endif; ?>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    <?php endif; ?>
+
+<?php elseif ($view === 'manual'): ?>
+    <!-- Manual/Cash Payments Section -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div>
+            <h3 style="margin: 0 0 4px 0;">Наличные и ручной ввод</h3>
+            <div style="color: var(--text-muted); font-size: 13px;">
+                Итого за месяц: <strong style="color: var(--status-green);"><?= number_format($cashStats['total_amount'] ?? 0, 0, '', ' ') ?> ₽</strong>
+                (<?= $cashStats['total'] ?? 0 ?> платежей)
+            </div>
+        </div>
+        <button class="btn btn-primary" onclick="openCashPaymentModal()">
+            <span class="material-icons" style="font-size: 18px; vertical-align: middle; margin-right: 6px;">add</span>
+            Добавить платёж
+        </button>
+    </div>
+
+    <?php if (empty($manualPayments)): ?>
+        <div class="card">
+            <div class="empty-state">
+                <svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+                <div class="empty-state-title">Нет ручных платежей</div>
+                <p class="empty-state-text">Добавьте наличные или другие платежи вручную</p>
+            </div>
+        </div>
+    <?php else: ?>
+        <div class="card">
+            <table class="payments-table">
+                <thead>
+                    <tr>
+                        <th>Плательщик</th>
+                        <th>Сумма</th>
+                        <th>Ученик</th>
+                        <th>Дата</th>
+                        <th>Тип</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($manualPayments as $payment): ?>
+                        <tr data-id="<?= $payment['id'] ?>">
+                            <td>
+                                <div class="payment-sender"><?= e($payment['sender_name']) ?></div>
+                                <?php if ($payment['notes']): ?>
+                                    <div class="payment-bank"><?= e(mb_substr($payment['notes'], 0, 50)) ?></div>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <div class="payment-amount"><?= number_format($payment['amount'], 0, '', ' ') ?> ₽</div>
+                            </td>
+                            <td>
+                                <?php if ($payment['student_name']): ?>
+                                    <div class="payment-student">
+                                        <div>
+                                            <div class="payment-student-name"><?= e($payment['student_name']) ?></div>
+                                            <?php if ($payment['payer_relation']): ?>
+                                                <div class="payment-student-relation"><?= e($payment['payer_relation']) ?></div>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                <?php else: ?>
+                                    <span style="color: var(--text-muted);">Не указан</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <div class="payment-time"><?= date('d.m.Y', strtotime($payment['received_at'])) ?></div>
+                            </td>
+                            <td>
+                                <span class="badge badge-confirmed"><?= e($payment['bank_name']) ?></span>
+                            </td>
+                            <td>
+                                <div class="payment-actions">
+                                    <button class="action-btn ignore" onclick="deleteCashPayment(<?= $payment['id'] ?>)" title="Удалить">
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                        </svg>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -1017,6 +1130,60 @@ require_once __DIR__ . '/templates/header.php';
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeMatchModal()">Отмена</button>
             <button class="btn btn-primary" onclick="saveMatch()">Связать</button>
+        </div>
+    </div>
+</div>
+
+<!-- Cash Payment Modal -->
+<div class="modal-overlay" id="cashPaymentModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">Добавить платёж</h3>
+            <button class="modal-close" onclick="closeCashPaymentModal()">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Ученик *</label>
+                <select id="cashStudentId" class="form-control" required>
+                    <option value="">Выберите ученика</option>
+                    <?php foreach ($students as $s): ?>
+                        <option value="<?= $s['id'] ?>"><?= e($s['name']) ?> <?= $s['class'] ? '(' . $s['class'] . ' кл.)' : '' ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Имя плательщика</label>
+                <input type="text" id="cashPayerName" class="form-control" placeholder="Иван Иванов">
+                <div class="form-hint">Оставьте пустым, если платит сам ученик</div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Сумма (₽) *</label>
+                <input type="number" id="cashAmount" class="form-control" required placeholder="1000" min="1">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Дата платежа</label>
+                <input type="date" id="cashDate" class="form-control" value="<?= date('Y-m-d') ?>">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Способ оплаты</label>
+                <select id="cashType" class="form-control">
+                    <option value="Наличные">Наличные</option>
+                    <option value="Ручной ввод">Перевод (ручной ввод)</option>
+                    <option value="Другое">Другое</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Комментарий</label>
+                <textarea id="cashNotes" class="form-control" rows="2" placeholder="Необязательно"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeCashPaymentModal()">Отмена</button>
+            <button class="btn btn-primary" onclick="saveCashPayment()">Сохранить</button>
         </div>
     </div>
 </div>
@@ -1318,6 +1485,90 @@ async function regenerateToken() {
 
         if (result.success) {
             showToast('Токен обновлен', 'success');
+            setTimeout(() => location.reload(), 500);
+        } else {
+            showToast(result.error || 'Ошибка', 'error');
+        }
+    } catch (e) {
+        showToast('Ошибка сети', 'error');
+    }
+}
+
+// Cash Payment Modal Functions
+function openCashPaymentModal() {
+    document.getElementById('cashStudentId').value = '';
+    document.getElementById('cashPayerName').value = '';
+    document.getElementById('cashAmount').value = '';
+    document.getElementById('cashDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('cashType').value = 'Наличные';
+    document.getElementById('cashNotes').value = '';
+    document.getElementById('cashPaymentModal').classList.add('active');
+}
+
+function closeCashPaymentModal() {
+    document.getElementById('cashPaymentModal').classList.remove('active');
+}
+
+async function saveCashPayment() {
+    const studentId = document.getElementById('cashStudentId').value;
+    const payerName = document.getElementById('cashPayerName').value.trim();
+    const amount = parseInt(document.getElementById('cashAmount').value);
+    const date = document.getElementById('cashDate').value;
+    const type = document.getElementById('cashType').value;
+    const notes = document.getElementById('cashNotes').value.trim();
+
+    if (!studentId) {
+        showToast('Выберите ученика', 'error');
+        return;
+    }
+
+    if (!amount || amount < 1) {
+        showToast('Введите сумму', 'error');
+        return;
+    }
+
+    try {
+        const res = await fetch('api/incoming_payments.php?action=add_cash', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                student_id: studentId,
+                sender_name: payerName || 'Ученик',
+                amount: amount,
+                payment_date: date,
+                bank_name: type,
+                notes: notes,
+                month: currentMonth
+            })
+        });
+        const result = await res.json();
+
+        if (result.success) {
+            showToast('Платёж добавлен', 'success');
+            closeCashPaymentModal();
+            setTimeout(() => location.reload(), 500);
+        } else {
+            showToast(result.error || 'Ошибка', 'error');
+        }
+    } catch (e) {
+        console.error('Error:', e);
+        showToast('Ошибка сети', 'error');
+    }
+}
+
+async function deleteCashPayment(paymentId) {
+    if (!confirm('Удалить этот платёж?')) return;
+
+    try {
+        const res = await fetch('api/incoming_payments.php?action=delete_cash', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ payment_id: paymentId })
+        });
+        const result = await res.json();
+
+        if (result.success) {
+            showToast('Платёж удален', 'success');
             setTimeout(() => location.reload(), 500);
         } else {
             showToast(result.error || 'Ошибка', 'error');

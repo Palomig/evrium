@@ -1,8 +1,8 @@
 <?php
 /**
  * Проверка почты Gmail на уведомления о переводах Сбербанка
- * Запускать через cron каждые 5 минут:
- * Cron: 0,5,10,15,20,25,30,35,40,45,50,55 * * * * php /path/to/zarplata/cron/check_email.php
+ * Запускать через cron каждые 30 минут:
+ * Cron: 0,30 * * * * php /path/to/zarplata/cron/parse_payments.php
  */
 
 // Очистка OpCache чтобы использовать свежий код
@@ -15,6 +15,9 @@ require_once __DIR__ . '/../config/db.php';
 // Настройки Gmail (загружаются из базы)
 $gmailUser = getSetting('gmail_user', '');
 $gmailPassword = getSetting('gmail_app_password', '');
+$emailSender = getSetting('email_sender', $gmailUser); // От кого искать письма
+$emailSubjectFilter = getSetting('email_subject_filter', 'ZARPLATAPROJECT');
+$emailSearchDays = (int)getSetting('email_search_days', '60'); // За сколько дней проверять
 
 if (empty($gmailUser) || empty($gmailPassword)) {
     echo "Gmail credentials not configured. Set gmail_user and gmail_app_password in settings.\n";
@@ -24,6 +27,9 @@ if (empty($gmailUser) || empty($gmailPassword)) {
 define('GMAIL_USER', $gmailUser);
 define('GMAIL_APP_PASSWORD', $gmailPassword);
 define('IMAP_SERVER', '{imap.gmail.com:993/imap/ssl}INBOX');
+define('EMAIL_SENDER', $emailSender);
+define('EMAIL_SUBJECT_FILTER', $emailSubjectFilter);
+define('EMAIL_SEARCH_DAYS', $emailSearchDays);
 
 // Логирование
 function logMessage($message) {
@@ -123,13 +129,15 @@ function findMatchingPayer($senderName) {
 /**
  * Сохранение платежа в базу
  */
-function savePayment($parsed, $matchResult) {
+function savePayment($parsed, $matchResult, $emailMessageId, $emailDate) {
     $payerId = $matchResult ? $matchResult['payer']['id'] : null;
     $studentId = $matchResult ? $matchResult['payer']['student_id'] : null;
     $confidence = $matchResult ? $matchResult['confidence'] : 0;
     $matchedBy = $matchResult ? 'auto_email' : null;
     $status = $matchResult ? 'matched' : 'pending';
-    $month = date('Y-m');
+
+    // Используем дату из письма или текущий месяц
+    $month = $emailDate ? date('Y-m', strtotime($emailDate)) : date('Y-m');
 
     // Переподключаемся к базе (может отвалиться за время проверки почты)
     global $pdo;
@@ -145,8 +153,8 @@ function savePayment($parsed, $matchResult) {
         $paymentId = dbExecute(
             "INSERT INTO incoming_payments
              (payer_id, student_id, sender_name, amount, bank_name, raw_notification,
-              status, month, match_confidence, matched_by, received_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())",
+              status, month, match_confidence, matched_by, email_message_id, received_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 $payerId,
                 $studentId,
@@ -157,7 +165,9 @@ function savePayment($parsed, $matchResult) {
                 $status,
                 $month,
                 $confidence,
-                $matchedBy
+                $matchedBy,
+                $emailMessageId,
+                $emailDate ?: date('Y-m-d H:i:s')
             ]
         );
 
@@ -169,18 +179,57 @@ function savePayment($parsed, $matchResult) {
 }
 
 /**
- * Проверка на дубликат (чтобы не добавлять одно письмо дважды)
+ * Проверка на дубликат по email_message_id (чтобы не добавлять одно письмо дважды)
  */
-function isDuplicate($rawText, $amount) {
-    // Проверяем, есть ли уже такой платёж за последние 24 часа
+function isDuplicate($emailMessageId) {
+    if (empty($emailMessageId)) {
+        return false;
+    }
+
     $existing = dbQueryOne(
-        "SELECT id FROM incoming_payments
-         WHERE raw_notification = ? AND amount = ?
-         AND received_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)",
-        [$rawText, $amount]
+        "SELECT id FROM incoming_payments WHERE email_message_id = ?",
+        [$emailMessageId]
     );
 
     return $existing !== null;
+}
+
+/**
+ * Проверка, является ли отправитель известным плательщиком
+ */
+function isWhitelistedPayer($senderName) {
+    if (empty($senderName)) {
+        return false;
+    }
+
+    // Нормализуем имя
+    $normalizedName = mb_strtolower(trim($senderName));
+
+    // Ищем точное совпадение
+    $payer = dbQueryOne(
+        "SELECT id FROM student_payers WHERE LOWER(name) = ? AND active = 1",
+        [$normalizedName]
+    );
+
+    if ($payer) {
+        return true;
+    }
+
+    // Ищем частичное совпадение (первые два слова)
+    $nameParts = explode(' ', $normalizedName);
+    if (count($nameParts) >= 2) {
+        $partialName = $nameParts[0] . ' ' . $nameParts[1];
+        $payer = dbQueryOne(
+            "SELECT id FROM student_payers WHERE LOWER(name) LIKE ? AND active = 1",
+            [$partialName . '%']
+        );
+
+        if ($payer) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 // Основной код
@@ -196,35 +245,35 @@ if (!$inbox) {
 
 logMessage("Connected to Gmail successfully");
 
-// Ищем непрочитанные письма ОТ СЕБЯ (Notification Forwarder шлёт на тот же адрес)
-$searchCriteria = 'UNSEEN FROM "' . GMAIL_USER . '"';
+// Ищем ВСЕ письма за последние N дней от указанного отправителя
+$sinceDate = date('d-M-Y', strtotime('-' . EMAIL_SEARCH_DAYS . ' days'));
+$searchCriteria = 'FROM "' . EMAIL_SENDER . '" SINCE "' . $sinceDate . '"';
 logMessage("Searching: $searchCriteria");
 
 $selfEmails = imap_search($inbox, $searchCriteria, SE_UID);
 
 if (!$selfEmails) {
-    logMessage("No unread self-emails found");
+    logMessage("No emails found from " . EMAIL_SENDER . " since $sinceDate");
     imap_close($inbox);
     exit(0);
 }
 
-logMessage("Found " . count($selfEmails) . " self-emails, filtering by subject...");
+logMessage("Found " . count($selfEmails) . " emails, filtering by subject '" . EMAIL_SUBJECT_FILTER . "'...");
 
-// Фильтруем по теме "ZARPLATAPROJECT"
+// Фильтруем по теме
 $emails = [];
 foreach ($selfEmails as $uid) {
     $headerInfo = imap_headerinfo($inbox, imap_msgno($inbox, $uid));
     $subject = isset($headerInfo->subject) ? imap_utf8($headerInfo->subject) : '';
 
-    // Ищем ZARPLATAPROJECT в теме
-    if (stripos($subject, 'ZARPLATAPROJECT') !== false) {
+    // Ищем ключевое слово в теме
+    if (stripos($subject, EMAIL_SUBJECT_FILTER) !== false) {
         $emails[] = $uid;
-        logMessage("  MATCH: $subject");
     }
 }
 
 if (empty($emails)) {
-    logMessage("No ZARPLATAPROJECT emails found");
+    logMessage("No emails with '" . EMAIL_SUBJECT_FILTER . "' subject found");
     imap_close($inbox);
     exit(0);
 }
@@ -233,14 +282,36 @@ logMessage("Found " . count($emails) . " payment email(s)");
 
 $processed = 0;
 $skipped = 0;
+$duplicates = 0;
+$notWhitelisted = 0;
 
 foreach ($emails as $emailUid) {
     // Получаем заголовки
     $header = imap_fetchheader($inbox, $emailUid, FT_UID);
     $headerInfo = imap_headerinfo($inbox, imap_msgno($inbox, $emailUid));
 
+    // Получаем уникальный Message-ID письма
+    $emailMessageId = isset($headerInfo->message_id) ? $headerInfo->message_id : null;
+    if (empty($emailMessageId)) {
+        // Если нет message_id, создаём из UID и даты
+        $emailMessageId = 'uid_' . $emailUid . '_' . ($headerInfo->udate ?? time());
+    }
+
+    // Получаем дату письма
+    $emailDate = null;
+    if (isset($headerInfo->date)) {
+        $emailDate = date('Y-m-d H:i:s', strtotime($headerInfo->date));
+    }
+
     $subject = isset($headerInfo->subject) ? imap_utf8($headerInfo->subject) : '';
-    logMessage("Processing email: $subject");
+
+    // Проверяем дубликат по message_id (СНАЧАЛА!)
+    if (isDuplicate($emailMessageId)) {
+        $duplicates++;
+        continue; // Тихо пропускаем, не логируем каждый раз
+    }
+
+    logMessage("Processing email: $subject (date: $emailDate)");
 
     // Получаем тело письма
     $body = '';
@@ -286,19 +357,16 @@ foreach ($emails as $emailUid) {
 
     if (!$parsed['sender_name'] && !$parsed['amount']) {
         logMessage("Could not parse notification, skipping");
-        // Помечаем как прочитанное чтобы не обрабатывать снова
-        imap_setflag_full($inbox, $emailUid, "\\Seen", ST_UID);
         $skipped++;
         continue;
     }
 
     logMessage("Parsed: sender={$parsed['sender_name']}, amount={$parsed['amount']}");
 
-    // Проверяем дубликат
-    if (isDuplicate($body, $parsed['amount'] ?? 0)) {
-        logMessage("Duplicate payment, skipping");
-        imap_setflag_full($inbox, $emailUid, "\\Seen", ST_UID);
-        $skipped++;
+    // Проверяем, есть ли отправитель в белом списке
+    if (!isWhitelistedPayer($parsed['sender_name'])) {
+        logMessage("Sender not in whitelist, skipping (not a student payer)");
+        $notWhitelisted++;
         continue;
     }
 
@@ -312,7 +380,7 @@ foreach ($emails as $emailUid) {
     }
 
     // Сохраняем в базу
-    $paymentId = savePayment($parsed, $matchResult);
+    $paymentId = savePayment($parsed, $matchResult, $emailMessageId, $emailDate);
 
     if ($paymentId) {
         logMessage("Payment saved with ID: $paymentId");
@@ -320,11 +388,8 @@ foreach ($emails as $emailUid) {
     } else {
         logMessage("Failed to save payment");
     }
-
-    // Помечаем письмо как прочитанное
-    imap_setflag_full($inbox, $emailUid, "\\Seen", ST_UID);
 }
 
 imap_close($inbox);
 
-logMessage("=== Email check complete: $processed processed, $skipped skipped ===");
+logMessage("=== Email check complete: $processed processed, $skipped parse errors, $duplicates duplicates, $notWhitelisted not in whitelist ===");
