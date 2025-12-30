@@ -191,32 +191,32 @@ if (!$inbox) {
 
 logMessage("Connected to Gmail successfully");
 
-// Получаем все непрочитанные письма
-$allUnread = imap_search($inbox, 'UNSEEN', SE_UID);
+// Ищем непрочитанные письма ОТ СЕБЯ (Notification Forwarder шлёт на тот же адрес)
+$searchCriteria = 'UNSEEN FROM "' . GMAIL_USER . '"';
+logMessage("Searching: $searchCriteria");
 
-if (!$allUnread) {
-    logMessage("No unread emails at all");
+$selfEmails = imap_search($inbox, $searchCriteria, SE_UID);
+
+if (!$selfEmails) {
+    logMessage("No unread self-emails found");
     imap_close($inbox);
     exit(0);
 }
 
-$totalUnread = count($allUnread);
-logMessage("Found $totalUnread unread emails");
+logMessage("Found " . count($selfEmails) . " self-emails, filtering by subject...");
 
-// Берём только последние 100 писем для скорости
-$recentEmails = array_slice($allUnread, -100);
-logMessage("Checking last " . count($recentEmails) . " emails for Sberbank...");
-
-// Фильтруем по теме "СберБанк" или "Сбербанк" (IMAP search с кириллицей ненадёжен)
+// Фильтруем по теме "СберБанк" или "Сбербанк"
 $emails = [];
-foreach ($recentEmails as $uid) {
+foreach ($selfEmails as $uid) {
     $headerInfo = imap_headerinfo($inbox, imap_msgno($inbox, $uid));
     $subject = isset($headerInfo->subject) ? imap_utf8($headerInfo->subject) : '';
+
+    logMessage("  Subject: $subject");
 
     // Ищем СберБанк/Сбербанк в теме
     if (stripos($subject, 'СберБанк') !== false || stripos($subject, 'Сбербанк') !== false) {
         $emails[] = $uid;
-        logMessage("  -> MATCH: $subject");
+        logMessage("  -> MATCH!");
     }
 }
 
