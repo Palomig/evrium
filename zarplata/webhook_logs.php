@@ -344,10 +344,7 @@ $webhookUrl = 'https://эвриум.рф/zarplata/api/incoming_payments.php?acti
             }
         }
 
-        // Автообновление каждые 5 секунд
-        setInterval(() => {
-            location.reload();
-        }, 10000);
+        // Авто-обновление отключено - только вручную кнопкой "Обновить"
     </script>
 </body>
 </html>
