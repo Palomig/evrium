@@ -5,6 +5,11 @@
  * Cron: 0,5,10,15,20,25,30,35,40,45,50,55 * * * * php /path/to/zarplata/cron/check_email.php
  */
 
+// Очистка OpCache чтобы использовать свежий код
+if (function_exists('opcache_reset')) {
+    @opcache_reset();
+}
+
 require_once __DIR__ . '/../config/db.php';
 
 // Настройки Gmail (загружаются из базы)
