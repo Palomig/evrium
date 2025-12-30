@@ -181,24 +181,38 @@ if (!$inbox) {
 
 logMessage("Connected to Gmail successfully");
 
-// Ищем непрочитанные письма с темой содержащей "СберБанк" или от Notification Forwarder
-$searchCriteria = 'UNSEEN SUBJECT "СберБанк"';
-$emails = imap_search($inbox, $searchCriteria, SE_UID);
+// Сначала ищем ВСЕ непрочитанные письма
+$searchCriteria = 'UNSEEN';
+logMessage("Searching: $searchCriteria");
+$allUnread = imap_search($inbox, $searchCriteria, SE_UID);
 
-if (!$emails) {
-    // Пробуем альтернативный поиск
-    $searchCriteria = 'UNSEEN SUBJECT "Sberbank"';
-    $emails = imap_search($inbox, $searchCriteria, SE_UID);
+if ($allUnread) {
+    logMessage("Total unread emails: " . count($allUnread));
+} else {
+    logMessage("No unread emails at all");
+    imap_close($inbox);
+    exit(0);
 }
 
-if (!$emails) {
-    // Поиск по тексту "Перевод"
-    $searchCriteria = 'UNSEEN BODY "Перевод от"';
-    $emails = imap_search($inbox, $searchCriteria, SE_UID);
+// Фильтруем только письма связанные со Сбербанком
+$emails = [];
+foreach ($allUnread as $emailUid) {
+    $headerInfo = imap_headerinfo($inbox, imap_msgno($inbox, $emailUid));
+    $subject = isset($headerInfo->subject) ? imap_utf8($headerInfo->subject) : '';
+
+    logMessage("Checking email: '$subject'");
+
+    // Проверяем содержит ли тема "Сбер" или "Sber" (регистронезависимо)
+    if (stripos($subject, 'Сбер') !== false ||
+        stripos($subject, 'Sber') !== false ||
+        stripos($subject, 'App') !== false) {
+        $emails[] = $emailUid;
+        logMessage("  -> MATCHED!");
+    }
 }
 
-if (!$emails) {
-    logMessage("No new emails found");
+if (empty($emails)) {
+    logMessage("No Sberbank emails found among unread");
     imap_close($inbox);
     exit(0);
 }
