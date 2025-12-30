@@ -191,43 +191,17 @@ if (!$inbox) {
 
 logMessage("Connected to Gmail successfully");
 
-// Ищем непрочитанные письма ОТ СЕБЯ (Notification Forwarder пересылает на тот же адрес)
-$searchCriteria = 'UNSEEN FROM "' . GMAIL_USER . '"';
-logMessage("Searching: $searchCriteria");
-$selfEmails = imap_search($inbox, $searchCriteria, SE_UID);
+// Ищем непрочитанные письма с темой содержащей "App" (от Notification Forwarder)
+// Тема письма: "App СберБанк"
+$emails = imap_search($inbox, 'UNSEEN SUBJECT "App"', SE_UID);
 
-if (!$selfEmails) {
-    logMessage("No unread self-emails found");
+if (!$emails) {
+    logMessage("No unread 'App' emails found");
     imap_close($inbox);
     exit(0);
 }
 
-logMessage("Found " . count($selfEmails) . " self-emails");
-
-// Фильтруем только письма со Сбербанком в теме
-$emails = [];
-foreach ($selfEmails as $emailUid) {
-    $headerInfo = imap_headerinfo($inbox, imap_msgno($inbox, $emailUid));
-    $subject = isset($headerInfo->subject) ? imap_utf8($headerInfo->subject) : '';
-
-    logMessage("Checking: '$subject'");
-
-    // Ищем только "СберБанк" или "Sberbank" в теме
-    if (stripos($subject, 'СберБанк') !== false ||
-        stripos($subject, 'Сбербанк') !== false ||
-        stripos($subject, 'Sberbank') !== false) {
-        $emails[] = $emailUid;
-        logMessage("  -> MATCHED!");
-    }
-}
-
-if (empty($emails)) {
-    logMessage("No Sberbank emails found");
-    imap_close($inbox);
-    exit(0);
-}
-
-logMessage("Found " . count($emails) . " new email(s)");
+logMessage("Found " . count($emails) . " 'App' email(s)");
 
 $processed = 0;
 $skipped = 0;
