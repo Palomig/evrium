@@ -4,15 +4,6 @@
  */
 
 require_once __DIR__ . '/config/db.php';
-require_once __DIR__ . '/config/auth.php';
-
-session_start();
-
-// Требуем авторизацию
-if (!isLoggedIn()) {
-    header('Location: login.php');
-    exit;
-}
 
 $logFile = __DIR__ . '/logs/webhook_debug.log';
 $logs = '';
