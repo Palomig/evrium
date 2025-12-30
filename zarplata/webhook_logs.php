@@ -31,7 +31,7 @@ $emailCheckOutput = '';
 if (isset($_POST['check_email'])) {
     $output = [];
     $returnCode = 0;
-    exec('php ' . __DIR__ . '/cron/check_email.php 2>&1', $output, $returnCode);
+    exec('php ' . __DIR__ . '/cron/parse_payments.php 2>&1', $output, $returnCode);
     $emailCheckOutput = implode("\n", $output);
     if (empty($emailCheckOutput)) {
         $emailCheckOutput = "(exec вернул пустой результат, код: $returnCode)";
