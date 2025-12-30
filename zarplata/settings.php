@@ -30,6 +30,123 @@ define('ACTIVE_PAGE', 'settings');
 require_once __DIR__ . '/templates/header.php';
 ?>
 
+<!-- Настройки парсинга Email -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h3 style="margin: 0;">
+            <span class="material-icons" style="vertical-align: middle;">mail</span>
+            Парсинг платежей из почты
+        </h3>
+    </div>
+    <div class="card-body">
+        <form id="email-parser-form" onsubmit="saveEmailParserSettings(event)">
+            <div class="form-group">
+                <label class="form-label" for="gmail_user">
+                    <span class="material-icons" style="font-size: 16px; vertical-align: middle;">email</span>
+                    Gmail адрес *
+                </label>
+                <input
+                    type="email"
+                    class="form-control"
+                    id="gmail_user"
+                    name="gmail_user"
+                    value="<?= e($settingsMap['gmail_user'] ?? '') ?>"
+                    placeholder="example@gmail.com"
+                    required
+                >
+                <small style="color: var(--text-medium-emphasis); display: block; margin-top: 8px;">
+                    Адрес Gmail для проверки входящих уведомлений
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="gmail_app_password">
+                    <span class="material-icons" style="font-size: 16px; vertical-align: middle;">vpn_key</span>
+                    Пароль приложения Gmail *
+                </label>
+                <div class="input-with-icon">
+                    <input
+                        type="password"
+                        class="form-control"
+                        id="gmail_app_password"
+                        name="gmail_app_password"
+                        value="<?= e($settingsMap['gmail_app_password'] ?? '') ?>"
+                        placeholder="xxxx xxxx xxxx xxxx"
+                        required
+                    >
+                    <button type="button" class="password-toggle" onclick="togglePassword('gmail_app_password')">
+                        <span class="material-icons" id="gmail_app_password-icon">visibility_off</span>
+                    </button>
+                </div>
+                <small style="color: var(--text-medium-emphasis); display: block; margin-top: 8px;">
+                    Создайте <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color: var(--md-primary);">пароль приложения</a> в настройках Google
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="email_sender">
+                    <span class="material-icons" style="font-size: 16px; vertical-align: middle;">person</span>
+                    Отправитель писем (FROM)
+                </label>
+                <input
+                    type="email"
+                    class="form-control"
+                    id="email_sender"
+                    name="email_sender"
+                    value="<?= e($settingsMap['email_sender'] ?? $settingsMap['gmail_user'] ?? '') ?>"
+                    placeholder="sender@gmail.com"
+                >
+                <small style="color: var(--text-medium-emphasis); display: block; margin-top: 8px;">
+                    От кого приходят письма (Notification Forwarder). По умолчанию = Gmail адрес
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="email_subject_filter">
+                    <span class="material-icons" style="font-size: 16px; vertical-align: middle;">label</span>
+                    Фильтр по теме письма *
+                </label>
+                <input
+                    type="text"
+                    class="form-control"
+                    id="email_subject_filter"
+                    name="email_subject_filter"
+                    value="<?= e($settingsMap['email_subject_filter'] ?? 'ZARPLATAPROJECT') ?>"
+                    placeholder="ZARPLATAPROJECT"
+                    required
+                >
+                <small style="color: var(--text-medium-emphasis); display: block; margin-top: 8px;">
+                    Ключевое слово в теме письма для фильтрации (настройте в Notification Forwarder)
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="email_search_days">
+                    <span class="material-icons" style="font-size: 16px; vertical-align: middle;">date_range</span>
+                    Период поиска писем (дней)
+                </label>
+                <input
+                    type="number"
+                    class="form-control"
+                    id="email_search_days"
+                    name="email_search_days"
+                    value="<?= e($settingsMap['email_search_days'] ?? '60') ?>"
+                    min="7"
+                    max="365"
+                >
+                <small style="color: var(--text-medium-emphasis); display: block; margin-top: 8px;">
+                    За сколько дней проверять письма (дубликаты не добавляются повторно)
+                </small>
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="save-email-btn">
+                <span class="material-icons" style="margin-right: 8px; font-size: 18px;">save</span>
+                Сохранить настройки почты
+            </button>
+        </form>
+    </div>
+</div>
+
 <!-- Настройки Telegram Bot -->
 <div class="card mb-4">
     <div class="card-header">

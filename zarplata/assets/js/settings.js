@@ -77,6 +77,46 @@ async function setupWebhook() {
     }
 }
 
+// Сохранить настройки парсинга email
+async function saveEmailParserSettings(event) {
+    event.preventDefault();
+
+    const form = event.target;
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+
+    // Конвертируем числа
+    data.email_search_days = parseInt(data.email_search_days) || 60;
+
+    const saveBtn = document.getElementById('save-email-btn');
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="material-icons rotating" style="margin-right: 8px; font-size: 18px;">sync</span>Сохранение...';
+
+    try {
+        const response = await fetch('/zarplata/api/settings.php?action=update_email_parser', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showNotification('Настройки почты сохранены', 'success');
+        } else {
+            showNotification(result.error || 'Ошибка сохранения', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving email parser settings:', error);
+        showNotification('Ошибка сохранения настроек', 'error');
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<span class="material-icons" style="margin-right: 8px; font-size: 18px;">save</span>Сохранить настройки почты';
+    }
+}
+
 // Сохранить настройки Telegram бота
 async function saveBotSettings(event) {
     event.preventDefault();

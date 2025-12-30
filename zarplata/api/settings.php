@@ -36,6 +36,9 @@ switch ($action) {
     case 'update_payment':
         handleUpdatePayment();
         break;
+    case 'update_email_parser':
+        handleUpdateEmailParser();
+        break;
     case 'change_password':
         handleChangePassword();
         break;
@@ -215,6 +218,73 @@ function handleUpdatePayment() {
         jsonSuccess(['message' => 'Настройки оплаты обновлены']);
     } catch (Exception $e) {
         error_log("Failed to update payment settings: " . $e->getMessage());
+        jsonError('Ошибка при обновлении настроек', 500);
+    }
+}
+
+/**
+ * Обновить настройки парсинга email
+ */
+function handleUpdateEmailParser() {
+    // Получаем данные
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+
+    if (!$data) {
+        $data = $_POST;
+    }
+
+    // Валидация
+    $gmailUser = trim($data['gmail_user'] ?? '');
+    $gmailAppPassword = trim($data['gmail_app_password'] ?? '');
+    $emailSender = trim($data['email_sender'] ?? '');
+    $emailSubjectFilter = trim($data['email_subject_filter'] ?? 'ZARPLATAPROJECT');
+    $emailSearchDays = filter_var($data['email_search_days'] ?? 60, FILTER_VALIDATE_INT);
+
+    if (empty($gmailUser)) {
+        jsonError('Gmail адрес обязателен', 400);
+    }
+
+    if (!filter_var($gmailUser, FILTER_VALIDATE_EMAIL)) {
+        jsonError('Неверный формат Gmail адреса', 400);
+    }
+
+    if (empty($gmailAppPassword)) {
+        jsonError('Пароль приложения обязателен', 400);
+    }
+
+    if (empty($emailSubjectFilter)) {
+        jsonError('Фильтр по теме обязателен', 400);
+    }
+
+    if ($emailSearchDays < 7 || $emailSearchDays > 365) {
+        jsonError('Период поиска должен быть от 7 до 365 дней', 400);
+    }
+
+    // Если отправитель не указан, используем gmail_user
+    if (empty($emailSender)) {
+        $emailSender = $gmailUser;
+    }
+
+    if (!empty($emailSender) && !filter_var($emailSender, FILTER_VALIDATE_EMAIL)) {
+        jsonError('Неверный формат адреса отправителя', 400);
+    }
+
+    // Обновляем настройки
+    try {
+        updateSetting('gmail_user', $gmailUser);
+        updateSetting('gmail_app_password', $gmailAppPassword);
+        updateSetting('email_sender', $emailSender);
+        updateSetting('email_subject_filter', $emailSubjectFilter);
+        updateSetting('email_search_days', $emailSearchDays);
+
+        logAudit('settings_updated', 'settings', null, null, [
+            'section' => 'email_parser'
+        ], 'Обновлены настройки парсинга email');
+
+        jsonSuccess(['message' => 'Настройки почты обновлены']);
+    } catch (Exception $e) {
+        error_log("Failed to update email parser settings: " . $e->getMessage());
         jsonError('Ошибка при обновлении настроек', 500);
     }
 }
