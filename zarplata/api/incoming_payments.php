@@ -66,6 +66,22 @@ switch ($action) {
  * POST /api/incoming_payments.php?action=webhook&token=XXX
  */
 function handleWebhook() {
+    // Логируем все входящие запросы для отладки
+    $debugLog = __DIR__ . '/../logs/webhook_debug.log';
+    $logDir = dirname($debugLog);
+    if (!is_dir($logDir)) {
+        @mkdir($logDir, 0755, true);
+    }
+    $logData = [
+        'time' => date('Y-m-d H:i:s'),
+        'method' => $_SERVER['REQUEST_METHOD'] ?? 'unknown',
+        'content_type' => $_SERVER['CONTENT_TYPE'] ?? 'not set',
+        'get' => $_GET,
+        'post' => $_POST,
+        'raw_input' => file_get_contents('php://input'),
+    ];
+    @file_put_contents($debugLog, json_encode($logData, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . "\n\n", FILE_APPEND);
+
     // Проверяем токен
     $token = $_GET['token'] ?? '';
     $savedToken = getSetting('automate_api_token', '');
