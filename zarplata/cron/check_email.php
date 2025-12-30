@@ -191,17 +191,16 @@ if (!$inbox) {
 
 logMessage("Connected to Gmail successfully");
 
-// Ищем непрочитанные письма с темой содержащей "App" (от Notification Forwarder)
-// Тема письма: "App СберБанк"
-$emails = imap_search($inbox, 'UNSEEN SUBJECT "App"', SE_UID);
+// Ищем непрочитанные письма с темой "App СберБанк" (от Notification Forwarder)
+$emails = imap_search($inbox, 'UNSEEN SUBJECT "СберБанк"', SE_UID);
 
 if (!$emails) {
-    logMessage("No unread 'App' emails found");
+    logMessage("No unread Sberbank emails found");
     imap_close($inbox);
     exit(0);
 }
 
-logMessage("Found " . count($emails) . " 'App' email(s)");
+logMessage("Found " . count($emails) . " Sberbank email(s)");
 
 $processed = 0;
 $skipped = 0;
