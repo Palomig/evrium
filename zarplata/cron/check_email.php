@@ -205,28 +205,26 @@ if (!$selfEmails) {
 
 logMessage("Found " . count($selfEmails) . " self-emails, filtering by subject...");
 
-// Фильтруем по теме "СберБанк" или "Сбербанк"
+// Фильтруем по теме "ZARPLATAPROJECT"
 $emails = [];
 foreach ($selfEmails as $uid) {
     $headerInfo = imap_headerinfo($inbox, imap_msgno($inbox, $uid));
     $subject = isset($headerInfo->subject) ? imap_utf8($headerInfo->subject) : '';
 
-    logMessage("  Subject: $subject");
-
-    // Ищем СберБанк/Сбербанк в теме
-    if (stripos($subject, 'СберБанк') !== false || stripos($subject, 'Сбербанк') !== false) {
+    // Ищем ZARPLATAPROJECT в теме
+    if (stripos($subject, 'ZARPLATAPROJECT') !== false) {
         $emails[] = $uid;
-        logMessage("  -> MATCH!");
+        logMessage("  MATCH: $subject");
     }
 }
 
 if (empty($emails)) {
-    logMessage("No Sberbank emails found after filtering");
+    logMessage("No ZARPLATAPROJECT emails found");
     imap_close($inbox);
     exit(0);
 }
 
-logMessage("Found " . count($emails) . " Sberbank email(s)");
+logMessage("Found " . count($emails) . " payment email(s)");
 
 $processed = 0;
 $skipped = 0;
