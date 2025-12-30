@@ -27,13 +27,15 @@ if (isset($_POST['clear_email'])) {
 }
 
 // Запуск проверки почты
+$emailCheckOutput = '';
 if (isset($_POST['check_email'])) {
     $output = [];
     $returnCode = 0;
     exec('php ' . __DIR__ . '/cron/check_email.php 2>&1', $output, $returnCode);
-    $emailCheckResult = implode("\n", $output);
-    header('Location: webhook_logs.php?email_checked=1');
-    exit;
+    $emailCheckOutput = implode("\n", $output);
+    if (empty($emailCheckOutput)) {
+        $emailCheckOutput = "(exec вернул пустой результат, код: $returnCode)";
+    }
 }
 
 // Чтение логов webhook
@@ -219,6 +221,13 @@ $webhookUrl = 'https://эвриум.рф/zarplata/api/incoming_payments.php?acti
         <div class="alert alert-success">
             <span class="material-icons" style="vertical-align: middle;">check_circle</span>
             Логи очищены
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($emailCheckOutput)): ?>
+        <div class="card" style="border: 2px solid #BB86FC;">
+            <h2>🔍 Результат проверки почты</h2>
+            <div class="logs" style="max-height: 400px;"><?= htmlspecialchars($emailCheckOutput) ?></div>
         </div>
         <?php endif; ?>
 
