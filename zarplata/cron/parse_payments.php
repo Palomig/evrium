@@ -194,44 +194,6 @@ function isDuplicate($emailMessageId) {
     return $existing !== null;
 }
 
-/**
- * Проверка, является ли отправитель известным плательщиком
- */
-function isWhitelistedPayer($senderName) {
-    if (empty($senderName)) {
-        return false;
-    }
-
-    // Нормализуем имя
-    $normalizedName = mb_strtolower(trim($senderName));
-
-    // Ищем точное совпадение
-    $payer = dbQueryOne(
-        "SELECT id FROM student_payers WHERE LOWER(name) = ? AND active = 1",
-        [$normalizedName]
-    );
-
-    if ($payer) {
-        return true;
-    }
-
-    // Ищем частичное совпадение (первые два слова)
-    $nameParts = explode(' ', $normalizedName);
-    if (count($nameParts) >= 2) {
-        $partialName = $nameParts[0] . ' ' . $nameParts[1];
-        $payer = dbQueryOne(
-            "SELECT id FROM student_payers WHERE LOWER(name) LIKE ? AND active = 1",
-            [$partialName . '%']
-        );
-
-        if ($payer) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
 // Основной код
 logMessage("=== Starting email check ===");
 
@@ -283,7 +245,6 @@ logMessage("Found " . count($emails) . " payment email(s)");
 $processed = 0;
 $skipped = 0;
 $duplicates = 0;
-$notWhitelisted = 0;
 
 foreach ($emails as $emailUid) {
     // Получаем заголовки
@@ -363,23 +324,16 @@ foreach ($emails as $emailUid) {
 
     logMessage("Parsed: sender={$parsed['sender_name']}, amount={$parsed['amount']}");
 
-    // Проверяем, есть ли отправитель в белом списке
-    if (!isWhitelistedPayer($parsed['sender_name'])) {
-        logMessage("Sender not in whitelist, skipping (not a student payer)");
-        $notWhitelisted++;
-        continue;
-    }
-
-    // Ищем соответствующего плательщика
+    // Ищем соответствующего плательщика (для автоматической привязки)
     $matchResult = findMatchingPayer($parsed['sender_name']);
 
     if ($matchResult) {
         logMessage("Matched to payer: {$matchResult['payer']['name']} (student: {$matchResult['payer']['student_name']}, confidence: {$matchResult['confidence']}%)");
     } else {
-        logMessage("No matching payer found");
+        logMessage("No matching payer found - payment will be saved as pending");
     }
 
-    // Сохраняем в базу
+    // Сохраняем в базу (ВСЕ платежи, независимо от белого списка)
     $paymentId = savePayment($parsed, $matchResult, $emailMessageId, $emailDate);
 
     if ($paymentId) {
@@ -392,4 +346,4 @@ foreach ($emails as $emailUid) {
 
 imap_close($inbox);
 
-logMessage("=== Email check complete: $processed processed, $skipped parse errors, $duplicates duplicates, $notWhitelisted not in whitelist ===");
+logMessage("=== Email check complete: $processed processed, $skipped parse errors, $duplicates duplicates ===");
