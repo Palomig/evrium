@@ -5,28 +5,59 @@
 
 require_once __DIR__ . '/config/db.php';
 
-$logFile = __DIR__ . '/logs/webhook_debug.log';
-$logs = '';
-$error = '';
+$webhookLogFile = __DIR__ . '/logs/webhook_debug.log';
+$emailLogFile = __DIR__ . '/logs/email_parser.log';
+$webhookLogs = '';
+$emailLogs = '';
 
 // Очистка логов
-if (isset($_POST['clear'])) {
-    if (file_exists($logFile)) {
-        file_put_contents($logFile, '');
+if (isset($_POST['clear_webhook'])) {
+    if (file_exists($webhookLogFile)) {
+        file_put_contents($webhookLogFile, '');
     }
-    header('Location: webhook_logs.php?cleared=1');
+    header('Location: webhook_logs.php?cleared=webhook');
+    exit;
+}
+if (isset($_POST['clear_email'])) {
+    if (file_exists($emailLogFile)) {
+        file_put_contents($emailLogFile, '');
+    }
+    header('Location: webhook_logs.php?cleared=email');
     exit;
 }
 
-// Чтение логов
-if (file_exists($logFile)) {
-    $logs = file_get_contents($logFile);
-    if (empty($logs)) {
-        $logs = '(Логи пусты - ещё не было запросов к webhook)';
+// Запуск проверки почты
+if (isset($_POST['check_email'])) {
+    $output = [];
+    $returnCode = 0;
+    exec('php ' . __DIR__ . '/cron/check_email.php 2>&1', $output, $returnCode);
+    $emailCheckResult = implode("\n", $output);
+    header('Location: webhook_logs.php?email_checked=1');
+    exit;
+}
+
+// Чтение логов webhook
+if (file_exists($webhookLogFile)) {
+    $webhookLogs = file_get_contents($webhookLogFile);
+    if (empty($webhookLogs)) {
+        $webhookLogs = '(Логи пусты)';
     }
 } else {
-    $logs = '(Файл логов не существует - ещё не было запросов к webhook)';
+    $webhookLogs = '(Файл логов не существует)';
 }
+
+// Чтение логов email
+if (file_exists($emailLogFile)) {
+    $emailLogs = file_get_contents($emailLogFile);
+    if (empty($emailLogs)) {
+        $emailLogs = '(Логи пусты)';
+    }
+} else {
+    $emailLogs = '(Файл логов не существует)';
+}
+
+// Статус настроек Gmail
+$gmailConfigured = !empty(getSetting('gmail_user', '')) && !empty(getSetting('gmail_app_password', ''));
 
 // Получаем токен для отображения URL
 $token = getSetting('automate_api_token', '');
@@ -191,24 +222,61 @@ $webhookUrl = 'https://эвриум.рф/zarplata/api/incoming_payments.php?acti
         </div>
         <?php endif; ?>
 
-        <div class="card">
-            <h2>📡 Webhook URL для MacroDroid</h2>
-            <div class="url-box" id="webhookUrl"><?= htmlspecialchars($webhookUrl) ?></div>
-            <button class="btn btn-primary" onclick="copyUrl()">
-                <span class="material-icons">content_copy</span>
-                Копировать URL
-            </button>
-            <p class="hint">Используй этот URL в MacroDroid → HTTP-запрос (POST)</p>
+        <?php if (isset($_GET['email_checked'])): ?>
+        <div class="alert alert-success">
+            <span class="material-icons" style="vertical-align: middle;">check_circle</span>
+            Проверка почты выполнена
+        </div>
+        <?php endif; ?>
+
+        <!-- Email парсинг (основной метод) -->
+        <div class="card" style="border: 2px solid #03DAC6;">
+            <h2>📧 Парсинг Email (рекомендуется)</h2>
+            <?php if ($gmailConfigured): ?>
+                <div class="alert alert-success" style="margin-bottom: 15px;">
+                    <span class="material-icons" style="vertical-align: middle;">check_circle</span>
+                    Gmail настроен: <?= htmlspecialchars(getSetting('gmail_user', '')) ?>
+                </div>
+            <?php else: ?>
+                <div class="alert" style="background: rgba(207, 102, 121, 0.15); border: 1px solid #CF6679; color: #CF6679; margin-bottom: 15px;">
+                    <span class="material-icons" style="vertical-align: middle;">warning</span>
+                    Gmail не настроен. Выполни SQL из migrations/add_gmail_settings.sql
+                </div>
+            <?php endif; ?>
+
+            <div class="actions" style="margin-bottom: 0;">
+                <form method="POST" style="display: inline;">
+                    <button type="submit" name="check_email" class="btn btn-primary" <?= $gmailConfigured ? '' : 'disabled' ?>>
+                        <span class="material-icons">mail</span>
+                        Проверить почту сейчас
+                    </button>
+                </form>
+                <form method="POST" style="display: inline;">
+                    <button type="submit" name="clear_email" class="btn btn-danger" onclick="return confirm('Очистить логи email?')">
+                        <span class="material-icons">delete</span>
+                        Очистить логи
+                    </button>
+                </form>
+            </div>
+            <p class="hint">Notification Forwarder → Email → Сервер парсит письма каждые 5 минут</p>
         </div>
 
         <div class="card">
-            <h2>📝 Тело запроса для MacroDroid</h2>
-            <div class="url-box" id="bodyTemplate">{"notification": "[not_title] [not_text]"}</div>
-            <button class="btn btn-secondary" onclick="copyBody()">
+            <h2>📋 Логи парсинга Email</h2>
+            <div class="logs" style="max-height: 300px;"><?= htmlspecialchars($emailLogs) ?></div>
+        </div>
+
+        <hr style="border-color: #333; margin: 30px 0;">
+
+        <!-- Webhook (альтернативный метод) -->
+        <div class="card">
+            <h2>📡 Webhook URL (альтернатива)</h2>
+            <div class="url-box" id="webhookUrl"><?= htmlspecialchars($webhookUrl) ?></div>
+            <button class="btn btn-secondary" onclick="copyUrl()">
                 <span class="material-icons">content_copy</span>
-                Копировать
+                Копировать URL
             </button>
-            <p class="hint">Вставь в "Тело сообщения" и установи тип: application/json</p>
+            <p class="hint">Для MacroDroid/Android приложения</p>
         </div>
 
         <div class="actions">
@@ -217,7 +285,7 @@ $webhookUrl = 'https://эвриум.рф/zarplata/api/incoming_payments.php?acti
                 Обновить
             </button>
             <form method="POST" style="display: inline;">
-                <button type="submit" name="clear" class="btn btn-danger" onclick="return confirm('Очистить все логи?')">
+                <button type="submit" name="clear_webhook" class="btn btn-danger" onclick="return confirm('Очистить логи webhook?')">
                     <span class="material-icons">delete</span>
                     Очистить логи
                 </button>
@@ -229,8 +297,8 @@ $webhookUrl = 'https://эвриум.рф/zarplata/api/incoming_payments.php?acti
         </div>
 
         <div class="card">
-            <h2>📋 Входящие запросы</h2>
-            <div class="logs"><?= htmlspecialchars($logs) ?></div>
+            <h2>📋 Логи Webhook</h2>
+            <div class="logs" style="max-height: 300px;"><?= htmlspecialchars($webhookLogs) ?></div>
         </div>
     </div>
 
