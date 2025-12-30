@@ -126,6 +126,16 @@ function savePayment($parsed, $matchResult) {
     $status = $matchResult ? 'matched' : 'pending';
     $month = date('Y-m');
 
+    // Переподключаемся к базе (может отвалиться за время проверки почты)
+    global $pdo;
+    $pdo = null;
+    $pdo = new PDO(
+        'mysql:host=localhost;dbname=cw95865_admin;charset=utf8mb4',
+        'cw95865_admin',
+        '123456789',
+        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+    );
+
     try {
         $paymentId = dbExecute(
             "INSERT INTO incoming_payments
@@ -181,38 +191,38 @@ if (!$inbox) {
 
 logMessage("Connected to Gmail successfully");
 
-// Сначала ищем ВСЕ непрочитанные письма
-$searchCriteria = 'UNSEEN';
+// Ищем непрочитанные письма ОТ СЕБЯ (Notification Forwarder пересылает на тот же адрес)
+$searchCriteria = 'UNSEEN FROM "' . GMAIL_USER . '"';
 logMessage("Searching: $searchCriteria");
-$allUnread = imap_search($inbox, $searchCriteria, SE_UID);
+$selfEmails = imap_search($inbox, $searchCriteria, SE_UID);
 
-if ($allUnread) {
-    logMessage("Total unread emails: " . count($allUnread));
-} else {
-    logMessage("No unread emails at all");
+if (!$selfEmails) {
+    logMessage("No unread self-emails found");
     imap_close($inbox);
     exit(0);
 }
 
-// Фильтруем только письма связанные со Сбербанком
+logMessage("Found " . count($selfEmails) . " self-emails");
+
+// Фильтруем только письма со Сбербанком в теме
 $emails = [];
-foreach ($allUnread as $emailUid) {
+foreach ($selfEmails as $emailUid) {
     $headerInfo = imap_headerinfo($inbox, imap_msgno($inbox, $emailUid));
     $subject = isset($headerInfo->subject) ? imap_utf8($headerInfo->subject) : '';
 
-    logMessage("Checking email: '$subject'");
+    logMessage("Checking: '$subject'");
 
-    // Проверяем содержит ли тема "Сбер" или "Sber" (регистронезависимо)
-    if (stripos($subject, 'Сбер') !== false ||
-        stripos($subject, 'Sber') !== false ||
-        stripos($subject, 'App') !== false) {
+    // Ищем только "СберБанк" или "Sberbank" в теме
+    if (stripos($subject, 'СберБанк') !== false ||
+        stripos($subject, 'Сбербанк') !== false ||
+        stripos($subject, 'Sberbank') !== false) {
         $emails[] = $emailUid;
         logMessage("  -> MATCHED!");
     }
 }
 
 if (empty($emails)) {
-    logMessage("No Sberbank emails found among unread");
+    logMessage("No Sberbank emails found");
     imap_close($inbox);
     exit(0);
 }
