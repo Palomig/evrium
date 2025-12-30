@@ -43,11 +43,15 @@ CREATE TABLE IF NOT EXISTS incoming_payments (
     INDEX idx_received_at (received_at)
 );
 
--- Add payment_month column to student_payments if it doesn't have payments tracked
--- This allows linking auto-captured payments to specific months
-ALTER TABLE student_payments ADD COLUMN IF NOT EXISTS auto_payment_id INT NULL;
-ALTER TABLE student_payments ADD CONSTRAINT fk_auto_payment
-    FOREIGN KEY (auto_payment_id) REFERENCES incoming_payments(id) ON DELETE SET NULL;
+-- Add auto_payment_id column to student_payments (links to incoming_payments)
+-- NOTE: Run these separately. If column/constraint already exists, skip that line.
+
+-- Step 1: Add column (skip if already exists)
+-- ALTER TABLE student_payments ADD COLUMN auto_payment_id INT NULL;
+
+-- Step 2: Add foreign key (skip if already exists)
+-- ALTER TABLE student_payments ADD CONSTRAINT fk_auto_payment
+--     FOREIGN KEY (auto_payment_id) REFERENCES incoming_payments(id) ON DELETE SET NULL;
 
 -- API token for Automate app (stored in settings)
 INSERT INTO settings (setting_key, setting_value, description)
