@@ -314,30 +314,31 @@ foreach ($dataByMonth as $monthKey => &$month) {
 }
 unset($month);  // ⚠️ КРИТИЧНО: разрываем ссылку после foreach
 
-// Общая статистика
-$totalStats = [
+// Статистика за ТЕКУЩИЙ месяц (для stats-minimal)
+$currentMonthKey = date('Y-m');
+$currentMonthStats = [
     'pending' => 0,
     'approved' => 0,
     'paid' => 0,
     'total' => 0
 ];
 
-foreach ($dataByMonth as $month) {
-    $totalStats['pending'] += $month['pending'];
-    $totalStats['approved'] += $month['approved'];
-    $totalStats['paid'] += $month['paid'];
-    $totalStats['total'] += $month['total'];
+if (isset($dataByMonth[$currentMonthKey])) {
+    $currentMonthStats['pending'] = $dataByMonth[$currentMonthKey]['pending'];
+    $currentMonthStats['approved'] = $dataByMonth[$currentMonthKey]['approved'];
+    $currentMonthStats['paid'] = $dataByMonth[$currentMonthKey]['paid'];
+    $currentMonthStats['total'] = $dataByMonth[$currentMonthKey]['total'];
 }
 
-// Добавляем выплаты типа 'payout' (они не привязаны к урокам)
-$payoutQuery = "SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE payment_type = 'payout' AND status = 'paid'";
-$payoutParams = [];
+// Добавляем выплаты типа 'payout' за ТЕКУЩИЙ месяц (они не привязаны к урокам)
+$payoutQuery = "SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE payment_type = 'payout' AND status = 'paid' AND DATE_FORMAT(created_at, '%Y-%m') = ?";
+$payoutParams = [$currentMonthKey];
 if ($teacherFilter > 0) {
     $payoutQuery .= " AND teacher_id = ?";
     $payoutParams[] = $teacherFilter;
 }
 $payoutTotal = dbQueryOne($payoutQuery, $payoutParams);
-$totalStats['paid'] += (int)($payoutTotal['total'] ?? 0);
+$currentMonthStats['paid'] += (int)($payoutTotal['total'] ?? 0);
 
 // Статистика по преподавателям
 $teacherStats = [];
@@ -361,8 +362,8 @@ foreach ($teachers as $teacher) {
     ];
 }
 
-// Месяцы в порядке убывания
-$dataByMonth = array_reverse($dataByMonth, true);
+// Месяцы в порядке убывания (текущий месяц сверху, предыдущие ниже)
+// Данные уже отсортированы по дате DESC в SQL запросе, поэтому array_reverse не нужен
 
 // ⭐ Расчёт потенциальной зарплаты за месяц (только для выбранного преподавателя)
 $potentialSalary = 0;
@@ -1061,23 +1062,23 @@ require_once __DIR__ . '/templates/header.php';
                 <?php endforeach; ?>
             </div>
 
-            <!-- Stats Minimal -->
+            <!-- Stats Minimal (текущий месяц) -->
             <div class="stats-minimal">
                 <div class="minimal-item pending">
-                    <div class="minimal-value"><?= formatMoney($totalStats['pending']) ?></div>
+                    <div class="minimal-value"><?= formatMoney($currentMonthStats['pending']) ?></div>
                     <div class="minimal-label">Ожидают</div>
                 </div>
                 <div class="minimal-item approved">
-                    <div class="minimal-value"><?= formatMoney($totalStats['approved']) ?></div>
+                    <div class="minimal-value"><?= formatMoney($currentMonthStats['approved']) ?></div>
                     <div class="minimal-label">Одобрено</div>
                 </div>
                 <div class="minimal-item paid">
-                    <div class="minimal-value"><?= formatMoney($totalStats['paid']) ?></div>
+                    <div class="minimal-value"><?= formatMoney($currentMonthStats['paid']) ?></div>
                     <div class="minimal-label">Выплачено</div>
                 </div>
                 <div class="minimal-item total">
-                    <div class="minimal-value"><?= formatMoney($totalStats['total']) ?></div>
-                    <div class="minimal-label">Всего</div>
+                    <div class="minimal-value"><?= formatMoney($currentMonthStats['total']) ?></div>
+                    <div class="minimal-label">Всего за <?= $monthNames[date('F')] ?></div>
                 </div>
                 <?php if ($teacherFilter > 0 && $potentialSalary > 0): ?>
                 <div class="minimal-item potential">
