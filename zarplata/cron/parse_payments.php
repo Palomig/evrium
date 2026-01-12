@@ -48,6 +48,10 @@ function logMessage($message) {
  * Формат: "Перевод от Руслан Романович Б. + 10 ₽ Счёт карты VISA •• 9089"
  */
 function parseSberbankNotification($text) {
+    // Нормализуем пробелы: заменяем неразрывные пробелы (U+00A0) и другие unicode пробелы на обычные
+    // Это важно, т.к. банки часто используют неразрывный пробел как разделитель тысяч (4 200 ₽)
+    $text = preg_replace('/[\x{00A0}\x{2009}\x{202F}]/u', ' ', $text);
+
     $result = [
         'sender_name' => null,
         'amount' => null,
