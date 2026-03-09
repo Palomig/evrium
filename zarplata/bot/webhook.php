@@ -128,6 +128,10 @@ function handleMessage($message) {
                 handleCommand($chatId, $telegramId, $username, '/week');
                 return;
 
+            case '📆 Месяц':
+                handleCommand($chatId, $telegramId, $username, '/month');
+                return;
+
             case '🗓 Расписание':
                 handleCommand($chatId, $telegramId, $username, '/schedule');
                 return;
@@ -139,7 +143,7 @@ function handleMessage($message) {
 
         // Обычные сообщения
         $keyboard = function_exists('getMainMenuKeyboard') ? getMainMenuKeyboard() : null;
-        sendTelegramMessage($chatId, "Используйте кнопки меню или команды:\n/start - Регистрация\n/today - Заработок сегодня\n/week - Заработок за неделю", $keyboard);
+        sendTelegramMessage($chatId, "Используйте кнопки меню или команды:\n/start - Регистрация\n/today - Заработок сегодня\n/week - Заработок за неделю\n/month - Заработок за месяц", $keyboard);
 
     } catch (Throwable $e) {
         error_log("[Telegram Bot] Error in handleMessage: " . $e->getMessage());
@@ -172,6 +176,11 @@ function handleCommand($chatId, $telegramId, $username, $text) {
                 handleWeekCommand($chatId, $telegramId);
                 break;
 
+            case '/month':
+                require_once __DIR__ . '/handlers/MonthCommand.php';
+                handleMonthCommand($chatId, $telegramId);
+                break;
+
             case '/schedule':
                 require_once __DIR__ . '/handlers/ScheduleCommand.php';
                 handleScheduleCommand($chatId, $telegramId);
@@ -183,6 +192,7 @@ function handleCommand($chatId, $telegramId, $username, $text) {
                     "📚 <b>Доступные команды:</b>\n\n" .
                     "📅 <b>Сегодня</b> - Заработок за сегодня\n" .
                     "📊 <b>Неделя</b> - Заработок за неделю\n" .
+                    "📆 <b>Месяц</b> - Заработок за текущий месяц\n" .
                     "🗓 <b>Расписание</b> - Расписание на сегодня\n" .
                     "ℹ️ <b>Помощь</b> - Эта справка\n\n" .
                     "Используйте кнопки меню ниже для быстрого доступа к командам.",

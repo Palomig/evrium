@@ -179,7 +179,8 @@ function getMainMenuKeyboard() {
         'keyboard' => [
             [
                 ['text' => '📅 Сегодня'],
-                ['text' => '📊 Неделя']
+                ['text' => '📊 Неделя'],
+                ['text' => '📆 Месяц']
             ],
             [
                 ['text' => '🗓 Расписание'],
