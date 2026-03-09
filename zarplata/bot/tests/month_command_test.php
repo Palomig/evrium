@@ -25,8 +25,9 @@ $teacherResponse = ['id' => 7, 'name' => 'Ирина'];
 $paymentsResponse = [
     ['payment_date' => '2026-03-01', 'daily_total' => 3500, 'lessons_count' => 2],
     ['payment_date' => '2026-03-03', 'daily_total' => 2000, 'lessons_count' => 1],
+    ['payment_date' => '2026-03-05', 'daily_total' => 4200, 'lessons_count' => 2],
 ];
-$monthTotalResponse = ['total' => 5500, 'count' => 3];
+$monthTotalResponse = ['total' => 9700, 'count' => 5];
 
 $GLOBALS['dbQueryCalls'] = [];
 $GLOBALS['sentMessages'] = [];
@@ -78,8 +79,12 @@ $sent = $GLOBALS['sentMessages'][0];
 
 assertTrue(strpos($sent['message'], 'Заработок за месяц') !== false, 'Message must mention monthly salary');
 assertTrue(strpos($sent['message'], '01.03') !== false, 'Message must include month start date');
-assertTrue(strpos($sent['message'], '5 500 ₽') !== false, 'Message must include month total');
-assertTrue(strpos($sent['message'], 'Уроков:</b> 3') !== false, 'Message must include lessons count');
+assertTrue(strpos($sent['message'], 'Неделя 1') !== false, 'Message must include first week section');
+assertTrue(strpos($sent['message'], 'Неделя 2') !== false, 'Message must include second week section');
+assertTrue(strpos($sent['message'], 'Итого за неделю:</b> <b>3 500 ₽</b>') !== false, 'Message must include first week total');
+assertTrue(strpos($sent['message'], 'Итого за неделю:</b> <b>6 200 ₽</b>') !== false, 'Message must include second week total');
+assertTrue(strpos($sent['message'], '9 700 ₽') !== false, 'Message must include month total');
+assertTrue(strpos($sent['message'], 'Уроков:</b> 5') !== false, 'Message must include lessons count');
 assertTrue($sent['keyboard'] !== null, 'Month command must send main keyboard');
 
 echo "PASS\n";

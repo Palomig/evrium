@@ -44,8 +44,6 @@ function handleMonthCommand($chatId, $telegramId) {
         return;
     }
 
-    $message .= "📊 <b>По дням:</b>\n\n";
-
     $days = [
         1 => 'Пн',
         2 => 'Вт',
@@ -56,7 +54,38 @@ function handleMonthCommand($chatId, $telegramId) {
         7 => 'Вс'
     ];
 
+    $weeks = [];
+
     foreach ($payments as $payment) {
+        $paymentTimestamp = strtotime($payment['payment_date']);
+        $weekStartTimestamp = strtotime('monday this week', $paymentTimestamp);
+        $weekEndTimestamp = strtotime('sunday this week', $paymentTimestamp);
+        $weekKey = date('Y-m-d', $weekStartTimestamp);
+
+        if (!isset($weeks[$weekKey])) {
+            $weeks[$weekKey] = [
+                'start' => max($weekStartTimestamp, strtotime($monthStart)),
+                'end' => min($weekEndTimestamp, strtotime($monthEnd)),
+                'days' => [],
+                'total' => 0,
+                'count' => 0
+            ];
+        }
+
+        $weeks[$weekKey]['days'][] = $payment;
+        $weeks[$weekKey]['total'] += (float) $payment['daily_total'];
+        $weeks[$weekKey]['count'] += (int) $payment['lessons_count'];
+    }
+
+    $message .= "📊 <b>По неделям:</b>\n\n";
+
+    $weekNumber = 1;
+    foreach ($weeks as $week) {
+        $weekStartLabel = date('d.m', $week['start']);
+        $weekEndLabel = date('d.m', $week['end']);
+        $message .= "📆 <b>Неделя {$weekNumber}</b> ({$weekStartLabel} - {$weekEndLabel})\n";
+
+        foreach ($week['days'] as $payment) {
         $dayOfWeek = date('N', strtotime($payment['payment_date']));
         $dayName = $days[$dayOfWeek];
         $date = date('d.m', strtotime($payment['payment_date']));
@@ -64,6 +93,11 @@ function handleMonthCommand($chatId, $telegramId) {
         $count = $payment['lessons_count'];
 
         $message .= "• <b>{$dayName}</b> {$date}: {$amount} ₽ ({$count} " . plural($count, 'урок', 'урока', 'уроков') . ")\n";
+        }
+
+        $message .= "💵 <b>Итого за неделю:</b> <b>" . number_format($week['total'], 0, ',', ' ') . " ₽</b>\n";
+        $message .= "📚 <b>Уроков за неделю:</b> {$week['count']}\n\n";
+        $weekNumber++;
     }
 
     $total = $monthTotal['total'] ?? 0;
