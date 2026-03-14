@@ -1,0 +1,7 @@
+# Secrets
+zarplata/config/api_key.php
+
+# IDE
+.idea/
+.vscode/
+*.swp
