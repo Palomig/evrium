@@ -30,16 +30,21 @@ if ($action === 'subscribe') {
         exit;
     }
 
-    // Find teacher for this user
+    // Find teacher for this user: match by name or display_name, fall back to first active teacher
     $teacher = dbQueryOne(
-        "SELECT id FROM teachers WHERE name = ? AND active = 1 LIMIT 1",
-        [$user['name']]
+        "SELECT id FROM teachers WHERE (name = ? OR display_name = ?) AND active = 1 LIMIT 1",
+        [$user['name'], $user['name']]
     );
 
     if (!$teacher) {
-        // Try to find by telegram username or any other mapping
-        // Fall back: use user id as teacher id (for admin users who are also teachers)
-        $teacher = ['id' => $user['id']];
+        // Fall back to the first (owner's) active teacher
+        $teacher = dbQueryOne("SELECT id FROM teachers WHERE active = 1 ORDER BY id LIMIT 1", []);
+    }
+
+    if (!$teacher) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'No teacher found']);
+        exit;
     }
 
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
