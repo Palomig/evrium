@@ -610,6 +610,23 @@ async function completeLesson(lessonId) {
     const btn = document.getElementById('btn-complete-' + lessonId);
     if (btn) btn.disabled = true;
 
+    // Mark all grey (unset) tiles as absent before completing
+    const tilesEl = document.getElementById('tiles-' + lessonId);
+    if (tilesEl) {
+        const greyTiles = tilesEl.querySelectorAll('.student-tile:not(.tile-present):not(.tile-absent)');
+        for (const tile of greyTiles) {
+            const studentId = parseInt(tile.dataset.studentId);
+            if (!studentId) continue;
+            tile.classList.add('tile-absent');
+            // Fire-and-forget — server saves absent record
+            fetch('api/attendance.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lesson_instance_id: lessonId, student_id: studentId, attended: false }),
+            }).catch(() => {});
+        }
+    }
+
     try {
         const res = await fetch('api/attendance.php', {
             method: 'POST',
@@ -621,6 +638,7 @@ async function completeLesson(lessonId) {
         if (data.success) {
             const card = document.querySelector('[data-lesson-id="' + lessonId + '"]');
             card?.classList.add('lesson-completed');
+            updateCount(lessonId);
 
             if (btn) {
                 btn.replaceWith(createDoneBadge());
