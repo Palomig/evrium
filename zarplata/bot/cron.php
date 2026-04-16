@@ -22,6 +22,7 @@ file_put_contents($debugLogFile, $debugMsg, FILE_APPEND);
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/../config/student_helpers.php';
 require_once __DIR__ . '/../config/auth.php';  // ⭐ Нужен для logAudit()
+require_once __DIR__ . '/../config/web_push.php';
 
 // Логируем запуск
 error_log("[CRON v2025-12-10] Attendance cron started at " . date('Y-m-d H:i:s'));
@@ -189,8 +190,11 @@ foreach ($uniqueLessons as $key => $lesson) {
 
     file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - ✅ Sending to {$teacher['name']} for {$time} ({$studentCount} students)\n", FILE_APPEND);
 
-    // Отправляем опрос
+    // Отправляем опрос в Telegram
     sendAttendanceQuery($teacher, $lesson, $studentCount, $studentNames, $subject);
+
+    // Отправляем Web Push (если есть подписки)
+    sendPushToTeacher($teacherId, $subject, $time, $studentCount);
 }
 
 error_log("[CRON] Attendance cron finished");
@@ -289,4 +293,72 @@ function sendAttendanceQuery($teacher, $lesson, $studentCount, $studentNames, $s
     } catch (Exception $e) {
         file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - ❌ EXCEPTION sending to {$teacher['name']}: " . $e->getMessage() . "\n", FILE_APPEND);
     }
+}
+
+/**
+ * Отправить Web Push учителю если есть активные подписки
+ */
+function sendPushToTeacher(int $teacherId, string $subject, string $time, int $studentCount): void {
+    global $debugLogFile, $today;
+
+    // Загружаем VAPID ключи из настроек
+    try {
+        $rows = dbQuery(
+            "SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('vapid_public_key','vapid_private_key','vapid_subject')",
+            []
+        );
+    } catch (Exception $e) {
+        return; // settings table not found — skip silently
+    }
+
+    $vapidPublic = $vapidPrivate = $vapidSubject = '';
+    foreach ($rows as $row) {
+        if ($row['setting_key'] === 'vapid_public_key')  $vapidPublic  = $row['setting_value'];
+        if ($row['setting_key'] === 'vapid_private_key') $vapidPrivate = $row['setting_value'];
+        if ($row['setting_key'] === 'vapid_subject')     $vapidSubject = $row['setting_value'];
+    }
+
+    if (!$vapidPublic || !$vapidPrivate) {
+        return; // VAPID not configured
+    }
+
+    // Получаем подписки учителя
+    try {
+        $subs = dbQuery(
+            "SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE teacher_id = ? AND lesson_notify = 1",
+            [$teacherId]
+        );
+    } catch (Exception $e) {
+        return; // push_subscriptions table not found — skip
+    }
+
+    if (empty($subs)) {
+        return;
+    }
+
+    $push = new VapidPush($vapidPublic, $vapidPrivate, $vapidSubject ?: 'mailto:admin@evrium.ru');
+
+    $payload = [
+        'title' => "Урок начался",
+        'body'  => "{$time} — {$subject}" . ($studentCount > 0 ? " ({$studentCount} уч.)" : ''),
+        'url'   => '/zarplata/mobile/lessons.php?date=' . $today,
+        'icon'  => '/zarplata/mobile/assets/icons/icon-192x192.png',
+        'badge' => '/zarplata/mobile/assets/icons/icon-72x72.png',
+    ];
+
+    $dead = [];
+    foreach ($subs as $sub) {
+        $ok = $push->send($sub, $payload);
+        if (!$ok) {
+            $dead[] = $sub['endpoint'];
+        }
+    }
+
+    // Удаляем просроченные подписки (410 Gone)
+    foreach ($dead as $endpoint) {
+        dbExecute("DELETE FROM push_subscriptions WHERE endpoint = ?", [$endpoint]);
+    }
+
+    $sent = count($subs) - count($dead);
+    file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - Push sent {$sent}/" . count($subs) . " for teacher {$teacherId}\n", FILE_APPEND);
 }
