@@ -1,5 +1,9 @@
 # Secrets
 zarplata/config/api_key.php
+.mcp.json
+
+# Node deps for local-only MCP servers
+mcp-servers/*/node_modules/
 
 # IDE
 .idea/

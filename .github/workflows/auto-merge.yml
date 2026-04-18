@@ -67,3 +67,5 @@ jobs:
             **/.idea/**
             **/README.md
             **/.DS_Store
+            mcp-servers/**
+            .mcp.json
