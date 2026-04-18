@@ -96,6 +96,69 @@ class VapidPush
         return false;
     }
 
+    /**
+     * Like send(), but returns detailed result instead of a boolean.
+     * Useful for diagnostics (tells you the exact HTTP status + body).
+     *
+     * @return array ['status' => int, 'ok' => bool, 'error' => ?string, 'response' => ?string]
+     */
+    public function sendDetailed(array $subscription, array $payload): array
+    {
+        $endpoint = $subscription['endpoint'];
+        $p256dh   = $subscription['p256dh'];
+        $auth     = $subscription['auth'];
+
+        $json = json_encode($payload, JSON_UNESCAPED_UNICODE);
+
+        try {
+            $encrypted = $this->encrypt($json, $p256dh, $auth);
+        } catch (Exception $e) {
+            return ['status' => 0, 'ok' => false, 'error' => 'encrypt: ' . $e->getMessage(), 'response' => null];
+        }
+
+        $parsedUrl = parse_url($endpoint);
+        $audience  = $parsedUrl['scheme'] . '://' . $parsedUrl['host'];
+        try {
+            $jwt = $this->createJwt($audience);
+        } catch (Exception $e) {
+            return ['status' => 0, 'ok' => false, 'error' => 'jwt: ' . $e->getMessage(), 'response' => null];
+        }
+
+        $vapidHeader = 'vapid t=' . $jwt . ', k=' . $this->publicKey;
+
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 10,
+            CURLOPT_POSTFIELDS     => $encrypted['ciphertext'],
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/octet-stream',
+                'Content-Encoding: aes128gcm',
+                'TTL: 2419200',
+                'Urgency: normal',
+                'Authorization: ' . $vapidHeader,
+            ],
+        ]);
+
+        $response = curl_exec($ch);
+        $status   = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error    = curl_error($ch);
+        curl_close($ch);
+
+        if ($error) {
+            return ['status' => 0, 'ok' => false, 'error' => 'curl: ' . $error, 'response' => null];
+        }
+
+        $ok = ($status === 201 || $status === 200);
+        return [
+            'status'   => (int) $status,
+            'ok'       => $ok,
+            'error'    => $ok ? null : 'HTTP ' . $status,
+            'response' => is_string($response) ? substr($response, 0, 500) : null,
+        ];
+    }
+
     // ─────────────────────────────────────────────────────────────────────
     // VAPID JWT (ES256)
     // ─────────────────────────────────────────────────────────────────────

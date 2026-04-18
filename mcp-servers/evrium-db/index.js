@@ -65,6 +65,31 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ["table"],
       },
     },
+    {
+      name: "tail_cron_log",
+      description:
+        "Прочитать хвост одного из серверных лог-файлов zarplata. Доступные файлы: cron_debug (лог крона посещаемости), bot_errors, php_error.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          file:  { type: "string", description: "Имя файла: cron_debug | bot_errors | php_error (по умолчанию cron_debug)" },
+          lines: { type: "number", description: "Сколько последних строк вернуть (1..500, по умолчанию 100)" },
+        },
+      },
+    },
+    {
+      name: "send_test_push",
+      description:
+        "Отправить тестовое Web Push уведомление на подписки учителя (или все, если teacher_id не задан). Возвращает HTTP-статус от FCM/Mozilla Push для каждой подписки — полезно для диагностики доставки.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          teacher_id: { type: "number", description: "ID учителя из таблицы teachers. Если не задан — все активные подписки." },
+          title:      { type: "string", description: "Заголовок уведомления" },
+          body:       { type: "string", description: "Текст уведомления" },
+        },
+      },
+    },
   ],
 }));
 
@@ -83,6 +108,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
       case "describe_table": {
         const data = await fetchAPI("describe", { table: args.table }, "POST");
+        return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+      }
+      case "tail_cron_log": {
+        const file  = args.file  || "cron_debug";
+        const lines = args.lines || 100;
+        const url = `${API_BASE}/zarplata/api/mcp.php?action=log&file=${encodeURIComponent(file)}&lines=${encodeURIComponent(lines)}`;
+        const resp = await fetch(url, { headers: { "X-Mcp-Secret": SECRET } });
+        const data = await resp.json().catch(() => ({ success: false, status: resp.status }));
+        return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+      }
+      case "send_test_push": {
+        const body = {};
+        if (typeof args.teacher_id === "number") body.teacher_id = args.teacher_id;
+        if (args.title) body.title = args.title;
+        if (args.body)  body.body  = args.body;
+        const data = await fetchAPI("push_test", body, "POST");
         return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
       }
       default:
