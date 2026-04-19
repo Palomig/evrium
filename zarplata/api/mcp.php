@@ -17,6 +17,7 @@
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/helpers.php';
 require_once __DIR__ . '/../config/web_push.php';
+require_once __DIR__ . '/../bot/config.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -62,8 +63,11 @@ switch ($action) {
     case 'push_test':
         handlePushTest($body);
         break;
+    case 'simulate_lesson':
+        handleSimulateLesson($body);
+        break;
     default:
-        jsonError("Unknown action: {$action}. Allowed: tables|query|describe|log|push_test", 400);
+        jsonError("Unknown action: {$action}. Allowed: tables|query|describe|log|push_test|simulate_lesson", 400);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -267,6 +271,97 @@ function handlePushTest(array $body): void {
         'sent_to' => count($subs),
         'results' => $results,
     ], 200);
+}
+
+/**
+ * Simulate a lesson notification: sends both Telegram attendance poll AND Web Push,
+ * bypassing audit_log check. Used to verify end-to-end delivery without modifying schedule.
+ *
+ * body: { teacher_id?: int = 1, time?: "HH:MM" = "14:00", subject?: string = "Математика",
+ *         student_count?: int = 3, student_names?: string[] = [], room?: int = 1 }
+ */
+function handleSimulateLesson(array $body): void {
+    $teacherId    = (int)    ($body['teacher_id']    ?? 1);
+    $time         = (string) ($body['time']          ?? '14:00');
+    $subject      = (string) ($body['subject']       ?? 'Математика');
+    $studentCount = (int)    ($body['student_count'] ?? 3);
+    $studentNames = (array)  ($body['student_names'] ?? ['Тестовый ученик']);
+    $room         = (int)    ($body['room']          ?? 1);
+
+    $result = ['telegram' => null, 'push' => null];
+
+    // ── Teacher lookup ─────────────────────────────────────────────────────
+    $teacher = dbQueryOne("SELECT id, name, telegram_id FROM teachers WHERE id = ?", [$teacherId]);
+    if (!$teacher) {
+        jsonError("Teacher {$teacherId} not found", 404);
+    }
+
+    // ── Telegram ───────────────────────────────────────────────────────────
+    if ($teacher['telegram_id']) {
+        $timeEnd = date('H:i', strtotime($time) + 3600);
+        $today   = date('Y-m-d');
+        $msg  = "🧪 <b>ТЕСТ — Отметка посещаемости</b>\n\n";
+        $msg .= "📚 <b>{$subject}</b>\n";
+        $msg .= "🕐 <b>{$time} - {$timeEnd}</b>\n";
+        $msg .= "🏫 Кабинет {$room}\n";
+        $msg .= "👥 Ожидалось: <b>{$studentCount}</b>\n";
+        if (!empty($studentNames)) {
+            $msg .= "📝 " . implode(', ', $studentNames) . "\n";
+        }
+        $msg .= "\n❓ <b>Все ученики пришли на урок?</b>";
+
+        $timeForKey = str_replace(':', '-', $time);
+        $lessonKey  = "{$teacherId}_{$timeForKey}_{$today}_SIM";
+        $keyboard = [
+            'inline_keyboard' => [
+                [['text' => '✅ Да, все пришли',         'callback_data' => "att_all:{$lessonKey}"]],
+                [['text' => '❌ Нет, есть отсутствующие', 'callback_data' => "att_absent:{$lessonKey}"]],
+            ],
+        ];
+
+        $tgRes = sendTelegramMessage($teacher['telegram_id'], $msg, $keyboard);
+        $result['telegram'] = [
+            'sent_to_chat' => $teacher['telegram_id'],
+            'ok'           => (is_array($tgRes) && !empty($tgRes['ok'])),
+            'response'     => $tgRes,
+        ];
+    } else {
+        $result['telegram'] = ['ok' => false, 'error' => 'teacher has no telegram_id'];
+    }
+
+    // ── Push ───────────────────────────────────────────────────────────────
+    $pub  = (string) getSetting('vapid_public_key', '');
+    $priv = (string) getSetting('vapid_private_key', '');
+    $sub  = (string) getSetting('vapid_subject', 'mailto:admin@evrium.ru');
+
+    $pushResults = [];
+    if ($pub && $priv) {
+        $subs = dbQuery(
+            "SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE teacher_id = ? AND lesson_notify = 1",
+            [$teacherId]
+        );
+        $pushObj = new VapidPush($pub, $priv, $sub);
+        $payload = [
+            'title' => 'Урок начался',
+            'body'  => "{$time} — {$subject}" . ($studentCount ? " ({$studentCount} уч.)" : ''),
+            'url'   => '/zarplata/mobile/lessons.php',
+            'icon'  => '/zarplata/mobile/assets/icons/icon-192x192.png',
+            'badge' => '/zarplata/mobile/assets/icons/icon-72x72.png',
+        ];
+        foreach ($subs as $s) {
+            $r = $pushObj->sendDetailed($s, $payload);
+            $pushResults[] = [
+                'subscription_id' => $s['id'],
+                'endpoint_host'   => parse_url($s['endpoint'], PHP_URL_HOST),
+                'status'          => $r['status'],
+                'ok'              => $r['ok'],
+                'error'           => $r['error'],
+            ];
+        }
+    }
+    $result['push'] = ['sent_to' => count($pushResults), 'results' => $pushResults];
+
+    jsonResponse(['success' => true, 'teacher' => $teacher['name'], 'time' => $time, 'result' => $result], 200);
 }
 
 /**
