@@ -66,11 +66,8 @@ switch ($action) {
     case 'simulate_lesson':
         handleSimulateLesson($body);
         break;
-    case 'migrate_add_extras':
-        handleMigrateAddExtras();
-        break;
     default:
-        jsonError("Unknown action: {$action}. Allowed: tables|query|describe|log|push_test|simulate_lesson|migrate_add_extras", 400);
+        jsonError("Unknown action: {$action}. Allowed: tables|query|describe|log|push_test|simulate_lesson", 400);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -365,27 +362,6 @@ function handleSimulateLesson(array $body): void {
     $result['push'] = ['sent_to' => count($pushResults), 'results' => $pushResults];
 
     jsonResponse(['success' => true, 'teacher' => $teacher['name'], 'time' => $time, 'result' => $result], 200);
-}
-
-/**
- * Одноразовая миграция: добавляет колонки extra_group_count / extra_individual_count
- * в lessons_instance. Идемпотентна — проверяет наличие колонки перед добавлением.
- */
-function handleMigrateAddExtras(): void {
-    $pdo = getDB();
-    $added = [];
-    foreach (['extra_group_count', 'extra_individual_count'] as $col) {
-        $exists = $pdo->prepare(
-            "SELECT COUNT(*) FROM information_schema.columns
-             WHERE table_schema = DATABASE() AND table_name = 'lessons_instance' AND column_name = ?"
-        );
-        $exists->execute([$col]);
-        if ((int)$exists->fetchColumn() === 0) {
-            $pdo->exec("ALTER TABLE lessons_instance ADD COLUMN `$col` INT NOT NULL DEFAULT 0");
-            $added[] = $col;
-        }
-    }
-    jsonResponse(['success' => true, 'added' => $added], 200);
 }
 
 /**
