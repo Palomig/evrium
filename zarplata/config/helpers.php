@@ -320,6 +320,62 @@ function calculatePayment($formula, $studentCount) {
 }
 
 /**
+ * Upsert записи о выплате за конкретный lessons_instance.
+ * Если для этого lesson_instance_id уже есть payments-ряд (напр. создан
+ * триггером calculate_payment_after_lesson_complete или предыдущим вызовом) —
+ * обновляем сумму/метод/заметки. Иначе вставляем новую запись.
+ * Пропускаем ряды со статусом paid/cancelled — не перетираем финансовую историю.
+ *
+ * @return int id ряда payments
+ */
+function upsertPaymentForLesson(
+    int $teacherId,
+    int $lessonInstanceId,
+    int $amount,
+    string $calculationMethod,
+    string $notes = ''
+): int {
+    $existing = dbQueryOne(
+        "SELECT id, status FROM payments
+         WHERE lesson_instance_id = ? AND payment_type = 'lesson'
+         ORDER BY id DESC LIMIT 1",
+        [$lessonInstanceId]
+    );
+
+    if ($existing && !in_array($existing['status'], ['paid', 'cancelled'], true)) {
+        dbExecute(
+            "UPDATE payments
+             SET teacher_id = ?, amount = ?, calculation_method = ?, notes = ?, updated_at = NOW()
+             WHERE id = ?",
+            [$teacherId, $amount, $calculationMethod, $notes, $existing['id']]
+        );
+        return (int)$existing['id'];
+    }
+
+    return dbExecute(
+        "INSERT INTO payments
+         (teacher_id, lesson_instance_id, amount, payment_type, status,
+          calculation_method, notes, created_at)
+         VALUES (?, ?, ?, 'lesson', 'pending', ?, ?, NOW())",
+        [$teacherId, $lessonInstanceId, $amount, $calculationMethod, $notes]
+    );
+}
+
+/**
+ * Отменить выплату за lessons_instance (если есть незавершённая).
+ * Ряды со статусом paid не трогаем.
+ */
+function cancelPaymentForLesson(int $lessonInstanceId): void {
+    dbExecute(
+        "UPDATE payments
+         SET status = 'cancelled', updated_at = NOW()
+         WHERE lesson_instance_id = ? AND payment_type = 'lesson'
+           AND status IN ('pending', 'approved')",
+        [$lessonInstanceId]
+    );
+}
+
+/**
  * Получить дату начала недели
  * @param string $date Дата в формате SQL
  * @return string Дата начала недели
