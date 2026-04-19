@@ -23,6 +23,7 @@ $dayOfWeek = (int)(new DateTime($date))->format('N');  // 1=Mon … 7=Sun
 $instances = dbQuery(
     "SELECT li.id, li.teacher_id, li.time_start, li.time_end, li.subject,
             li.expected_students, li.actual_students, li.status,
+            li.extra_group_count, li.extra_individual_count,
             COALESCE(t.display_name, t.name) as teacher_name
      FROM lessons_instance li
      LEFT JOIN teachers t ON li.teacher_id = t.id
@@ -195,6 +196,10 @@ require_once __DIR__ . '/templates/header.php';
         'cancelled' => 'lesson-cancelled',
         default     => ''
     };
+    $startTs = strtotime($lesson['lesson_date'] ?? $date . ' ' . $lesson['time_start']) ?: strtotime($date . ' ' . $lesson['time_start']);
+    $isStarted = time() >= $startTs;
+    $extraGroup = (int)($lesson['extra_group_count'] ?? 0);
+    $extraIndividual = (int)($lesson['extra_individual_count'] ?? 0);
 ?>
 <div class="lesson-card <?= $statusClass ?>" data-lesson-id="<?= $lesson['id'] ?>">
     <!-- Lesson header (always visible) -->
@@ -251,22 +256,43 @@ require_once __DIR__ . '/templates/header.php';
             <?php endforeach; ?>
         </div>
 
+        <!-- Доп. ученики -->
+        <div class="lesson-extras" data-lesson-id="<?= $lesson['id'] ?>">
+            <div class="extras-row">
+                <div class="extras-label">
+                    Доп. ученик <span class="extras-sub">(групповой)</span>
+                    <span class="extras-rate">+200 ₽</span>
+                </div>
+                <div class="extras-stepper">
+                    <button type="button" class="extras-btn" onclick="changeExtra(<?= $lesson['id'] ?>, 'group', -1)" aria-label="Минус">−</button>
+                    <span class="extras-count" id="extra-group-<?= $lesson['id'] ?>"><?= $extraGroup ?></span>
+                    <button type="button" class="extras-btn" onclick="changeExtra(<?= $lesson['id'] ?>, 'group', 1)" aria-label="Плюс">+</button>
+                </div>
+            </div>
+            <div class="extras-row">
+                <div class="extras-label">
+                    Доп. ученик <span class="extras-sub">(индивидуальный)</span>
+                    <span class="extras-rate">+900 ₽</span>
+                </div>
+                <div class="extras-stepper">
+                    <button type="button" class="extras-btn" onclick="changeExtra(<?= $lesson['id'] ?>, 'indiv', -1)" aria-label="Минус">−</button>
+                    <span class="extras-count" id="extra-indiv-<?= $lesson['id'] ?>"><?= $extraIndividual ?></span>
+                    <button type="button" class="extras-btn" onclick="changeExtra(<?= $lesson['id'] ?>, 'indiv', 1)" aria-label="Плюс">+</button>
+                </div>
+            </div>
+        </div>
+
         <div class="lesson-actions">
-            <?php if ($lesson['status'] !== 'completed'): ?>
-            <button class="btn-complete" onclick="completeLesson(<?= $lesson['id'] ?>)" id="btn-complete-<?= $lesson['id'] ?>">
+            <button class="btn-complete"
+                    onclick="submitLesson(<?= $lesson['id'] ?>)"
+                    id="btn-complete-<?= $lesson['id'] ?>"
+                    data-start-ts="<?= (int)$startTs ?>"
+                    <?= $isStarted ? '' : 'disabled' ?>>
                 <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                Завершить урок
-            </button>
-            <?php else: ?>
-            <span class="lesson-done-label">
-                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                 </svg>
-                Урок завершён
-            </span>
-            <?php endif; ?>
+                <?= $isStarted ? 'Сохранить посещаемость' : 'Откроется в ' . htmlspecialchars($time) ?>
+            </button>
         </div>
         <?php endif; ?>
     </div>
@@ -476,6 +502,76 @@ require_once __DIR__ . '/templates/header.php';
 }
 .student-tile.tile-present .tile-check { opacity: 1; }
 
+/* Extras (доп. ученики) */
+.lesson-extras {
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.extras-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+}
+.extras-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.3;
+    flex: 1;
+    min-width: 0;
+}
+.extras-sub {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+.extras-rate {
+    display: block;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-top: 2px;
+}
+.extras-stepper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.extras-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.extras-btn:active { background: var(--bg-hover); transform: scale(0.92); }
+.extras-btn:disabled { opacity: 0.4; cursor: default; }
+.extras-count {
+    min-width: 22px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
 /* Lesson actions */
 .lesson-actions {
     margin-top: 14px;
@@ -498,6 +594,13 @@ require_once __DIR__ . '/templates/header.php';
     transition: background 0.15s, opacity 0.15s;
 }
 .btn-complete:active { opacity: 0.7; }
+.btn-complete:disabled {
+    background: var(--bg-elevated);
+    border-color: var(--border);
+    color: var(--text-muted);
+    cursor: default;
+}
+.btn-complete:disabled:active { opacity: 1; }
 .lesson-done-label {
     display: flex;
     align-items: center;
@@ -605,57 +708,87 @@ function updateCount(lessonId) {
     if (el) el.textContent = present;
 }
 
-// ── Complete lesson ───────────────────────────────────────────────────────
-async function completeLesson(lessonId) {
-    const btn = document.getElementById('btn-complete-' + lessonId);
-    if (btn) btn.disabled = true;
+// ── Extra students stepper ────────────────────────────────────────────────
+function changeExtra(lessonId, kind, delta) {
+    const el = document.getElementById('extra-' + kind + '-' + lessonId);
+    if (!el) return;
+    const current = parseInt(el.textContent) || 0;
+    const next = Math.max(0, current + delta);
+    el.textContent = next;
+}
 
-    // Mark all grey (unset) tiles as absent before completing
+function getExtras(lessonId) {
+    const g = document.getElementById('extra-group-' + lessonId);
+    const i = document.getElementById('extra-indiv-' + lessonId);
+    return {
+        group: g ? (parseInt(g.textContent) || 0) : 0,
+        indiv: i ? (parseInt(i.textContent) || 0) : 0,
+    };
+}
+
+// ── Submit attendance + extras (recalculates payment) ─────────────────────
+async function submitLesson(lessonId) {
+    const btn = document.getElementById('btn-complete-' + lessonId);
+    if (btn && btn.disabled) return;
+
+    // Mark all grey (unset) tiles as absent first, so they get persisted
     const tilesEl = document.getElementById('tiles-' + lessonId);
+    const pending = [];
     if (tilesEl) {
         const greyTiles = tilesEl.querySelectorAll('.student-tile:not(.tile-present):not(.tile-absent)');
         for (const tile of greyTiles) {
             const studentId = parseInt(tile.dataset.studentId);
             if (!studentId) continue;
             tile.classList.add('tile-absent');
-            // Fire-and-forget — server saves absent record
-            fetch('api/attendance.php', {
+            pending.push(fetch('api/attendance.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ lesson_instance_id: lessonId, student_id: studentId, attended: false }),
-            }).catch(() => {});
+            }).catch(() => {}));
         }
     }
 
+    if (btn) btn.disabled = true;
+
     try {
-        const res = await fetch('api/attendance.php', {
+        // Wait for absent-marks to land so server sees correct attendance count
+        if (pending.length) await Promise.all(pending);
+
+        const extras = getExtras(lessonId);
+        const res = await fetch('api/lesson_submit.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lesson_instance_id: lessonId, complete: true }),
+            body: JSON.stringify({
+                lesson_instance_id: lessonId,
+                extra_group: extras.group,
+                extra_individual: extras.indiv,
+            }),
         });
         const data = await res.json();
 
-        if (data.success) {
-            const card = document.querySelector('[data-lesson-id="' + lessonId + '"]');
-            card?.classList.add('lesson-completed');
-            updateCount(lessonId);
-
-            if (btn) {
-                btn.replaceWith(createDoneBadge());
-            }
-            showToast('Урок завершён ✓');
+        if (!data.success) {
+            showToast(data.error || 'Ошибка');
+            if (btn) btn.disabled = false;
+            return;
         }
-    } catch (e) {
-        if (btn) btn.disabled = false;
-        showToast('Ошибка');
-    }
-}
 
-function createDoneBadge() {
-    const span = document.createElement('span');
-    span.className = 'lesson-done-label';
-    span.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Урок завершён';
-    return span;
+        const card = document.querySelector('.lesson-card[data-lesson-id="' + lessonId + '"]');
+        if (card) {
+            card.classList.remove('lesson-completed', 'lesson-cancelled');
+            card.classList.add(data.status === 'cancelled' ? 'lesson-cancelled' : 'lesson-completed');
+        }
+        updateCount(lessonId);
+
+        const total = data.total_amount || 0;
+        const msg = data.status === 'cancelled'
+            ? 'Отменено (0 ₽)'
+            : 'Сохранено ✓ ' + total + ' ₽';
+        showToast(msg);
+    } catch (e) {
+        showToast('Ошибка сохранения');
+    } finally {
+        if (btn) btn.disabled = false;
+    }
 }
 
 // ── Daily Telegram report ─────────────────────────────────────────────────

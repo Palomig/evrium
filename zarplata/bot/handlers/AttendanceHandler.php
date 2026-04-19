@@ -581,17 +581,11 @@ function handleAttAllPresent($chatId, $messageId, $telegramId, $lessonKey, $call
             $lessonType, $subject, $attendedCount, $attendedCount, $formulaId, 'completed', $notes
         );
 
-        // Создаём выплату
-        $paymentId = dbExecute(
-            "INSERT INTO payments
-             (teacher_id, lesson_instance_id, amount, payment_type, status, calculation_method, notes, created_at)
-             VALUES (?, ?, ?, 'lesson', 'pending', ?, ?, ?)",
-            [
-                $teacherId, $lessonInstanceId, $paymentAmount,
-                "Все пришли ({$attendedCount} из {$attendedCount})",
-                "Урок {$time}, {$subject}",
-                $date . ' ' . $time . ':00'
-            ]
+        // Upsert выплаты (может быть уже создана триггером или прошлым вызовом)
+        $paymentId = upsertPaymentForLesson(
+            (int)$teacherId, (int)$lessonInstanceId, (int)$paymentAmount,
+            "Все пришли ({$attendedCount} из {$attendedCount})",
+            "Урок {$time}, {$subject}"
         );
 
         // Логируем
@@ -796,17 +790,11 @@ function handleAttCount($chatId, $messageId, $telegramId, $lessonKey, $attendedC
             $lessonType, $subject, $expectedStudents, $attendedCount, $formulaId, 'completed', $notes
         );
 
-        // Создаём выплату
-        $paymentId = dbExecute(
-            "INSERT INTO payments
-             (teacher_id, lesson_instance_id, amount, payment_type, status, calculation_method, notes, created_at)
-             VALUES (?, ?, ?, 'lesson', 'pending', ?, ?, ?)",
-            [
-                $teacherId, $lessonInstanceId, $paymentAmount,
-                "Пришло {$attendedCount} из {$expectedStudents}",
-                "Урок {$time}, {$subject}",
-                $date . ' ' . $time . ':00'
-            ]
+        // Upsert выплаты (может быть уже создана триггером или прошлым вызовом)
+        $paymentId = upsertPaymentForLesson(
+            (int)$teacherId, (int)$lessonInstanceId, (int)$paymentAmount,
+            "Пришло {$attendedCount} из {$expectedStudents}",
+            "Урок {$time}, {$subject}"
         );
 
         // Логируем
