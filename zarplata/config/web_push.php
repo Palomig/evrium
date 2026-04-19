@@ -318,13 +318,14 @@ class VapidPush
         // RFC 8291 key derivation
         $salt = random_bytes(16);
 
-        // ikm = HKDF-Extract(auth_secret, shared_secret || receiver_pub || ephemeral_pub)
-        $ikm = $this->hkdfExtract(
-            $authSecret,
-            $sharedSecret . $receiverPublicKeyBytes . $ephemeralPubKeyBytes
-        );
+        // Step 1: PRK_key = HKDF-Extract(auth_secret, ecdh_secret)
+        $prkKey = $this->hkdfExtract($authSecret, $sharedSecret);
 
-        // PRK for content key and nonce
+        // Step 2: IKM = HKDF-Expand(PRK_key, "WebPush: info\0" || ua_public || as_public, 32)
+        $keyInfo = "WebPush: info\x00" . $receiverPublicKeyBytes . $ephemeralPubKeyBytes;
+        $ikm     = $this->hkdfExpand($prkKey, $keyInfo, 32);
+
+        // Step 3: PRK = HKDF-Extract(salt, IKM) — for content key and nonce (RFC 8188)
         $prk = $this->hkdfExtract($salt, $ikm);
 
         // Content encryption key (16 bytes) and nonce (12 bytes)
