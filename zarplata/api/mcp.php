@@ -248,7 +248,7 @@ function handlePushTest(array $body): void {
         'body'  => $bodyText,
         'url'   => '/zarplata/mobile/lessons.php',
         'icon'  => '/zarplata/mobile/assets/icons/icon-192x192.png',
-        'badge' => '/zarplata/mobile/assets/icons/badge-96x96.png',
+        'badge' => '/zarplata/mobile/assets/icons/badge-96x96.png?v=2',
     ];
 
     // ─── Detailed per-subscription report via cURL (so we see HTTP status) ───
@@ -346,7 +346,7 @@ function handleSimulateLesson(array $body): void {
             'body'  => "{$time} — {$subject}" . ($studentCount ? " ({$studentCount} уч.)" : ''),
             'url'   => '/zarplata/mobile/lessons.php',
             'icon'  => '/zarplata/mobile/assets/icons/icon-192x192.png',
-            'badge' => '/zarplata/mobile/assets/icons/badge-96x96.png',
+            'badge' => '/zarplata/mobile/assets/icons/badge-96x96.png?v=2',
         ];
         foreach ($subs as $s) {
             $r = $pushObj->sendDetailed($s, $payload);
