@@ -66,11 +66,8 @@ switch ($action) {
     case 'simulate_lesson':
         handleSimulateLesson($body);
         break;
-    case 'delete_lesson_instances':
-        handleDeleteLessonInstances($body);
-        break;
     default:
-        jsonError("Unknown action: {$action}. Allowed: tables|query|describe|log|push_test|simulate_lesson|delete_lesson_instances", 400);
+        jsonError("Unknown action: {$action}. Allowed: tables|query|describe|log|push_test|simulate_lesson", 400);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -365,47 +362,6 @@ function handleSimulateLesson(array $body): void {
     $result['push'] = ['sent_to' => count($pushResults), 'results' => $pushResults];
 
     jsonResponse(['success' => true, 'teacher' => $teacher['name'], 'time' => $time, 'result' => $result], 200);
-}
-
-/**
- * Разовая чистка дублей в lessons_instance.
- * Принимает body {ids: [int]}. Удалит только ряды без payments и логирует аудит.
- * Это временный endpoint — удалить после использования.
- */
-function handleDeleteLessonInstances(array $body): void {
-    $ids = $body['ids'] ?? [];
-    if (!is_array($ids) || count($ids) === 0 || count($ids) > 50) {
-        jsonError('ids must be non-empty array of ≤50 ints', 400);
-    }
-    $ids = array_values(array_filter(array_map('intval', $ids), fn($v) => $v > 0));
-    if (count($ids) === 0) {
-        jsonError('no valid ids', 400);
-    }
-
-    $pdo = getDB();
-    $placeholders = implode(',', array_fill(0, count($ids), '?'));
-
-    // Защита: ни один id не должен быть связан с payments
-    $stmt = $pdo->prepare("SELECT DISTINCT lesson_instance_id FROM payments WHERE lesson_instance_id IN ($placeholders)");
-    $stmt->execute($ids);
-    $linked = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
-    if (!empty($linked)) {
-        jsonError('ids linked to payments, refuse: ' . implode(',', $linked), 409);
-    }
-
-    $stmt = $pdo->prepare("SELECT id, teacher_id, lesson_date, time_start, status, template_id FROM lessons_instance WHERE id IN ($placeholders)");
-    $stmt->execute($ids);
-    $before = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    $del = $pdo->prepare("DELETE FROM lessons_instance WHERE id IN ($placeholders)");
-    $del->execute($ids);
-    $deleted = $del->rowCount();
-
-    jsonResponse([
-        'success' => true,
-        'deleted' => $deleted,
-        'rows'    => $before,
-    ], 200);
 }
 
 /**
