@@ -343,7 +343,7 @@ function sendPushToTeacher(int $teacherId, string $subject, string $time, int $s
         'body'  => "{$time} — {$subject}" . ($studentCount > 0 ? " ({$studentCount} уч.)" : ''),
         'url'   => '/zarplata/mobile/lessons.php?date=' . $today,
         'icon'  => '/zarplata/mobile/assets/icons/icon-192x192.png',
-        'badge' => '/zarplata/mobile/assets/icons/badge-96x96.png?v=2',
+        'badge' => '/zarplata/mobile/assets/icons/badge-192x192.png',
     ];
 
     $dead = [];
