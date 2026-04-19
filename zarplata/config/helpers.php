@@ -320,11 +320,54 @@ function calculatePayment($formula, $studentCount) {
 }
 
 /**
+ * Найти уже существующую выплату за тот же урок, чтобы не создавать дубль.
+ * Смотрит в двух направлениях:
+ *   1) payments.lesson_instance_id = $lessonInstanceId (новая схема — PWA).
+ *   2) legacy: payments.lesson_template_id = lessons_instance.template_id
+ *      AND DATE(payments.created_at) = lessons_instance.lesson_date
+ *      (этот путь использует старый Telegram-хэндлер).
+ *
+ * Защита: если пользователь отметил посещаемость и через Telegram (legacy),
+ * и через PWA — новой выплаты не заводим, а обновляем существующую.
+ * Ряды со статусом paid/cancelled пропускаем — финансовую историю не трогаем.
+ *
+ * @return array|null ['id' => int, 'status' => string, 'lesson_instance_id' => ?int] или null
+ */
+function findExistingLessonPayment(int $lessonInstanceId): ?array {
+    $direct = dbQueryOne(
+        "SELECT id, status, lesson_instance_id FROM payments
+         WHERE lesson_instance_id = ? AND payment_type = 'lesson'
+           AND status NOT IN ('paid', 'cancelled')
+         ORDER BY id DESC LIMIT 1",
+        [$lessonInstanceId]
+    );
+    if ($direct) return $direct;
+
+    $li = dbQueryOne(
+        "SELECT template_id, lesson_date, teacher_id FROM lessons_instance WHERE id = ?",
+        [$lessonInstanceId]
+    );
+    if (!$li || empty($li['template_id'])) return null;
+
+    return dbQueryOne(
+        "SELECT id, status, lesson_instance_id FROM payments
+         WHERE payment_type = 'lesson'
+           AND teacher_id = ?
+           AND lesson_template_id = ?
+           AND DATE(created_at) = ?
+           AND status NOT IN ('paid', 'cancelled')
+         ORDER BY id DESC LIMIT 1",
+        [(int)$li['teacher_id'], (int)$li['template_id'], $li['lesson_date']]
+    ) ?: null;
+}
+
+/**
  * Upsert записи о выплате за конкретный lessons_instance.
  * Если для этого lesson_instance_id уже есть payments-ряд (напр. создан
  * триггером calculate_payment_after_lesson_complete или предыдущим вызовом) —
- * обновляем сумму/метод/заметки. Иначе вставляем новую запись.
- * Пропускаем ряды со статусом paid/cancelled — не перетираем финансовую историю.
+ * обновляем сумму/метод/заметки. Если нашли legacy-ряд по
+ * lesson_template_id+дате — обновляем его и дописываем lesson_instance_id,
+ * чтобы дальше дубли исключались «напрямую». Иначе вставляем новую запись.
  *
  * @return int id ряда payments
  */
@@ -335,19 +378,15 @@ function upsertPaymentForLesson(
     string $calculationMethod,
     string $notes = ''
 ): int {
-    $existing = dbQueryOne(
-        "SELECT id, status FROM payments
-         WHERE lesson_instance_id = ? AND payment_type = 'lesson'
-         ORDER BY id DESC LIMIT 1",
-        [$lessonInstanceId]
-    );
+    $existing = findExistingLessonPayment($lessonInstanceId);
 
-    if ($existing && !in_array($existing['status'], ['paid', 'cancelled'], true)) {
+    if ($existing) {
         dbExecute(
             "UPDATE payments
-             SET teacher_id = ?, amount = ?, calculation_method = ?, notes = ?, updated_at = NOW()
+             SET teacher_id = ?, lesson_instance_id = ?, amount = ?,
+                 calculation_method = ?, notes = ?, updated_at = NOW()
              WHERE id = ?",
-            [$teacherId, $amount, $calculationMethod, $notes, $existing['id']]
+            [$teacherId, $lessonInstanceId, $amount, $calculationMethod, $notes, $existing['id']]
         );
         return (int)$existing['id'];
     }
@@ -362,7 +401,8 @@ function upsertPaymentForLesson(
 }
 
 /**
- * Отменить выплату за lessons_instance (если есть незавершённая).
+ * Отменить выплату за lessons_instance (если есть незавершённая) —
+ * включая legacy-ряды, привязанные только через lesson_template_id+дату.
  * Ряды со статусом paid не трогаем.
  */
 function cancelPaymentForLesson(int $lessonInstanceId): void {
@@ -372,6 +412,23 @@ function cancelPaymentForLesson(int $lessonInstanceId): void {
          WHERE lesson_instance_id = ? AND payment_type = 'lesson'
            AND status IN ('pending', 'approved')",
         [$lessonInstanceId]
+    );
+
+    $li = dbQueryOne(
+        "SELECT template_id, lesson_date, teacher_id FROM lessons_instance WHERE id = ?",
+        [$lessonInstanceId]
+    );
+    if (!$li || empty($li['template_id'])) return;
+
+    dbExecute(
+        "UPDATE payments
+         SET status = 'cancelled', updated_at = NOW()
+         WHERE payment_type = 'lesson'
+           AND teacher_id = ?
+           AND lesson_template_id = ?
+           AND DATE(created_at) = ?
+           AND status IN ('pending', 'approved')",
+        [(int)$li['teacher_id'], (int)$li['template_id'], $li['lesson_date']]
     );
 }
 
