@@ -1,10 +1,10 @@
 /**
  * Service Worker для PWA Эвриум Зарплата
- * Версия: 1.0.0
+ * Версия: 1.0.1
  */
 
-const CACHE_NAME = 'zarplata-pwa-v1';
-const STATIC_CACHE = 'zarplata-static-v1';
+const CACHE_NAME = 'zarplata-pwa-v2';
+const STATIC_CACHE = 'zarplata-static-v2';
 
 // Статические ресурсы для кэширования
 const STATIC_ASSETS = [
@@ -150,7 +150,7 @@ self.addEventListener('push', (event) => {
     const options = {
         body: data.body || 'Новое уведомление',
         icon: '/zarplata/mobile/assets/icons/icon-192x192.png',
-        badge: '/zarplata/mobile/assets/icons/icon-72x72.png',
+        badge: '/zarplata/mobile/assets/icons/badge-96x96.png',
         vibrate: [100, 50, 100],
         data: {
             url: data.url || '/zarplata/mobile/'
