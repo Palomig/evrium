@@ -16,6 +16,52 @@ if (!function_exists('logAudit')) {
 }
 
 /**
+ * Upsert lessons_instance для слота (teacher_id, lesson_date, time_start).
+ * Если уже есть ряд на этот слот (например, scheduled из cron-шаблона) — UPDATE,
+ * иначе INSERT. Возвращает id ряда. Нужно чтобы отметка посещаемости
+ * из Telegram не плодила дубли поверх автосгенерированных scheduled-рядов.
+ */
+function upsertLessonInstance(
+    $teacherId, $date, $timeStart, $timeEnd,
+    $lessonType, $subject, $expectedStudents, $actualStudents,
+    $formulaId, $status, $notes
+) {
+    $existing = dbQueryOne(
+        "SELECT id FROM lessons_instance
+         WHERE teacher_id = ? AND lesson_date = ? AND time_start = ?
+         ORDER BY id ASC LIMIT 1",
+        [$teacherId, $date, $timeStart]
+    );
+
+    if ($existing) {
+        dbExecute(
+            "UPDATE lessons_instance
+             SET time_end = ?, lesson_type = ?, subject = ?,
+                 expected_students = ?, actual_students = ?, formula_id = ?,
+                 status = ?, notes = ?, updated_at = NOW()
+             WHERE id = ?",
+            [
+                $timeEnd, $lessonType, $subject,
+                $expectedStudents, $actualStudents, $formulaId,
+                $status, $notes, $existing['id']
+            ]
+        );
+        return (int)$existing['id'];
+    }
+
+    return dbExecute(
+        "INSERT INTO lessons_instance
+         (teacher_id, lesson_date, time_start, time_end, lesson_type, subject,
+          expected_students, actual_students, formula_id, status, notes, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())",
+        [
+            $teacherId, $date, $timeStart, $timeEnd, $lessonType, $subject,
+            $expectedStudents, $actualStudents, $formulaId, $status, $notes
+        ]
+    );
+}
+
+/**
  * Получить ID формулы для преподавателя
  * С fallback на старое поле formula_id
  */
@@ -524,21 +570,15 @@ function handleAttAllPresent($chatId, $messageId, $telegramId, $lessonKey, $call
         // Рассчитываем выплату
         $paymentAmount = calculatePayment($formula, $attendedCount);
 
-        // Создаём lessons_instance
+        // Создаём/обновляем lessons_instance (upsert, чтобы не плодить дубли поверх scheduled-ряда)
         $timeEnd = date('H:i', strtotime($time) + 3600);
         $studentNames = array_column($studentsData['students'], 'name');
         $subject = $studentsData['subject'] ?? 'Математика';
+        $notes = "Ученики: " . implode(', ', $studentNames);
 
-        $lessonInstanceId = dbExecute(
-            "INSERT INTO lessons_instance
-             (teacher_id, lesson_date, time_start, time_end, lesson_type, subject,
-              expected_students, actual_students, formula_id, status, notes, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed', ?, NOW())",
-            [
-                $teacherId, $date, $time . ':00', $timeEnd . ':00',
-                $lessonType, $subject, $attendedCount, $attendedCount, $formulaId,
-                "Ученики: " . implode(', ', $studentNames)
-            ]
+        $lessonInstanceId = upsertLessonInstance(
+            $teacherId, $date, $time . ':00', $timeEnd . ':00',
+            $lessonType, $subject, $attendedCount, $attendedCount, $formulaId, 'completed', $notes
         );
 
         // Создаём выплату
@@ -700,20 +740,14 @@ function handleAttCount($chatId, $messageId, $telegramId, $lessonKey, $attendedC
 
         // ⭐ ИСПРАВЛЕНИЕ: Если 0 учеников пришло - урок отменён, выплата не создаётся
         if ($attendedCount == 0) {
-            // Создаём lessons_instance со статусом cancelled
+            // Upsert lessons_instance со статусом cancelled
             $timeEnd = date('H:i', strtotime($time) + 3600);
             $studentNames = array_column($studentsData['students'], 'name');
+            $notes = "Урок отменён - ученик не пришёл. Ожидались: " . implode(', ', $studentNames);
 
-            $lessonInstanceId = dbExecute(
-                "INSERT INTO lessons_instance
-                 (teacher_id, lesson_date, time_start, time_end, lesson_type, subject,
-                  expected_students, actual_students, formula_id, status, notes, created_at)
-                 VALUES (?, ?, ?, ?, 'individual', ?, ?, 0, NULL, 'cancelled', ?, NOW())",
-                [
-                    $teacherId, $date, $time . ':00', $timeEnd . ':00',
-                    $subject, $expectedStudents,
-                    "Урок отменён - ученик не пришёл. Ожидались: " . implode(', ', $studentNames)
-                ]
+            $lessonInstanceId = upsertLessonInstance(
+                $teacherId, $date, $time . ':00', $timeEnd . ':00',
+                'individual', $subject, $expectedStudents, 0, null, 'cancelled', $notes
             );
 
             // Логируем
@@ -752,20 +786,14 @@ function handleAttCount($chatId, $messageId, $telegramId, $lessonKey, $attendedC
 
         $paymentAmount = calculatePayment($formula, $attendedCount);
 
-        // Создаём lessons_instance
+        // Upsert lessons_instance
         $timeEnd = date('H:i', strtotime($time) + 3600);
         $studentNames = array_column($studentsData['students'], 'name');
+        $notes = "Ученики: " . implode(', ', $studentNames);
 
-        $lessonInstanceId = dbExecute(
-            "INSERT INTO lessons_instance
-             (teacher_id, lesson_date, time_start, time_end, lesson_type, subject,
-              expected_students, actual_students, formula_id, status, notes, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed', ?, NOW())",
-            [
-                $teacherId, $date, $time . ':00', $timeEnd . ':00',
-                $lessonType, $subject, $expectedStudents, $attendedCount, $formulaId,
-                "Ученики: " . implode(', ', $studentNames)
-            ]
+        $lessonInstanceId = upsertLessonInstance(
+            $teacherId, $date, $time . ':00', $timeEnd . ':00',
+            $lessonType, $subject, $expectedStudents, $attendedCount, $formulaId, 'completed', $notes
         );
 
         // Создаём выплату
