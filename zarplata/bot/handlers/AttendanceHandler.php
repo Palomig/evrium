@@ -156,13 +156,21 @@ function handleAllPresent($chatId, $messageId, $telegramId, $lessonTemplateId, $
 
         error_log("[Telegram Bot] Using formula '{$formula['name']}' (type: {$formula['type']})");
 
-        // Проверяем, не создана ли уже выплата за этот урок сегодня
+        // Проверяем, не создана ли уже выплата за этот урок сегодня.
+        // Ищем и legacy (lesson_template_id), и PWA-ряды (lesson_instance_id)
+        // чтобы Telegram не плодил дубль поверх отметки через PWA.
         $today = date('Y-m-d');
         $existingPayment = dbQueryOne(
-            "SELECT id FROM payments
-             WHERE teacher_id = ? AND lesson_template_id = ? AND DATE(created_at) = ?
-             ORDER BY created_at DESC LIMIT 1",
-            [$teacher['id'], $lessonTemplateId, $today]
+            "SELECT p.id FROM payments p
+             LEFT JOIN lessons_instance li ON li.id = p.lesson_instance_id
+             WHERE p.teacher_id = ? AND p.payment_type = 'lesson'
+               AND p.status NOT IN ('paid', 'cancelled')
+               AND (
+                 (p.lesson_template_id = ? AND DATE(p.created_at) = ?)
+                 OR (li.template_id = ? AND li.lesson_date = ?)
+               )
+             ORDER BY p.id DESC LIMIT 1",
+            [$teacher['id'], $lessonTemplateId, $today, $lessonTemplateId, $today]
         );
 
         if ($existingPayment) {
@@ -403,13 +411,21 @@ function handleAttendanceCount($chatId, $messageId, $telegramId, $lessonTemplate
 
         error_log("[Telegram Bot] Using formula '{$formula['name']}' (type: {$formula['type']})");
 
-        // Проверяем, не создана ли уже выплата за этот урок сегодня
+        // Проверяем, не создана ли уже выплата за этот урок сегодня.
+        // Ищем и legacy (lesson_template_id), и PWA-ряды (lesson_instance_id)
+        // чтобы Telegram не плодил дубль поверх отметки через PWA.
         $today = date('Y-m-d');
         $existingPayment = dbQueryOne(
-            "SELECT id FROM payments
-             WHERE teacher_id = ? AND lesson_template_id = ? AND DATE(created_at) = ?
-             ORDER BY created_at DESC LIMIT 1",
-            [$teacher['id'], $lessonTemplateId, $today]
+            "SELECT p.id FROM payments p
+             LEFT JOIN lessons_instance li ON li.id = p.lesson_instance_id
+             WHERE p.teacher_id = ? AND p.payment_type = 'lesson'
+               AND p.status NOT IN ('paid', 'cancelled')
+               AND (
+                 (p.lesson_template_id = ? AND DATE(p.created_at) = ?)
+                 OR (li.template_id = ? AND li.lesson_date = ?)
+               )
+             ORDER BY p.id DESC LIMIT 1",
+            [$teacher['id'], $lessonTemplateId, $today, $lessonTemplateId, $today]
         );
 
         if ($existingPayment) {
