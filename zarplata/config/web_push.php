@@ -329,8 +329,9 @@ class VapidPush
         $prk = $this->hkdfExtract($salt, $ikm);
 
         // Content encryption key (16 bytes) and nonce (12 bytes)
-        $cek   = $this->hkdfExpand($prk, "Content-Encoding: aes128gcm\x00\x01", 16);
-        $nonce = $this->hkdfExpand($prk, "Content-Encoding: nonce\x00\x01", 12);
+        // hkdfExpand() already appends the counter byte, so info ends with \x00 only.
+        $cek   = $this->hkdfExpand($prk, "Content-Encoding: aes128gcm\x00", 16);
+        $nonce = $this->hkdfExpand($prk, "Content-Encoding: nonce\x00", 12);
 
         // Pad plaintext: append \x02 delimiter (end-of-data marker)
         $paddedPlaintext = $plaintext . "\x02";
