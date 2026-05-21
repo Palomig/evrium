@@ -1,0 +1,17 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { site } from '../data/site.ts';
+---
+<Layout title="Страница не найдена — Репетитор в Чехове" description="К сожалению, такой страницы не существует." noindex>
+  <section>
+    <div class="container" style="text-align: center; padding: 80px 0;">
+      <span class="eyebrow">404</span>
+      <h1>Страница не найдена</h1>
+      <p class="lead muted">Похоже, такой страницы нет. Возможно, вы перешли по устаревшей ссылке.</p>
+      <p style="margin-top: 24px;">
+        <a class="btn btn-primary" href={`${site.basePath}/`}>На главную</a>
+        <a class="btn btn-ghost" href={`${site.basePath}/kontakty/`}>Связаться</a>
+      </p>
+    </div>
+  </section>
+</Layout>

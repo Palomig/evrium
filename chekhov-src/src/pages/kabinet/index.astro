@@ -1,0 +1,57 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import LeadForm from '../../components/LeadForm.astro';
+import { site } from '../../data/site.ts';
+
+const title = 'Кабинет репетитора в Чехове — где проходят занятия';
+const description = 'Кабинет в Чехове для очных занятий по математике, информатике и физике. Доска, рабочее место, материалы для подготовки к ОГЭ и ЕГЭ. Удобная транспортная доступность.';
+---
+<Layout title={title} description={description}>
+  <section>
+    <div class="container">
+      <span class="eyebrow">Кабинет</span>
+      <h1>Где проходят занятия</h1>
+      <p class="lead" style="max-width: 760px;">Кабинет в Чехове, оборудованный всем необходимым для качественных занятий: доска, рабочее место, материалы для подготовки к экзаменам, ноутбук для занятий по информатике.</p>
+
+      <div class="grid grid-3" style="margin-top: 28px;">
+        <div class="placeholder-photo"><span><span class="todo">TODO</span> общий вид кабинета</span></div>
+        <div class="placeholder-photo"><span><span class="todo">TODO</span> рабочее место с доской</span></div>
+        <div class="placeholder-photo"><span><span class="todo">TODO</span> учебные материалы</span></div>
+      </div>
+
+      <div class="grid grid-2" style="margin-top: 40px;">
+        <div class="card">
+          <h3>Адрес и как добраться</h3>
+          <p>{site.addressPublic}</p>
+          <p class="muted">Точный адрес отправляю после записи на занятие. Кабинет находится в Чехове, в удобной транспортной доступности — пешком от центра и от общественного транспорта.</p>
+          <p class="muted small"><span class="todo">TODO</span> Укажите конкретные ориентиры (район Чехова, ближайшая остановка), если готовы публиковать.</p>
+        </div>
+        <div class="card">
+          <h3>Парковка</h3>
+          <p><span class="todo">TODO</span> Опишите ситуацию с парковкой: бесплатная во дворе / у дома / на соседней улице.</p>
+        </div>
+        <div class="card">
+          <h3>Можно ли родителю подождать</h3>
+          <p>Да. Если ребёнок маленький или вы хотите присутствовать на первом занятии — это нормально. Согласуем заранее.</p>
+        </div>
+        <div class="card">
+          <h3>График занятий</h3>
+          <p>Будни — с 14:00 до 21:00. Выходные — по согласованию. Удобное время фиксируем сразу при записи.</p>
+          <p class="muted small"><span class="todo">TODO</span> Поправьте реальное расписание.</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 24px;">
+        <h3>Правила посещения</h3>
+        <ul>
+          <li>Приходите на занятие за 5 минут до начала</li>
+          <li>Сменка в холодное время года</li>
+          <li>Телефоны на занятии — на беззвучном режиме</li>
+          <li>Если опаздываете или не сможете прийти — предупредите заранее</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <LeadForm />
+</Layout>

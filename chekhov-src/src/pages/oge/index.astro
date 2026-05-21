@@ -1,0 +1,111 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import LeadForm from '../../components/LeadForm.astro';
+import PriceTable from '../../components/PriceTable.astro';
+import Faq from '../../components/Faq.astro';
+import { site } from '../../data/site.ts';
+
+const title = 'Подготовка к ОГЭ в Чехове — математика, информатика, физика';
+const description = 'Очная подготовка к ОГЭ в Чехове по математике, информатике и физике. Диагностика уровня, план подготовки, типовые задания, пробные варианты.';
+
+const faq = [
+  { q: 'Когда оптимально начинать подготовку к ОГЭ?', a: 'Лучший вариант — за год до экзамена, в 8 классе летом или в начале 9 класса. За 3–4 месяца можно успеть только при крепкой базе.' },
+  { q: 'Сколько занятий в неделю нужно?', a: 'Обычно 1–2 занятия в неделю по 90 минут. Точное количество зависит от стартового уровня и от того, по скольким предметам идёт подготовка.' },
+  { q: 'Делаете пробники?', a: 'Да. Регулярные пробники по структуре реального ОГЭ — обязательная часть программы. Они показывают и прогресс, и слабые места, по которым нужно ещё поработать.' },
+  { q: 'А если ученик «совсем ничего не знает»?', a: 'Это нормальная стартовая точка. Главное — успеть до экзамена закрыть базу. Чем раньше начнём, тем спокойнее пройдёт год.' },
+];
+---
+<Layout title={title} description={description}>
+
+  <section class="hero">
+    <div class="container">
+      <div class="hero-grid">
+        <div>
+          <span class="eyebrow">9 класс · ОГЭ · Чехов</span>
+          <h1>Подготовка к ОГЭ в Чехове</h1>
+          <p class="lead">Математика, информатика и физика. Диагностика, индивидуальный план подготовки, регулярные пробники и работа над ошибками — очно, в кабинете.</p>
+          <div class="btn-row" style="margin-top: 20px;">
+            <a class="btn btn-accent" href="#zayavka">Записаться на диагностику</a>
+            <a class="btn btn-wa" href={site.whatsapp} target="_blank" rel="nofollow noopener" data-cta="whatsapp_hero">WhatsApp</a>
+          </div>
+        </div>
+        <div class="placeholder-photo" style="background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.18); color: rgba(255,255,255,.7);">
+          <span><span class="todo">TODO</span> фото пробников, материалов для подготовки к ОГЭ</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <h2>Готовлю к трём предметам ОГЭ</h2>
+      <div class="grid grid-3" style="margin-top: 22px;">
+        <a class="card link-card" href={`${site.basePath}/matematika/`}>
+          <h3>ОГЭ по математике</h3>
+          <p>Алгебра и геометрия, текстовые задачи, реальная математика. Структура экзамена, типовые задания, тренировка скорости.</p>
+          <span class="more">Подробнее по математике →</span>
+        </a>
+        <a class="card link-card" href={`${site.basePath}/informatika/`}>
+          <h3>ОГЭ по информатике</h3>
+          <p>Работа в реальной среде, обработка данных, программирование. Часть 1 и часть 2 — с разбором каждого типа задания.</p>
+          <span class="more">Подробнее по информатике →</span>
+        </a>
+        <a class="card link-card" href={`${site.basePath}/fizika/`}>
+          <h3>ОГЭ по физике</h3>
+          <p>Механика, электричество, оптика, МКТ. Решение задач, лабораторная часть, разбор формул и единиц.</p>
+          <span class="more">Подробнее по физике →</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-soft">
+    <div class="container">
+      <h2>Как устроена подготовка</h2>
+      <div class="grid grid-2" style="margin-top: 22px;">
+        <div class="card">
+          <h3>1. Диагностика текущего уровня</h3>
+          <p>На первом занятии решаем демонстрационный вариант, проходим темы и понимаем, где ученик сейчас и что нужно закрыть до экзамена.</p>
+        </div>
+        <div class="card">
+          <h3>2. Индивидуальный план</h3>
+          <p>Составляю программу: сколько недель уходит на какую тему, когда планируем пробники, какие контрольные точки.</p>
+        </div>
+        <div class="card">
+          <h3>3. Работа с типовыми заданиями</h3>
+          <p>По каждому типу задания — теория, разбор, тренировка. Без шаблонной зубрёжки: важно, чтобы ученик понимал, что и зачем делает.</p>
+        </div>
+        <div class="card">
+          <h3>4. Пробные варианты</h3>
+          <p>Регулярно прорешиваем варианты в формате ОГЭ. Каждый — повод заметить новую слабую тему и доработать её.</p>
+        </div>
+        <div class="card">
+          <h3>5. Работа над ошибками</h3>
+          <p>Ошибки — главный источник прогресса. Каждую разбираем по схеме «что было не так, как должно было быть, что закрепить».</p>
+        </div>
+        <div class="card">
+          <h3>6. Контроль прогресса</h3>
+          <p>Родители получают обратную связь: что сделано, что в работе, что осталось до экзамена.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <h2>Цены на подготовку к ОГЭ</h2>
+      <PriceTable />
+    </div>
+  </section>
+
+  <Faq items={faq} title="Частые вопросы о подготовке к ОГЭ" />
+
+  <LeadForm goal="oge" />
+
+</Layout>
+
+<style>
+  .link-card { text-decoration: none; color: var(--c-text); transition: transform .15s ease, box-shadow .15s ease; }
+  .link-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); text-decoration: none; }
+  .link-card .more { display: inline-block; margin-top: 10px; color: var(--c-primary); font-weight: 600; }
+</style>

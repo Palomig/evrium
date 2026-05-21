@@ -1,20 +1,10 @@
-# robots.txt для интерактивного сайта по геометрии
+# robots.txt для эвриум.рф — сайт репетитора в Чехове
 
-# Разрешаем доступ всем поисковым роботам ко всем страницам
 User-agent: *
 Allow: /
 
-# Разрешаем индексацию всех HTML страниц
-Allow: /index.html
-Allow: /examples.html
-Allow: /editor.html
-Allow: /README.html
+Disallow: /crm/
+Disallow: /zarplata/
+Disallow: /api/
 
-# Разрешаем доступ к статическим ресурсам
-Allow: /css/
-Allow: /js/
-Allow: /exercises/
-Allow: /assets/
-
-# Карта сайта (если будет добавлена в будущем)
-# Sitemap: https://ваш-домен.ru/sitemap.xml
+Sitemap: https://эвриум.рф/sitemap-index.xml
