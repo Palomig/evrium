@@ -1,0 +1,49 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import LeadForm from '../../components/LeadForm.astro';
+import PriceTable from '../../components/PriceTable.astro';
+import { site } from '../../data/site.ts';
+
+const title = 'Цены на занятия с репетитором в Чехове';
+const description = 'Стоимость занятий по математике, информатике и физике в Чехове. Индивидуальные занятия, подготовка к ОГЭ и ЕГЭ, диагностика уровня.';
+---
+<Layout title={title} description={description}>
+  <section>
+    <div class="container">
+      <span class="eyebrow">Цены</span>
+      <h1>Цены на занятия</h1>
+      <p class="lead" style="max-width: 720px;">Стоимость указана открыто. Это экономит время и вам, и мне. Цены ниже — стартовые: точную стоимость согласовываем после диагностики, исходя из класса, цели и интенсивности.</p>
+
+      <div style="margin-top: 28px;">
+        <PriceTable />
+      </div>
+
+      <div class="grid grid-2" style="margin-top: 40px;">
+        <div class="card">
+          <h3>Что входит в стоимость занятия</h3>
+          <ul>
+            <li>Сама работа в кабинете — теория, разбор задач, ответы на вопросы</li>
+            <li>Подбор и подготовка материалов на конкретного ученика</li>
+            <li>Проверка домашних заданий между занятиями</li>
+            <li>Обратная связь родителям по прогрессу</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Как удобно оплачивать</h3>
+          <p>Оплата помесячно или поурочно — как удобнее. Согласуем при записи.</p>
+          <p class="muted small"><span class="todo">TODO</span> Уточните способы оплаты: наличные, карта, перевод, СБП — в <code>src/pages/ceny/index.astro</code>.</p>
+        </div>
+        <div class="card">
+          <h3>Скидки и абонементы</h3>
+          <p><span class="todo">TODO</span> Если планируете предлагать скидку при оплате за месяц вперёд или при двух занятиях в неделю — опишите здесь.</p>
+        </div>
+        <div class="card">
+          <h3>Перенос и отмена</h3>
+          <p>Занятия можно переносить заранее. Условия переноса согласуем индивидуально на старте.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <LeadForm />
+</Layout>

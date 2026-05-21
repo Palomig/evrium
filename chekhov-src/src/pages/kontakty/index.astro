@@ -1,0 +1,55 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import LeadForm from '../../components/LeadForm.astro';
+import { site } from '../../data/site.ts';
+
+const title = 'Контакты репетитора в Чехове';
+const description = 'Связаться с репетитором по математике, информатике и физике в Чехове: WhatsApp, Telegram, телефон. Записаться на диагностику.';
+---
+<Layout title={title} description={description}>
+  <section>
+    <div class="container">
+      <span class="eyebrow">Контакты</span>
+      <h1>Как связаться</h1>
+      <p class="lead" style="max-width: 720px;">Самый быстрый способ — написать в WhatsApp или Telegram. Отвечаю в течение рабочего дня.</p>
+
+      <div class="grid grid-3" style="margin-top: 28px;">
+        <a class="card contact-card" href={site.whatsapp} target="_blank" rel="nofollow noopener" data-cta="whatsapp_footer">
+          <h3>WhatsApp</h3>
+          <p class="muted">Быстрый ответ, удобно для коротких вопросов и записи на занятие.</p>
+          <span class="more">Открыть чат →</span>
+        </a>
+        <a class="card contact-card" href={site.telegram} target="_blank" rel="nofollow noopener" data-cta="telegram_footer">
+          <h3>Telegram</h3>
+          <p class="muted">Если предпочитаете Telegram — пишите туда. Тоже отвечаю быстро.</p>
+          <span class="more">Открыть чат →</span>
+        </a>
+        <a class="card contact-card" href={site.phoneHref} data-cta="phone_footer">
+          <h3>Телефон</h3>
+          <p class="muted">{site.phone}</p>
+          <span class="more">Позвонить →</span>
+        </a>
+      </div>
+
+      <div class="grid grid-2" style="margin-top: 40px;">
+        <div class="card">
+          <h3>Адрес</h3>
+          <p>{site.addressPublic}</p>
+          <p><a href={`${site.basePath}/kabinet/`}>О кабинете подробнее →</a></p>
+        </div>
+        <div class="card">
+          <h3>Зоны выезда</h3>
+          <p>Формат — очно. Ко мне приезжают ученики из: {site.serviceAreas.join(', ')}.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <LeadForm />
+</Layout>
+
+<style>
+  .contact-card { text-decoration: none; color: var(--c-text); transition: transform .15s ease, box-shadow .15s ease; }
+  .contact-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); text-decoration: none; }
+  .contact-card .more { display: inline-block; margin-top: 10px; color: var(--c-primary); font-weight: 600; }
+</style>

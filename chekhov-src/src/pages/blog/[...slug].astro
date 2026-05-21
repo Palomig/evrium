@@ -1,0 +1,62 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import LeadForm from '../../components/LeadForm.astro';
+import { site } from '../../data/site.ts';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog', ({ data }) => !data.draft);
+  return posts.map((post) => ({ params: { slug: post.id }, props: { post } }));
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+const fmt = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+
+const articleSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: post.data.title,
+  description: post.data.description,
+  datePublished: post.data.date.toISOString(),
+  author: { '@type': 'Person', name: post.data.author },
+};
+---
+<Layout title={`${post.data.title} — Блог репетитора в Чехове`} description={post.data.description} extraSchema={articleSchema}>
+  <article class="article">
+    <div class="container container-narrow">
+      <span class="eyebrow">{fmt.format(post.data.date)}</span>
+      <h1>{post.data.title}</h1>
+      <p class="lead muted">{post.data.description}</p>
+      <div class="content">
+        <Content />
+      </div>
+      <p class="muted small" style="margin-top: 40px;">
+        {post.data.tags.map((t) => <span class="tag-soft">#{t}</span>)}
+      </p>
+      <p style="margin-top: 24px;">
+        <a class="btn btn-ghost" href={`${site.basePath}/blog/`}>← Все статьи</a>
+      </p>
+    </div>
+  </article>
+
+  <LeadForm />
+</Layout>
+
+<style>
+  .article { padding: 56px 0 20px; }
+  .container-narrow { max-width: 760px; }
+  .content :global(h2) { margin-top: 1.6em; }
+  .content :global(p), .content :global(li) { font-size: 1.05em; }
+  .content :global(a) { color: var(--c-primary-soft); }
+  .content :global(hr) { border: 0; border-top: 1px solid var(--c-border); margin: 32px 0; }
+  .tag-soft {
+    display: inline-block;
+    background: var(--c-bg-soft);
+    color: var(--c-muted);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    margin-right: 6px;
+  }
+</style>

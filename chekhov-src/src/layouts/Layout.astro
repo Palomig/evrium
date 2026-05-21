@@ -1,0 +1,98 @@
+---
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import FloatingCTA from '../components/FloatingCTA.astro';
+import { site } from '../data/site.ts';
+
+interface Props {
+  title: string;
+  description: string;
+  ogImage?: string;
+  noindex?: boolean;
+  /** JSON-LD schema, добавляется к стандартному LocalBusiness */
+  extraSchema?: object | object[];
+}
+
+const { title, description, ogImage, noindex, extraSchema } = Astro.props;
+const canonical = new URL(Astro.url.pathname, site.domain).href;
+// TODO: подготовить og-default.jpg (1200x630) и заменить .svg на .jpg —
+// большинство соцсетей надёжнее показывают превью с растровыми картинками.
+const ogImageUrl = ogImage
+  ? new URL(ogImage, site.domain).href
+  : `${site.domain}${site.basePath}/og-default.svg`;
+
+const localBusiness = {
+  '@context': 'https://schema.org',
+  '@type': 'EducationalOrganization',
+  name: `Репетитор по математике, информатике и физике в Чехове`,
+  description: site.tutorBio,
+  url: `${site.domain}${site.basePath}/`,
+  telephone: site.phone,
+  email: site.email,
+  address: {
+    '@type': 'PostalAddress',
+    addressLocality: 'Чехов',
+    addressRegion: 'Московская область',
+    addressCountry: 'RU',
+  },
+  geo: {
+    '@type': 'GeoCoordinates',
+    latitude: site.geo.lat,
+    longitude: site.geo.lng,
+  },
+  areaServed: site.serviceAreas.map((name) => ({ '@type': 'Place', name })),
+  sameAs: [site.whatsapp, site.telegram].filter(Boolean),
+};
+
+const schemas = extraSchema
+  ? [localBusiness, ...(Array.isArray(extraSchema) ? extraSchema : [extraSchema])]
+  : [localBusiness];
+---
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#15324d" />
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  {noindex && <meta name="robots" content="noindex,nofollow" />}
+  <link rel="canonical" href={canonical} />
+
+  {/* Open Graph */}
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="ru_RU" />
+  <meta property="og:site_name" content="Репетитор в Чехове" />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:url" content={canonical} />
+  <meta property="og:image" content={ogImageUrl} />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <link rel="icon" type="image/svg+xml" href={`${site.basePath}/favicon.svg`} />
+
+  {schemas.map((s) => (
+    <script type="application/ld+json" set:html={JSON.stringify(s)} />
+  ))}
+
+  {/* Яндекс Метрика */}
+  <script type="text/javascript" is:inline define:vars={{ ymId: site.yandexMetrikaId }}>
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();
+    for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+    k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+    ym(ymId, "init", { clickmap:true, trackLinks:true, accurateTrackBounce:true, webvisor:true });
+  </script>
+  <noscript><div><img src={`https://mc.yandex.ru/watch/${site.yandexMetrikaId}`} style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+</head>
+<body>
+  <Header />
+  <main>
+    <slot />
+  </main>
+  <Footer />
+  <FloatingCTA />
+</body>
+</html>

@@ -1,0 +1,52 @@
+---
+interface Props { title: string; href: string; tagline: string; bullets: string[]; iconColor?: string; }
+const { title, href, tagline, bullets, iconColor = '#1f4a72' } = Astro.props;
+---
+<a class="subject-card" href={href} style={`--icon-color:${iconColor}`}>
+  <div class="icon">
+    <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+      <path fill="currentColor" d="M3 4h18v2H3zm2 4h14v12H5zm2 2v8h10v-8H7z"/>
+    </svg>
+  </div>
+  <h3>{title}</h3>
+  <p class="tagline muted">{tagline}</p>
+  <ul>
+    {bullets.map((b) => <li>{b}</li>)}
+  </ul>
+  <span class="more">Подробнее →</span>
+</a>
+
+<style>
+  .subject-card {
+    display: block;
+    background: #fff;
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-lg);
+    padding: 26px;
+    color: var(--c-text);
+    box-shadow: var(--shadow-sm);
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    text-decoration: none;
+    height: 100%;
+  }
+  .subject-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--c-primary-soft);
+    text-decoration: none;
+  }
+  .icon {
+    width: 52px; height: 52px;
+    background: color-mix(in srgb, var(--icon-color) 12%, transparent);
+    color: var(--icon-color);
+    border-radius: 14px;
+    display: grid; place-items: center;
+    margin-bottom: 16px;
+  }
+  .subject-card h3 { margin: 0 0 6px; }
+  .tagline { font-size: 14px; margin: 0 0 14px; }
+  .subject-card ul { list-style: none; padding: 0; margin: 0 0 14px; font-size: 14px; }
+  .subject-card li { position: relative; padding-left: 18px; margin-bottom: 6px; }
+  .subject-card li::before { content: '•'; color: var(--icon-color); position: absolute; left: 0; font-weight: 700; }
+  .more { color: var(--c-primary); font-weight: 600; font-size: 14px; }
+</style>

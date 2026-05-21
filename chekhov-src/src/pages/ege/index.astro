@@ -1,0 +1,111 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import LeadForm from '../../components/LeadForm.astro';
+import PriceTable from '../../components/PriceTable.astro';
+import Faq from '../../components/Faq.astro';
+import { site } from '../../data/site.ts';
+
+const title = 'Подготовка к ЕГЭ в Чехове — математика, информатика, физика';
+const description = 'Очная подготовка к ЕГЭ в Чехове. Профильная математика, информатика, физика. Стратегия на год, разбор сложных заданий, пробники.';
+
+const faq = [
+  { q: 'Готовите к профильной математике?', a: 'Да, профиль — основное направление по математике на ЕГЭ. С базой тоже работаю — если задача только сдать.' },
+  { q: 'С какого момента имеет смысл начинать?', a: 'Оптимально — с лета перед 11 классом или с начала 11 класса. Если стартовый уровень слабый, лучше с 10 класса.' },
+  { q: 'Гарантируете определённое количество баллов?', a: 'Гарантировать конкретные баллы было бы нечестно — результат зависит от ученика. Что я могу: показать честную траекторию по результатам пробников и работать на максимум возможного.' },
+  { q: 'Можно ли совмещать несколько предметов?', a: 'Да. Если у ученика на ЕГЭ профильная математика, информатика и физика — это частая комбинация для технических вузов. Готовлю по всем трём.' },
+];
+---
+<Layout title={title} description={description}>
+
+  <section class="hero">
+    <div class="container">
+      <div class="hero-grid">
+        <div>
+          <span class="eyebrow">11 класс · ЕГЭ · Чехов</span>
+          <h1>Подготовка к ЕГЭ в Чехове</h1>
+          <p class="lead">Профильная математика, информатика и физика — индивидуально, очно, по чёткой годовой стратегии. С нуля или для усиления к экзамену.</p>
+          <div class="btn-row" style="margin-top: 20px;">
+            <a class="btn btn-accent" href="#zayavka">Записаться на диагностику</a>
+            <a class="btn btn-wa" href={site.whatsapp} target="_blank" rel="nofollow noopener" data-cta="whatsapp_hero">WhatsApp</a>
+          </div>
+        </div>
+        <div class="placeholder-photo" style="background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.18); color: rgba(255,255,255,.7);">
+          <span><span class="todo">TODO</span> фото материалов для подготовки к ЕГЭ</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <h2>Три предмета ЕГЭ — один преподаватель</h2>
+      <div class="grid grid-3" style="margin-top: 22px;">
+        <a class="card link-card" href={`${site.basePath}/matematika/`}>
+          <h3>ЕГЭ по профильной математике</h3>
+          <p>Алгебра, тригонометрия, геометрия, экономические задачи, параметры, стереометрия. Часть 1 и сложные задания второй части.</p>
+          <span class="more">Подробнее →</span>
+        </a>
+        <a class="card link-card" href={`${site.basePath}/informatika/`}>
+          <h3>ЕГЭ по информатике</h3>
+          <p>Компьютерный формат экзамена, программирование, обработка данных, теория. Тренировка в среде, идентичной реальной.</p>
+          <span class="more">Подробнее →</span>
+        </a>
+        <a class="card link-card" href={`${site.basePath}/fizika/`}>
+          <h3>ЕГЭ по физике</h3>
+          <p>Механика, МКТ и термодинамика, электродинамика, оптика, квантовая физика. Разбор задач с развёрнутым ответом.</p>
+          <span class="more">Подробнее →</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-soft">
+    <div class="container">
+      <h2>Что входит в подготовку к ЕГЭ</h2>
+      <div class="grid grid-2" style="margin-top: 22px;">
+        <div class="card">
+          <h3>Подготовка с нуля или усиление</h3>
+          <p>На диагностике видно, нужно ли возвращаться к 10 классу или ученик готов сразу работать с экзаменационными заданиями. Стратегия подбирается под реальный уровень.</p>
+        </div>
+        <div class="card">
+          <h3>Стратегия на год</h3>
+          <p>План расписан по месяцам: какие темы когда проходим, когда пробники, когда работа над ошибками. К весне — финиширующий ритм.</p>
+        </div>
+        <div class="card">
+          <h3>Разбор сложных заданий</h3>
+          <p>Вторая часть — то, где школа обычно не успевает. Отдельный фокус на сложных заданиях, которые приносят максимальные баллы.</p>
+        </div>
+        <div class="card">
+          <h3>Пробники</h3>
+          <p>Регулярные тренировочные варианты по структуре реального ЕГЭ. С честной оценкой времени и работой над ошибками.</p>
+        </div>
+        <div class="card">
+          <h3>Работа над ошибками</h3>
+          <p>Каждая ошибка разбирается по схеме «почему так получилось, как избежать в следующий раз». Это даёт устойчивый рост баллов.</p>
+        </div>
+        <div class="card">
+          <h3>Тренировка скорости</h3>
+          <p>К весне отдельно тренируем темп: на ЕГЭ важно не только знать материал, но и успевать его применить.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <h2>Цены на подготовку к ЕГЭ</h2>
+      <PriceTable />
+    </div>
+  </section>
+
+  <Faq items={faq} title="Частые вопросы о подготовке к ЕГЭ" />
+
+  <LeadForm goal="ege" />
+
+</Layout>
+
+<style>
+  .link-card { text-decoration: none; color: var(--c-text); transition: transform .15s ease, box-shadow .15s ease; }
+  .link-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); text-decoration: none; }
+  .link-card .more { display: inline-block; margin-top: 10px; color: var(--c-primary); font-weight: 600; }
+</style>

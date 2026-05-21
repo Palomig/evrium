@@ -1,0 +1,58 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import LeadForm from '../../components/LeadForm.astro';
+import { site } from '../../data/site.ts';
+import { getCollection } from 'astro:content';
+
+const title = 'Блог репетитора в Чехове — статьи о ОГЭ, ЕГЭ и подготовке';
+const description = 'Статьи о подготовке к ОГЭ и ЕГЭ по математике, информатике и физике. Советы родителям и школьникам в Чехове.';
+
+const posts = (await getCollection('blog', ({ data }) => !data.draft))
+  .sort((a, b) => +b.data.date - +a.data.date);
+
+const fmt = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+---
+<Layout title={title} description={description}>
+  <section>
+    <div class="container">
+      <span class="eyebrow">Блог</span>
+      <h1>Статьи о подготовке и обучении</h1>
+      <p class="lead" style="max-width: 720px;">Практичные материалы для родителей и школьников: как выбирать репетитора, когда начинать готовиться к ОГЭ и ЕГЭ, что делать с пробелами в школьной программе.</p>
+
+      <div class="grid grid-2" style="margin-top: 32px;">
+        {posts.map((p) => (
+          <a class="post-card" href={`${site.basePath}/blog/${p.id}/`}>
+            <div class="post-meta">{fmt.format(p.data.date)} · {p.data.tags.slice(0, 2).join(' · ')}</div>
+            <h3>{p.data.title}</h3>
+            <p class="muted">{p.data.description}</p>
+            <span class="more">Читать →</span>
+          </a>
+        ))}
+      </div>
+
+      {posts.length === 0 && (
+        <p class="muted" style="margin-top: 24px;">Скоро здесь появятся первые статьи.</p>
+      )}
+    </div>
+  </section>
+
+  <LeadForm />
+</Layout>
+
+<style>
+  .post-card {
+    display: block;
+    background: #fff;
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-lg);
+    padding: 26px;
+    color: var(--c-text);
+    text-decoration: none;
+    box-shadow: var(--shadow-sm);
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .post-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); text-decoration: none; }
+  .post-meta { font-size: 13px; color: var(--c-muted); margin-bottom: 8px; }
+  .post-card h3 { margin: 0 0 8px; }
+  .more { display: inline-block; margin-top: 10px; color: var(--c-primary); font-weight: 600; }
+</style>

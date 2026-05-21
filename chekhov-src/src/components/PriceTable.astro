@@ -1,0 +1,25 @@
+---
+import { site } from '../data/site.ts';
+const rows = Object.values(site.prices);
+---
+<table class="price-table">
+  <thead>
+    <tr>
+      <th>Формат</th>
+      <th>Длительность</th>
+      <th>Цена</th>
+    </tr>
+  </thead>
+  <tbody>
+    {rows.map((r) => (
+      <tr>
+        <td>{r.label}</td>
+        <td class="muted">{r.duration}</td>
+        <td class="price">{r.price}</td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+<p class="muted small" style="margin-top: 12px;">
+  <span class="todo">TODO</span> Цены — заглушки. Замените реальными в <code>src/data/site.ts</code>.
+</p>
