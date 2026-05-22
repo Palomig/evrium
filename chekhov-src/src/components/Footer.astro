@@ -31,6 +31,10 @@ const year = new Date().getFullYear();
     </div>
     <div class="footer-bottom">
       <span class="muted small">© {year} Репетитор в Чехове. Все права защищены.</span>
+      <span class="footer-bottom-links">
+        <a href="/politika-konfidencialnosti/">Политика конфиденциальности</a>
+        <a href="#" data-cookie-reopen>Управление куки</a>
+      </span>
       <span class="muted small">Сайт не является публичной офертой.</span>
     </div>
   </div>
@@ -50,7 +54,10 @@ const year = new Date().getFullYear();
   .footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1.2fr; gap: 40px; }
   .footer-links { list-style: none; padding: 0; margin: 0; columns: 2; }
   .footer-links li { margin: 0 0 8px; break-inside: avoid; }
-  .footer-bottom { margin-top: 40px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,.1); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .footer-bottom { margin-top: 40px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,.1); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: 13px; }
+  .footer-bottom-links { display: flex; gap: 18px; flex-wrap: wrap; }
+  .footer-bottom-links a { color: rgba(255,255,255,.62); }
+  .footer-bottom-links a:hover { color: #fff; }
   .small { font-size: 13px; }
   .muted { color: rgba(255,255,255,.62) !important; }
   @media (max-width: 800px) {

@@ -1,0 +1,192 @@
+---
+// Плашка согласия на куки.
+// До явного «Принять» — Яндекс Метрика НЕ загружается (см. Layout.astro).
+// Решение хранится в localStorage под ключом 'cookie-consent-v1'.
+// Менять решение можно через ссылку в футере (data-cookie-reopen).
+---
+<div
+  class="cookie-banner"
+  data-cookie-banner
+  hidden
+  role="dialog"
+  aria-labelledby="cookie-title"
+  aria-describedby="cookie-text"
+>
+  <div class="cookie-inner">
+    <div class="cookie-text">
+      <strong id="cookie-title">Сайт использует куки</strong>
+      <p id="cookie-text">
+        Необходимые куки обеспечивают работу сайта. С вашего согласия мы также включаем
+        Яндекс&nbsp;Метрику — это помогает понять, какие материалы полезны посетителям.
+        <a href="/politika-konfidencialnosti/">Политика конфиденциальности</a>.
+      </p>
+    </div>
+    <div class="cookie-actions">
+      <button type="button" class="cookie-btn cookie-btn-ghost" data-cookie-decline>
+        Только необходимые
+      </button>
+      <button type="button" class="cookie-btn cookie-btn-accent" data-cookie-accept>
+        Принять
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .cookie-banner {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    z-index: 70;
+    max-width: 760px;
+    margin: 0 auto;
+    background: #fff;
+    color: var(--c-text);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+    padding: 18px 20px;
+    animation: cookie-rise 0.3s ease-out;
+  }
+  @keyframes cookie-rise {
+    from { transform: translateY(20px); opacity: 0; }
+    to   { transform: translateY(0);     opacity: 1; }
+  }
+  .cookie-inner {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 18px;
+    align-items: center;
+  }
+  .cookie-text strong {
+    display: block;
+    font-size: 15px;
+    margin-bottom: 4px;
+    color: var(--c-primary);
+  }
+  .cookie-text p {
+    font-size: 14px;
+    line-height: 1.45;
+    margin: 0;
+    color: var(--c-muted);
+  }
+  .cookie-text a {
+    color: var(--c-primary-soft);
+    text-decoration: underline;
+  }
+  .cookie-actions {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .cookie-btn {
+    padding: 10px 18px;
+    min-height: 42px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-family: inherit;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+  }
+  .cookie-btn:hover { transform: translateY(-1px); }
+  .cookie-btn-accent {
+    background: var(--c-accent);
+    color: #1a2330;
+  }
+  .cookie-btn-accent:hover { background: var(--c-accent-dark); }
+  .cookie-btn-ghost {
+    background: #fff;
+    color: var(--c-primary);
+    border-color: var(--c-border);
+  }
+  .cookie-btn-ghost:hover { background: var(--c-bg-soft); }
+
+  /* Сдвигаем плавающие WhatsApp/Telegram кнопки выше, чтобы не накладывались */
+  :global(.cookie-banner-open) :global(.floating-cta) {
+    bottom: calc(20px + 130px);
+  }
+
+  @media (max-width: 720px) {
+    .cookie-banner {
+      left: 8px;
+      right: 8px;
+      bottom: 8px;
+      padding: 14px 16px;
+    }
+    .cookie-inner {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    .cookie-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .cookie-btn {
+      width: 100%;
+    }
+    :global(.cookie-banner-open) :global(.floating-cta) {
+      bottom: calc(20px + 180px);
+    }
+  }
+</style>
+
+<script>
+  // Версионируем формат согласия, чтобы при изменении состава кук
+  // можно было перезапросить согласие у пользователей.
+  const KEY = 'cookie-consent-v1';
+
+  const banner = document.querySelector('[data-cookie-banner]');
+  const acceptBtn = document.querySelector('[data-cookie-accept]');
+  const declineBtn = document.querySelector('[data-cookie-decline]');
+
+  const readConsent = () => {
+    try {
+      return JSON.parse(localStorage.getItem(KEY) || 'null');
+    } catch {
+      return null;
+    }
+  };
+
+  const openBanner = () => {
+    if (!banner) return;
+    banner.hidden = false;
+    document.body.classList.add('cookie-banner-open');
+  };
+
+  const closeBanner = () => {
+    if (!banner) return;
+    banner.hidden = true;
+    document.body.classList.remove('cookie-banner-open');
+  };
+
+  const setConsent = (analytics) => {
+    const consent = { version: 1, analytics, ts: new Date().toISOString() };
+    try {
+      localStorage.setItem(KEY, JSON.stringify(consent));
+    } catch {}
+    closeBanner();
+    // Уведомляем Layout.astro, который грузит Метрику по этому событию
+    document.dispatchEvent(new CustomEvent('cookie-consent-change', { detail: consent }));
+  };
+
+  // Первичный показ, если выбора ещё нет
+  if (!readConsent()) {
+    openBanner();
+  }
+
+  acceptBtn?.addEventListener('click', () => setConsent(true));
+  declineBtn?.addEventListener('click', () => setConsent(false));
+
+  // Делегированный обработчик для ссылки «Управление куки» из футера
+  document.addEventListener('click', (e) => {
+    const target = e.target instanceof Element ? e.target.closest('[data-cookie-reopen]') : null;
+    if (target) {
+      e.preventDefault();
+      openBanner();
+    }
+  });
+</script>
