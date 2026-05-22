@@ -3,15 +3,15 @@ import Layout from '../../layouts/Layout.astro';
 import LeadForm from '../../components/LeadForm.astro';
 import { site } from '../../data/site.ts';
 
-const title = 'Контакты репетитора в Чехове';
-const description = 'Связаться с репетитором по математике, информатике и физике в Чехове: WhatsApp, Telegram, телефон. Записаться на диагностику.';
+const title = `Контакты — ${site.centerName}, ${site.centerTagline.toLowerCase()}`;
+const description = `Связаться с репетиторским центром ${site.centerName} в Чехове: WhatsApp, Telegram, телефон. Адрес: ${site.addressPublic}. Записаться на диагностику.`;
 ---
 <Layout title={title} description={description}>
   <section>
     <div class="container">
       <span class="eyebrow">Контакты</span>
       <h1>Как связаться</h1>
-      <p class="lead" style="max-width: 720px;">Самый быстрый способ — написать в WhatsApp или Telegram. Отвечаю в течение рабочего дня.</p>
+      <p class="lead" style="max-width: 720px;">Самый быстрый способ — написать в WhatsApp или Telegram. Отвечаем в течение рабочего дня.</p>
 
       <div class="grid grid-3" style="margin-top: 28px;">
         <a class="card contact-card" href={site.whatsapp} target="_blank" rel="nofollow noopener" data-cta="whatsapp_footer">
@@ -21,7 +21,7 @@ const description = 'Связаться с репетитором по мате�
         </a>
         <a class="card contact-card" href={site.telegram} target="_blank" rel="nofollow noopener" data-cta="telegram_footer">
           <h3>Telegram</h3>
-          <p class="muted">Если предпочитаете Telegram — пишите туда. Тоже отвечаю быстро.</p>
+          <p class="muted">Если предпочитаете Telegram — пишите туда. Тоже отвечаем быстро.</p>
           <span class="more">Открыть чат →</span>
         </a>
         <a class="card contact-card" href={site.phoneHref} data-cta="phone_footer">
@@ -35,11 +35,14 @@ const description = 'Связаться с репетитором по мате�
         <div class="card">
           <h3>Адрес</h3>
           <p>{site.addressPublic}</p>
+          <p>
+            <a href={`https://yandex.ru/maps/?text=${encodeURIComponent('Чехов ' + site.street)}`} target="_blank" rel="noopener nofollow">Показать на Яндекс.Картах →</a>
+          </p>
           <p><a href={`${site.basePath}/kabinet/`}>О кабинете подробнее →</a></p>
         </div>
         <div class="card">
-          <h3>Зоны выезда</h3>
-          <p>Формат — очно. Ко мне приезжают ученики из: {site.serviceAreas.join(', ')}.</p>
+          <h3>Откуда приезжают ученики</h3>
+          <p>Занятия проходят только в нашем кабинете в Чехове. К нам приезжают ученики из: {site.studentAreas.join(', ')}.</p>
         </div>
       </div>
     </div>

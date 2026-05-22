@@ -4,15 +4,15 @@ import LeadForm from '../../components/LeadForm.astro';
 import PriceTable from '../../components/PriceTable.astro';
 import { site } from '../../data/site.ts';
 
-const title = 'Цены на занятия с репетитором в Чехове';
-const description = 'Стоимость занятий по математике, информатике и физике в Чехове. Индивидуальные занятия, подготовка к ОГЭ и ЕГЭ, диагностика уровня.';
+const title = `Цены — ${site.centerName}, репетиторский центр в Чехове`;
+const description = 'Стоимость занятий по математике, информатике и физике в Чехове. Индивидуальные занятия в нашем кабинете на ул. Московская, 87/1, подготовка к ОГЭ и ЕГЭ, диагностика уровня.';
 ---
 <Layout title={title} description={description}>
   <section>
     <div class="container">
       <span class="eyebrow">Цены</span>
       <h1>Цены на занятия</h1>
-      <p class="lead" style="max-width: 720px;">Стоимость указана открыто. Это экономит время и вам, и мне. Цены ниже — стартовые: точную стоимость согласовываем после диагностики, исходя из класса, цели и интенсивности.</p>
+      <p class="lead" style="max-width: 720px;">Стоимость указана открыто. Это экономит время и вам, и нам. Цены ниже — стартовые: точную стоимость согласовываем после диагностики, исходя из класса, цели и интенсивности.</p>
 
       <div style="margin-top: 28px;">
         <PriceTable />
