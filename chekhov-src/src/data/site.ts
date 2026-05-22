@@ -13,10 +13,10 @@ export const site = {
   // TODO: индекс — уточнить (для Чехова Московская обычно 142300–142306)
   postalCode: '',
 
-  // TODO: контакты
-  phone: '+7 (999) 000-00-00',
-  phoneHref: 'tel:+79990000000',
-  whatsapp: 'https://wa.me/79990000000',
+  phone: '+7 910 301-71-10',
+  phoneHref: 'tel:+79103017110',
+  whatsapp: 'https://wa.me/79103017110',
+  // TODO: @username Telegram-аккаунта репетитора
   telegram: 'https://t.me/your_telegram',
   email: 'tutor@эвриум.рф',
 
