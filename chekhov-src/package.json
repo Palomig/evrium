@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "deploy": "astro build && rsync -a --exclude='.git' --exclude='chekhov-src' --exclude='mcp-servers' --exclude='android-app' --exclude='docs' --exclude='crm' --exclude='zarplata' --exclude='oge-zadachi' dist/ ../"
+    "_clean_assets": "rm -rf ../_assets",
+    "_rsync": "rsync -a --exclude='.git' --exclude='chekhov-src' --exclude='mcp-servers' --exclude='android-app' --exclude='docs' --exclude='crm' --exclude='zarplata' --exclude='oge-zadachi' dist/ ../",
+    "deploy": "astro build && npm run _clean_assets && npm run _rsync"
   },
   "license": "ISC",
   "dependencies": {
