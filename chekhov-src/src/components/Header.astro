@@ -30,7 +30,7 @@ const isActive = (item: NavItem) => {
     <a class="brand" href="/">
       <span class="brand-logo">Э</span>
       <span class="brand-text">
-        <span class="brand-title">Репетитор в Чехове</span>
+        <span class="brand-title">{site.centerName} <span class="brand-em">·</span> {site.centerTagline}</span>
         <span class="brand-sub">математика · информатика · физика</span>
       </span>
     </a>
@@ -147,6 +147,7 @@ const isActive = (item: NavItem) => {
   }
   .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
   .brand-title { font-weight: 700; font-size: 15px; }
+  .brand-em { color: var(--c-accent-dark); margin: 0 4px; }
   .brand-sub { font-size: 12px; color: var(--c-muted); }
 
   /* Primary nav */

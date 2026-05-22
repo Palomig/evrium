@@ -6,7 +6,7 @@ const year = new Date().getFullYear();
   <div class="container">
     <div class="footer-grid">
       <div>
-        <div class="footer-brand">Репетитор в Чехове</div>
+        <div class="footer-brand">{site.centerName} · {site.centerTagline}</div>
         <p class="muted small">Очные занятия по математике, информатике и физике для школьников 5–11 классов. Подготовка к ОГЭ и ЕГЭ.</p>
         <div class="btn-row" style="margin-top: 12px;">
           <a class="btn btn-wa" href={site.whatsapp} rel="nofollow noopener" target="_blank" data-cta="whatsapp_footer">WhatsApp</a>
@@ -26,11 +26,11 @@ const year = new Date().getFullYear();
           <a href={`mailto:${site.email}`}>{site.email}</a><br />
           <span class="muted small">{site.addressPublic}</span>
         </p>
-        <p class="muted small">Зоны выезда: {site.serviceAreas.join(', ')}.</p>
+        <p class="muted small">К нам приезжают ученики из: {site.studentAreas.join(', ')}. Занятия проходят только в нашем кабинете.</p>
       </div>
     </div>
     <div class="footer-bottom">
-      <span class="muted small">© {year} Репетитор в Чехове. Все права защищены.</span>
+      <span class="muted small">© {year} {site.centerName} · {site.centerTagline}. Все права защищены.</span>
       <span class="footer-bottom-links">
         <a href="/politika-konfidencialnosti/">Политика конфиденциальности</a>
         <a href="#" data-cookie-reopen>Управление куки</a>

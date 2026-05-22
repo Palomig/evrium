@@ -26,8 +26,8 @@ const ogImageUrl = ogImage
 const localBusiness = {
   '@context': 'https://schema.org',
   '@type': 'EducationalOrganization',
-  name: `Репетитор по математике, информатике и физике в Чехове`,
-  description: site.tutorBio,
+  name: `${site.centerName} — ${site.centerTagline}`,
+  description: site.centerBio,
   url: `${site.domain}${site.basePath}/`,
   telephone: site.phone,
   email: site.email,
@@ -44,7 +44,7 @@ const localBusiness = {
     latitude: site.geo.lat,
     longitude: site.geo.lng,
   },
-  areaServed: site.serviceAreas.map((name) => ({ '@type': 'Place', name })),
+  areaServed: site.studentAreas.map((name) => ({ '@type': 'Place', name })),
   sameAs: [site.whatsapp, site.telegram].filter(Boolean),
 };
 
@@ -66,7 +66,7 @@ const schemas = extraSchema
   {/* Open Graph */}
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="ru_RU" />
-  <meta property="og:site_name" content="Репетитор в Чехове" />
+  <meta property="og:site_name" content={site.centerName} />
   <meta property="og:title" content={title} />
   <meta property="og:description" content={description} />
   <meta property="og:url" content={canonical} />

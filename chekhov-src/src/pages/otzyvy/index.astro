@@ -3,8 +3,8 @@ import Layout from '../../layouts/Layout.astro';
 import LeadForm from '../../components/LeadForm.astro';
 import { site } from '../../data/site.ts';
 
-const title = 'Отзывы о репетиторе в Чехове — математика, информатика, физика';
-const description = 'Отзывы родителей и учеников о занятиях с репетитором в Чехове. Подготовка к ОГЭ, ЕГЭ, успеваемость в школе.';
+const title = `Отзывы — ${site.centerName}, репетиторский центр в Чехове`;
+const description = `Отзывы родителей и учеников о занятиях в ${site.centerName} — репетиторском центре в Чехове. Подготовка к ОГЭ, ЕГЭ, успеваемость.`;
 ---
 <Layout title={title} description={description}>
   <section>
