@@ -23,8 +23,11 @@ const description = 'Кабинет в Чехове для очных занят
         <div class="card">
           <h3>Адрес и как добраться</h3>
           <p>{site.addressPublic}</p>
-          <p class="muted">Точный адрес отправляю после записи на занятие. Кабинет находится в Чехове, в удобной транспортной доступности — пешком от центра и от общественного транспорта.</p>
-          <p class="muted small"><span class="todo">TODO</span> Укажите конкретные ориентиры (район Чехова, ближайшая остановка), если готовы публиковать.</p>
+          <p class="muted">Кабинет в Чехове в удобной транспортной доступности — пешком от центра и от общественного транспорта.</p>
+          <p>
+            <a class="btn btn-ghost" href={`https://yandex.ru/maps/?text=${encodeURIComponent('Чехов ' + site.street)}`} target="_blank" rel="noopener nofollow">Показать на Яндекс.Картах →</a>
+          </p>
+          <p class="muted small"><span class="todo">TODO</span> Уточните ориентиры (этаж, как зайти в подъезд, какой звонок), если есть детали для удобства учеников.</p>
         </div>
         <div class="card">
           <h3>Парковка</h3>

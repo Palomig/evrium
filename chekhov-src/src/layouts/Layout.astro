@@ -33,9 +33,11 @@ const localBusiness = {
   email: site.email,
   address: {
     '@type': 'PostalAddress',
+    streetAddress: site.street,
     addressLocality: 'Чехов',
     addressRegion: 'Московская область',
     addressCountry: 'RU',
+    ...(site.postalCode ? { postalCode: site.postalCode } : {}),
   },
   geo: {
     '@type': 'GeoCoordinates',
