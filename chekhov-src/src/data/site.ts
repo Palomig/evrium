@@ -9,6 +9,9 @@ export const site = {
   tutorBio: 'Репетитор по математике, информатике и физике с многолетним опытом подготовки школьников Чехова к ОГЭ и ЕГЭ.',
   city: 'Чехов',
   region: 'Московская область',
+  street: 'ул. Московская, 87/1',
+  // TODO: индекс — уточнить (для Чехова Московская обычно 142300–142306)
+  postalCode: '',
 
   // TODO: контакты
   phone: '+7 (999) 000-00-00',
@@ -21,9 +24,9 @@ export const site = {
   domain: 'https://эвриум.рф',
   basePath: '',
 
-  // Адрес кабинета (по ТЗ — точный адрес не публикуется)
-  addressPublic: 'г. Чехов, точный адрес — после записи на занятие',
-  // TODO: координаты для Schema.org (если хотите указать)
+  // Адрес для отображения (футер, контакты, страница кабинета)
+  addressPublic: 'г. Чехов, ул. Московская, 87/1',
+  // TODO: координаты для Schema.org (уточнить точные)
   geo: { lat: 55.1456, lng: 37.4538 }, // примерные координаты Чехова
 
   // TODO: реальные цены
@@ -50,16 +53,40 @@ export const site = {
   ],
 };
 
-export const nav = [
-  { href: '/',             label: 'Главная' },
-  { href: '/matematika/',  label: 'Математика' },
-  { href: '/informatika/', label: 'Информатика' },
-  { href: '/fizika/',      label: 'Физика' },
-  { href: '/oge/',         label: 'ОГЭ' },
-  { href: '/ege/',         label: 'ЕГЭ' },
-  { href: '/ceny/',        label: 'Цены' },
-  { href: '/kabinet/',     label: 'Кабинет' },
-  { href: '/otzyvy/',      label: 'Отзывы' },
-  { href: '/kontakty/',    label: 'Контакты' },
-  { href: '/blog/',        label: 'Блог' },
+/**
+ * Главное меню. Группы со свойством `children` рендерятся как дропдауны.
+ * «Главная» убрана из меню — клик по логотипу ведёт на /.
+ */
+export type NavItem = {
+  label: string;
+  href?: string;
+  children?: { label: string; href: string }[];
+};
+
+export const nav: NavItem[] = [
+  {
+    label: 'Предметы',
+    children: [
+      { label: 'Математика',  href: '/matematika/' },
+      { label: 'Информатика', href: '/informatika/' },
+      { label: 'Физика',      href: '/fizika/' },
+    ],
+  },
+  {
+    label: 'Подготовка',
+    children: [
+      { label: 'ОГЭ', href: '/oge/' },
+      { label: 'ЕГЭ', href: '/ege/' },
+    ],
+  },
+  {
+    label: 'О кабинете',
+    children: [
+      { label: 'Цены',    href: '/ceny/' },
+      { label: 'Кабинет', href: '/kabinet/' },
+      { label: 'Отзывы',  href: '/otzyvy/' },
+    ],
+  },
+  { label: 'Блог',     href: '/blog/' },
+  { label: 'Контакты', href: '/kontakty/' },
 ];
