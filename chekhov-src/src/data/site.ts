@@ -16,8 +16,7 @@ export const site = {
   phone: '+7 910 301-71-10',
   phoneHref: 'tel:+79103017110',
   whatsapp: 'https://wa.me/79103017110',
-  // TODO: @username Telegram-аккаунта репетитора
-  telegram: 'https://t.me/your_telegram',
+  telegram: 'https://t.me/Palomig',
   email: 'tutor@эвриум.рф',
 
   // Каноничный домен (используется в OG/canonical/sitemap)
