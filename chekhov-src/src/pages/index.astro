@@ -347,19 +347,29 @@ const faq = [
     flex-direction: column;
     align-items: flex-start;
   }
-  /* Porozhek shape: top corners convex (r=20), bottom-right concave
-     inverted (r=32). Tangents match at the join (W, 20) → smooth S-curve
-     down into the body's top edge with no step or sharp angle. */
+  /* Porozhek: rounded top corners. Bottom-right convex fillet bulges
+     outward into the panel area via ::after with a tangent-smooth mask. */
   .hero-form-bar-head {
     width: 400px;
     height: 52px;
     background: #fff;
+    border-radius: 20px 20px 0 0;
     padding: 0 30px;
     display: flex;
     align-items: center;
     position: relative;
     z-index: 2;
-    clip-path: path('M 20 0 L 380 0 A 20 20 0 0 1 400 20 A 32 32 0 0 1 368 52 L 0 52 L 0 20 A 20 20 0 0 1 20 0 Z');
+  }
+  .hero-form-bar-head::after {
+    content: '';
+    position: absolute;
+    right: -30px;
+    bottom: 0;
+    width: 30px;
+    height: 30px;
+    background: #fff;
+    -webkit-mask: radial-gradient(circle 30px at top right, transparent 29.5px, #000 30.5px);
+            mask: radial-gradient(circle 30px at top right, transparent 29.5px, #000 30.5px);
   }
   .hero-form-bar-title {
     margin: 0;
@@ -377,6 +387,11 @@ const faq = [
     padding: 18px 28px 16px;
     position: relative;
     z-index: 1;
+    /* Concave inverted notch in the panel's top edge, sitting right next
+       to where the porozhek's fillet ends. Fillet right edge is at x=430,
+       cut is centered at (460, 0) so its left boundary touches (430, 0). */
+    -webkit-mask-image: radial-gradient(circle 30px at 460px 0, transparent 29.5px, #000 30.5px);
+            mask-image: radial-gradient(circle 30px at 460px 0, transparent 29.5px, #000 30.5px);
   }
   .hero-lead-form {
     display: flex;
@@ -443,12 +458,14 @@ const faq = [
       min-height: 0;
       border-radius: 18px 18px 0 0;
       padding: 14px 22px;
-      clip-path: none;
     }
+    .hero-form-bar-head::after { display: none; }
     .hero-form-bar-title { font-size: 18px; white-space: normal; }
     .hero-form-bar-body {
       border-radius: 0 0 18px 18px;
       padding: 16px 22px;
+      -webkit-mask-image: none;
+              mask-image: none;
     }
     .hero-lead-form-row { grid-template-columns: 1fr 1fr; }
     .hero-lead-submit { grid-column: 1 / -1; }
