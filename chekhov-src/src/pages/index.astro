@@ -69,31 +69,33 @@ const faq = [
         <div class="hero-form-bar-head">
           <h3 class="hero-form-bar-title">Записаться на бесплатный урок</h3>
         </div>
-        <form class="hero-lead-form" action={`${site.basePath}/api/lead.php`} method="post" data-lead-form data-phone-mask novalidate>
-          <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute; left:-9999px;" aria-hidden="true" />
-          <input type="hidden" name="source" value="hero" />
-          <div class="hero-lead-form-row">
-            <input type="text" name="name" required minlength="2" placeholder="Имя" aria-label="Имя" />
-            <input
-              type="tel"
-              name="phone"
-              required
-              placeholder="+7 (999) 555 22 11"
-              inputmode="tel"
-              autocomplete="tel"
-              pattern="\+7 \(\d{3}\) \d{3} \d{2} \d{2}"
-              title="Формат: +7 (999) 555 22 11"
-              aria-label="Телефон"
-            />
-            <select name="class" required aria-label="Класс">
-              <option value="">Класс</option>
-              {[2,3,4,5,6,7,8,9,10,11].map((n) => <option value={n}>{n}</option>)}
-            </select>
-            <button type="submit" class="btn btn-accent hero-lead-submit">Записаться</button>
-          </div>
-          <p class="hero-lead-consent">Нажимая «Записаться», вы соглашаетесь с обработкой персональных данных.</p>
-          <div class="form-status" data-status hidden></div>
-        </form>
+        <div class="hero-form-bar-body">
+          <form class="hero-lead-form" action={`${site.basePath}/api/lead.php`} method="post" data-lead-form data-phone-mask novalidate>
+            <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute; left:-9999px;" aria-hidden="true" />
+            <input type="hidden" name="source" value="hero" />
+            <div class="hero-lead-form-row">
+              <input type="text" name="name" required minlength="2" placeholder="Имя" aria-label="Имя" />
+              <input
+                type="tel"
+                name="phone"
+                required
+                placeholder="+7 (999) 555 22 11"
+                inputmode="tel"
+                autocomplete="tel"
+                pattern="\+7 \(\d{3}\) \d{3} \d{2} \d{2}"
+                title="Формат: +7 (999) 555 22 11"
+                aria-label="Телефон"
+              />
+              <select name="class" required aria-label="Класс">
+                <option value="">Класс</option>
+                {[2,3,4,5,6,7,8,9,10,11].map((n) => <option value={n}>{n}</option>)}
+              </select>
+              <button type="submit" class="btn btn-accent hero-lead-submit">Записаться</button>
+            </div>
+            <p class="hero-lead-consent">Нажимая «Записаться», вы соглашаетесь с обработкой персональных данных.</p>
+            <div class="form-status" data-status hidden></div>
+          </form>
+        </div>
       </div>
     </div>
   </section>
@@ -335,52 +337,60 @@ const faq = [
   .link-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); text-decoration: none; }
   .link-card .more { display: inline-block; margin-top: 10px; color: var(--c-primary); font-weight: 600; }
 
-  /* Hero stepped lead form: 160px head (title) → arc → 120px form */
+  /* Hero 2-row lead form: porozhek (title) on top + wave transition + body */
   .hero-form-bar {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    align-items: end;
+    position: relative;
     margin-top: 36px;
     filter: drop-shadow(0 20px 50px rgba(0, 0, 0, 0.28));
     color: var(--c-text);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
   }
   .hero-form-bar-head {
-    min-height: 160px;
+    min-height: 52px;
     background: #fff;
-    border-radius: 18px 0 0 18px;
-    padding: 0 32px;
+    border-radius: 20px 20px 0 0;
+    padding: 12px 28px;
     display: flex;
     align-items: center;
     position: relative;
+    z-index: 2;
   }
+  /* Wave: concave fillet curving outward from the bottom-right of porozhek
+     into the top edge of body — pairs with the convex top-right border-radius
+     above it to form an S-curve. */
   .hero-form-bar-head::after {
     content: '';
     position: absolute;
-    top: 0;
-    left: 100%;
-    width: 40px;
-    height: 40px;
+    right: -30px;
+    bottom: 0;
+    width: 30px;
+    height: 30px;
     background: #fff;
-    -webkit-mask: radial-gradient(circle 40px at bottom left, #000 39.5px, transparent 40.5px);
-    mask: radial-gradient(circle 40px at bottom left, #000 39.5px, transparent 40.5px);
+    -webkit-mask: radial-gradient(circle 30px at bottom left, #000 29.5px, transparent 30.5px);
+    mask: radial-gradient(circle 30px at bottom left, #000 29.5px, transparent 30.5px);
   }
   .hero-form-bar-title {
     margin: 0;
     font-weight: 800;
-    font-size: 22px;
+    font-size: 20px;
     color: var(--c-primary);
     line-height: 1.2;
     letter-spacing: -0.01em;
     white-space: nowrap;
   }
-  .hero-lead-form {
-    min-height: 120px;
+  .hero-form-bar-body {
+    width: 100%;
     background: #fff;
-    border-radius: 0 18px 18px 0;
-    padding: 18px 28px 14px;
+    border-radius: 0 18px 18px 18px;
+    padding: 18px 28px 16px;
+    position: relative;
+    z-index: 1;
+  }
+  .hero-lead-form {
     display: flex;
     flex-direction: column;
-    justify-content: center;
     gap: 8px;
   }
   .hero-lead-form-row {
@@ -436,25 +446,20 @@ const faq = [
   .hero-lead-form .form-status.err { background: #fdecea; color: #b3261e; }
 
   @media (max-width: 720px) {
-    .hero-form-bar {
-      grid-template-columns: 1fr;
-      align-items: stretch;
-    }
+    .hero-form-bar { align-items: stretch; }
     .hero-form-bar-head {
       min-height: 0;
       border-radius: 18px 18px 0 0;
-      padding: 16px 22px;
+      padding: 14px 22px;
+      width: 100%;
     }
     .hero-form-bar-head::after { display: none; }
     .hero-form-bar-title { font-size: 18px; white-space: normal; }
-    .hero-lead-form {
-      min-height: 0;
+    .hero-form-bar-body {
       border-radius: 0 0 18px 18px;
       padding: 16px 22px;
     }
-    .hero-lead-form-row {
-      grid-template-columns: 1fr 1fr;
-    }
+    .hero-lead-form-row { grid-template-columns: 1fr 1fr; }
     .hero-lead-submit { grid-column: 1 / -1; }
   }
   @media (max-width: 520px) {
