@@ -66,30 +66,34 @@ const faq = [
       </div>
 
       <div class="hero-form-bar">
-        <h3 class="hero-form-bar-title">Записаться на бесплатный урок</h3>
+        <div class="hero-form-bar-head">
+          <h3 class="hero-form-bar-title">Записаться на бесплатный урок</h3>
+        </div>
         <form class="hero-lead-form" action={`${site.basePath}/api/lead.php`} method="post" data-lead-form data-phone-mask novalidate>
           <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute; left:-9999px;" aria-hidden="true" />
           <input type="hidden" name="source" value="hero" />
-          <input type="text" name="name" required minlength="2" placeholder="Имя" aria-label="Имя" />
-          <input
-            type="tel"
-            name="phone"
-            required
-            placeholder="+7 (999) 555 22 11"
-            inputmode="tel"
-            autocomplete="tel"
-            pattern="\+7 \(\d{3}\) \d{3} \d{2} \d{2}"
-            title="Формат: +7 (999) 555 22 11"
-            aria-label="Телефон"
-          />
-          <select name="class" required aria-label="Класс">
-            <option value="">Класс</option>
-            {[2,3,4,5,6,7,8,9,10,11].map((n) => <option value={n}>{n}</option>)}
-          </select>
-          <button type="submit" class="btn btn-accent hero-lead-submit">Записаться</button>
+          <div class="hero-lead-form-row">
+            <input type="text" name="name" required minlength="2" placeholder="Имя" aria-label="Имя" />
+            <input
+              type="tel"
+              name="phone"
+              required
+              placeholder="+7 (999) 555 22 11"
+              inputmode="tel"
+              autocomplete="tel"
+              pattern="\+7 \(\d{3}\) \d{3} \d{2} \d{2}"
+              title="Формат: +7 (999) 555 22 11"
+              aria-label="Телефон"
+            />
+            <select name="class" required aria-label="Класс">
+              <option value="">Класс</option>
+              {[2,3,4,5,6,7,8,9,10,11].map((n) => <option value={n}>{n}</option>)}
+            </select>
+            <button type="submit" class="btn btn-accent hero-lead-submit">Записаться</button>
+          </div>
+          <p class="hero-lead-consent">Нажимая «Записаться», вы соглашаетесь с обработкой персональных данных.</p>
           <div class="form-status" data-status hidden></div>
         </form>
-        <p class="hero-lead-consent">Нажимая «Записаться», вы соглашаетесь с обработкой персональных данных.</p>
       </div>
     </div>
   </section>
@@ -331,34 +335,55 @@ const faq = [
   .link-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); text-decoration: none; }
   .link-card .more { display: inline-block; margin-top: 10px; color: var(--c-primary); font-weight: 600; }
 
-  /* Hero compact horizontal lead form */
+  /* Hero stepped lead form: 160px head (title) → arc → 120px form */
   .hero-form-bar {
-    position: relative;
-    background: #fff;
-    border-radius: 18px;
-    padding: 22px 26px 18px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: end;
     margin-top: 36px;
+    filter: drop-shadow(0 20px 50px rgba(0, 0, 0, 0.28));
     color: var(--c-text);
-    box-shadow: 0 20px 60px rgba(0,0,0,.28);
-    overflow: hidden;
   }
-  .hero-form-bar::before {
+  .hero-form-bar-head {
+    min-height: 160px;
+    background: #fff;
+    border-radius: 18px 0 0 18px;
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    position: relative;
+  }
+  .hero-form-bar-head::after {
     content: '';
     position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: 5px;
-    background: var(--c-accent);
+    top: 0;
+    left: 100%;
+    width: 40px;
+    height: 40px;
+    background: #fff;
+    -webkit-mask: radial-gradient(circle 40px at bottom left, #000 39.5px, transparent 40.5px);
+    mask: radial-gradient(circle 40px at bottom left, #000 39.5px, transparent 40.5px);
   }
   .hero-form-bar-title {
-    margin: 0 0 14px;
+    margin: 0;
     font-weight: 800;
-    font-size: 20px;
+    font-size: 22px;
     color: var(--c-primary);
-    line-height: 1.25;
-    text-align: left;
+    line-height: 1.2;
     letter-spacing: -0.01em;
+    white-space: nowrap;
   }
   .hero-lead-form {
+    min-height: 120px;
+    background: #fff;
+    border-radius: 0 18px 18px 0;
+    padding: 18px 28px 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+  }
+  .hero-lead-form-row {
     display: grid;
     grid-template-columns: minmax(0, 1.8fr) minmax(0, 1.25fr) minmax(0, 0.55fr) auto;
     gap: 10px;
@@ -377,13 +402,9 @@ const faq = [
     min-height: 46px;
     transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
   }
-  .hero-lead-form input::placeholder {
-    color: #9aa3ad;
-  }
+  .hero-lead-form input::placeholder { color: #9aa3ad; }
   .hero-lead-form input:hover,
-  .hero-lead-form select:hover {
-    border-color: #b8c1cb;
-  }
+  .hero-lead-form select:hover { border-color: #b8c1cb; }
   .hero-lead-form input:focus,
   .hero-lead-form select:focus {
     outline: none;
@@ -399,8 +420,13 @@ const faq = [
     font-weight: 700;
     border-radius: 10px;
   }
+  .hero-lead-consent {
+    margin: 0;
+    font-size: 12px;
+    color: var(--c-muted);
+    line-height: 1.4;
+  }
   .hero-lead-form .form-status {
-    grid-column: 1 / -1;
     padding: 10px 12px;
     border-radius: 8px;
     font-weight: 600;
@@ -408,22 +434,31 @@ const faq = [
   }
   .hero-lead-form .form-status.ok  { background: #e8f7ee; color: #1e7240; }
   .hero-lead-form .form-status.err { background: #fdecea; color: #b3261e; }
-  .hero-lead-consent {
-    margin: 12px 0 0;
-    font-size: 12px;
-    color: var(--c-muted);
-    line-height: 1.4;
-  }
-  @media (max-width: 900px) {
+
+  @media (max-width: 720px) {
     .hero-form-bar {
-      padding: 20px 22px 16px;
+      grid-template-columns: 1fr;
+      align-items: stretch;
     }
-    .hero-form-bar-title { font-size: 18px; }
-    .hero-lead-form { grid-template-columns: 1fr 1fr; }
+    .hero-form-bar-head {
+      min-height: 0;
+      border-radius: 18px 18px 0 0;
+      padding: 16px 22px;
+    }
+    .hero-form-bar-head::after { display: none; }
+    .hero-form-bar-title { font-size: 18px; white-space: normal; }
+    .hero-lead-form {
+      min-height: 0;
+      border-radius: 0 0 18px 18px;
+      padding: 16px 22px;
+    }
+    .hero-lead-form-row {
+      grid-template-columns: 1fr 1fr;
+    }
     .hero-lead-submit { grid-column: 1 / -1; }
   }
   @media (max-width: 520px) {
-    .hero-lead-form { grid-template-columns: 1fr; }
+    .hero-lead-form-row { grid-template-columns: 1fr; }
   }
 
   /* Hero slider */
