@@ -356,10 +356,20 @@ const faq = [
     align-items: center;
     position: relative;
     z-index: 2;
-    /* Wave: concave quarter-circle cut into the bottom-right of porozhek.
-       Pairs with the convex top-right corner above it to form an S-curve. */
-    -webkit-mask-image: radial-gradient(circle 30px at 100% 100%, transparent 29.5px, #000 30.5px);
-            mask-image: radial-gradient(circle 30px at 100% 100%, transparent 29.5px, #000 30.5px);
+  }
+  /* Wave: convex outward fillet at the bottom-right of porozhek — pairs
+     with the border-radius above it (concave-from-outside) to form an
+     S-curve with opposite curvatures. */
+  .hero-form-bar-head::after {
+    content: '';
+    position: absolute;
+    right: -30px;
+    bottom: 0;
+    width: 30px;
+    height: 30px;
+    background: #fff;
+    -webkit-mask: radial-gradient(circle 30px at bottom left, #000 29.5px, transparent 30.5px);
+            mask: radial-gradient(circle 30px at bottom left, #000 29.5px, transparent 30.5px);
   }
   .hero-form-bar-title {
     margin: 0;
@@ -442,9 +452,8 @@ const faq = [
       border-radius: 18px 18px 0 0;
       padding: 14px 22px;
       width: 100%;
-      -webkit-mask-image: none;
-              mask-image: none;
     }
+    .hero-form-bar-head::after { display: none; }
     .hero-form-bar-title { font-size: 18px; white-space: normal; }
     .hero-form-bar-body {
       border-radius: 0 0 18px 18px;
