@@ -387,11 +387,6 @@ const faq = [
     padding: 18px 28px 16px;
     position: relative;
     z-index: 1;
-    /* Concave inverted notch in the panel's top edge, sitting right next
-       to where the porozhek's fillet ends. Fillet right edge is at x=430,
-       cut is centered at (460, 0) so its left boundary touches (430, 0). */
-    -webkit-mask-image: radial-gradient(circle 30px at 460px 0, transparent 29.5px, #000 30.5px);
-            mask-image: radial-gradient(circle 30px at 460px 0, transparent 29.5px, #000 30.5px);
   }
   .hero-lead-form {
     display: flex;
@@ -464,8 +459,6 @@ const faq = [
     .hero-form-bar-body {
       border-radius: 0 0 18px 18px;
       padding: 16px 22px;
-      -webkit-mask-image: none;
-              mask-image: none;
     }
     .hero-lead-form-row { grid-template-columns: 1fr 1fr; }
     .hero-lead-submit { grid-column: 1 / -1; }
