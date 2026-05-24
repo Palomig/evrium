@@ -333,49 +333,71 @@ const faq = [
 
   /* Hero compact horizontal lead form */
   .hero-form-bar {
+    position: relative;
     background: #fff;
-    border-radius: var(--radius-lg);
-    padding: 20px 22px;
-    margin-top: 32px;
+    border-radius: 18px;
+    padding: 22px 26px 18px;
+    margin-top: 36px;
     color: var(--c-text);
-    box-shadow: 0 18px 48px rgba(0,0,0,.25);
+    box-shadow: 0 20px 60px rgba(0,0,0,.28);
+    overflow: hidden;
+  }
+  .hero-form-bar::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 5px;
+    background: var(--c-accent);
   }
   .hero-form-bar-title {
     margin: 0 0 14px;
-    font-weight: 700;
+    font-weight: 800;
     font-size: 20px;
     color: var(--c-primary);
     line-height: 1.25;
     text-align: left;
+    letter-spacing: -0.01em;
   }
   .hero-lead-form {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr auto;
+    grid-template-columns: minmax(0, 1.8fr) minmax(0, 1.25fr) minmax(0, 0.55fr) auto;
     gap: 10px;
     align-items: stretch;
   }
   .hero-lead-form input,
   .hero-lead-form select {
     width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--c-border);
+    padding: 11px 14px;
+    border: 1px solid #d8dee5;
     border-radius: 10px;
     font-size: 15px;
     font-family: inherit;
-    background: #fff;
+    background: #fafbfc;
     color: var(--c-text);
-    min-height: 44px;
+    min-height: 46px;
+    transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+  }
+  .hero-lead-form input::placeholder {
+    color: #9aa3ad;
+  }
+  .hero-lead-form input:hover,
+  .hero-lead-form select:hover {
+    border-color: #b8c1cb;
   }
   .hero-lead-form input:focus,
   .hero-lead-form select:focus {
-    outline: 2px solid var(--c-accent);
+    outline: none;
     border-color: var(--c-accent);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(244, 185, 66, 0.18);
   }
   .hero-lead-submit {
     justify-content: center;
     white-space: nowrap;
-    padding: 0 22px;
-    min-height: 44px;
+    padding: 0 26px;
+    min-height: 46px;
+    font-weight: 700;
+    border-radius: 10px;
   }
   .hero-lead-form .form-status {
     grid-column: 1 / -1;
@@ -387,19 +409,16 @@ const faq = [
   .hero-lead-form .form-status.ok  { background: #e8f7ee; color: #1e7240; }
   .hero-lead-form .form-status.err { background: #fdecea; color: #b3261e; }
   .hero-lead-consent {
-    grid-column: 1 / -1;
-    margin: 0;
+    margin: 12px 0 0;
     font-size: 12px;
     color: var(--c-muted);
     line-height: 1.4;
   }
   @media (max-width: 900px) {
     .hero-form-bar {
-      grid-template-columns: 1fr;
-      gap: 14px;
-      padding: 18px;
+      padding: 20px 22px 16px;
     }
-    .hero-form-bar-title { max-width: none; font-size: 18px; }
+    .hero-form-bar-title { font-size: 18px; }
     .hero-lead-form { grid-template-columns: 1fr 1fr; }
     .hero-lead-submit { grid-column: 1 / -1; }
   }
