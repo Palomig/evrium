@@ -50,17 +50,31 @@ const faq = [
           <span class="eyebrow">Чехов · ул. Московская, 87/1</span>
           <h1>Репетиторский центр в Чехове — математика, информатика, физика</h1>
           <p class="lead">Команда репетиторов в одном кабинете. Очные занятия для школьников 2–11 классов. Готовим к ОГЭ, ЕГЭ, олимпиадной математике, контрольным и помогаем закрыть пробелы в знаниях.</p>
-          <div class="tag-list" style="margin: 18px 0 24px;">
-            <span class="tag">2–11 класс</span>
-            <span class="tag">ОГЭ · ЕГЭ</span>
-            <span class="tag">Олимпиадная математика</span>
-            <span class="tag">Индивидуально</span>
-            <span class="tag">План занятий</span>
-          </div>
-          <div class="btn-row">
-            <a class="btn btn-accent" href="#zayavka">Записаться на диагностику</a>
-            <a class="btn btn-wa" href={site.whatsapp} target="_blank" rel="nofollow noopener" data-cta="whatsapp_hero">Написать в WhatsApp</a>
-            <a class="btn btn-ghost" href={`${site.basePath}/ceny/`}>Посмотреть цены</a>
+
+          <div class="hero-form-card">
+            <h2 class="hero-form-title">Записаться на бесплатный урок</h2>
+            <form class="hero-lead-form" action={`${site.basePath}/api/lead.php`} method="post" data-lead-form novalidate>
+              <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute; left:-9999px;" aria-hidden="true" />
+              <input type="hidden" name="source" value="hero" />
+              <label>
+                Имя
+                <input type="text" name="name" required minlength="2" placeholder="Имя родителя или ученика" />
+              </label>
+              <label>
+                Телефон
+                <input type="tel" name="phone" required minlength="10" placeholder="+7 ___ ___-__-__" inputmode="tel" />
+              </label>
+              <label>
+                Класс
+                <select name="class" required>
+                  <option value="">— выберите —</option>
+                  {[2,3,4,5,6,7,8,9,10,11].map((n) => <option value={n}>{n} класс</option>)}
+                </select>
+              </label>
+              <button type="submit" class="btn btn-accent hero-lead-submit">Записаться</button>
+              <p class="hero-lead-consent">Нажимая «Записаться», вы соглашаетесь с обработкой персональных данных.</p>
+              <div class="form-status" data-status hidden></div>
+            </form>
           </div>
         </div>
         <div class="hero-slider" data-hero-slider aria-roledescription="карусель" aria-label="Фотографии кабинета">
@@ -315,6 +329,65 @@ const faq = [
   .link-card { text-decoration: none; color: var(--c-text); transition: transform .15s ease, box-shadow .15s ease; }
   .link-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); text-decoration: none; }
   .link-card .more { display: inline-block; margin-top: 10px; color: var(--c-primary); font-weight: 600; }
+
+  /* Hero lead form (replaces buttons) */
+  .hero-form-card {
+    background: #fff;
+    border-radius: var(--radius-lg);
+    padding: 24px 24px 20px;
+    margin-top: 28px;
+    color: var(--c-text);
+    box-shadow: 0 18px 48px rgba(0,0,0,.25);
+    max-width: 460px;
+  }
+  .hero-form-title {
+    margin: 0 0 16px;
+    color: var(--c-primary);
+    font-size: 22px;
+    line-height: 1.25;
+  }
+  .hero-lead-form { display: grid; gap: 12px; }
+  .hero-lead-form label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--c-primary);
+  }
+  .hero-lead-form input,
+  .hero-lead-form select {
+    width: 100%;
+    margin-top: 6px;
+    padding: 12px 14px;
+    border: 1px solid var(--c-border);
+    border-radius: 10px;
+    font-size: 16px;
+    font-family: inherit;
+    background: #fff;
+    color: var(--c-text);
+    min-height: 48px;
+  }
+  .hero-lead-form input:focus,
+  .hero-lead-form select:focus {
+    outline: 2px solid var(--c-accent);
+    border-color: var(--c-accent);
+  }
+  .hero-lead-submit {
+    width: 100%;
+    justify-content: center;
+    margin-top: 4px;
+  }
+  .hero-lead-consent {
+    margin: 0;
+    font-size: 12px;
+    color: var(--c-muted);
+    line-height: 1.4;
+  }
+  .hero-form-card .form-status { padding: 12px; border-radius: 8px; font-weight: 600; font-size: 14px; }
+  .hero-form-card .form-status.ok  { background: #e8f7ee; color: #1e7240; }
+  .hero-form-card .form-status.err { background: #fdecea; color: #b3261e; }
+  @media (max-width: 900px) {
+    .hero-form-card { max-width: none; }
+  }
 
   /* Hero slider */
   .hero-slider {

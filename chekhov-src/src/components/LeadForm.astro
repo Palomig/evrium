@@ -124,30 +124,37 @@ const { compact = false, subject = '', goal = '' } = Astro.props;
 </style>
 
 <script>
-  const form = document.querySelector('[data-lead-form]');
-  const status = document.querySelector('[data-status]');
-  form?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fd = new FormData(form);
-    if (fd.get('website')) return; // honeypot
-    status.hidden = false;
-    status.className = 'form-status';
-    status.textContent = 'Отправляем…';
-    try {
-      const res = await fetch(form.action, { method: 'POST', body: fd });
-      const json = await res.json().catch(() => ({}));
-      if (res.ok && json.ok) {
-        status.className = 'form-status ok';
-        status.textContent = 'Спасибо! Я получил заявку и свяжусь с вами в ближайшее время.';
-        form.reset();
-        if (window.ym) window.ym(window.__ymId || 0, 'reachGoal', 'form_submit');
-      } else {
-        throw new Error(json.error || 'Не удалось отправить');
+  document.querySelectorAll('[data-lead-form]').forEach((form) => {
+    const status = form.querySelector('[data-status]');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      if (fd.get('website')) return; // honeypot
+      if (status) {
+        status.hidden = false;
+        status.className = 'form-status';
+        status.textContent = 'Отправляем…';
       }
-    } catch (err) {
-      status.className = 'form-status err';
-      status.textContent = 'Не удалось отправить. Напишите в WhatsApp или Telegram — отвечу быстрее.';
-    }
+      try {
+        const res = await fetch(form.action, { method: 'POST', body: fd });
+        const json = await res.json().catch(() => ({}));
+        if (res.ok && json.ok) {
+          if (status) {
+            status.className = 'form-status ok';
+            status.textContent = 'Спасибо! Я получил заявку и свяжусь с вами в ближайшее время.';
+          }
+          form.reset();
+          if (window.ym) window.ym(window.__ymId || 0, 'reachGoal', 'form_submit');
+        } else {
+          throw new Error(json.error || 'Не удалось отправить');
+        }
+      } catch (err) {
+        if (status) {
+          status.className = 'form-status err';
+          status.textContent = 'Не удалось отправить. Напишите в WhatsApp или Telegram — отвечу быстрее.';
+        }
+      }
+    });
   });
 
   document.querySelectorAll('[data-cta]').forEach((el) => {
