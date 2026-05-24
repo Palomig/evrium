@@ -347,29 +347,19 @@ const faq = [
     flex-direction: column;
     align-items: flex-start;
   }
+  /* Porozhek shape: top corners convex (r=20), bottom-right concave
+     inverted (r=32). Tangents match at the join (W, 20) → smooth S-curve
+     down into the body's top edge with no step or sharp angle. */
   .hero-form-bar-head {
-    min-height: 52px;
+    width: 400px;
+    height: 52px;
     background: #fff;
-    border-radius: 20px 20px 0 0;
-    padding: 12px 28px;
+    padding: 0 30px;
     display: flex;
     align-items: center;
     position: relative;
     z-index: 2;
-  }
-  /* Wave: convex outward fillet at the bottom-right of porozhek — pairs
-     with the border-radius above it (concave-from-outside) to form an
-     S-curve with opposite curvatures. */
-  .hero-form-bar-head::after {
-    content: '';
-    position: absolute;
-    right: -30px;
-    bottom: 0;
-    width: 30px;
-    height: 30px;
-    background: #fff;
-    -webkit-mask: radial-gradient(circle 30px at bottom left, #000 29.5px, transparent 30.5px);
-            mask: radial-gradient(circle 30px at bottom left, #000 29.5px, transparent 30.5px);
+    clip-path: path('M 20 0 L 380 0 A 20 20 0 0 1 400 20 A 32 32 0 0 1 368 52 L 0 52 L 0 20 A 20 20 0 0 1 20 0 Z');
   }
   .hero-form-bar-title {
     margin: 0;
@@ -448,12 +438,13 @@ const faq = [
   @media (max-width: 720px) {
     .hero-form-bar { align-items: stretch; }
     .hero-form-bar-head {
+      width: 100%;
+      height: auto;
       min-height: 0;
       border-radius: 18px 18px 0 0;
       padding: 14px 22px;
-      width: 100%;
+      clip-path: none;
     }
-    .hero-form-bar-head::after { display: none; }
     .hero-form-bar-title { font-size: 18px; white-space: normal; }
     .hero-form-bar-body {
       border-radius: 0 0 18px 18px;
