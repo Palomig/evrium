@@ -10,6 +10,20 @@ $prototypes = dbQuery("
     FROM prototypes
     ORDER BY sort_order ASC, id ASC
 ");
+
+$p23Images = [
+    ['src' => 'assets/p23/oge15_p23_img1.png', 'label' => 'Прямоугольный треугольник — исходный рисунок'],
+    ['src' => 'assets/p23/oge15_p23_img2.png', 'label' => 'Прямоугольный треугольник — схема 2'],
+    ['src' => 'assets/p23/oge15_p23_img3.png', 'label' => 'Прямоугольный треугольник — схема 3'],
+    ['src' => 'assets/p23/oge16_p23_img1.png', 'label' => 'Окружность — схема 1'],
+    ['src' => 'assets/p23/oge16_p23_img2.png', 'label' => 'Окружность — схема 2'],
+    ['src' => 'assets/p23/oge16_p23_img3.png', 'label' => 'Окружность — схема 3'],
+    ['src' => 'assets/p23/oge16_p23_img4.png', 'label' => 'Окружность — схема 4'],
+    ['src' => 'assets/p23/oge16_p23_img5.png', 'label' => 'Окружность — схема 5'],
+    ['src' => 'assets/p23/oge16_p23_img6.png', 'label' => 'Окружность — схема 6'],
+    ['src' => 'assets/p23/oge17_p23_img1.png', 'label' => 'Трапеция — схема 1'],
+    ['src' => 'assets/p23/oge17_p23_img2.png', 'label' => 'Трапеция — схема 2'],
+];
 ?>
 <!DOCTYPE html>
 <html lang="ru">
@@ -132,6 +146,55 @@ $prototypes = dbQuery("
             font-size: 12px;
         }
 
+        .p23-card {
+            margin-bottom: 24px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            padding: 22px;
+        }
+
+        .p23-card h2 {
+            color: #fff;
+            font-weight: 400;
+            margin-bottom: 10px;
+        }
+
+        .p23-card p {
+            color: #a8b2d1;
+            line-height: 1.6;
+            margin-bottom: 18px;
+        }
+
+        .p23-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+            gap: 16px;
+        }
+
+        .p23-figure {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 12px;
+            color: #334155;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.18);
+        }
+
+        .p23-figure img {
+            width: 100%;
+            height: 150px;
+            object-fit: contain;
+            display: block;
+            cursor: pointer;
+        }
+
+        .p23-figure figcaption {
+            margin-top: 8px;
+            font-size: 12px;
+            line-height: 1.35;
+            text-align: center;
+        }
+
         .stats {
             margin-top: 20px;
             padding: 15px 20px;
@@ -207,6 +270,21 @@ $prototypes = dbQuery("
 <body>
     <div class="container">
         <h1>Геометрические прототипы ОГЭ</h1>
+
+        <section class="p23-card" id="zadanie-23">
+            <h2>Разбор задания 23 ОГЭ — старые PNG-рисунки</h2>
+            <p>Восстановленные изображения из прежнего набора материалов. Нажмите на любой рисунок, чтобы открыть крупно.</p>
+            <div class="p23-gallery">
+                <?php foreach ($p23Images as $image): ?>
+                    <figure class="p23-figure">
+                        <img src="<?= htmlspecialchars($image['src']) ?>"
+                             alt="<?= htmlspecialchars($image['label']) ?>"
+                             onclick="openModal(this.src)">
+                        <figcaption><?= htmlspecialchars($image['label']) ?></figcaption>
+                    </figure>
+                <?php endforeach; ?>
+            </div>
+        </section>
 
         <div class="table-wrapper">
             <table>
