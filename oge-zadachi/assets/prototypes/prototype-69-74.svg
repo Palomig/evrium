@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 240" role="img" aria-label="prototype-69-74.svg">
+  <rect width="360" height="240" rx="18" fill="#f8fafc"/>
+  <style>
+    .s{stroke:#1e293b;stroke-width:5;fill:none;stroke-linecap:round;stroke-linejoin:round}
+    .d{stroke:#64748b;stroke-width:3;fill:none;stroke-dasharray:8 7;stroke-linecap:round}
+    .p{fill:#2563eb}
+    .t{font:700 18px Arial,sans-serif;fill:#0f172a}
+    .m{font:600 15px Arial,sans-serif;fill:#475569}
+    .a{stroke:#ef4444;stroke-width:4;fill:none;stroke-linecap:round}
+  </style>
+  <polygon class="s" points="60,185 305,185 250,60 110,60"/><line class="d" x1="60" y1="185" x2="250" y2="60"/><line class="a" x1="92" y1="145" x2="285" y2="145"/><text class="m" x="130" y="137">EF ∥ основаниям</text><text class="m" x="134" y="210">Фалес + подобие</text>
+</svg>

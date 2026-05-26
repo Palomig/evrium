@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 240" role="img" aria-label="prototype-45-50.svg">
+  <rect width="360" height="240" rx="18" fill="#f8fafc"/>
+  <style>
+    .s{stroke:#1e293b;stroke-width:5;fill:none;stroke-linecap:round;stroke-linejoin:round}
+    .d{stroke:#64748b;stroke-width:3;fill:none;stroke-dasharray:8 7;stroke-linecap:round}
+    .p{fill:#2563eb}
+    .t{font:700 18px Arial,sans-serif;fill:#0f172a}
+    .m{font:600 15px Arial,sans-serif;fill:#475569}
+    .a{stroke:#ef4444;stroke-width:4;fill:none;stroke-linecap:round}
+  </style>
+  <line class="s" x1="70" y1="70" x2="290" y2="175"/><line class="s" x1="75" y1="175" x2="285" y2="70"/><line class="a" x1="70" y1="70" x2="75" y2="175"/><line class="a" x1="285" y1="70" x2="290" y2="175"/><circle class="p" cx="180" cy="122" r="5"/><text class="m" x="128" y="112">«бабочка»</text><text class="m" x="117" y="142">подобие</text>
+</svg>

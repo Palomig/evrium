@@ -61,6 +61,44 @@ function initDatabase(PDO $pdo): void {
     if ($count == 0) {
         seedDefaultData($pdo);
     }
+
+    // Backfill built-in diagrams for old databases where rows already exist
+    // but image paths were empty. Uploaded/custom images are not overwritten.
+    updateMissingDefaultImages($pdo);
+}
+
+/**
+ * Built-in SVG diagrams for public prototype rows.
+ */
+function defaultPrototypeImages(): array {
+    return [
+        '1-6' => 'assets/prototypes/prototype-01-06.svg',
+        '7-12' => 'assets/prototypes/prototype-07-12.svg',
+        '13-18' => 'assets/prototypes/prototype-13-18.svg',
+        '19-22' => 'assets/prototypes/prototype-19-22.svg',
+        '23-27 и 28-32' => 'assets/prototypes/prototype-23-32.svg',
+        '33-38' => 'assets/prototypes/prototype-33-38.svg',
+        '39-44' => 'assets/prototypes/prototype-39-44.svg',
+        '45-50' => 'assets/prototypes/prototype-45-50.svg',
+        '51-56' => 'assets/prototypes/prototype-51-56.svg',
+        '57-68' => 'assets/prototypes/prototype-57-68.svg',
+        '69-74' => 'assets/prototypes/prototype-69-74.svg',
+        '75-79 и 80-84' => 'assets/prototypes/prototype-75-84.svg',
+        '85-92' => 'assets/prototypes/prototype-85-92.svg',
+        '93-97 и 98-102' => 'assets/prototypes/prototype-93-102.svg',
+        '103-108 и 109-114' => 'assets/prototypes/prototype-103-114.svg',
+        '115-120' => 'assets/prototypes/prototype-115-120.svg',
+    ];
+}
+
+/**
+ * Fill missing images for default rows without touching custom uploads.
+ */
+function updateMissingDefaultImages(PDO $pdo): void {
+    $stmt = $pdo->prepare("UPDATE prototypes SET image = ?, updated_at = CURRENT_TIMESTAMP WHERE num = ? AND (image IS NULL OR image = '')");
+    foreach (defaultPrototypeImages() as $num => $image) {
+        $stmt->execute([$image, $num]);
+    }
 }
 
 /**

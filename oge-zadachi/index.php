@@ -116,7 +116,8 @@ $prototypes = dbQuery("
             width: 140px;
             height: 100px;
             border-radius: 8px;
-            object-fit: cover;
+            object-fit: contain;
+            background: #f8fafc;
             border: 2px solid rgba(255, 255, 255, 0.2);
             cursor: pointer;
             transition: transform 0.3s ease;

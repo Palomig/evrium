@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 240" role="img" aria-label="prototype-13-18.svg">
+  <rect width="360" height="240" rx="18" fill="#f8fafc"/>
+  <style>
+    .s{stroke:#1e293b;stroke-width:5;fill:none;stroke-linecap:round;stroke-linejoin:round}
+    .d{stroke:#64748b;stroke-width:3;fill:none;stroke-dasharray:8 7;stroke-linecap:round}
+    .p{fill:#2563eb}
+    .t{font:700 18px Arial,sans-serif;fill:#0f172a}
+    .m{font:600 15px Arial,sans-serif;fill:#475569}
+    .a{stroke:#ef4444;stroke-width:4;fill:none;stroke-linecap:round}
+  </style>
+  <polygon class="s" points="95,165 255,165 300,75 140,75"/><line class="a" x1="140" y1="75" x2="140" y2="165"/><path class="d" d="M140 165 h35 v-35"/><text class="t" x="125" y="67">A</text><text class="t" x="82" y="188">D</text><text class="t" x="135" y="188">H</text><text class="m" x="150" y="125">высота</text><text class="m" x="177" y="187">HC</text>
+</svg>
