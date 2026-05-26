@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 240" role="img" aria-label="prototype-19-22.svg">
+  <rect width="360" height="240" rx="18" fill="#f8fafc"/>
+  <style>
+    .s{stroke:#1e293b;stroke-width:5;fill:none;stroke-linecap:round;stroke-linejoin:round}
+    .d{stroke:#64748b;stroke-width:3;fill:none;stroke-dasharray:8 7;stroke-linecap:round}
+    .p{fill:#2563eb}
+    .t{font:700 18px Arial,sans-serif;fill:#0f172a}
+    .m{font:600 15px Arial,sans-serif;fill:#475569}
+    .a{stroke:#ef4444;stroke-width:4;fill:none;stroke-linecap:round}
+  </style>
+  <polygon class="s" points="70,180 295,180 70,55"/><line class="a" x1="70" y1="55" x2="183" y2="180"/><circle class="p" cx="183" cy="180" r="5"/><text class="t" x="55" y="52">A</text><text class="t" x="302" y="185">B</text><text class="t" x="55" y="200">C</text><text class="m" x="122" y="123">медиана = ½ гипотенузы</text>
+</svg>

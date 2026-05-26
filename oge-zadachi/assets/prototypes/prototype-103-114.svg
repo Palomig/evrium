@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 240" role="img" aria-label="prototype-103-114.svg">
+  <rect width="360" height="240" rx="18" fill="#f8fafc"/>
+  <style>
+    .s{stroke:#1e293b;stroke-width:5;fill:none;stroke-linecap:round;stroke-linejoin:round}
+    .d{stroke:#64748b;stroke-width:3;fill:none;stroke-dasharray:8 7;stroke-linecap:round}
+    .p{fill:#2563eb}
+    .t{font:700 18px Arial,sans-serif;fill:#0f172a}
+    .m{font:600 15px Arial,sans-serif;fill:#475569}
+    .a{stroke:#ef4444;stroke-width:4;fill:none;stroke-linecap:round}
+  </style>
+  <circle class="s" cx="205" cy="120" r="70"/><line class="a" x1="55" y1="185" x2="276" y2="185"/><line class="s" x1="55" y1="185" x2="275" y2="75"/><line class="d" x1="205" y1="120" x2="205" y2="185"/><text class="m" x="62" y="212">касательная и секущая</text><text class="m" x="88" y="42">AB² = AP·AC</text>
+</svg>

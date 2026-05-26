@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 240" role="img" aria-label="prototype-01-06.svg">
+  <rect width="360" height="240" rx="18" fill="#f8fafc"/>
+  <style>
+    .s{stroke:#1e293b;stroke-width:5;fill:none;stroke-linecap:round;stroke-linejoin:round}
+    .d{stroke:#64748b;stroke-width:3;fill:none;stroke-dasharray:8 7;stroke-linecap:round}
+    .p{fill:#2563eb}
+    .t{font:700 18px Arial,sans-serif;fill:#0f172a}
+    .m{font:600 15px Arial,sans-serif;fill:#475569}
+    .a{stroke:#ef4444;stroke-width:4;fill:none;stroke-linecap:round}
+  </style>
+  <polygon class="s" points="70,165 220,165 290,75 140,75"/><line class="a" x1="70" y1="165" x2="185" y2="165"/><line class="d" x1="70" y1="165" x2="140" y2="75"/><text class="t" x="55" y="188">A</text><text class="t" x="222" y="188">B</text><text class="t" x="292" y="76">C</text><text class="t" x="130" y="66">D</text><text class="m" x="113" y="152">AK — биссектриса</text>
+</svg>
