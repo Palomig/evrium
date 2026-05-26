@@ -76,7 +76,7 @@ function defaultPrototypeImages(): array {
         '7-12' => 'assets/prototypes/prototype-07-12.svg',
         '13-18' => 'assets/prototypes/prototype-13-18.svg',
         '19-22' => 'assets/prototypes/prototype-19-22.svg',
-        '23-27 и 28-32' => 'assets/prototypes/prototype-23-32.svg',
+        '23-27 и 28-32' => 'assets/p23/oge15_p23_img1.png',
         '33-38' => 'assets/prototypes/prototype-33-38.svg',
         '39-44' => 'assets/prototypes/prototype-39-44.svg',
         '45-50' => 'assets/prototypes/prototype-45-50.svg',
@@ -95,7 +95,7 @@ function defaultPrototypeImages(): array {
  * Fill missing images for default rows without touching custom uploads.
  */
 function updateMissingDefaultImages(PDO $pdo): void {
-    $stmt = $pdo->prepare("UPDATE prototypes SET image = ?, updated_at = CURRENT_TIMESTAMP WHERE num = ? AND (image IS NULL OR image = '')");
+    $stmt = $pdo->prepare("UPDATE prototypes SET image = ?, updated_at = CURRENT_TIMESTAMP WHERE num = ? AND (image IS NULL OR image = '' OR image LIKE 'assets/prototypes/prototype-%')");
     foreach (defaultPrototypeImages() as $num => $image) {
         $stmt->execute([$image, $num]);
     }
