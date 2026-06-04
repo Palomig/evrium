@@ -36,7 +36,7 @@ const description = `Связаться с репетиторским центр
           <h3>Адрес</h3>
           <p>{site.addressPublic}</p>
           <p>
-            <a href={`https://yandex.ru/maps/?text=${encodeURIComponent('Чехов ' + site.street)}`} target="_blank" rel="noopener nofollow">Показать на Яндекс.Картах →</a>
+            <a href={site.mapUrl} target="_blank" rel="noopener nofollow">Показать на Яндекс.Картах →</a>
           </p>
           <p><a href={`${site.basePath}/kabinet/`}>О кабинете подробнее →</a></p>
         </div>
