@@ -288,16 +288,19 @@ const faq = [
       <h2>Что говорят родители и ученики</h2>
       <div class="grid grid-3" style="margin-top: 24px;">
         <div class="card">
-          <p>«<span class="todo">TODO</span> Реальный отзыв родителя ученика 9 класса. Замените текст в <code>src/pages/index.astro</code> или подгружайте из админки.»</p>
-          <p class="muted small">— Имя, класс ученика</p>
+          <p class="review-stars" aria-label="Оценка 5 из 5">★★★★★</p>
+          <p>«Очень классное место. Позанимался 4 месяца и уверенно сдал ОГЭ. Классные, современные педагоги, которые всегда на одной волне с учениками.»</p>
+          <p class="muted small">— отзыв на Яндекс.Картах</p>
         </div>
         <div class="card">
-          <p>«<span class="todo">TODO</span> Отзыв об опыте подготовки к ОГЭ/ЕГЭ — конкретный результат и впечатления.»</p>
-          <p class="muted small">— Имя, класс ученика</p>
+          <p class="review-stars" aria-label="Оценка 5 из 5">★★★★★</p>
+          <p>«Хороший репетитор, занимаюсь 2 года. Оценки в школе улучшились, ОГЭ по математике сдал на 5. На занятиях не заскучаешь.»</p>
+          <p class="muted small">— отзыв на Яндекс.Картах</p>
         </div>
         <div class="card">
-          <p>«<span class="todo">TODO</span> Отзыв ученика, который подтянул успеваемость с тройки до уверенной четвёрки/пятёрки.»</p>
-          <p class="muted small">— Имя, класс ученика</p>
+          <p class="review-stars" aria-label="Оценка 5 из 5">★★★★★</p>
+          <p>«Отличное место, прекрасные педагоги, современные. Очень интересно объясняют, всё максимально понятно. Спасибо Станиславу Олеговичу и Руслану Романовичу.»</p>
+          <p class="muted small">— отзыв на Яндекс.Картах</p>
         </div>
       </div>
       <p style="margin-top: 20px;">
@@ -315,6 +318,7 @@ const faq = [
 </Layout>
 
 <style>
+  .review-stars { color: #f5a623; letter-spacing: 2px; margin: 0 0 8px; font-size: 1.05em; }
   .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 24px; }
   @media (max-width: 900px) { .steps { grid-template-columns: 1fr 1fr; } }
   @media (max-width: 520px) { .steps { grid-template-columns: 1fr; } }
