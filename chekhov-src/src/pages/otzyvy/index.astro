@@ -11,39 +11,23 @@ const description = `Отзывы родителей и учеников о за
     <div class="container">
       <span class="eyebrow">Отзывы</span>
       <h1>Отзывы родителей и учеников</h1>
-      <p class="lead" style="max-width: 720px;">Что говорят семьи из Чехова и окрестностей после подготовки к ОГЭ, ЕГЭ или подтягивания успеваемости. Все отзывы — реальные.</p>
+      <p class="lead" style="max-width: 720px;">Что говорят семьи из Чехова и окрестностей после подготовки к ОГЭ, ЕГЭ или подтягивания успеваемости. Отзывы ниже подгружаются напрямую с нашей карточки в Яндекс.Картах — без правок с нашей стороны.</p>
 
-      <p class="muted" style="margin-top: 24px;">
-        <span class="todo">TODO</span> Замените заглушки реальными отзывами. По каждому отзыву можно указать: имя (или «мама ученика 9 класса»), класс, предмет, цель занятий и короткий результат.
-        Если есть скриншоты из Авито / Профи.ру / Яндекс.Услуг — добавьте их в <code>public/images/reviews/</code> и оформите блоком с галереей.
-      </p>
-
-      <div class="grid grid-2" style="margin-top: 32px;">
-        <article class="card review">
-          <p>«<span class="todo">TODO</span> Текст отзыва. Например: занимались по математике с 8 класса, к ОГЭ подошли с уверенным «5». Ребёнок перестал бояться экзаменов.»</p>
-          <footer class="muted small">— Имя, мама ученика 9 класса · математика, ОГЭ</footer>
-        </article>
-        <article class="card review">
-          <p>«<span class="todo">TODO</span> Отзыв об опыте подготовки к ЕГЭ. Например: пришли в 11 классе с базой на 50 баллов — сдали на 80+.»</p>
-          <footer class="muted small">— Имя, мама выпускника · профильная математика, ЕГЭ</footer>
-        </article>
-        <article class="card review">
-          <p>«<span class="todo">TODO</span> Отзыв ученика 7–8 класса, который «не понимал физику», а теперь решает задачи самостоятельно.»</p>
-          <footer class="muted small">— Имя, ученик 8 класса · физика</footer>
-        </article>
-        <article class="card review">
-          <p>«<span class="todo">TODO</span> Отзыв о подготовке к ЕГЭ по информатике. Конкретный балл, конкретный вуз, конкретные впечатления.»</p>
-          <footer class="muted small">— Имя, мама выпускника · информатика, ЕГЭ</footer>
-        </article>
+      <div class="reviews-widget" style="margin-top: 32px;">
+        <iframe
+          title="Отзывы об Эвриум на Яндекс.Картах"
+          src={`https://yandex.ru/maps-reviews-widget/${site.yandexOrgId}?comments`}
+          loading="lazy"
+        ></iframe>
+        <a class="reviews-widget__source" href={site.mapUrl} target="_blank" rel="noopener nofollow">
+          {site.centerName} на Яндекс.Картах — оставить отзыв
+        </a>
       </div>
 
       <div class="card" style="margin-top: 32px;">
-        <h3>Где ещё можно прочитать отзывы</h3>
-        <ul>
-          <li><span class="todo">TODO</span> Ссылка на профиль в Яндекс Бизнес / Картах</li>
-          <li><span class="todo">TODO</span> Ссылка на профиль в Авито</li>
-          <li><span class="todo">TODO</span> Ссылка на профиль в Профи.ру / Яндекс.Услугах</li>
-        </ul>
+        <h3>Оставить отзыв</h3>
+        <p class="muted" style="margin-bottom: 12px;">Если вы занимались у нас — будем благодарны за честный отзыв. Это помогает другим родителям выбрать репетитора.</p>
+        <p><a class="btn" href={site.mapUrl} target="_blank" rel="noopener nofollow">Написать отзыв в Яндекс.Картах →</a></p>
       </div>
     </div>
   </section>
@@ -52,6 +36,20 @@ const description = `Отзывы родителей и учеников о за
 </Layout>
 
 <style>
-  .review p { font-size: 1.02em; }
-  .review footer { margin-top: 12px; }
+  .reviews-widget {
+    max-width: 760px;
+  }
+  .reviews-widget iframe {
+    width: 100%;
+    height: 620px;
+    border: 1px solid #e6e6e6;
+    border-radius: 12px;
+    box-sizing: border-box;
+  }
+  .reviews-widget__source {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 0.9em;
+    color: var(--muted, #667);
+  }
 </style>
