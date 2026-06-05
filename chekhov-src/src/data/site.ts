@@ -35,13 +35,11 @@ export const site = {
   // TODO: координаты для Schema.org (уточнить точные)
   geo: { lat: 55.1456, lng: 37.4538 }, // примерные координаты Чехова
 
-  // TODO: реальные цены
   prices: {
-    diagnostic: { label: 'Диагностика', duration: '45–60 мин', price: 'бесплатно' },
-    single60:   { label: 'Индивидуальное занятие', duration: '60 мин', price: 'от 1 500 ₽' },
-    single90:   { label: 'Индивидуальное занятие', duration: '90 мин', price: 'от 2 200 ₽' },
-    oge:        { label: 'Подготовка к ОГЭ',       duration: '90 мин', price: 'от 2 200 ₽' },
-    ege:        { label: 'Подготовка к ЕГЭ',       duration: '90 мин', price: 'от 2 500 ₽' },
+    diagnostic:  { label: 'Диагностика',            duration: '45–60 мин', price: 'бесплатно' },
+    individual:  { label: 'Индивидуальное занятие', duration: '60 мин',  price: '1 500 ₽ / занятие' },
+    group60:     { label: 'Групповое занятие',      duration: '60 мин',  price: '6 000 ₽ / месяц' },
+    group120:    { label: 'Групповое занятие',      duration: '120 мин', price: '10 000 ₽ / месяц' },
   },
 
   // Аналитика
