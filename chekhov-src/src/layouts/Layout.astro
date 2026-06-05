@@ -17,11 +17,38 @@ interface Props {
 
 const { title, description, ogImage, noindex, extraSchema } = Astro.props;
 const canonical = new URL(Astro.url.pathname, site.domain).href;
-// TODO: подготовить og-default.jpg (1200x630) и заменить .svg на .jpg —
-// большинство соцсетей надёжнее показывают превью с растровыми картинками.
 const ogImageUrl = ogImage
   ? new URL(ogImage, site.domain).href
-  : `${site.domain}${site.basePath}/og-default.svg`;
+  : `${site.domain}${site.basePath}/og-default.jpg`;
+
+// Хлебные крошки (Schema.org BreadcrumbList) — генерируются из пути.
+const crumbLabels: Record<string, string> = {
+  matematika: 'Математика', informatika: 'Информатика', fizika: 'Физика',
+  oge: 'Подготовка к ОГЭ', ege: 'Подготовка к ЕГЭ', ceny: 'Цены',
+  kabinet: 'Кабинет', otzyvy: 'Отзывы', kontakty: 'Контакты', blog: 'Блог',
+  'politika-konfidencialnosti': 'Политика конфиденциальности',
+};
+const segments = Astro.url.pathname.split('/').filter(Boolean);
+let breadcrumb: object | null = null;
+if (segments.length > 0) {
+  const crumbs = [{ name: 'Главная', url: `${site.domain}/` }];
+  let acc = '';
+  segments.forEach((seg, i) => {
+    acc += `/${seg}`;
+    const last = i === segments.length - 1;
+    crumbs.push({
+      name: crumbLabels[seg] || (last ? title.split(' — ')[0].split(' | ')[0] : seg),
+      url: `${site.domain}${acc}/`,
+    });
+  });
+  breadcrumb = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: crumbs.map((c, idx) => ({
+      '@type': 'ListItem', position: idx + 1, name: c.name, item: c.url,
+    })),
+  };
+}
 
 const localBusiness = {
   '@context': 'https://schema.org',
@@ -31,7 +58,7 @@ const localBusiness = {
   description: site.centerBio,
   url: `${site.domain}${site.basePath}/`,
   logo: `${site.domain}${site.basePath}/favicon.svg`,
-  image: `${site.domain}${site.basePath}/og-default.svg`,
+  image: `${site.domain}${site.basePath}/og-default.jpg`,
   priceRange: '₽₽',
   telephone: site.phone,
   email: site.email,
@@ -52,9 +79,11 @@ const localBusiness = {
   sameAs: [site.whatsapp, site.telegram, site.mapUrl].filter(Boolean),
 };
 
-const schemas = extraSchema
-  ? [localBusiness, ...(Array.isArray(extraSchema) ? extraSchema : [extraSchema])]
-  : [localBusiness];
+const schemas = [
+  localBusiness,
+  ...(breadcrumb ? [breadcrumb] : []),
+  ...(extraSchema ? (Array.isArray(extraSchema) ? extraSchema : [extraSchema]) : []),
+];
 ---
 <!doctype html>
 <html lang="ru">
@@ -75,6 +104,9 @@ const schemas = extraSchema
   <meta property="og:description" content={description} />
   <meta property="og:url" content={canonical} />
   <meta property="og:image" content={ogImageUrl} />
+  {!ogImage && <meta property="og:image:width" content="1200" />}
+  {!ogImage && <meta property="og:image:height" content="630" />}
+  {!ogImage && <meta property="og:image:type" content="image/jpeg" />}
   <meta name="twitter:card" content="summary_large_image" />
 
   <link rel="icon" type="image/svg+xml" href={`${site.basePath}/favicon.svg`} />
