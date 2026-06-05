@@ -256,9 +256,9 @@ const faq = [
       <h2>Где проходят занятия</h2>
       <p class="lead" style="max-width: 720px;">Кабинет в Чехове, оборудованный всем необходимым для занятий: доска, рабочий стол, материалы для подготовки к экзаменам.</p>
       <div class="grid grid-3" style="margin-top: 24px;">
-        <div class="placeholder-photo"><span><span class="todo">TODO</span> фото кабинета 1</span></div>
-        <div class="placeholder-photo"><span><span class="todo">TODO</span> фото рабочего места</span></div>
-        <div class="placeholder-photo"><span><span class="todo">TODO</span> фото материалов</span></div>
+        <img class="kabinet-photo" src="/images/kabinet/zanyatie.jpg" width="1280" height="964" loading="lazy" alt="Занятие в репетиторском центре «Эвриум» в Чехове — ученики решают задачи за партами" />
+        <img class="kabinet-photo" src="/images/kabinet/doska.jpg" width="1280" height="960" loading="lazy" alt="Доска с разбором задачи по физике (кинематика) в кабинете «Эвриум» в Чехове" />
+        <img class="kabinet-photo" src="/images/kabinet/obshiy-vid.jpg" width="1280" height="962" loading="lazy" alt="Кабинет репетиторского центра «Эвриум» в Чехове со столами для занятий" />
       </div>
       <p style="margin-top: 20px;">
         <a class="btn btn-ghost" href={`${site.basePath}/kabinet/`}>Подробнее о кабинете →</a>
@@ -319,6 +319,7 @@ const faq = [
 
 <style>
   .review-stars { color: #f5a623; letter-spacing: 2px; margin: 0 0 8px; font-size: 1.05em; }
+  .kabinet-photo { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius-lg); display: block; }
   .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 24px; }
   @media (max-width: 900px) { .steps { grid-template-columns: 1fr 1fr; } }
   @media (max-width: 520px) { .steps { grid-template-columns: 1fr; } }
