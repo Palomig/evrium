@@ -112,6 +112,16 @@ section { padding: 56px 0; }
 .muted { color: var(--c-muted); }
 .lead { font-size: 1.15em; color: var(--c-muted); }
 
+.media-photo {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+  display: block;
+  align-self: start;
+}
+
 .placeholder-photo {
   background: linear-gradient(135deg, #e6efff 0%, #f5f7fa 100%);
   border: 1px dashed var(--c-border);
