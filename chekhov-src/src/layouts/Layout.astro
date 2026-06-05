@@ -26,9 +26,13 @@ const ogImageUrl = ogImage
 const localBusiness = {
   '@context': 'https://schema.org',
   '@type': 'EducationalOrganization',
+  '@id': `${site.domain}/#org`,
   name: `${site.centerName} — ${site.centerTagline}`,
   description: site.centerBio,
   url: `${site.domain}${site.basePath}/`,
+  logo: `${site.domain}${site.basePath}/favicon.svg`,
+  image: `${site.domain}${site.basePath}/og-default.svg`,
+  priceRange: '₽₽',
   telephone: site.phone,
   email: site.email,
   address: {
@@ -45,7 +49,7 @@ const localBusiness = {
     longitude: site.geo.lng,
   },
   areaServed: site.studentAreas.map((name) => ({ '@type': 'Place', name })),
-  sameAs: [site.whatsapp, site.telegram].filter(Boolean),
+  sameAs: [site.whatsapp, site.telegram, site.mapUrl].filter(Boolean),
 };
 
 const schemas = extraSchema
