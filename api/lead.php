@@ -58,15 +58,22 @@ if (empty($config['telegram_token']) || empty($config['telegram_chat_id'])) {
             );
             $stmt = $settingsPdo->prepare(
                 "SELECT setting_key, setting_value FROM settings
-                 WHERE setting_key IN ('bot_token', 'admin_telegram_chat_id')"
+                 WHERE setting_key IN ('bot_token', 'leads_chat_id', 'admin_telegram_chat_id')"
             );
             $stmt->execute();
+            $s = [];
             foreach ($stmt->fetchAll() as $row) {
-                if ($row['setting_key'] === 'bot_token' && empty($config['telegram_token'])) {
-                    $config['telegram_token'] = $row['setting_value'];
-                }
-                if ($row['setting_key'] === 'admin_telegram_chat_id' && empty($config['telegram_chat_id'])) {
-                    $config['telegram_chat_id'] = $row['setting_value'];
+                $s[$row['setting_key']] = $row['setting_value'];
+            }
+            if (empty($config['telegram_token']) && !empty($s['bot_token'])) {
+                $config['telegram_token'] = $s['bot_token'];
+            }
+            // Получатель заявок: отдельная настройка leads_chat_id (приоритет),
+            // иначе — общий админ-чат zarplata (admin_telegram_chat_id).
+            if (empty($config['telegram_chat_id'])) {
+                $config['telegram_chat_id'] = $s['leads_chat_id'] ?? null;
+                if (empty($config['telegram_chat_id'])) {
+                    $config['telegram_chat_id'] = $s['admin_telegram_chat_id'] ?? null;
                 }
             }
         } catch (Throwable $e) {
