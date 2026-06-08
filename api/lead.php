@@ -26,6 +26,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 // --- Конфигурация ---------------------------------------------------------
+// Необязательный файловый оверрайд (api/config.php). Если его нет — токен и
+// получатель берутся из БД zarplata (таблица settings), чтобы был единый
+// источник: тот же бот @evrium_bot, что шлёт уведомления по зарплате.
 $configFile = __DIR__ . '/config.php';
 $config = is_file($configFile) ? (require $configFile) : [];
 $config = array_merge([
@@ -34,6 +37,43 @@ $config = array_merge([
     'email_to' => null,          // 'tutor@example.com'
     'log_dir' => dirname(__DIR__, 3) . '/storage/leads', // вне public
 ], $config);
+
+// Фолбэк: подтягиваем токен бота и chat_id админа из настроек zarplata.
+// Делаем это в защищённом блоке — недоступность БД не должна ломать ответ
+// формы (заявка к этому моменту уже будет записана в JSONL-лог ниже).
+if (empty($config['telegram_token']) || empty($config['telegram_chat_id'])) {
+    $dbConfig = __DIR__ . '/../zarplata/config/db.php';
+    if (is_file($dbConfig)) {
+        require_once $dbConfig; // определяет DB_HOST/DB_NAME/DB_USER/DB_PASS
+        try {
+            $settingsPdo = new PDO(
+                sprintf('mysql:host=%s;dbname=%s;charset=%s', DB_HOST, DB_NAME, DB_CHARSET),
+                DB_USER,
+                DB_PASS,
+                [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_TIMEOUT => 3,
+                ]
+            );
+            $stmt = $settingsPdo->prepare(
+                "SELECT setting_key, setting_value FROM settings
+                 WHERE setting_key IN ('bot_token', 'admin_telegram_chat_id')"
+            );
+            $stmt->execute();
+            foreach ($stmt->fetchAll() as $row) {
+                if ($row['setting_key'] === 'bot_token' && empty($config['telegram_token'])) {
+                    $config['telegram_token'] = $row['setting_value'];
+                }
+                if ($row['setting_key'] === 'admin_telegram_chat_id' && empty($config['telegram_chat_id'])) {
+                    $config['telegram_chat_id'] = $row['setting_value'];
+                }
+            }
+        } catch (Throwable $e) {
+            error_log('[lead.php] Не удалось прочитать Telegram-настройки из БД: ' . $e->getMessage());
+        }
+    }
+}
 
 // --- Honeypot -------------------------------------------------------------
 if (!empty($_POST['website'])) {
@@ -127,7 +167,7 @@ if (!empty($config['telegram_token']) && !empty($config['telegram_chat_id'])) {
     ];
 
     $lines = [];
-    $lines[] = '🎓 <b>Новая заявка с сайта (chekhov)</b>';
+    $lines[] = '🎓 <b>Новая заявка с сайта эвриум.рф</b>';
     $lines[] = '';
     $lines[] = '<b>Имя:</b> ' . htmlspecialchars($name);
     $lines[] = '<b>Телефон:</b> ' . htmlspecialchars($phone);
@@ -161,11 +201,11 @@ if (!empty($config['telegram_token']) && !empty($config['telegram_chat_id'])) {
 
 // --- Уведомление на e-mail (опционально) ---------------------------------
 if (!empty($config['email_to']) && function_exists('mail')) {
-    $body = "Новая заявка с сайта репетитора (chekhov)\n\n";
+    $body = "Новая заявка с сайта эвриум.рф\n\n";
     foreach ($lead as $k => $v) $body .= str_pad($k . ':', 18) . $v . "\n";
     @mail(
         $config['email_to'],
-        'Новая заявка с сайта chekhov',
+        'Новая заявка с сайта эвриум.рф',
         $body,
         "Content-Type: text/plain; charset=utf-8\r\nFrom: noreply@эвриум.рф"
     );
