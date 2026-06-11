@@ -758,10 +758,12 @@ body.readonly .block-title {
     border-color: rgba(255, 255, 255, 0.2);
 }
 
-/* Временный ученик (только на ближайший урок) */
+/* Временный ученик (только на ближайший урок) — янтарный, поверх цвета преподавателя */
 .pcell.temp {
-    border-style: dashed !important;
-    opacity: 0.9;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.4), rgba(245, 158, 11, 0.16)) !important;
+    border: 1px dashed rgba(245, 158, 11, 0.75) !important;
+    border-left: 3px solid #f59e0b !important;
+    color: #fef3c7;
 }
 
 .temp-badge {
