@@ -42,65 +42,75 @@ $currentTime = date('H:i');
 
 error_log("[CRON] Looking for all lessons that started before {$currentTime} on day {$dayOfWeek}");
 
-// ⭐ ЕДИНЫЙ ИСТОЧНИК: Получаем уроки из students.schedule
-$allStudents = dbQuery(
-    "SELECT id, name, class, schedule, teacher_id FROM students WHERE active = 1 AND schedule IS NOT NULL",
-    []
+// ⭐ ЕДИНЫЙ ИСТОЧНИК: расписание-планировщик (planner_notes)
+// Преподаватель определяется по цвету ячейки/блока (как в легенде планировщика)
+$dayNotes = dbQuery(
+    "SELECT time, room, kind, content, color FROM planner_notes
+     WHERE day = ?
+       AND (temp_until IS NULL OR temp_until >= CURDATE())
+     ORDER BY time, room, kind, position, id",
+    [$dayOfWeek]
 );
 
-error_log("[CRON] Found " . count($allStudents) . " students with schedule");
+error_log("[CRON] Found " . count($dayNotes) . " planner notes for day {$dayOfWeek}");
 
-// Собираем уникальные уроки на текущий день
+// Карта цвет → активный преподаватель
+$colorToTeacher = plannerColorTeacherMap();
+
+// Заголовки блоков: "time_room" → запись
+$blockTitles = [];
+foreach ($dayNotes as $n) {
+    if ($n['kind'] === 'title') {
+        $blockTitles[$n['time'] . '_' . $n['room']] = $n;
+    }
+}
+
+// Собираем уникальные уроки (преподаватель + время), которые уже начались
 $uniqueLessons = [];
 
-foreach ($allStudents as $student) {
-    $schedule = json_decode($student['schedule'], true);
-    if (!is_array($schedule)) {
+foreach ($dayNotes as $n) {
+    if ($n['kind'] !== 'student' || trim($n['content']) === '') {
         continue;
     }
 
-    // ⭐ Проверяем ОБА варианта ключа: число и строку
-    $daySchedule = null;
-    if (isset($schedule[$dayOfWeek]) && is_array($schedule[$dayOfWeek])) {
-        $daySchedule = $schedule[$dayOfWeek];
-    } elseif (isset($schedule[$dayOfWeekStr]) && is_array($schedule[$dayOfWeekStr])) {
-        $daySchedule = $schedule[$dayOfWeekStr];
-    }
+    $time = substr($n['time'], 0, 5);
 
-    if (!$daySchedule) {
+    // ⭐ Проверяем только что урок УЖЕ начался (время <= текущего)
+    if ($time > $currentTime) {
         continue;
     }
 
-    foreach ($daySchedule as $slot) {
-        if (!isset($slot['time'])) continue;
+    $title = $blockTitles[$n['time'] . '_' . $n['room']] ?? null;
 
-        $time = substr($slot['time'], 0, 5);
+    // Преподаватель ячейки: цвет ячейки → цвет заголовка блока → 1 (по умолчанию)
+    $color = (int)$n['color'];
+    if (!$color && $title) {
+        $color = (int)$title['color'];
+    }
+    if (!$color) {
+        $color = 1;
+    }
 
-        // ⭐ ИСПРАВЛЕНИЕ: Правильно обрабатываем пустой/нулевой teacher_id
-        // teacher_id может быть: числом, строкой "5", пустой строкой "", null или отсутствовать
-        $slotTeacherId = null;
-        if (isset($slot['teacher_id']) && $slot['teacher_id'] !== '' && $slot['teacher_id'] !== null) {
-            $slotTeacherId = (int)$slot['teacher_id'];
-        }
+    $teacherId = $colorToTeacher[$color] ?? null;
+    if (!$teacherId) {
+        continue;
+    }
 
-        // Если teacher_id не указан в слоте, используем teacher_id из колонки students
-        $teacherId = $slotTeacherId ?: (int)$student['teacher_id'];
+    // Предмет из заголовка блока («9 Мат.» → «Мат.»)
+    $subject = 'Мат.';
+    if ($title && preg_match('/^\s*(?:\d+(?:-\d+)?)?\s*(.+)$/u', trim($title['content']), $m)) {
+        $subject = trim($m[1]) !== '' ? trim($m[1]) : 'Мат.';
+    }
 
-        if (!$teacherId) continue;
-
-        // ⭐ НОВАЯ ЛОГИКА: Проверяем только что урок УЖЕ начался (время <= текущего)
-        if ($time <= $currentTime) {
-            $key = "{$teacherId}_{$time}";
-            if (!isset($uniqueLessons[$key])) {
-                $uniqueLessons[$key] = [
-                    'teacher_id' => $teacherId,
-                    'time' => $time,
-                    'subject' => $slot['subject'] ?? 'Мат.',
-                    'room' => $slot['room'] ?? 1
-                ];
-                error_log("[CRON] Found started lesson: {$key}");
-            }
-        }
+    $key = "{$teacherId}_{$time}";
+    if (!isset($uniqueLessons[$key])) {
+        $uniqueLessons[$key] = [
+            'teacher_id' => $teacherId,
+            'time' => $time,
+            'subject' => $subject,
+            'room' => (int)$n['room']
+        ];
+        error_log("[CRON] Found started lesson: {$key}");
     }
 }
 
