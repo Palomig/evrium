@@ -28,11 +28,26 @@ dbExecute("
         position SMALLINT NOT NULL DEFAULT 0,
         content VARCHAR(160) NOT NULL DEFAULT '',
         color TINYINT NOT NULL DEFAULT 0,
+        temp_until DATE NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         KEY idx_cell (day, time, room)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 ", []);
+
+// Миграция: колонка temp_until для «временных» учеников (добавлен на 1 урок)
+try {
+    dbQuery("SELECT temp_until FROM planner_notes LIMIT 1", []);
+} catch (PDOException $e) {
+    if (strpos($e->getMessage(), 'temp_until') !== false || strpos($e->getMessage(), 'Unknown column') !== false) {
+        dbExecute("ALTER TABLE planner_notes ADD COLUMN temp_until DATE NULL", []);
+    } else {
+        throw $e;
+    }
+}
+
+// Удаляем временных учеников, чей урок уже прошёл
+dbExecute("DELETE FROM planner_notes WHERE temp_until IS NOT NULL AND temp_until < CURDATE()", []);
 
 // Преподаватели — для легенды и палитры цветов
 $teachers = dbQuery("
@@ -131,7 +146,7 @@ if ((int)($notesCount['c'] ?? 0) === 0) {
 
 // ===== Загружаем все заметки и группируем по блокам =====
 $notes = dbQuery("
-    SELECT id, day, time, room, kind, position, content, color
+    SELECT id, day, time, room, kind, position, content, color, temp_until
     FROM planner_notes
     ORDER BY day, time, room, kind, position, id
 ", []);
@@ -169,11 +184,17 @@ function renderLessonBlock($day, $time, $room, $blocks) {
              data-kind="title"
              <?= $title ? 'data-id="' . $title['id'] . '"' : '' ?>><?= $title ? e($title['content']) : '' ?></div>
         <div class="block-cells">
-            <?php foreach ($block['students'] as $st): ?>
-                <div class="pcell c<?= (int)$st['color'] ?>" data-kind="student" data-id="<?= $st['id'] ?>"><?= e($st['content']) ?></div>
+            <?php foreach ($block['students'] as $st):
+                $isTemp = !empty($st['temp_until']);
+            ?>
+                <div class="pcell c<?= (int)$st['color'] ?><?= $isTemp ? ' temp' : '' ?>"
+                     data-kind="student"
+                     data-id="<?= $st['id'] ?>"
+                     data-temp="<?= $isTemp ? 1 : 0 ?>"
+                     data-name="<?= e($st['content']) ?>"><?= e($st['content']) ?><?php if ($isTemp): ?><span class="temp-badge" title="Временно — до <?= $st['temp_until'] ?>">⏳</span><?php endif; ?></div>
             <?php endforeach; ?>
-            <div class="pcell pcell-empty" data-kind="student"></div>
         </div>
+        <button class="add-cell-btn" type="button" title="Добавить ученика">+</button>
     </div>
     <?php
 }
@@ -588,17 +609,44 @@ body {
     transition: border-color 0.12s, background 0.12s;
 }
 
+.pcell {
+    cursor: pointer;
+}
+
 .pcell:hover {
     border-color: rgba(255, 255, 255, 0.2);
 }
 
-.pcell-empty {
-    background: transparent;
-    border: 1px dashed rgba(255, 255, 255, 0.07);
+/* Временный ученик (только на ближайший урок) */
+.pcell.temp {
+    border-style: dashed !important;
+    opacity: 0.9;
 }
 
-.pcell-empty:hover {
-    border-color: rgba(20, 184, 166, 0.5);
+.temp-badge {
+    font-size: 0.6rem;
+    margin-left: 3px;
+}
+
+/* Кнопка добавления ячейки в блок */
+.add-cell-btn {
+    margin: 0 2px 2px;
+    padding: 1px 0;
+    background: transparent;
+    border: 1px dashed rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    color: #4b5563;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.add-cell-btn:hover {
+    border-color: rgba(20, 184, 166, 0.6);
+    color: var(--accent);
+    background: rgba(20, 184, 166, 0.08);
 }
 
 /* Цвета ячеек — палитра преподавателей (тот же вид, что раньше) */
@@ -636,6 +684,185 @@ body {
 .block-title.editing {
     border-color: var(--accent) !important;
     background: rgba(20, 184, 166, 0.08);
+}
+
+/* ========== МОДАЛКА УЧЕНИКА ========== */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-content {
+    background: var(--bg-card);
+    border-radius: 14px;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    animation: modalSlideIn 0.25s ease;
+}
+
+@keyframes modalSlideIn {
+    from { opacity: 0; transform: translateY(-16px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.modal-header .modal-slot-info {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-body label.field-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+.modal-body input[type="text"] {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg-elevated);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-family: 'Nunito', sans-serif;
+    box-sizing: border-box;
+}
+
+.modal-body input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.2);
+}
+
+.temp-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 16px;
+    padding: 10px 12px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+
+.temp-checkbox:hover {
+    border-color: var(--accent);
+}
+
+.temp-checkbox input[type="checkbox"] {
+    width: 17px;
+    height: 17px;
+    margin-top: 1px;
+    accent-color: var(--accent);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.temp-checkbox .temp-label {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.temp-checkbox .temp-hint {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.modal-footer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+}
+
+.modal-footer .btn-delete {
+    margin-right: auto;
+    padding: 9px 14px;
+    background: transparent;
+    border: 1px solid rgba(239, 68, 68, 0.5);
+    border-radius: 8px;
+    color: #f87171;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.modal-footer .btn-delete:hover {
+    background: rgba(239, 68, 68, 0.15);
+}
+
+.modal-footer .btn-cancel,
+.modal-footer .btn-save {
+    padding: 9px 16px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'Nunito', sans-serif;
+}
+
+.modal-footer .btn-cancel {
+    background: transparent;
+    border: 2px solid var(--border);
+    color: var(--text-secondary);
+}
+
+.modal-footer .btn-cancel:hover {
+    border-color: var(--text-secondary);
+    color: var(--text-primary);
+}
+
+.modal-footer .btn-save {
+    background: var(--accent);
+    border: none;
+    color: white;
+}
+
+.modal-footer .btn-save:hover {
+    background: var(--accent-hover);
 }
 
 /* ========== КОНТЕКСТНОЕ МЕНЮ ========== */
@@ -839,6 +1066,33 @@ body {
     </div>
 </div>
 
+<!-- Модалка ученика -->
+<div id="cellModal" class="modal-overlay">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h3 id="cellModalTitle">Ученик</h3>
+            <span class="modal-slot-info" id="cellModalSlot"></span>
+        </div>
+        <div class="modal-body">
+            <label class="field-label" for="cellModalName">Имя ученика</label>
+            <input type="text" id="cellModalName" maxlength="160" placeholder="Например: Артём" autocomplete="off">
+
+            <label class="temp-checkbox">
+                <input type="checkbox" id="cellModalTemp">
+                <span>
+                    <span class="temp-label">⏳ Временно</span>
+                    <div class="temp-hint">Только на ближайший урок — после него запись удалится автоматически</div>
+                </span>
+            </label>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-delete" id="cellModalDelete" onclick="deleteCellModal()">Удалить</button>
+            <button class="btn-cancel" onclick="closeCellModal()">Отмена</button>
+            <button class="btn-save" id="cellModalSave" onclick="saveCellModal()">Сохранить</button>
+        </div>
+    </div>
+</div>
+
 <!-- Контекстное меню (наполняется JS) -->
 <div id="contextMenu" class="context-menu"></div>
 
@@ -896,22 +1150,36 @@ document.addEventListener('DOMContentLoaded', function() {
     updateStudentCount();
 });
 
-// ========== РЕДАКТИРОВАНИЕ ЯЧЕЕК ==========
+// ========== РЕДАКТИРОВАНИЕ ЗАГОЛОВКА БЛОКА (инлайн) ==========
 
 let editingEl = null;
 
 document.addEventListener('click', function(e) {
-    const cell = e.target.closest('.pcell, .block-title');
-    if (cell && !cell.querySelector('input')) {
-        beginEdit(cell);
+    // Заголовок блока — инлайн-редактирование
+    const title = e.target.closest('.block-title');
+    if (title && !title.querySelector('input')) {
+        beginEdit(title);
+        return;
+    }
+
+    // Плашка ученика — модалка
+    const cell = e.target.closest('.pcell');
+    if (cell) {
+        openCellModal(cell.closest('.lesson-block'), cell);
+        return;
+    }
+
+    // Кнопка «+» — модалка для новой ячейки
+    const addBtn = e.target.closest('.add-cell-btn');
+    if (addBtn) {
+        openCellModal(addBtn.closest('.lesson-block'), null);
     }
 });
 
 function beginEdit(cell) {
     if (editingEl && editingEl !== cell) {
-        // Сохраняем предыдущую ячейку
-        const input = editingEl.querySelector('input');
-        if (input) input.blur();
+        const prev = editingEl.querySelector('input');
+        if (prev) prev.blur();
     }
 
     const original = cell.dataset.id ? cell.textContent : '';
@@ -936,11 +1204,6 @@ function beginEdit(cell) {
         } else if (e.key === 'Escape') {
             cancelled = true;
             input.blur();
-        } else if (e.key === 'Tab') {
-            e.preventDefault();
-            const next = nextEditable(cell);
-            input.blur();
-            if (next) beginEdit(next);
         }
         e.stopPropagation();
     });
@@ -949,46 +1212,29 @@ function beginEdit(cell) {
         cell.classList.remove('editing');
         editingEl = null;
         if (cancelled) {
-            renderCellContent(cell, original.trim());
+            renderTitleContent(cell, original.trim());
             return;
         }
-        commitEdit(cell, input.value.trim(), original.trim());
+        commitTitleEdit(cell, input.value.trim(), original.trim());
     });
 
     input.focus();
     input.select();
 }
 
-function nextEditable(cell) {
-    const block = cell.closest('.lesson-block');
-    if (!block) return null;
-    const cells = Array.from(block.querySelectorAll('.pcell'));
-    if (cell.classList.contains('block-title')) {
-        return cells[0] || null;
-    }
-    const idx = cells.indexOf(cell);
-    return cells[idx + 1] || null;
-}
-
-function renderCellContent(cell, text) {
+function renderTitleContent(cell, text) {
     cell.textContent = text;
-    if (cell.dataset.kind === 'title') {
-        cell.classList.toggle('is-empty', text === '');
-    } else if (!cell.dataset.id && text === '') {
-        cell.classList.add('pcell-empty');
-    }
+    cell.classList.toggle('is-empty', text === '');
 }
 
-async function commitEdit(cell, value, original) {
-    // Ничего не изменилось
+async function commitTitleEdit(cell, value, original) {
     if (value === original) {
-        renderCellContent(cell, original);
+        renderTitleContent(cell, original);
         return;
     }
 
-    // Пустая новая ячейка — просто закрываем
     if (value === '' && !cell.dataset.id) {
-        renderCellContent(cell, '');
+        renderTitleContent(cell, '');
         return;
     }
 
@@ -998,7 +1244,7 @@ async function commitEdit(cell, value, original) {
         day: parseInt(block.dataset.day),
         time: block.dataset.time,
         room: parseInt(block.dataset.room),
-        kind: cell.dataset.kind || 'student',
+        kind: 'title',
         content: value
     };
 
@@ -1012,39 +1258,176 @@ async function commitEdit(cell, value, original) {
 
         if (!result.success) {
             showNotification(result.error || 'Ошибка сохранения', 'error');
-            renderCellContent(cell, original);
+            renderTitleContent(cell, original);
             return;
         }
 
         if (value === '') {
-            // Удаление записи
-            if (cell.dataset.kind === 'title') {
-                delete cell.dataset.id;
-                renderCellContent(cell, '');
-            } else {
-                cell.remove();
-            }
-        } else {
-            if (result.data && result.data.id) {
-                cell.dataset.id = result.data.id;
-            }
-            renderCellContent(cell, value);
+            delete cell.dataset.id;
+        } else if (result.data && result.data.id) {
+            cell.dataset.id = result.data.id;
+        }
+        renderTitleContent(cell, value);
+    } catch (err) {
+        console.error('Save error:', err);
+        showNotification('Ошибка сети', 'error');
+        renderTitleContent(cell, original);
+    }
+}
 
-            // Если заполнили пустую ячейку — добавляем новую пустую в конец блока
-            if (cell.classList.contains('pcell-empty')) {
-                cell.classList.remove('pcell-empty');
-                const emptyCell = document.createElement('div');
-                emptyCell.className = 'pcell pcell-empty';
-                emptyCell.dataset.kind = 'student';
-                block.querySelector('.block-cells').appendChild(emptyCell);
-            }
+// ========== МОДАЛКА УЧЕНИКА ==========
+
+const DAY_SHORT = {1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 7: 'Вс'};
+let modalCell = null;
+let modalBlock = null;
+
+function openCellModal(block, cell) {
+    if (!block) return;
+    modalBlock = block;
+    modalCell = cell;
+
+    const nameInput = document.getElementById('cellModalName');
+    const tempCheckbox = document.getElementById('cellModalTemp');
+    const deleteBtn = document.getElementById('cellModalDelete');
+
+    document.getElementById('cellModalTitle').textContent = cell ? 'Ученик' : 'Добавить ученика';
+    document.getElementById('cellModalSlot').textContent =
+        `${DAY_SHORT[block.dataset.day]} · ${block.dataset.time} · каб. ${block.dataset.room}`;
+
+    nameInput.value = cell ? (cell.dataset.name || '') : '';
+    tempCheckbox.checked = cell ? cell.dataset.temp === '1' : false;
+    deleteBtn.style.display = cell ? '' : 'none';
+
+    document.getElementById('cellModal').classList.add('active');
+    nameInput.focus();
+    nameInput.select();
+}
+
+function closeCellModal() {
+    document.getElementById('cellModal').classList.remove('active');
+    modalCell = null;
+    modalBlock = null;
+}
+
+document.getElementById('cellModal').addEventListener('click', function(e) {
+    if (e.target === this) closeCellModal();
+});
+
+document.getElementById('cellModalName').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        saveCellModal();
+    }
+});
+
+function renderStudentCell(cell, name, temp) {
+    cell.textContent = name;
+    cell.dataset.name = name;
+    cell.dataset.temp = temp ? '1' : '0';
+    cell.classList.toggle('temp', temp);
+    if (temp) {
+        const badge = document.createElement('span');
+        badge.className = 'temp-badge';
+        badge.title = 'Временно — только на ближайший урок';
+        badge.textContent = '⏳';
+        cell.appendChild(badge);
+    }
+}
+
+async function saveCellModal() {
+    if (!modalBlock) return;
+
+    const name = document.getElementById('cellModalName').value.trim();
+    const temp = document.getElementById('cellModalTemp').checked;
+
+    if (!name) {
+        showNotification('Введите имя ученика', 'error');
+        return;
+    }
+
+    const block = modalBlock;
+    const cell = modalCell;
+    const saveBtn = document.getElementById('cellModalSave');
+    saveBtn.disabled = true;
+
+    const payload = {
+        id: cell && cell.dataset.id ? parseInt(cell.dataset.id) : null,
+        day: parseInt(block.dataset.day),
+        time: block.dataset.time,
+        room: parseInt(block.dataset.room),
+        kind: 'student',
+        content: name,
+        temp: temp
+    };
+
+    try {
+        const response = await fetch('/zarplata/api/planner.php?action=save_note', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+
+        if (!result.success) {
+            showNotification(result.error || 'Ошибка сохранения', 'error');
+            return;
         }
 
+        if (cell) {
+            renderStudentCell(cell, name, temp);
+        } else {
+            const newCell = document.createElement('div');
+            newCell.className = 'pcell c0';
+            newCell.dataset.kind = 'student';
+            if (result.data && result.data.id) {
+                newCell.dataset.id = result.data.id;
+            }
+            renderStudentCell(newCell, name, temp);
+            block.querySelector('.block-cells').appendChild(newCell);
+        }
+
+        closeCellModal();
         updateStudentCount();
     } catch (err) {
         console.error('Save error:', err);
         showNotification('Ошибка сети', 'error');
-        renderCellContent(cell, original);
+    } finally {
+        saveBtn.disabled = false;
+    }
+}
+
+async function deleteCellModal() {
+    if (!modalCell || !modalCell.dataset.id) return closeCellModal();
+
+    const cell = modalCell;
+    const block = modalBlock;
+
+    const payload = {
+        id: parseInt(cell.dataset.id),
+        day: parseInt(block.dataset.day),
+        time: block.dataset.time,
+        room: parseInt(block.dataset.room),
+        kind: 'student',
+        content: ''
+    };
+
+    try {
+        const response = await fetch('/zarplata/api/planner.php?action=save_note', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            cell.remove();
+            closeCellModal();
+            updateStudentCount();
+        } else {
+            showNotification(result.error || 'Ошибка удаления', 'error');
+        }
+    } catch (err) {
+        showNotification('Ошибка сети', 'error');
     }
 }
 
@@ -1093,7 +1476,10 @@ document.addEventListener('click', function(e) {
 });
 
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') hideContextMenu();
+    if (e.key === 'Escape') {
+        hideContextMenu();
+        closeCellModal();
+    }
 });
 
 function hideContextMenu() {
@@ -1179,7 +1565,7 @@ async function deleteCell() {
 function updateStudentCount() {
     const unique = new Set();
     document.querySelectorAll('.pcell[data-id]').forEach(cell => {
-        const name = cell.textContent.trim().toLowerCase();
+        const name = (cell.dataset.name || cell.textContent).trim().toLowerCase();
         if (name) unique.add(name);
     });
     document.getElementById('studentCount').textContent = unique.size;

@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS planner_notes (
     position SMALLINT NOT NULL DEFAULT 0,            -- порядок ячеек внутри блока
     content VARCHAR(160) NOT NULL DEFAULT '',
     color TINYINT NOT NULL DEFAULT 0,                -- 0 = нейтральный, 1-8 = палитра преподавателей
+    temp_until DATE NULL,                            -- «временно»: дата ближайшего урока, после неё запись удаляется
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     KEY idx_cell (day, time, room)
