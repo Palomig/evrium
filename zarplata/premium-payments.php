@@ -1,0 +1,2852 @@
+<?php
+/**
+ * Страница выплат преподавателям
+ * Новый дизайн: STYLEGUIDE.md (Teal accent, Nunito + JetBrains Mono)
+ */
+
+require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/config/auth.php';
+require_once __DIR__ . '/config/helpers.php';
+require_once __DIR__ . '/config/student_helpers.php'; // ⭐ Новый helper для динамического чтения студентов
+
+// Автоматический редирект на мобильную версию
+require_once __DIR__ . '/mobile/config/mobile_detect.php';
+// premium preview: redirectToMobileIfNeeded('payments.php');
+
+requireAuth();
+$user = getCurrentUser();
+
+// Получить фильтр по преподавателю
+$teacherFilter = isset($_GET['teacher']) ? (int)$_GET['teacher'] : 0;
+
+// Получить список всех активных преподавателей
+$teachers = dbQuery(
+    "SELECT id, name FROM teachers WHERE active = 1 ORDER BY name",
+    []
+);
+
+// Базовый SQL для выборки выплат
+// Начинаем запрос с таблицы payments, чтобы показать ВСЕ выплаты (даже не привязанные к урокам)
+$whereClauses = ["p.payment_type IN ('lesson', 'bonus', 'penalty', 'adjustment')"];
+$params = [];
+
+if ($teacherFilter > 0) {
+    $whereClauses[] = "p.teacher_id = ?";
+    $params[] = $teacherFilter;
+}
+
+$whereSQL = implode(' AND ', $whereClauses);
+
+// Получить выплаты за последние 3 месяца
+$lessons = dbQuery(
+    "SELECT
+        p.id as payment_id,
+        p.amount,
+        p.status as payment_status,
+        p.created_at as payment_created,
+        p.notes as payment_notes,
+        p.payment_type,
+        t.id as teacher_id,
+        t.name as teacher_name,
+        li.id as lesson_id,
+        COALESCE(li.lesson_date, DATE(p.created_at)) as lesson_date,
+        li.time_start,
+        li.time_end,
+        li.lesson_type,
+        li.subject,
+        li.expected_students,
+        li.actual_students,
+        li.notes,
+        li.status,
+        lt.tier,
+        lt.grades,
+        lt.room,
+        lt.teacher_id as template_teacher_id,
+        lt.day_of_week as template_day_of_week,
+        lt.time_start as template_time_start,
+        COALESCE(li.formula_id, t.formula_id) as formula_id,
+        pf.type as formula_type,
+        pf.min_payment,
+        pf.per_student,
+        pf.threshold,
+        pf.fixed_amount,
+        pf.expression
+    FROM payments p
+    LEFT JOIN teachers t ON p.teacher_id = t.id
+    LEFT JOIN lessons_instance li ON p.lesson_instance_id = li.id
+    LEFT JOIN lessons_template lt ON li.template_id = lt.id
+    LEFT JOIN payment_formulas pf ON COALESCE(li.formula_id, t.formula_id) = pf.id
+    WHERE $whereSQL
+        AND COALESCE(li.lesson_date, DATE(p.created_at)) >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)
+    ORDER BY COALESCE(li.lesson_date, DATE(p.created_at)) DESC, COALESCE(li.time_start, '00:00') ASC",
+    $params
+);
+
+// Группировка данных по месяцам, неделям и дням
+$dataByMonth = [];
+$monthNames = [
+    'January' => 'Январь',
+    'February' => 'Февраль',
+    'March' => 'Март',
+    'April' => 'Апрель',
+    'May' => 'Май',
+    'June' => 'Июнь',
+    'July' => 'Июль',
+    'August' => 'Август',
+    'September' => 'Сентябрь',
+    'October' => 'Октябрь',
+    'November' => 'Ноябрь',
+    'December' => 'Декабрь'
+];
+
+$weekdayNames = [
+    'Mon' => 'Пн',
+    'Tue' => 'Вт',
+    'Wed' => 'Ср',
+    'Thu' => 'Чт',
+    'Fri' => 'Пт',
+    'Sat' => 'Сб',
+    'Sun' => 'Вс'
+];
+
+$monthNamesShort = [
+    'Jan' => 'Янв',
+    'Feb' => 'Фев',
+    'Mar' => 'Мар',
+    'Apr' => 'Апр',
+    'May' => 'Май',
+    'Jun' => 'Июн',
+    'Jul' => 'Июл',
+    'Aug' => 'Авг',
+    'Sep' => 'Сен',
+    'Oct' => 'Окт',
+    'Nov' => 'Ноя',
+    'Dec' => 'Дек'
+];
+
+foreach ($lessons as $lesson) {
+    $date = new DateTime($lesson['lesson_date']);
+    $monthKey = $date->format('Y-m');
+    $monthNameEn = $date->format('F');
+    $monthNameRu = $monthNames[$monthNameEn] ?? $monthNameEn;
+    $year = $date->format('Y');
+    $monthName = "$monthNameRu $year";
+    $weekNumber = $date->format('W');
+    $dayKey = $lesson['lesson_date'];
+    $dayMonthEn = $date->format('M');
+    $dayMonthRu = $monthNamesShort[$dayMonthEn] ?? $dayMonthEn;
+    $dayName = $date->format('d') . ' ' . $dayMonthRu;
+    $dayWeekdayEn = $date->format('D');
+    $dayWeekday = $weekdayNames[$dayWeekdayEn] ?? $dayWeekdayEn;
+
+    // Инициализация структуры месяца
+    if (!isset($dataByMonth[$monthKey])) {
+        $dataByMonth[$monthKey] = [
+            'name' => $monthName,
+            'total' => 0,
+            'pending' => 0,
+            'approved' => 0,
+            'paid' => 0,
+            'weeks' => [],
+            'days' => []
+        ];
+    }
+
+    // Подсчёт суммы
+    // Берём реальную сумму из payments (только для completed уроков)
+    $amount = (int)($lesson['amount'] ?? 0);
+
+    $dataByMonth[$monthKey]['total'] += $amount;
+
+    // Распределяем по статусам выплат
+    if ($lesson['payment_status'] === 'pending') {
+        $dataByMonth[$monthKey]['pending'] += $amount;
+    } elseif ($lesson['payment_status'] === 'approved') {
+        $dataByMonth[$monthKey]['approved'] += $amount;
+    } elseif ($lesson['payment_status'] === 'paid') {
+        $dataByMonth[$monthKey]['paid'] += $amount;
+    }
+
+    // Инициализация недели - используем setISODate для точного расчёта
+    if (!isset($dataByMonth[$monthKey]['weeks'][$weekNumber])) {
+        $year = (int)$date->format('o');  // ISO year (может отличаться от calendar year на границе годов)
+        $weekStartDate = new DateTime();
+        $weekStartDate->setISODate($year, $weekNumber, 1);  // 1 = Monday
+        $weekEndDate = new DateTime();
+        $weekEndDate->setISODate($year, $weekNumber, 7);    // 7 = Sunday
+
+        $dataByMonth[$monthKey]['weeks'][$weekNumber] = [
+            'start' => $weekStartDate->format('d'),
+            'end' => $weekEndDate->format('d'),
+            'total' => 0,
+            'paid' => 0
+        ];
+    }
+
+    $dataByMonth[$monthKey]['weeks'][$weekNumber]['total'] += $amount;
+    if ($lesson['payment_status'] === 'paid') {
+        $dataByMonth[$monthKey]['weeks'][$weekNumber]['paid'] += $amount;
+    }
+
+    // Инициализация дня
+    if (!isset($dataByMonth[$monthKey]['days'][$dayKey])) {
+        $dataByMonth[$monthKey]['days'][$dayKey] = [
+            'date' => $dayName,
+            'weekday' => $dayWeekday,
+            'week_number' => $weekNumber,  // ⭐ Добавляем номер недели для фильтрации
+            'total' => 0,
+            'hours' => 0,
+            'absences' => 0,
+            'individual_count' => 0,
+            'group_count' => 0,
+            'subjects' => [],
+            'lessons' => [],
+            'all_approved' => true,
+            'payment_ids' => []  // Для массового одобрения
+        ];
+    }
+
+    // Добавление данных дня
+    // Каждый урок = 1 час (фиксировано)
+    $dataByMonth[$monthKey]['days'][$dayKey]['total'] += $amount;
+    $dataByMonth[$monthKey]['days'][$dayKey]['hours'] += 1;  // 1 урок = 1 час
+
+    // Определяем тип урока (с fallback на payment_type)
+    $lessonType = $lesson['lesson_type'] ?: 'group';
+
+    if ($lessonType === 'individual') {
+        $dataByMonth[$monthKey]['days'][$dayKey]['individual_count']++;
+    } else {
+        $dataByMonth[$monthKey]['days'][$dayKey]['group_count']++;
+    }
+
+    // Определяем предмет (с fallback на payment_type)
+    $subject = $lesson['subject'];
+    if (!$subject) {
+        $paymentTypeLabels = [
+            'lesson' => 'Урок',
+            'bonus' => 'Премия',
+            'penalty' => 'Штраф',
+            'adjustment' => 'Корректировка'
+        ];
+        $subject = $paymentTypeLabels[$lesson['payment_type']] ?? 'Выплата';
+        if ($lesson['payment_notes']) {
+            $subject .= ': ' . mb_substr($lesson['payment_notes'], 0, 30);
+        }
+    }
+
+    if ($subject && !in_array($subject, $dataByMonth[$monthKey]['days'][$dayKey]['subjects'])) {
+        $dataByMonth[$monthKey]['days'][$dayKey]['subjects'][] = $subject;
+    }
+
+    if (!in_array($lesson['payment_status'], ['approved', 'paid'])) {
+        $dataByMonth[$monthKey]['days'][$dayKey]['all_approved'] = false;
+    }
+
+    // Собираем payment_ids для массового одобрения
+    if ($lesson['payment_id']) {
+        $dataByMonth[$monthKey]['days'][$dayKey]['payment_ids'][] = $lesson['payment_id'];
+    }
+
+    // ⭐ НОВАЯ ЛОГИКА: Получаем студентов динамически из таблицы students
+    $students = [];
+    $studentNames = [];
+
+    // Определяем параметры для поиска студентов
+    // Приоритет: lessons_template -> lessons_instance
+    $teacherIdForStudents = $lesson['template_teacher_id'] ?: $lesson['teacher_id'];
+    $dayOfWeekForStudents = $lesson['template_day_of_week'] ?: (
+        $lesson['lesson_date'] ? (int)date('N', strtotime($lesson['lesson_date'])) : null
+    );
+    $timeStartForStudents = $lesson['template_time_start'] ?: $lesson['time_start'];
+
+    if ($teacherIdForStudents && $dayOfWeekForStudents && $timeStartForStudents) {
+        // Получаем студентов динамически
+        $studentsData = getStudentsForLesson(
+            $teacherIdForStudents,
+            $dayOfWeekForStudents,
+            substr($timeStartForStudents, 0, 5)
+        );
+        $students = $studentsData['students'];
+        // Преобразуем в массив имён для отображения
+        foreach ($students as $student) {
+            $studentNames[] = $student['name'];
+        }
+    }
+
+    // Определяем время (с fallback на время создания выплаты)
+    $time = '';
+    if ($lesson['time_start']) {
+        $time = substr($lesson['time_start'], 0, 5);
+    } else {
+        // Используем время создания выплаты
+        $time = date('H:i', strtotime($lesson['payment_created']));
+    }
+
+    // Добавление урока в день
+    $dataByMonth[$monthKey]['days'][$dayKey]['lessons'][] = [
+        'id' => $lesson['lesson_id'],
+        'time' => $time,
+        'subject' => $subject,
+        'type' => $lessonType,
+        'students' => $studentNames,  // Массив имён для отображения
+        'amount' => $amount,
+        'payment_id' => $lesson['payment_id'],
+        'payment_status' => $lesson['payment_status'],
+        'tier' => $lesson['tier'],
+        'is_manual_payment' => !$lesson['lesson_id']  // Флаг для ручных выплат
+    ];
+}
+
+// Подсчёт процента выплаченного для недель + сортировка недель
+foreach ($dataByMonth as $monthKey => &$month) {
+    // Сортируем недели по номеру (первая неделя слева)
+    ksort($month['weeks']);
+
+    foreach ($month['weeks'] as $weekNum => &$week) {
+        if ($week['total'] > 0) {
+            $week['paid_percent'] = round(($week['paid'] / $week['total']) * 100);
+        } else {
+            $week['paid_percent'] = 0;
+        }
+    }
+    unset($week);  // ⚠️ КРИТИЧНО: разрываем ссылку после foreach
+}
+unset($month);  // ⚠️ КРИТИЧНО: разрываем ссылку после foreach
+
+// Статистика за ТЕКУЩИЙ месяц (для stats-minimal)
+$currentMonthKey = date('Y-m');
+$currentMonthStats = [
+    'pending' => 0,
+    'approved' => 0,
+    'paid' => 0,
+    'total' => 0
+];
+
+if (isset($dataByMonth[$currentMonthKey])) {
+    $currentMonthStats['pending'] = $dataByMonth[$currentMonthKey]['pending'];
+    $currentMonthStats['approved'] = $dataByMonth[$currentMonthKey]['approved'];
+    $currentMonthStats['paid'] = $dataByMonth[$currentMonthKey]['paid'];
+    $currentMonthStats['total'] = $dataByMonth[$currentMonthKey]['total'];
+}
+
+// Добавляем выплаты типа 'payout' за ТЕКУЩИЙ месяц (они не привязаны к урокам)
+$payoutQuery = "SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE payment_type = 'payout' AND status = 'paid' AND DATE_FORMAT(created_at, '%Y-%m') = ?";
+$payoutParams = [$currentMonthKey];
+if ($teacherFilter > 0) {
+    $payoutQuery .= " AND teacher_id = ?";
+    $payoutParams[] = $teacherFilter;
+}
+$payoutTotal = dbQueryOne($payoutQuery, $payoutParams);
+$currentMonthStats['paid'] += (int)($payoutTotal['total'] ?? 0);
+
+// Статистика по преподавателям
+$teacherStats = [];
+foreach ($teachers as $teacher) {
+    $stats = dbQueryOne(
+        "SELECT
+            COUNT(DISTINCT p.id) as lesson_count,
+            SUM(p.amount) as total_amount
+        FROM payments p
+        WHERE p.teacher_id = ?
+            AND p.payment_type IN ('lesson', 'bonus', 'penalty', 'adjustment')
+            AND p.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)
+        GROUP BY p.teacher_id",
+        [$teacher['id']]
+    );
+
+    $teacherStats[$teacher['id']] = [
+        'name' => $teacher['name'],
+        'lesson_count' => $stats['lesson_count'] ?? 0,
+        'total_amount' => $stats['total_amount'] ?? 0
+    ];
+}
+
+// Месяцы в порядке убывания (текущий месяц сверху, предыдущие ниже)
+// Данные уже отсортированы по дате DESC в SQL запросе, поэтому array_reverse не нужен
+
+// ⭐ Расчёт потенциальной зарплаты за месяц (только для выбранного преподавателя)
+$potentialSalary = 0;
+if ($teacherFilter > 0) {
+    // Получаем все активные шаблоны уроков для выбранного преподавателя
+    $templates = dbQuery(
+        "SELECT
+            lt.id,
+            lt.day_of_week,
+            lt.expected_students,
+            lt.formula_id,
+            t.formula_id as teacher_formula_id,
+            pf.id as pf_id,
+            pf.type as formula_type,
+            pf.min_payment,
+            pf.per_student,
+            pf.threshold,
+            pf.fixed_amount,
+            pf.expression,
+            pf.active as formula_active
+        FROM lessons_template lt
+        JOIN teachers t ON lt.teacher_id = t.id
+        LEFT JOIN payment_formulas pf ON COALESCE(lt.formula_id, t.formula_id) = pf.id
+        WHERE lt.teacher_id = ? AND lt.active = 1",
+        [$teacherFilter]
+    );
+
+    // Считаем количество вхождений каждого дня недели в текущем месяце
+    $currentMonth = date('n');
+    $currentYear = date('Y');
+    $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $currentMonth, $currentYear);
+
+    // Подсчитываем сколько раз каждый день недели встречается в месяце
+    $dayOfWeekCounts = [];
+    for ($day = 1; $day <= $daysInMonth; $day++) {
+        $dayOfWeek = date('N', mktime(0, 0, 0, $currentMonth, $day, $currentYear));
+        $dayOfWeekCounts[$dayOfWeek] = ($dayOfWeekCounts[$dayOfWeek] ?? 0) + 1;
+    }
+
+    // Считаем потенциальную зарплату за месяц
+    foreach ($templates as $template) {
+        $expectedStudents = (int)($template['expected_students'] ?? 1);
+        $dayOfWeek = (int)$template['day_of_week'];
+
+        // Формируем массив формулы для calculatePayment
+        $formula = [
+            'type' => $template['formula_type'],
+            'min_payment' => $template['min_payment'],
+            'per_student' => $template['per_student'],
+            'threshold' => $template['threshold'],
+            'fixed_amount' => $template['fixed_amount'],
+            'expression' => $template['expression'],
+            'active' => $template['formula_active'] ?? 1
+        ];
+
+        // Рассчитываем оплату за один урок
+        $lessonPayment = calculatePayment($formula, $expectedStudents);
+
+        // Умножаем на количество таких дней в месяце
+        $lessonsInMonth = $dayOfWeekCounts[$dayOfWeek] ?? 0;
+        $potentialSalary += $lessonPayment * $lessonsInMonth;
+    }
+}
+
+// Получить последние события из журнала аудита (связанные с выплатами)
+$auditLogs = dbQuery(
+    "SELECT
+        al.id,
+        al.action_type,
+        al.entity_type,
+        al.entity_id,
+        al.old_value,
+        al.new_value,
+        al.notes,
+        al.created_at,
+        u.name as user_name
+    FROM audit_log al
+    LEFT JOIN users u ON al.user_id = u.id
+    WHERE al.entity_type IN ('payment', 'lesson', 'adjustment')
+    ORDER BY al.created_at DESC
+    LIMIT 50",
+    []
+);
+
+// Page settings for header template
+define('PAGE_TITLE', 'Выплаты преподавателям');
+define('PAGE_SUBTITLE', 'Учёт и одобрение выплат за проведённые занятия');
+define('ACTIVE_PAGE', 'payments');
+
+require_once __DIR__ . '/templates/header-premium.php';
+
+?>
+<style>
+/* Page-specific CSS for payments page */
+        /* Teacher Filter */
+        .teacher-filter {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .teacher-btn {
+            position: relative;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            background: var(--bg-elevated);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            text-decoration: none;
+        }
+
+        .teacher-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .teacher-btn.active {
+            background: var(--accent-dim);
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .teacher-tooltip {
+            position: absolute;
+            bottom: calc(100% + 10px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px;
+            min-width: 200px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            z-index: 100;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            white-space: nowrap;
+        }
+
+        .teacher-btn:hover .teacher-tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .teacher-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: var(--border);
+        }
+
+        .tooltip-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tooltip-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .tooltip-stat {
+            text-align: center;
+        }
+
+        .tooltip-stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .tooltip-stat-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Stats Minimal */
+        .stats-minimal {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            padding: 20px 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 28px;
+        }
+
+        .minimal-item {
+            padding: 0 40px;
+            text-align: center;
+            border-right: 1px solid var(--border);
+        }
+
+        .minimal-item:last-child {
+            border-right: none;
+        }
+
+        .minimal-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 26px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .minimal-item.pending .minimal-value { color: var(--status-amber); }
+        .minimal-item.approved .minimal-value { color: var(--status-blue); }
+        .minimal-item.paid .minimal-value { color: var(--status-green); }
+        .minimal-item.total .minimal-value { color: var(--text-primary); }
+        .minimal-item.potential .minimal-value { color: #a78bfa; }
+
+        .minimal-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        /* Month Section */
+        .month-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .month-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .month-title-group {
+            display: flex;
+            align-items: baseline;
+            gap: 14px;
+        }
+
+        .month-title {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+
+        .month-amount {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--status-green);
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .progress-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .progress-bar {
+            width: 140px;
+            height: 6px;
+            background: var(--bg-dark);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.4s ease;
+            background: linear-gradient(90deg, var(--status-green), #4ade80);
+        }
+
+        .progress-percent {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--status-green);
+            min-width: 42px;
+        }
+
+        /* Weeks Grid */
+        .weeks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        .week-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: center;
+        }
+
+        .week-card:hover {
+            background: var(--bg-hover);
+            border-color: var(--text-muted);
+        }
+
+        .week-card.active {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+        }
+
+        .week-card.active .week-dates {
+            color: var(--accent);
+        }
+
+        .week-dates {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .week-amount {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .week-progress {
+            margin-top: 8px;
+            height: 3px;
+            background: var(--bg-dark);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .week-progress-fill {
+            height: 100%;
+            background: var(--status-green);
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        /* Details Table */
+        .details-section {
+            background: var(--bg-elevated);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .table-header {
+            display: grid;
+            /* дата | уроки | предмет | часы | неявки | сумма | кнопка */
+            grid-template-columns: 100px 1fr 150px 60px 60px 90px 40px;
+            gap: 12px;
+            padding: 12px 16px;
+            background: var(--bg-dark);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+        }
+
+        /* Day Row */
+        .day-row {
+            border-bottom: 1px solid var(--border);
+        }
+
+        .day-row:last-child {
+            border-bottom: none;
+        }
+
+        .day-header {
+            display: grid;
+            /* дата | badges | предмет | часы | неявки | сумма | кнопка */
+            grid-template-columns: 100px 1fr 150px 60px 60px 90px 40px;
+            gap: 12px;
+            padding: 14px 16px;
+            cursor: pointer;
+            transition: background 0.15s ease;
+            align-items: center;
+        }
+
+        .day-header:hover {
+            background: var(--bg-hover);
+        }
+
+        .day-date {
+            font-weight: 600;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .day-weekday {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .expand-icon {
+            width: 16px;
+            height: 16px;
+            color: var(--text-muted);
+            transition: transform 0.2s ease;
+        }
+
+        .day-header.expanded .expand-icon {
+            transform: rotate(180deg);
+        }
+
+        .lessons-count {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .lesson-type-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-individual {
+            background: var(--lesson-individual-dim);
+            color: var(--lesson-individual);
+        }
+
+        .badge-group {
+            background: var(--lesson-group-dim);
+            color: var(--lesson-group);
+        }
+
+        .day-subject {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .day-hours {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .day-amount {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .approve-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+        }
+
+        .approve-btn:hover {
+            background: var(--status-green-dim);
+            border-color: var(--status-green);
+            color: var(--status-green);
+        }
+
+        .approve-btn.approved {
+            background: var(--status-green);
+            border-color: var(--status-green);
+            color: white;
+            pointer-events: none;
+        }
+
+        .approve-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Lessons Container */
+        .lessons-container {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background: var(--bg-dark);
+        }
+
+        .lessons-container.expanded {
+            max-height: 1000px;
+        }
+
+        .lesson-item {
+            display: grid;
+            /* время | ученики | предмет | неявки | сумма | кнопка */
+            grid-template-columns: 60px 1fr 150px 60px 90px 40px;
+            gap: 12px;
+            padding: 12px 16px 12px 40px;
+            border-top: 1px solid var(--border);
+            align-items: center;
+            font-size: 13px;
+        }
+
+        .lesson-time {
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+        }
+
+        .lesson-subject-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .lesson-type-indicator {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .type-individual {
+            background: var(--lesson-individual-dim);
+            color: var(--lesson-individual);
+        }
+
+        .type-group {
+            background: var(--lesson-group-dim);
+            color: var(--lesson-group);
+        }
+
+        .lesson-subject-name {
+            color: var(--text-secondary);
+        }
+
+        .lesson-amount {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-secondary);
+        }
+
+        .lesson-approve {
+            width: 26px;
+            height: 26px;
+            border-radius: 5px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+        }
+
+        .lesson-approve:hover {
+            background: var(--status-green-dim);
+            border-color: var(--status-green);
+            color: var(--status-green);
+        }
+
+        .lesson-approve.approved {
+            background: var(--status-green);
+            border-color: var(--status-green);
+            color: white;
+        }
+
+        /* Кнопка редактирования выплаты */
+        .lesson-edit-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+        }
+
+        .lesson-edit-btn:hover {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: #6366f1;
+            color: #6366f1;
+        }
+
+        /* Бейдж "Выплачено" */
+        .lesson-paid-badge {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--status-green);
+        }
+
+        /* Ячейка с учениками */
+        .lesson-students-cell {
+            flex: 2;
+            min-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Empty state */
+        .empty-state {
+            padding: 48px;
+            text-align: center;
+            color: var(--text-muted);
+        }
+    </style>
+</style>
+
+<!-- Add header actions to page-header -->
+<div class="header-actions" style="position: absolute; top: 28px; right: 32px; display: flex; gap: 12px;">
+                    <button onclick="openPayoutModal()" class="btn btn-primary">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        </svg>
+                        Выплатить
+                    </button>
+                    <a href="?export=xlsx" class="btn btn-secondary">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        Экспорт
+                    </a>
+                    <button onclick="openJournalModal()" class="btn btn-secondary">
+                        <span class="material-icons" style="font-size: 16px;">history</span>
+                        Журнал событий
+                    </button>
+                </div>
+
+            <!-- Teacher Filter -->
+            <div class="teacher-filter">
+                <a href="premium-payments.php" class="teacher-btn <?= $teacherFilter === 0 ? 'active' : '' ?>">
+                    Все преподаватели
+                </a>
+                <?php foreach ($teachers as $teacher): ?>
+                    <?php
+                    $stats = $teacherStats[$teacher['id']] ?? ['lesson_count' => 0, 'total_amount' => 0];
+                    ?>
+                    <a href="?teacher=<?= $teacher['id'] ?>" class="teacher-btn <?= $teacherFilter === $teacher['id'] ? 'active' : '' ?>">
+                        <?= e($teacher['name']) ?>
+                        <div class="teacher-tooltip">
+                            <div class="tooltip-name"><?= e($teacher['name']) ?></div>
+                            <div class="tooltip-stats">
+                                <div class="tooltip-stat">
+                                    <div class="tooltip-stat-value"><?= $stats['lesson_count'] ?></div>
+                                    <div class="tooltip-stat-label">уроков</div>
+                                </div>
+                                <div class="tooltip-stat">
+                                    <div class="tooltip-stat-value"><?= formatMoney($stats['total_amount']) ?></div>
+                                    <div class="tooltip-stat-label">за месяц</div>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+
+            <!-- Stats Minimal (текущий месяц) -->
+            <div class="stats-minimal">
+                <div class="minimal-item pending">
+                    <div class="minimal-value"><?= formatMoney($currentMonthStats['pending']) ?></div>
+                    <div class="minimal-label">Ожидают</div>
+                </div>
+                <div class="minimal-item approved">
+                    <div class="minimal-value"><?= formatMoney($currentMonthStats['approved']) ?></div>
+                    <div class="minimal-label">Одобрено</div>
+                </div>
+                <div class="minimal-item paid">
+                    <div class="minimal-value"><?= formatMoney($currentMonthStats['paid']) ?></div>
+                    <div class="minimal-label">Выплачено</div>
+                </div>
+                <div class="minimal-item total">
+                    <div class="minimal-value"><?= formatMoney($currentMonthStats['total']) ?></div>
+                    <div class="minimal-label">Всего за <?= $monthNames[date('F')] ?></div>
+                </div>
+                <?php if ($teacherFilter > 0 && $potentialSalary > 0): ?>
+                <div class="minimal-item potential">
+                    <div class="minimal-value"><?= formatMoney($potentialSalary) ?></div>
+                    <div class="minimal-label">Потенциальная</div>
+                </div>
+                <?php endif; ?>
+            </div>
+
+            <?php if (empty($dataByMonth)): ?>
+                <div class="empty-state">
+                    <p>Нет данных о выплатах за последние 3 месяца</p>
+                </div>
+            <?php else: ?>
+                <!-- Months -->
+                <?php foreach ($dataByMonth as $monthKey => $month): ?>
+                    <?php
+                    $approvedPercent = $month['total'] > 0
+                        ? round((($month['approved'] + $month['paid']) / $month['total']) * 100)
+                        : 0;
+                    ?>
+                    <section class="month-section">
+                        <div class="month-header">
+                            <div class="month-title-group">
+                                <h2 class="month-title"><?= e($month['name']) ?></h2>
+                                <span class="month-amount"><?= formatMoney($month['total']) ?></span>
+                            </div>
+                            <div class="progress-container">
+                                <span class="progress-label">Одобрено:</span>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: <?= $approvedPercent ?>%"></div>
+                                </div>
+                                <span class="progress-percent"><?= $approvedPercent ?>%</span>
+                            </div>
+                        </div>
+
+                        <!-- Weeks Grid -->
+                        <?php if (!empty($month['weeks'])): ?>
+                            <?php $isFirstWeek = true; ?>
+                            <div class="weeks-grid" data-month="<?= e($monthKey) ?>">
+                                <?php foreach ($month['weeks'] as $weekNum => $week): ?>
+                                    <div class="week-card <?= $isFirstWeek ? 'active' : '' ?>"
+                                         data-week="<?= $weekNum ?>"
+                                         data-month="<?= e($monthKey) ?>"
+                                         onclick="selectWeek(this, '<?= e($monthKey) ?>', '<?= $weekNum ?>')">
+                                        <div class="week-dates"><?= e($week['start']) ?> — <?= e($week['end']) ?></div>
+                                        <div class="week-amount"><?= formatMoney($week['total']) ?></div>
+                                        <div class="week-progress">
+                                            <div class="week-progress-fill" style="width: <?= $week['paid_percent'] ?>%"></div>
+                                        </div>
+                                    </div>
+                                    <?php $isFirstWeek = false; ?>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+
+                        <!-- Details Table -->
+                        <div class="details-section">
+                            <div class="table-header">
+                                <div>Дата</div>
+                                <div>Уроки</div>
+                                <div>Предмет</div>
+                                <div>Часы</div>
+                                <div>Неявки</div>
+                                <div>Сумма</div>
+                                <div></div>
+                            </div>
+
+                            <?php
+                            // Получаем первую неделю для начальной фильтрации
+                            $firstWeekNum = array_key_first($month['weeks']);
+                            ?>
+                            <?php foreach ($month['days'] as $dayKey => $day): ?>
+                                <div class="day-row"
+                                     data-week="<?= $day['week_number'] ?>"
+                                     data-month="<?= e($monthKey) ?>"
+                                     style="<?= ($day['week_number'] != $firstWeekNum) ? 'display: none;' : '' ?>">
+                                    <div class="day-header" onclick="toggleDay(this)">
+                                        <div class="day-date">
+                                            <svg class="expand-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                            </svg>
+                                            <span><?= e($day['date']) ?></span>
+                                            <span class="day-weekday"><?= e($day['weekday']) ?></span>
+                                        </div>
+                                        <div class="lessons-count">
+                                            <?php if ($day['individual_count'] > 0): ?>
+                                                <span class="lesson-type-badge badge-individual">
+                                                    <?= $day['individual_count'] ?> инд
+                                                </span>
+                                            <?php endif; ?>
+                                            <?php if ($day['group_count'] > 0): ?>
+                                                <span class="lesson-type-badge badge-group">
+                                                    <?= $day['group_count'] ?> груп
+                                                </span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="day-subject">
+                                            <?= e(implode(', ', array_slice($day['subjects'], 0, 2))) ?>
+                                            <?php if (count($day['subjects']) > 2): ?>
+                                                +<?= count($day['subjects']) - 2 ?>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="day-hours"><?= number_format($day['hours'], 1) ?> ч</div>
+                                        <div class="day-absences"><?= $day['absences'] ?></div>
+                                        <div class="day-amount"><?= formatMoney($day['total']) ?></div>
+                                        <button
+                                            class="approve-btn <?= $day['all_approved'] ? 'approved' : '' ?>"
+                                            onclick="event.stopPropagation(); approveDay(this, [<?= implode(',', $day['payment_ids']) ?>])"
+                                            title="<?= $day['all_approved'] ? 'Все выплаты одобрены' : 'Одобрить все выплаты за день' ?>"
+                                            <?= $day['all_approved'] ? 'disabled' : '' ?>
+                                        >
+                                            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+
+                                    <!-- Lessons -->
+                                    <div class="lessons-container">
+                                        <?php foreach ($day['lessons'] as $lesson): ?>
+                                            <div class="lesson-item">
+                                                <div class="lesson-time"><?= e($lesson['time']) ?></div>
+                                                <div class="lesson-students-cell">
+                                                    <?php if (!empty($lesson['students'])): ?>
+                                                        <span style="color: var(--text-secondary); font-size: 0.85em;">
+                                                            <?= e(implode(', ', $lesson['students'])) ?>
+                                                        </span>
+                                                    <?php else: ?>
+                                                        <span style="color: var(--text-disabled);">—</span>
+                                                    <?php endif; ?>
+                                                </div>
+                                                <div class="lesson-subject-cell">
+                                                    <span class="lesson-type-indicator type-<?= $lesson['type'] ?>">
+                                                        <?= $lesson['type'] === 'individual' ? 'инд' : 'груп' ?>
+                                                    </span>
+                                                    <span class="lesson-subject-name"><?= e($lesson['subject']) ?></span>
+                                                </div>
+                                                <div class="day-absences">—</div>
+                                                <div class="lesson-amount">
+                                                    <?= formatMoney($lesson['amount']) ?>
+                                                </div>
+                                                <?php if ($lesson['payment_id'] && $lesson['payment_status'] !== 'paid'): ?>
+                                                <button
+                                                    class="lesson-edit-btn"
+                                                    onclick="event.stopPropagation(); openEditModal(<?= $lesson['payment_id'] ?>)"
+                                                    title="Редактировать выплату"
+                                                >
+                                                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                                    </svg>
+                                                </button>
+                                                <?php elseif ($lesson['payment_status'] === 'paid'): ?>
+                                                <span class="lesson-paid-badge" title="Выплачено">
+                                                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                                    </svg>
+                                                </span>
+                                                <?php else: ?>
+                                                <span style="width: 28px;"></span>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </section>
+                <?php endforeach; ?>
+            <?php endif; ?>
+
+
+        </main>
+    </div>
+
+    <!-- Модальное окно журнала событий -->
+    <?php
+    // Маппинги для журнала
+    $journalFieldNames = [
+        'amount' => 'Сумма',
+        'status' => 'Статус',
+        'payment_status' => 'Статус выплаты',
+        'payment_type' => 'Тип выплаты',
+        'notes' => 'Примечание',
+        'description' => 'Описание',
+        'name' => 'Имя',
+        'teacher_id' => 'Преподаватель',
+        'student_id' => 'Ученик',
+        'lesson_date' => 'Дата урока',
+        'time_start' => 'Начало',
+        'time_end' => 'Окончание',
+        'subject' => 'Предмет',
+        'lesson_type' => 'Тип урока',
+        'actual_students' => 'Присутствовало',
+        'expected_students' => 'Ожидалось',
+        'formula_id' => 'Формула',
+        'attended' => 'Присутствовало',
+        'expected' => 'Ожидалось',
+        'payment_id' => 'ID выплаты',
+        'time' => 'Время',
+        'student_names' => 'Ученики'
+    ];
+
+    $journalValueTranslations = [
+        'pending' => 'Ожидает',
+        'approved' => 'Одобрено',
+        'paid' => 'Выплачено',
+        'cancelled' => 'Отменено',
+        'lesson' => 'Урок',
+        'bonus' => 'Бонус',
+        'penalty' => 'Штраф',
+        'adjustment' => 'Корректировка',
+        'group' => 'Групповой',
+        'individual' => 'Индивидуальный'
+    ];
+
+    function formatJournalValue($value, $translations) {
+        if ($value === null || $value === '') {
+            return '<span style="color: var(--text-disabled);">—</span>';
+        }
+        if (is_bool($value)) {
+            return $value ? 'Да' : 'Нет';
+        }
+        if (is_array($value)) {
+            if (empty($value)) {
+                return '<span style="color: var(--text-disabled);">(пусто)</span>';
+            }
+            return e(implode(', ', $value));
+        }
+        $strValue = (string)$value;
+        if (isset($translations[$strValue])) {
+            return e($translations[$strValue]);
+        }
+        if (is_numeric($strValue) && (int)$strValue > 100) {
+            return number_format((int)$strValue, 0, ',', ' ') . ' ₽';
+        }
+        return e($strValue);
+    }
+    ?>
+
+    <div id="journalModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
+        <div class="modal-content" style="background: var(--bg-card); border-radius: 16px; max-width: 1000px; max-height: 85vh; width: 95%; overflow: hidden; display: flex; flex-direction: column;">
+            <!-- Header -->
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid var(--border);">
+                <div>
+                    <h2 style="font-size: 20px; font-weight: 700; color: var(--text-high-emphasis); margin: 0;">
+                        Журнал событий
+                    </h2>
+                    <p style="font-size: 13px; color: var(--text-medium-emphasis); margin: 4px 0 0 0;">
+                        Нажмите на запись для просмотра деталей
+                    </p>
+                </div>
+                <button onclick="closeJournalModal()" class="btn-icon" style="background: var(--bg-hover); border: none; border-radius: 8px; padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">
+                    <span class="material-icons" style="font-size: 24px; color: var(--text-medium-emphasis);">close</span>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="modal-body" style="padding: 16px; overflow-y: auto; flex: 1;">
+                <?php if (empty($auditLogs)): ?>
+                    <div class="empty-state">
+                        <p>Журнал событий пуст</p>
+                    </div>
+                <?php else: ?>
+                    <div class="journal-entries" style="display: flex; flex-direction: column; gap: 8px;">
+                        <?php foreach ($auditLogs as $logIndex => $log):
+                            $date = new DateTime($log['created_at']);
+                            $dateFormatted = $date->format('d.m.Y H:i');
+
+                            $actionIcons = [
+                                'payment_created' => ['icon' => 'add_circle', 'color' => '#10b981', 'class' => 'create'],
+                                'payment_updated' => ['icon' => 'edit', 'color' => '#f59e0b', 'class' => 'update'],
+                                'payment_deleted' => ['icon' => 'delete', 'color' => '#ef4444', 'class' => 'delete'],
+                                'payment_approved' => ['icon' => 'check_circle', 'color' => '#10b981', 'class' => 'approve'],
+                                'payment_paid' => ['icon' => 'payments', 'color' => '#d9ab5e', 'class' => 'approve'],
+                                'adjustment_created' => ['icon' => 'tune', 'color' => '#8b5cf6', 'class' => 'info'],
+                                'lesson_completed' => ['icon' => 'done', 'color' => '#10b981', 'class' => 'approve'],
+                                'payments_cleared_all' => ['icon' => 'delete_sweep', 'color' => '#ef4444', 'class' => 'delete']
+                            ];
+
+                            $actionInfo = $actionIcons[$log['action_type']] ?? ['icon' => 'info', 'color' => '#6366f1', 'class' => 'info'];
+
+                            $actionLabels = [
+                                'payment_created' => 'Создание',
+                                'payment_updated' => 'Изменение',
+                                'payment_deleted' => 'Удаление',
+                                'payment_approved' => 'Одобрение',
+                                'payment_paid' => 'Выплата',
+                                'adjustment_created' => 'Корректировка',
+                                'lesson_completed' => 'Урок завершён',
+                                'payments_cleared_all' => 'Полная очистка'
+                            ];
+
+                            $actionLabel = $actionLabels[$log['action_type']] ?? $log['action_type'];
+
+                            $entityLabels = [
+                                'payment' => 'Выплата',
+                                'lesson' => 'Урок',
+                                'adjustment' => 'Корректировка'
+                            ];
+
+                            $entityLabel = $entityLabels[$log['entity_type']] ?? $log['entity_type'];
+
+                            // Парсим данные
+                            $oldValue = null;
+                            $newValue = null;
+                            if ($log['old_value']) {
+                                $oldValue = json_decode($log['old_value'], true);
+                                if (json_last_error() !== JSON_ERROR_NONE) {
+                                    $oldValue = $log['old_value'];
+                                }
+                            }
+                            if ($log['new_value']) {
+                                $newValue = json_decode($log['new_value'], true);
+                                if (json_last_error() !== JSON_ERROR_NONE) {
+                                    $newValue = $log['new_value'];
+                                }
+                            }
+                        ?>
+                            <div class="journal-entry" style="background: var(--bg-elevated); border-radius: 10px; overflow: hidden;">
+                                <!-- Заголовок записи (кликабельный) -->
+                                <div class="journal-entry-header" onclick="toggleJournalEntry(this)" style="display: grid; grid-template-columns: 130px 120px 1fr 100px 40px; gap: 12px; padding: 14px 16px; cursor: pointer; transition: background 0.2s; align-items: center;">
+                                    <div style="font-size: 12px; color: var(--text-medium-emphasis); font-family: monospace;">
+                                        <?= e($dateFormatted) ?>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <span class="material-icons" style="font-size: 16px; color: <?= $actionInfo['color'] ?>;">
+                                            <?= $actionInfo['icon'] ?>
+                                        </span>
+                                        <span style="font-size: 12px; font-weight: 500; color: var(--text-high-emphasis);">
+                                            <?= e($actionLabel) ?>
+                                        </span>
+                                    </div>
+                                    <div style="font-size: 12px; color: var(--text-medium-emphasis); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        <?= e($log['notes'] ?: $entityLabel . ($log['entity_id'] ? ' #' . $log['entity_id'] : '')) ?>
+                                    </div>
+                                    <div style="font-size: 12px; color: var(--text-medium-emphasis);">
+                                        <?= e($log['user_name'] ?: 'Система') ?>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <span class="material-icons journal-chevron" style="font-size: 18px; color: var(--text-medium-emphasis); transition: transform 0.3s;">chevron_right</span>
+                                    </div>
+                                </div>
+
+                                <!-- Детали записи (скрыты по умолчанию) -->
+                                <div class="journal-entry-details" style="display: none; padding: 16px; background: var(--bg-hover); border-top: 1px solid var(--border);">
+                                    <!-- Основная информация -->
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                                        <div style="padding: 10px; background: var(--bg-card); border-radius: 8px;">
+                                            <div style="font-size: 10px; color: var(--text-medium-emphasis); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Дата и время</div>
+                                            <div style="font-size: 13px; color: var(--text-high-emphasis); font-weight: 500;"><?= $date->format('d.m.Y H:i:s') ?></div>
+                                        </div>
+                                        <div style="padding: 10px; background: var(--bg-card); border-radius: 8px;">
+                                            <div style="font-size: 10px; color: var(--text-medium-emphasis); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Действие</div>
+                                            <div style="font-size: 13px; color: var(--text-high-emphasis); font-weight: 500;"><?= e($actionLabel) ?></div>
+                                        </div>
+                                        <div style="padding: 10px; background: var(--bg-card); border-radius: 8px;">
+                                            <div style="font-size: 10px; color: var(--text-medium-emphasis); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Тип</div>
+                                            <div style="font-size: 13px; color: var(--text-high-emphasis); font-weight: 500;"><?= e($entityLabel) ?><?= $log['entity_id'] ? ' #' . $log['entity_id'] : '' ?></div>
+                                        </div>
+                                        <div style="padding: 10px; background: var(--bg-card); border-radius: 8px;">
+                                            <div style="font-size: 10px; color: var(--text-medium-emphasis); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Пользователь</div>
+                                            <div style="font-size: 13px; color: var(--text-high-emphasis); font-weight: 500;"><?= e($log['user_name'] ?: 'Система') ?></div>
+                                        </div>
+                                    </div>
+
+                                    <?php if ($log['notes']): ?>
+                                        <div style="padding: 10px; background: var(--bg-card); border-radius: 8px; margin-bottom: 16px;">
+                                            <div style="font-size: 10px; color: var(--text-medium-emphasis); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Описание</div>
+                                            <div style="font-size: 13px; color: var(--text-high-emphasis);"><?= e($log['notes']) ?></div>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <!-- Данные изменений -->
+                                    <?php if ($oldValue || $newValue): ?>
+                                        <div style="margin-top: 12px;">
+                                            <?php if ($oldValue && $newValue && is_array($oldValue) && is_array($newValue)): ?>
+                                                <!-- Изменение -->
+                                                <div style="font-size: 11px; font-weight: 600; color: var(--text-medium-emphasis); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Изменения</div>
+                                                <div style="background: var(--bg-card); border-radius: 8px; overflow: hidden;">
+                                                    <div style="display: grid; grid-template-columns: 120px 1fr 1fr; gap: 8px; padding: 10px 12px; background: var(--bg-elevated); font-size: 11px; font-weight: 600; border-bottom: 1px solid var(--border);">
+                                                        <div>Поле</div>
+                                                        <div style="color: #ef4444;">Было</div>
+                                                        <div style="color: #10b981;">Стало</div>
+                                                    </div>
+                                                    <?php
+                                                    $allKeys = array_unique(array_merge(array_keys($oldValue), array_keys($newValue)));
+                                                    foreach ($allKeys as $key):
+                                                        $oldVal = $oldValue[$key] ?? null;
+                                                        $newVal = $newValue[$key] ?? null;
+                                                        if (json_encode($oldVal) !== json_encode($newVal)):
+                                                            $fieldLabel = $journalFieldNames[$key] ?? $key;
+                                                            $oldDisplay = formatJournalValue($oldVal, $journalValueTranslations);
+                                                            $newDisplay = formatJournalValue($newVal, $journalValueTranslations);
+                                                    ?>
+                                                        <div style="display: grid; grid-template-columns: 120px 1fr 1fr; gap: 8px; padding: 10px 12px; font-size: 12px; border-bottom: 1px solid var(--border);">
+                                                            <div style="color: var(--text-medium-emphasis); font-weight: 500;"><?= e($fieldLabel) ?></div>
+                                                            <div style="color: #ef4444;"><?= $oldDisplay ?></div>
+                                                            <div style="color: #10b981;"><?= $newDisplay ?></div>
+                                                        </div>
+                                                    <?php
+                                                        endif;
+                                                    endforeach;
+                                                    ?>
+                                                </div>
+
+                                            <?php elseif ($newValue && !$oldValue): ?>
+                                                <!-- Создание -->
+                                                <div style="font-size: 11px; font-weight: 600; color: var(--text-medium-emphasis); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Созданные данные</div>
+                                                <div style="padding: 12px; background: rgba(16, 185, 129, 0.08); border-left: 3px solid #10b981; border-radius: 0 8px 8px 0;">
+                                                    <?php if (is_array($newValue)):
+                                                        foreach ($newValue as $key => $val):
+                                                            $fieldLabel = $journalFieldNames[$key] ?? $key;
+                                                            $valDisplay = formatJournalValue($val, $journalValueTranslations);
+                                                    ?>
+                                                        <div style="display: grid; grid-template-columns: 120px 1fr; gap: 8px; padding: 4px 0; font-size: 12px;">
+                                                            <div style="color: var(--text-medium-emphasis);"><?= e($fieldLabel) ?></div>
+                                                            <div style="color: var(--text-high-emphasis);"><?= $valDisplay ?></div>
+                                                        </div>
+                                                    <?php endforeach;
+                                                    else: ?>
+                                                        <div style="font-size: 12px; color: var(--text-high-emphasis);"><?= e($newValue) ?></div>
+                                                    <?php endif; ?>
+                                                </div>
+
+                                            <?php elseif ($oldValue && !$newValue): ?>
+                                                <!-- Удаление -->
+                                                <div style="font-size: 11px; font-weight: 600; color: var(--text-medium-emphasis); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Удалённые данные</div>
+                                                <div style="padding: 12px; background: rgba(239, 68, 68, 0.08); border-left: 3px solid #ef4444; border-radius: 0 8px 8px 0;">
+                                                    <?php if (is_array($oldValue)):
+                                                        foreach ($oldValue as $key => $val):
+                                                            $fieldLabel = $journalFieldNames[$key] ?? $key;
+                                                            $valDisplay = formatJournalValue($val, $journalValueTranslations);
+                                                    ?>
+                                                        <div style="display: grid; grid-template-columns: 120px 1fr; gap: 8px; padding: 4px 0; font-size: 12px;">
+                                                            <div style="color: var(--text-medium-emphasis);"><?= e($fieldLabel) ?></div>
+                                                            <div style="color: var(--text-high-emphasis);"><?= $valDisplay ?></div>
+                                                        </div>
+                                                    <?php endforeach;
+                                                    else: ?>
+                                                        <div style="font-size: 12px; color: var(--text-high-emphasis);"><?= e($oldValue) ?></div>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php else: ?>
+                                        <div style="padding: 16px; text-align: center; color: var(--text-medium-emphasis); font-size: 12px; background: var(--bg-card); border-radius: 8px;">
+                                            Подробная информация не сохранена
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .journal-entry-header:hover {
+            background: var(--bg-hover);
+        }
+        .journal-entry-header.expanded {
+            background: var(--bg-hover);
+        }
+        .journal-entry-header.expanded .journal-chevron {
+            transform: rotate(90deg);
+        }
+        .btn-icon:hover {
+            background: var(--bg-dark) !important;
+        }
+    </style>
+
+    <script>
+        // ========== Функция перезагрузки с сохранением выбранной недели ==========
+        function reloadWithWeekParams() {
+            const activeWeekCard = document.querySelector('.week-card.active');
+            if (activeWeekCard) {
+                const week = activeWeekCard.dataset.week;
+                const month = activeWeekCard.dataset.month;
+                const url = new URL(window.location.href);
+                url.searchParams.set('month', month);
+                url.searchParams.set('week', week);
+                window.location.href = url.toString();
+            } else {
+                window.location.reload();
+            }
+        }
+
+        // ========== Восстановление выбранной недели из URL при загрузке ==========
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const savedMonth = urlParams.get('month');
+            const savedWeek = urlParams.get('week');
+
+            if (savedMonth && savedWeek) {
+                // Находим нужную карточку недели
+                const weekCard = document.querySelector(
+                    `.week-card[data-month="${savedMonth}"][data-week="${savedWeek}"]`
+                );
+                if (weekCard) {
+                    // Имитируем клик для активации недели
+                    selectWeek(weekCard, savedMonth, savedWeek);
+                    // Скроллим к выбранному месяцу
+                    const monthSection = weekCard.closest('.month-section');
+                    if (monthSection) {
+                        monthSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+            }
+        });
+
+        // ========== Функция переключения недель ==========
+        function selectWeek(clickedCard, monthKey, weekNum) {
+            // Находим все карточки недель в этом месяце
+            const weeksGrid = clickedCard.parentElement;
+            const allWeekCards = weeksGrid.querySelectorAll('.week-card');
+
+            // Убираем active класс со всех карточек
+            allWeekCards.forEach(card => card.classList.remove('active'));
+
+            // Добавляем active класс на выбранную карточку
+            clickedCard.classList.add('active');
+
+            // Находим все строки дней в этом месяце
+            const monthSection = clickedCard.closest('.month-section');
+            const dayRows = monthSection.querySelectorAll('.day-row[data-month="' + monthKey + '"]');
+
+            // Показываем/скрываем дни в зависимости от выбранной недели
+            dayRows.forEach(row => {
+                if (row.dataset.week == weekNum) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                    // Закрываем развёрнутые уроки при переключении
+                    const header = row.querySelector('.day-header');
+                    const lessons = row.querySelector('.lessons-container');
+                    if (header && lessons) {
+                        header.classList.remove('expanded');
+                        lessons.classList.remove('expanded');
+                    }
+                }
+            });
+        }
+
+        // Toggle day expansion
+        function toggleDay(header) {
+            const lessonsContainer = header.nextElementSibling;
+            const isExpanded = header.classList.contains('expanded');
+
+            // Close other expanded days
+            document.querySelectorAll('.day-header.expanded').forEach(el => {
+                if (el !== header) {
+                    el.classList.remove('expanded');
+                    el.nextElementSibling.classList.remove('expanded');
+                }
+            });
+
+            if (isExpanded) {
+                header.classList.remove('expanded');
+                lessonsContainer.classList.remove('expanded');
+            } else {
+                header.classList.add('expanded');
+                lessonsContainer.classList.add('expanded');
+            }
+        }
+
+        // Toggle journal entry expansion
+        function toggleJournalEntry(header) {
+            const entry = header.parentElement;
+            const details = entry.querySelector('.journal-entry-details');
+            const isExpanded = header.classList.contains('expanded');
+
+            // Close other expanded entries
+            document.querySelectorAll('.journal-entry-header.expanded').forEach(el => {
+                if (el !== header) {
+                    el.classList.remove('expanded');
+                    el.parentElement.querySelector('.journal-entry-details').style.display = 'none';
+                }
+            });
+
+            // Toggle current entry
+            if (isExpanded) {
+                header.classList.remove('expanded');
+                details.style.display = 'none';
+            } else {
+                header.classList.add('expanded');
+                details.style.display = 'block';
+            }
+        }
+
+        // Open journal modal
+        function openJournalModal() {
+            const modal = document.getElementById('journalModal');
+            modal.style.display = 'flex';
+        }
+
+        // Close journal modal
+        function closeJournalModal() {
+            const modal = document.getElementById('journalModal');
+            modal.style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('journalModal');
+            if (event.target === modal) {
+                closeJournalModal();
+            }
+        });
+    </script>
+
+<!-- Модальное окно выплаты -->
+<div id="payout-modal" class="modal">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3>💰 Выплата зарплаты</h3>
+            <button class="modal-close" onclick="closePayoutModal()">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <!-- Выбор преподавателя -->
+            <div class="form-group">
+                <label for="payout-teacher">Преподаватель</label>
+                <select id="payout-teacher" onchange="onPayoutTeacherChange()">
+                    <option value="">Выберите преподавателя</option>
+                    <?php foreach ($teachers as $teacher): ?>
+                        <option value="<?= $teacher['id'] ?>"
+                            <?= $teacherFilter === $teacher['id'] ? 'selected' : '' ?>
+                        ><?= e($teacher['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <!-- Статистика преподавателя -->
+            <div id="payout-stats" class="payout-stats" style="display: none;">
+                <div class="stat-item">
+                    <span class="stat-label">Одобрено:</span>
+                    <span class="stat-value" id="payout-approved">0 ₽</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Уже выплачено:</span>
+                    <span class="stat-value" id="payout-paid">0 ₽</span>
+                </div>
+                <div class="stat-item highlight">
+                    <span class="stat-label">К выплате:</span>
+                    <span class="stat-value" id="payout-balance">0 ₽</span>
+                </div>
+            </div>
+
+            <!-- Табы -->
+            <div class="payout-tabs" id="payout-tabs" style="display: none;">
+                <button class="payout-tab active" data-tab="arbitrary" onclick="switchPayoutTab('arbitrary')">
+                    Произвольная сумма
+                </button>
+                <button class="payout-tab" data-tab="weeks" onclick="switchPayoutTab('weeks')">
+                    По неделям
+                </button>
+                <button class="payout-tab" data-tab="month" onclick="switchPayoutTab('month')">
+                    За месяц
+                </button>
+            </div>
+
+            <!-- Контент табов -->
+            <div id="payout-content" style="display: none;">
+                <!-- Таб: Произвольная сумма -->
+                <div class="payout-tab-content active" data-tab="arbitrary">
+                    <div class="form-group">
+                        <label for="payout-amount">Сумма выплаты (₽)</label>
+                        <input type="number" id="payout-amount" placeholder="Введите сумму" min="1">
+                        <small>Введите сумму для выплаты (аванс или частичная выплата)</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="payout-notes">Комментарий</label>
+                        <input type="text" id="payout-notes" placeholder="Например: Аванс за декабрь">
+                    </div>
+                    <button class="btn btn-primary btn-full" onclick="processArbitraryPayout()">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Выплатить
+                    </button>
+                </div>
+
+                <!-- Таб: По неделям -->
+                <div class="payout-tab-content" data-tab="weeks">
+                    <p class="payout-hint">Выберите недели для выплаты (можно несколько):</p>
+                    <div id="payout-weeks-list" class="payout-weeks-list">
+                        <!-- Заполняется динамически -->
+                    </div>
+                    <div class="payout-weeks-total" id="payout-weeks-total" style="display: none;">
+                        <span>Итого к выплате:</span>
+                        <strong id="payout-weeks-sum">0 ₽</strong>
+                    </div>
+                    <button class="btn btn-primary btn-full" id="payout-weeks-btn" onclick="processWeeksPayout()" disabled>
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Выплатить выбранные недели
+                    </button>
+                </div>
+
+                <!-- Таб: За месяц -->
+                <div class="payout-tab-content" data-tab="month">
+                    <div class="form-group">
+                        <label for="payout-month-select">Выберите месяц</label>
+                        <select id="payout-month-select" onchange="onPayoutMonthChange()">
+                            <option value="">Выберите месяц</option>
+                            <?php foreach ($dataByMonth as $monthKey => $month): ?>
+                                <option value="<?= $monthKey ?>"><?= e($month['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div id="payout-month-info" class="payout-month-info" style="display: none;">
+                        <div class="month-stat">
+                            <span>Одобрено за месяц:</span>
+                            <span id="payout-month-approved">0 ₽</span>
+                        </div>
+                        <div class="month-stat">
+                            <span>Уже выплачено:</span>
+                            <span id="payout-month-paid">0 ₽</span>
+                        </div>
+                        <div class="month-stat highlight">
+                            <span>Остаток к выплате:</span>
+                            <strong id="payout-month-remaining">0 ₽</strong>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-full" id="payout-month-btn" onclick="processMonthPayout()" disabled>
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Выплатить остаток за месяц
+                    </button>
+                </div>
+            </div>
+
+            <!-- Сообщение когда преподаватель не выбран -->
+            <div id="payout-placeholder" class="payout-placeholder">
+                <span class="material-icons">person_search</span>
+                <p>Выберите преподавателя для оформления выплаты</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно редактирования выплаты -->
+<div id="edit-payment-modal" class="modal">
+    <div class="modal-content" style="max-width: 450px;">
+        <div class="modal-header">
+            <h3>✏️ Редактирование выплаты</h3>
+            <button class="modal-close" onclick="closeEditModal()">
+                ✕
+            </button>
+        </div>
+        <div class="modal-body" id="edit-payment-content">
+            <p style="text-align: center; padding: 20px;">Загрузка...</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Модальное окно */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        animation: fadeIn 0.2s;
+    }
+
+    .modal.active {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .modal-content {
+        background: #1f2937;
+        border-radius: 16px;
+        max-width: 600px;
+        width: 90%;
+        max-height: 90vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        animation: modalAppear 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    }
+
+    @keyframes modalAppear {
+        from {
+            opacity: 0;
+            transform: scale(0.95) translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
+
+    .modal-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #ffffff;
+    }
+
+    .modal-close {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border: none;
+        color: #e5e7eb;
+        cursor: pointer;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .modal-close:hover {
+        background: rgba(255, 255, 255, 0.15);
+        transform: scale(1.05);
+    }
+
+    .modal-close .material-icons {
+        font-size: 20px;
+    }
+
+    .modal-body {
+        padding: 24px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    .modal-footer {
+        padding: 16px 24px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        flex-shrink: 0;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #e5e7eb;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 12px 14px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        color: #ffffff;
+        font-size: 14px;
+        font-family: 'Manrope', sans-serif;
+        transition: all 0.2s;
+        box-sizing: border-box;
+    }
+
+    .form-group input::placeholder,
+    .form-group textarea::placeholder {
+        color: #6b7280;
+    }
+
+    .form-group input:hover,
+    .form-group select:hover,
+    .form-group textarea:hover {
+        border-color: rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: #d9ab5e;
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: 0 0 0 3px rgba(217, 171, 94, 0.15);
+    }
+
+    .form-group small {
+        display: block;
+        margin-top: 6px;
+        font-size: 12px;
+        color: #9ca3af;
+    }
+
+    .form-group textarea {
+        resize: vertical;
+        min-height: 80px;
+        line-height: 1.5;
+    }
+
+    .form-group select {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23d9ab5e' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        padding-right: 40px;
+        cursor: pointer;
+    }
+
+    .form-group select option {
+        background: #1f2937;
+        color: #ffffff;
+        padding: 10px;
+    }
+
+    .btn-outline {
+        background: rgba(255, 255, 255, 0.08);
+        color: #d1d5db;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-outline:hover {
+        background: rgba(255, 255, 255, 0.12);
+        color: #ffffff;
+    }
+
+    /* ========== Стили модалки выплат ========== */
+    .payout-stats {
+        display: flex;
+        gap: 16px;
+        padding: 16px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        margin-bottom: 20px;
+    }
+
+    .payout-stats .stat-item {
+        flex: 1;
+        text-align: center;
+    }
+
+    .payout-stats .stat-label {
+        display: block;
+        font-size: 12px;
+        color: #9ca3af;
+        margin-bottom: 4px;
+    }
+
+    .payout-stats .stat-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: #e5e7eb;
+    }
+
+    .payout-stats .stat-item.highlight .stat-value {
+        color: #10b981;
+    }
+
+    .payout-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        background: rgba(255, 255, 255, 0.05);
+        padding: 6px;
+        border-radius: 12px;
+    }
+
+    .payout-tab {
+        flex: 1;
+        padding: 10px 16px;
+        border: none;
+        background: transparent;
+        color: #9ca3af;
+        font-size: 13px;
+        font-weight: 600;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .payout-tab:hover {
+        color: #e5e7eb;
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .payout-tab.active {
+        background: #d9ab5e;
+        color: #ffffff;
+    }
+
+    .payout-tab-content {
+        display: none;
+    }
+
+    .payout-tab-content.active {
+        display: block;
+    }
+
+    .payout-hint {
+        font-size: 13px;
+        color: #9ca3af;
+        margin-bottom: 12px;
+    }
+
+    .payout-weeks-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 16px;
+        max-height: 250px;
+        overflow-y: auto;
+    }
+
+    .payout-week-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 2px solid transparent;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .payout-week-item:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .payout-week-item.selected {
+        background: rgba(217, 171, 94, 0.15);
+        border-color: #d9ab5e;
+    }
+
+    .payout-week-item.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .payout-week-item.disabled:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: transparent;
+    }
+
+    .payout-week-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .payout-week-dates {
+        font-weight: 600;
+        color: #e5e7eb;
+    }
+
+    .payout-week-status {
+        font-size: 12px;
+        color: #9ca3af;
+    }
+
+    .payout-week-status.has-pending {
+        color: #f59e0b;
+    }
+
+    .payout-week-amount {
+        font-weight: 700;
+        color: #10b981;
+    }
+
+    .payout-weeks-total {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        background: rgba(16, 185, 129, 0.1);
+        border-radius: 10px;
+        margin-bottom: 16px;
+        color: #e5e7eb;
+    }
+
+    .payout-weeks-total strong {
+        font-size: 18px;
+        color: #10b981;
+    }
+
+    .payout-month-info {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .payout-month-info .month-stat {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        color: #9ca3af;
+    }
+
+    .payout-month-info .month-stat:last-child {
+        border-bottom: none;
+    }
+
+    .payout-month-info .month-stat.highlight {
+        color: #e5e7eb;
+        padding-top: 12px;
+        margin-top: 4px;
+    }
+
+    .payout-month-info .month-stat.highlight strong {
+        color: #10b981;
+        font-size: 18px;
+    }
+
+    .payout-placeholder {
+        text-align: center;
+        padding: 40px 20px;
+        color: #6b7280;
+    }
+
+    .payout-placeholder .material-icons {
+        font-size: 48px;
+        margin-bottom: 12px;
+        opacity: 0.5;
+    }
+
+    .payout-placeholder p {
+        margin: 0;
+        font-size: 14px;
+    }
+
+    .btn-full {
+        width: 100%;
+        justify-content: center;
+    }
+</style>
+
+<script>
+    // ========== Данные для модалки выплат ==========
+    const payoutData = <?= json_encode([
+        'months' => array_map(function($monthKey, $month) {
+            return [
+                'key' => $monthKey,
+                'name' => $month['name'],
+                'approved' => $month['approved'],
+                'paid' => $month['paid'],
+                'pending' => $month['pending'],
+                'weeks' => $month['weeks']
+            ];
+        }, array_keys($dataByMonth), array_values($dataByMonth)),
+        'currentTeacher' => $teacherFilter
+    ]) ?>;
+
+    // Данные преподавателей по месяцам (будем загружать через API)
+    let teacherPayoutStats = null;
+
+    // ========== Функции модалки выплат ==========
+
+    function openPayoutModal() {
+        const modal = document.getElementById('payout-modal');
+        modal.classList.add('active');
+
+        // Если преподаватель уже выбран в фильтре - загружаем его данные
+        const teacherSelect = document.getElementById('payout-teacher');
+        if (teacherSelect.value) {
+            onPayoutTeacherChange();
+        }
+    }
+
+    function closePayoutModal() {
+        const modal = document.getElementById('payout-modal');
+        modal.classList.remove('active');
+
+        // Сбрасываем форму
+        document.getElementById('payout-amount').value = '';
+        document.getElementById('payout-notes').value = '';
+        document.getElementById('payout-month-select').value = '';
+
+        // Сбрасываем выбранные недели
+        document.querySelectorAll('.payout-week-item.selected').forEach(el => {
+            el.classList.remove('selected');
+        });
+        updateWeeksTotal();
+    }
+
+    async function onPayoutTeacherChange() {
+        const teacherId = document.getElementById('payout-teacher').value;
+        const statsEl = document.getElementById('payout-stats');
+        const tabsEl = document.getElementById('payout-tabs');
+        const contentEl = document.getElementById('payout-content');
+        const placeholderEl = document.getElementById('payout-placeholder');
+
+        if (!teacherId) {
+            statsEl.style.display = 'none';
+            tabsEl.style.display = 'none';
+            contentEl.style.display = 'none';
+            placeholderEl.style.display = 'block';
+            return;
+        }
+
+        // Загружаем статистику преподавателя
+        try {
+            const response = await fetch(`/zarplata/api/payments.php?action=teacher_stats&teacher_id=${teacherId}`);
+            const result = await response.json();
+
+            if (result.success) {
+                teacherPayoutStats = result.data;
+
+                // Отображаем статистику
+                document.getElementById('payout-approved').textContent = formatMoney(teacherPayoutStats.approved);
+                document.getElementById('payout-paid').textContent = formatMoney(teacherPayoutStats.paid);
+                document.getElementById('payout-balance').textContent = formatMoney(teacherPayoutStats.balance);
+
+                statsEl.style.display = 'flex';
+                tabsEl.style.display = 'flex';
+                contentEl.style.display = 'block';
+                placeholderEl.style.display = 'none';
+
+                // Обновляем список недель
+                renderPayoutWeeks();
+            } else {
+                alert(result.error || 'Ошибка загрузки данных');
+            }
+        } catch (error) {
+            console.error('Error loading teacher stats:', error);
+            alert('Ошибка загрузки данных преподавателя');
+        }
+    }
+
+    function switchPayoutTab(tabName) {
+        // Переключаем табы
+        document.querySelectorAll('.payout-tab').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.tab === tabName);
+        });
+
+        // Переключаем контент
+        document.querySelectorAll('.payout-tab-content').forEach(content => {
+            content.classList.toggle('active', content.dataset.tab === tabName);
+        });
+    }
+
+    function renderPayoutWeeks() {
+        const container = document.getElementById('payout-weeks-list');
+        container.innerHTML = '';
+
+        if (!teacherPayoutStats || !teacherPayoutStats.weeks) {
+            container.innerHTML = '<p class="payout-hint">Нет данных о неделях</p>';
+            return;
+        }
+
+        teacherPayoutStats.weeks.forEach(week => {
+            const hasPending = week.pending > 0;
+            const approvedAmount = week.approved;
+
+            const item = document.createElement('div');
+            item.className = 'payout-week-item' + (hasPending ? ' disabled' : '');
+            item.dataset.weekNum = week.week_num;
+            item.dataset.monthKey = week.month_key;
+            item.dataset.amount = approvedAmount;
+            item.dataset.hasPending = hasPending ? '1' : '0';
+
+            item.innerHTML = `
+                <div class="payout-week-info">
+                    <span class="payout-week-dates">${week.dates}</span>
+                    <span class="payout-week-status ${hasPending ? 'has-pending' : ''}">
+                        ${hasPending ? '⚠ Есть неподтверждённые' : '✓ Все одобрены'}
+                    </span>
+                </div>
+                <span class="payout-week-amount">${formatMoney(approvedAmount)}</span>
+            `;
+
+            if (!hasPending) {
+                item.onclick = () => toggleWeekSelection(item);
+            } else {
+                item.onclick = () => alert('На этой неделе есть неподтверждённые выплаты. Сначала одобрите их.');
+            }
+
+            container.appendChild(item);
+        });
+    }
+
+    function toggleWeekSelection(item) {
+        if (item.dataset.hasPending === '1') return;
+
+        item.classList.toggle('selected');
+        updateWeeksTotal();
+    }
+
+    function updateWeeksTotal() {
+        const selected = document.querySelectorAll('.payout-week-item.selected');
+        let total = 0;
+
+        selected.forEach(item => {
+            total += parseInt(item.dataset.amount) || 0;
+        });
+
+        const totalEl = document.getElementById('payout-weeks-total');
+        const sumEl = document.getElementById('payout-weeks-sum');
+        const btn = document.getElementById('payout-weeks-btn');
+
+        sumEl.textContent = formatMoney(total);
+        totalEl.style.display = selected.length > 0 ? 'flex' : 'none';
+        btn.disabled = selected.length === 0;
+    }
+
+    function onPayoutMonthChange() {
+        const monthKey = document.getElementById('payout-month-select').value;
+        const infoEl = document.getElementById('payout-month-info');
+        const btn = document.getElementById('payout-month-btn');
+
+        if (!monthKey || !teacherPayoutStats) {
+            infoEl.style.display = 'none';
+            btn.disabled = true;
+            return;
+        }
+
+        // Находим данные месяца
+        const monthData = teacherPayoutStats.months.find(m => m.key === monthKey);
+
+        if (monthData) {
+            document.getElementById('payout-month-approved').textContent = formatMoney(monthData.approved);
+            document.getElementById('payout-month-paid').textContent = formatMoney(monthData.paid);
+            const remaining = monthData.approved - monthData.paid;
+            document.getElementById('payout-month-remaining').textContent = formatMoney(remaining);
+
+            infoEl.style.display = 'block';
+            btn.disabled = remaining <= 0;
+        } else {
+            infoEl.style.display = 'none';
+            btn.disabled = true;
+        }
+    }
+
+    // ========== Функции обработки выплат ==========
+
+    async function processArbitraryPayout() {
+        const teacherId = document.getElementById('payout-teacher').value;
+        const amount = parseInt(document.getElementById('payout-amount').value);
+        const notes = document.getElementById('payout-notes').value || 'Выплата';
+
+        if (!teacherId) {
+            alert('Выберите преподавателя');
+            return;
+        }
+
+        if (!amount || amount <= 0) {
+            alert('Введите корректную сумму');
+            return;
+        }
+
+        if (!confirm(`Выплатить ${formatMoney(amount)}?`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/zarplata/api/payments.php?action=payout_arbitrary', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ teacher_id: teacherId, amount, notes })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('Выплата успешно оформлена!');
+                closePayoutModal();
+                reloadWithWeekParams();
+            } else {
+                alert(result.error || 'Ошибка при оформлении выплаты');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Ошибка при оформлении выплаты');
+        }
+    }
+
+    async function processWeeksPayout() {
+        const teacherId = document.getElementById('payout-teacher').value;
+        const selected = document.querySelectorAll('.payout-week-item.selected');
+
+        if (!teacherId) {
+            alert('Выберите преподавателя');
+            return;
+        }
+
+        if (selected.length === 0) {
+            alert('Выберите хотя бы одну неделю');
+            return;
+        }
+
+        const weeks = [];
+        let totalAmount = 0;
+
+        selected.forEach(item => {
+            weeks.push({
+                week_num: item.dataset.weekNum,
+                month_key: item.dataset.monthKey
+            });
+            totalAmount += parseInt(item.dataset.amount) || 0;
+        });
+
+        if (!confirm(`Выплатить ${formatMoney(totalAmount)} за ${weeks.length} нед.?`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/zarplata/api/payments.php?action=payout_weeks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ teacher_id: teacherId, weeks })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert(`Выплачено: ${formatMoney(result.data.total_amount)} (${result.data.payments_count} выплат)`);
+                closePayoutModal();
+                reloadWithWeekParams();
+            } else {
+                alert(result.error || 'Ошибка при оформлении выплаты');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Ошибка при оформлении выплаты');
+        }
+    }
+
+    async function processMonthPayout() {
+        const teacherId = document.getElementById('payout-teacher').value;
+        const monthKey = document.getElementById('payout-month-select').value;
+
+        if (!teacherId) {
+            alert('Выберите преподавателя');
+            return;
+        }
+
+        if (!monthKey) {
+            alert('Выберите месяц');
+            return;
+        }
+
+        const monthData = teacherPayoutStats.months.find(m => m.key === monthKey);
+        const remaining = monthData ? (monthData.approved - monthData.paid) : 0;
+
+        if (remaining <= 0) {
+            alert('Нет остатка к выплате за этот месяц');
+            return;
+        }
+
+        if (!confirm(`Выплатить остаток ${formatMoney(remaining)} за ${monthData.name}?`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/zarplata/api/payments.php?action=payout_month', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ teacher_id: teacherId, month_key: monthKey })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert(`Выплачено: ${formatMoney(result.data.total_amount)} (${result.data.payments_count} выплат)`);
+                closePayoutModal();
+                reloadWithWeekParams();
+            } else {
+                alert(result.error || 'Ошибка при оформлении выплаты');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Ошибка при оформлении выплаты');
+        }
+    }
+
+    function formatMoney(amount) {
+        return new Intl.NumberFormat('ru-RU').format(amount) + ' ₽';
+    }
+
+    // Закрыть модалку при клике вне её
+    window.onclick = function(event) {
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            if (event.target === modal) {
+                modal.classList.remove('active');
+            }
+        });
+    }
+
+    // ========== Функция одобрения всех выплат за день ==========
+
+    async function approveDay(btn, paymentIds) {
+        if (!paymentIds || paymentIds.length === 0) {
+            alert('Нет выплат для одобрения');
+            return;
+        }
+
+        // Фильтруем только pending выплаты (на бэкенде тоже есть проверка)
+        if (!confirm(`Одобрить ${paymentIds.length} выплат за этот день?`)) {
+            return;
+        }
+
+        btn.disabled = true;
+        const originalContent = btn.innerHTML;
+        btn.innerHTML = '<span style="display: inline-block; animation: spin 1s linear infinite;">⟳</span>';
+
+        try {
+            const response = await fetch('/zarplata/api/payments.php?action=approve_bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: paymentIds })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                if (result.data.approved > 0) {
+                    btn.classList.add('approved');
+                    btn.title = 'Все выплаты одобрены';
+                    btn.innerHTML = originalContent;
+                    alert(`Одобрено выплат: ${result.data.approved} из ${result.data.total}`);
+                    // Перезагружаем страницу для обновления данных
+                    reloadWithWeekParams();
+                } else {
+                    btn.innerHTML = originalContent;
+                    btn.disabled = false;
+                    alert('Нет выплат для одобрения (все уже одобрены или выплачены)');
+                }
+            } else {
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+                alert(result.error || 'Ошибка одобрения');
+            }
+        } catch (error) {
+            console.error('Error approving payments:', error);
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+            alert('Ошибка при одобрении выплат');
+        }
+    }
+
+    // ========== Функции редактирования выплаты ==========
+
+    // Открыть модальное окно редактирования
+    async function openEditModal(paymentId) {
+        const modal = document.getElementById('edit-payment-modal');
+        const content = document.getElementById('edit-payment-content');
+
+        content.innerHTML = '<p style="text-align: center; padding: 20px;">Загрузка...</p>';
+        modal.classList.add('active');
+
+        try {
+            const response = await fetch(`/zarplata/api/payments.php?action=get&id=${paymentId}`);
+            const result = await response.json();
+
+            if (result.success) {
+                const payment = result.data;
+
+                // Парсим количество учеников из calculation_method
+                let attendedCount = '';
+                let expectedCount = '';
+                if (payment.calculation_method) {
+                    const match = payment.calculation_method.match(/(\d+)\s*из\s*(\d+)/iu);
+                    if (match) {
+                        attendedCount = match[1];
+                        expectedCount = match[2];
+                    }
+                }
+
+                content.innerHTML = `
+                    <form id="edit-payment-form" onsubmit="saveEditPayment(event)">
+                        <input type="hidden" id="edit-payment-id" value="${payment.id}">
+
+                        <div style="margin-bottom: 20px; padding: 16px; background: rgba(99, 102, 241, 0.1); border-radius: 8px; border-left: 3px solid #6366f1;">
+                            <div style="font-weight: 600; margin-bottom: 4px;">Выплата #${payment.id}</div>
+                            <div style="color: var(--text-medium-emphasis); font-size: 0.9em;">
+                                ${escapeHtml(payment.teacher_name || 'Преподаватель')} • ${formatDateRu(payment.lesson_date || payment.created_at)}
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Сумма выплаты (₽)</label>
+                            <input type="number" id="edit-amount" class="form-control"
+                                   value="${payment.amount}" min="0" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Пришло учеников</label>
+                            <input type="number" id="edit-attended" class="form-control"
+                                   value="${attendedCount}" min="0" placeholder="Количество">
+                            ${expectedCount ? `<small style="color: var(--text-medium-emphasis);">Ожидалось: ${expectedCount}</small>` : ''}
+                        </div>
+
+                        <div class="form-group">
+                            <label>Комментарий</label>
+                            <textarea id="edit-notes" class="form-control" rows="2"
+                                      placeholder="Причина изменения">${escapeHtml(payment.notes || '')}</textarea>
+                        </div>
+
+                        <div style="display: flex; gap: 12px; margin-top: 24px;">
+                            <button type="button" class="btn btn-outline" onclick="closeEditModal()" style="flex: 1;">
+                                Отмена
+                            </button>
+                            <button type="submit" id="edit-save-btn" class="btn btn-primary" style="flex: 1;">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right: 8px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                Сохранить
+                            </button>
+                        </div>
+
+                        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
+                            <button type="button" class="btn btn-outline" onclick="deletePayment(${payment.id})"
+                                    style="width: 100%; color: #ef4444; border-color: rgba(239, 68, 68, 0.3);">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right: 8px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                                Удалить выплату
+                            </button>
+                        </div>
+                    </form>
+                `;
+            } else {
+                content.innerHTML = `<p style="color: #ef4444; text-align: center;">${result.error || 'Ошибка загрузки'}</p>`;
+            }
+        } catch (error) {
+            console.error('Error loading payment:', error);
+            content.innerHTML = '<p style="color: #ef4444; text-align: center;">Ошибка загрузки данных</p>';
+        }
+    }
+
+    // Закрыть модальное окно
+    function closeEditModal() {
+        document.getElementById('edit-payment-modal').classList.remove('active');
+    }
+
+    // Сохранить изменения
+    async function saveEditPayment(event) {
+        event.preventDefault();
+
+        const paymentId = document.getElementById('edit-payment-id').value;
+        const amount = document.getElementById('edit-amount').value;
+        const attended = document.getElementById('edit-attended').value;
+        const notes = document.getElementById('edit-notes').value;
+
+        const saveBtn = document.getElementById('edit-save-btn');
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span style="display: inline-block; animation: spin 1s linear infinite;">⟳</span> Сохранение...';
+
+        try {
+            const data = { id: parseInt(paymentId) };
+
+            if (amount) data.amount = parseInt(amount);
+            if (attended) data.student_count = parseInt(attended);
+            if (notes !== undefined) data.notes = notes;
+
+            const response = await fetch('/zarplata/api/payments.php?action=update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('Выплата обновлена!');
+                closeEditModal();
+                reloadWithWeekParams();
+            } else {
+                alert(result.error || 'Ошибка сохранения');
+            }
+        } catch (error) {
+            console.error('Error updating payment:', error);
+            alert('Ошибка сохранения данных');
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '✓ Сохранить';
+        }
+    }
+
+    // Удалить выплату
+    async function deletePayment(paymentId) {
+        if (!confirm('Вы уверены, что хотите удалить эту выплату?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/zarplata/api/payments.php?action=delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: paymentId })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('Выплата удалена');
+                closeEditModal();
+                reloadWithWeekParams();
+            } else {
+                alert(result.error || 'Ошибка удаления');
+            }
+        } catch (error) {
+            console.error('Error deleting payment:', error);
+            alert('Ошибка удаления');
+        }
+    }
+
+    // Вспомогательные функции
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function formatDateRu(dateStr) {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('ru-RU');
+    }
+</script>
+
+<style>
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+</style>
+
+<?php require_once __DIR__ . '/templates/footer-premium.php'; ?>
