@@ -76,7 +76,7 @@ $webhookUrl = 'https://эвриум.рф/zarplata/api/incoming_payments.php?acti
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Логи Webhook - Zarplata</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
         * {
@@ -85,7 +85,7 @@ $webhookUrl = 'https://эвриум.рф/zarplata/api/incoming_payments.php?acti
             box-sizing: border-box;
         }
         body {
-            font-family: 'Montserrat', sans-serif;
+            font-family: 'Manrope', sans-serif;
             background: #121212;
             color: #e0e0e0;
             min-height: 100vh;
@@ -131,7 +131,7 @@ $webhookUrl = 'https://эвриум.рф/zarplata/api/incoming_payments.php?acti
             border-radius: 8px;
             border: none;
             cursor: pointer;
-            font-family: 'Montserrat', sans-serif;
+            font-family: 'Manrope', sans-serif;
             font-size: 14px;
             font-weight: 500;
             text-decoration: none;

@@ -515,13 +515,13 @@ body {
 
 /* Цвета преподавателей */
 .student-card.teacher-1 {
-    background: linear-gradient(135deg, rgba(217, 171, 94, 0.35) 0%, rgba(217, 171, 94, 0.15) 100%);
-    border: 1px solid rgba(217, 171, 94, 0.6);
-    border-left: 3px solid rgba(217, 171, 94, 0.9);
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.35) 0%, rgba(20, 184, 166, 0.15) 100%);
+    border: 1px solid rgba(20, 184, 166, 0.6);
+    border-left: 3px solid rgba(20, 184, 166, 0.9);
 }
 .student-card.teacher-1:hover {
-    border-color: #d9ab5e;
-    background: linear-gradient(135deg, rgba(217, 171, 94, 0.45) 0%, rgba(217, 171, 94, 0.25) 100%);
+    border-color: #14b8a6;
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.45) 0%, rgba(20, 184, 166, 0.25) 100%);
 }
 
 .student-card.teacher-2 {
@@ -620,7 +620,7 @@ body {
     border: 1px solid rgba(255,255,255,0.2);
 }
 
-.teacher-color-1 { background: rgba(217, 171, 94, 0.6); }
+.teacher-color-1 { background: rgba(20, 184, 166, 0.6); }
 .teacher-color-2 { background: rgba(168, 85, 247, 0.6); }
 .teacher-color-3 { background: rgba(59, 130, 246, 0.6); }
 .teacher-color-4 { background: rgba(249, 115, 22, 0.6); }
@@ -757,7 +757,7 @@ body {
 .add-student-btn:hover {
     background: var(--accent-hover);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(217, 171, 94, 0.3);
+    box-shadow: 0 4px 12px rgba(20, 184, 166, 0.3);
 }
 
 .add-student-btn .material-icons {
@@ -881,7 +881,7 @@ body {
 .modal-body select:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(217, 171, 94, 0.2);
+    box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.2);
 }
 
 .form-group select:disabled {
@@ -1015,7 +1015,7 @@ body {
 .btn-save:hover {
     background: var(--accent-hover);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(217, 171, 94, 0.3);
+    box-shadow: 0 4px 12px rgba(20, 184, 166, 0.3);
 }
 
 .btn-save:disabled {

@@ -19,15 +19,15 @@ if (!defined('ACTIVE_PAGE')) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= PAGE_TITLE ?> — Эвриум · Premium</title>
+    <title><?= PAGE_TITLE ?> — Эвриум · Preview</title>
 
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
 
-    <!-- Google Fonts: Unbounded (display) + Manrope (UI) + JetBrains Mono + Nunito (fallback для встроенных стилей) -->
+    <!-- Google Fonts: Manrope (UI) + JetBrains Mono (числа) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
     <!-- Premium Theme CSS -->
@@ -60,28 +60,25 @@ if (!defined('ACTIVE_PAGE')) {
             display: none;
         }
         .preloader-text {
-            font-family: 'Unbounded', 'Manrope', sans-serif;
-            font-weight: 500;
-            font-size: 2.6em;
+            font-family: 'Manrope', sans-serif;
+            font-weight: 800;
+            font-size: 3.8em;
             text-transform: uppercase;
-            letter-spacing: 0.32em;
-            background: linear-gradient(100deg, #f6f2e7 35%, #d9ab5e 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
+            letter-spacing: 0.3em;
+            color: var(--accent, #14b8a6);
             text-align: center;
         }
         .preloader-text .word {
             display: inline-block;
-            line-height: 1.2em;
+            line-height: 1em;
             margin: 0 0.1em;
             opacity: 0;
-            transform: scale(1.6);
+            transform: scale(14);
         }
         @media (max-width: 768px) {
             .preloader-text {
-                font-size: 1.4em;
-                letter-spacing: 0.18em;
+                font-size: 2em;
+                letter-spacing: 0.15em;
             }
         }
     </style>
@@ -112,18 +109,18 @@ if (!defined('ACTIVE_PAGE')) {
                 anime.timeline({loop: false})
                     .add({
                         targets: '.preloader-text .word',
-                        scale: [1.6, 1],
+                        scale: [14, 1],
                         opacity: [0, 1],
                         easing: "easeOutCirc",
-                        duration: 700,
-                        delay: (el, i) => 500 * i
+                        duration: 800,
+                        delay: (el, i) => 800 * i
                     })
                     .add({
                         targets: '.preloader',
                         opacity: 0,
                         duration: 600,
                         easing: "easeOutExpo",
-                        delay: 1200,
+                        delay: 2600,
                         complete: hidePreloader
                     });
             }

@@ -229,7 +229,7 @@ require_once __DIR__ . '/templates/header-premium.php';
         <h2 class="table-title">Синхронизация количества студентов</h2>
     </div>
     <div style="padding: 24px;">
-        <div style="margin-bottom: 20px; padding: 16px; background: rgba(217, 171, 94, 0.1); border-radius: 8px; color: #d9ab5e;">
+        <div style="margin-bottom: 20px; padding: 16px; background: rgba(20, 184, 166, 0.1); border-radius: 8px; color: #14b8a6;">
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                 <span class="material-icons">sync</span>
                 <strong>Синхронизация expected_students</strong>
