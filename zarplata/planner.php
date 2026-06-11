@@ -720,6 +720,12 @@ body.readonly .block-title {
     display: none;
 }
 
+/* Утренние строки будней: пустые скрыты, пока не включено «Утро».
+   Строки с уроками видны всегда. */
+body:not(.show-morning) .morning-row:not(.has-lessons) {
+    display: none;
+}
+
 .time-cell {
     background: var(--bg-elevated);
     padding: 6px;
@@ -1247,6 +1253,12 @@ body.readonly .block-title {
             <button class="day-filter-btn active" data-day="7" onclick="toggleDayFilter(this)">Вс</button>
         </div>
 
+        <div class="filter-group">
+            <button class="day-filter-btn" id="morningToggle" onclick="toggleMorning()" title="Показать утренние часы будней (08:00–14:00) для добавления уроков">
+                ☀ Утро
+            </button>
+        </div>
+
         <div class="filter-divider"></div>
 
         <div class="filter-group">
@@ -1298,12 +1310,28 @@ body.readonly .block-title {
                     <div class="grid-header day-header" data-day="<?= $d ?>"><?= $daysOfWeek[$d] ?></div>
                 <?php endfor; ?>
 
-                <?php for ($hour = 15; $hour <= 21; $hour++):
+                <?php for ($hour = 8; $hour <= 21; $hour++):
                     $time = sprintf('%02d:00', $hour);
+
+                    // Утренние строки будней (до 15:00): скрыты, если пустые
+                    $rowClass = '';
+                    if ($hour < 15) {
+                        $rowHasLessons = false;
+                        foreach ($teacherCols as $tcCheck) {
+                            for ($dCheck = 1; $dCheck <= 5; $dCheck++) {
+                                $b = $blocks["{$dCheck}_{$time}_{$tcCheck['id']}"] ?? null;
+                                if ($b && (($b['title'] && trim($b['title']['content']) !== '') || !empty($b['students']))) {
+                                    $rowHasLessons = true;
+                                    break 2;
+                                }
+                            }
+                        }
+                        $rowClass = ' morning-row' . ($rowHasLessons ? ' has-lessons' : '');
+                    }
                 ?>
-                    <div class="time-cell"><?= $time ?></div>
+                    <div class="time-cell<?= $rowClass ?>"><?= $time ?></div>
                     <?php for ($dayNum = 1; $dayNum <= 5; $dayNum++): ?>
-                        <div class="schedule-cell" data-day="<?= $dayNum ?>" data-time="<?= $time ?>">
+                        <div class="schedule-cell<?= $rowClass ?>" data-day="<?= $dayNum ?>" data-time="<?= $time ?>">
                             <div class="rooms-container" style="grid-template-columns: repeat(<?= count($teacherCols) ?>, 1fr);">
                                 <?php foreach ($teacherCols as $tc) renderLessonBlock($dayNum, $time, $tc, $blocks); ?>
                             </div>
@@ -1440,10 +1468,24 @@ document.addEventListener('DOMContentLoaded', function() {
     updateGridColumns();
     updateStudentCount();
 
+    if (localStorage.getItem('plannerShowMorning') === '1') {
+        document.body.classList.add('show-morning');
+        document.getElementById('morningToggle').classList.add('active');
+    }
+
     if (READ_ONLY) {
         document.body.classList.add('readonly');
     }
 });
+
+// ========== УТРЕННИЕ ЧАСЫ БУДНЕЙ ==========
+
+function toggleMorning() {
+    const show = !document.body.classList.contains('show-morning');
+    document.body.classList.toggle('show-morning', show);
+    document.getElementById('morningToggle').classList.toggle('active', show);
+    localStorage.setItem('plannerShowMorning', show ? '1' : '0');
+}
 
 // ========== РЕДАКТИРОВАНИЕ ЗАГОЛОВКА БЛОКА (инлайн) ==========
 
