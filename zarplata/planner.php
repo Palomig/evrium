@@ -812,13 +812,19 @@ body.readonly .block-title {
     text-overflow: ellipsis;
 }
 
+/* Пустой заголовок — явное приглашение создать урок */
 .block-title.is-empty::before {
-    content: '·';
+    content: '+ урок';
     color: #4b5563;
+    font-weight: 600;
 }
 
 .block-title:hover {
     background: rgba(255, 255, 255, 0.09);
+}
+
+.block-title.is-empty:hover::before {
+    color: var(--accent);
 }
 
 /* Цвет блока (по заголовку) */
