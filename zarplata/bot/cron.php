@@ -43,9 +43,9 @@ $currentTime = date('H:i');
 error_log("[CRON] Looking for all lessons that started before {$currentTime} on day {$dayOfWeek}");
 
 // ⭐ ЕДИНЫЙ ИСТОЧНИК: расписание-планировщик (planner_notes)
-// Преподаватель определяется по цвету ячейки/блока (как в легенде планировщика)
+// Преподаватель: teacher_id записи, фолбэк — цвет ячейки/блока (легаси-записи)
 $dayNotes = dbQuery(
-    "SELECT time, room, kind, content, color FROM planner_notes
+    "SELECT time, room, kind, content, color, teacher_id FROM planner_notes
      WHERE day = ?
        AND (temp_until IS NULL OR temp_until >= CURDATE())
      ORDER BY time, room, kind, position, id",
@@ -54,14 +54,20 @@ $dayNotes = dbQuery(
 
 error_log("[CRON] Found " . count($dayNotes) . " planner notes for day {$dayOfWeek}");
 
-// Карта цвет → активный преподаватель
+// Карта цвет → активный преподаватель (фолбэк для легаси-записей)
 $colorToTeacher = plannerColorTeacherMap();
+$activeTeacherIds = array_values($colorToTeacher);
 
-// Заголовки блоков: "time_room" → запись
+// Заголовки блоков: "time_room" → запись (для фолбэка и предмета)
+// Плюс заголовки по преподавателю: "time_teacher" → запись
 $blockTitles = [];
+$teacherTitles = [];
 foreach ($dayNotes as $n) {
     if ($n['kind'] === 'title') {
         $blockTitles[$n['time'] . '_' . $n['room']] = $n;
+        if (!empty($n['teacher_id'])) {
+            $teacherTitles[$n['time'] . '_' . $n['teacher_id']] = $n;
+        }
     }
 }
 
@@ -80,21 +86,27 @@ foreach ($dayNotes as $n) {
         continue;
     }
 
-    $title = $blockTitles[$n['time'] . '_' . $n['room']] ?? null;
-
-    // Преподаватель ячейки: цвет ячейки → цвет заголовка блока → 1 (по умолчанию)
-    $color = (int)$n['color'];
-    if (!$color && $title) {
-        $color = (int)$title['color'];
+    // Преподаватель: teacher_id записи → цвет ячейки → цвет заголовка блока → c1
+    $teacherId = (int)($n['teacher_id'] ?? 0);
+    if (!$teacherId || !in_array($teacherId, $activeTeacherIds, true)) {
+        $color = (int)$n['color'];
+        $legacyTitle = $blockTitles[$n['time'] . '_' . $n['room']] ?? null;
+        if (!$color && $legacyTitle) {
+            $color = (int)$legacyTitle['color'];
+        }
+        if (!$color) {
+            $color = 1;
+        }
+        $teacherId = $colorToTeacher[$color] ?? null;
     }
-    if (!$color) {
-        $color = 1;
-    }
-
-    $teacherId = $colorToTeacher[$color] ?? null;
     if (!$teacherId) {
         continue;
     }
+
+    // Заголовок блока: сперва по преподавателю, потом по кабинету (легаси)
+    $title = $teacherTitles[$n['time'] . '_' . $teacherId]
+        ?? $blockTitles[$n['time'] . '_' . $n['room']]
+        ?? null;
 
     // Предмет из заголовка блока («9 Мат.» → «Мат.»)
     $subject = 'Мат.';

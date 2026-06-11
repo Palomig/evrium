@@ -22,23 +22,28 @@ function getStudentsForLesson($teacherId, $dayOfWeek, $timeStart) {
     $dayOfWeek = (int)$dayOfWeek;
     $timeStart = substr($timeStart, 0, 5); // "17:00:00" -> "17:00"
 
-    // Карта цвет → активный преподаватель (как в легенде планировщика)
+    // Карта цвет → активный преподаватель (фолбэк для легаси-записей)
     $colorToTeacher = plannerColorTeacherMap();
+    $activeTeacherIds = array_values($colorToTeacher);
 
     // Записи всех блоков этого дня и времени; просроченные временные не учитываем
     $notes = dbQuery(
-        "SELECT room, kind, content, color FROM planner_notes
+        "SELECT room, kind, content, color, teacher_id FROM planner_notes
          WHERE day = ? AND time = ?
            AND (temp_until IS NULL OR temp_until >= CURDATE())
          ORDER BY room, kind, position, id",
         [$dayOfWeek, $timeStart]
     );
 
-    // Заголовки блоков по кабинетам
-    $titles = [];
+    // Заголовки блоков: по преподавателю и по кабинету (легаси)
+    $titlesByTeacher = [];
+    $titlesByRoom = [];
     foreach ($notes as $n) {
         if ($n['kind'] === 'title') {
-            $titles[(int)$n['room']] = $n;
+            if (!empty($n['teacher_id'])) {
+                $titlesByTeacher[(int)$n['teacher_id']] = $n;
+            }
+            $titlesByRoom[(int)$n['room']] = $n;
         }
     }
 
@@ -51,20 +56,24 @@ function getStudentsForLesson($teacherId, $dayOfWeek, $timeStart) {
             continue;
         }
 
-        $room = (int)$n['room'];
-        $title = $titles[$room] ?? null;
-
-        // Преподаватель ячейки: цвет ячейки → цвет заголовка блока → 1
-        $color = (int)$n['color'];
-        if (!$color && $title) {
-            $color = (int)$title['color'];
+        // Преподаватель: teacher_id записи → цвет ячейки → цвет блока → c1
+        $noteTeacher = (int)($n['teacher_id'] ?? 0);
+        if (!$noteTeacher || !in_array($noteTeacher, $activeTeacherIds, true)) {
+            $color = (int)$n['color'];
+            $legacyTitle = $titlesByRoom[(int)$n['room']] ?? null;
+            if (!$color && $legacyTitle) {
+                $color = (int)$legacyTitle['color'];
+            }
+            if (!$color) {
+                $color = 1;
+            }
+            $noteTeacher = $colorToTeacher[$color] ?? 0;
         }
-        if (!$color) {
-            $color = 1;
-        }
-        if (($colorToTeacher[$color] ?? null) !== $teacherId) {
+        if ($noteTeacher !== $teacherId) {
             continue;
         }
+
+        $title = $titlesByTeacher[$teacherId] ?? ($titlesByRoom[(int)$n['room']] ?? null);
 
         // Класс и предмет из заголовка блока
         $classLabel = null;

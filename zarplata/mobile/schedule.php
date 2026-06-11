@@ -1,30 +1,36 @@
 <?php
 /**
  * Mobile Schedule Page — расписание из планировщика (planner_notes)
- * Дни-чипы сверху, блоки уроков карточками. Только просмотр,
- * редактирование — в десктопном планировщике.
+ * Чипы преподавателей (выбирается один) + чипы дней.
+ * Редактирование: тап по плашке/заголовку — модалка, «+» добавляет ученика,
+ * «+ Добавить урок» создаёт новый блок на выбранный день.
  */
 
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/auth.php';
 require_once __DIR__ . '/../config/helpers.php';
+require_once __DIR__ . '/../config/student_helpers.php';
 
 requireAuth();
 $user = getCurrentUser();
 
-// Преподаватели для легенды (цвет = (id % 8) ?: 8, как в планировщике)
+// Преподаватели (цвет = (id % 8) ?: 8, как в планировщике)
 $teachers = dbQuery("
     SELECT id, COALESCE(display_name, name) AS name
     FROM teachers
     WHERE active = 1
-    ORDER BY name
+    ORDER BY id
 ", []);
+
+$colorToTeacher = plannerColorTeacherMap();
+$activeTeacherIds = array_values($colorToTeacher);
+$fallbackTeacherId = $colorToTeacher[1] ?? ($activeTeacherIds[0] ?? 0);
 
 // Все записи расписания (просроченные временные не показываем)
 $notes = [];
 try {
     $notes = dbQuery(
-        "SELECT day, time, room, kind, content, color, temp_until
+        "SELECT id, day, time, room, kind, content, color, temp_until, teacher_id
          FROM planner_notes
          WHERE (temp_until IS NULL OR temp_until >= CURDATE())
          ORDER BY day, time, room, kind, position, id",
@@ -34,37 +40,57 @@ try {
     $notes = [];
 }
 
-// Группируем: день → "time_room" → блок
+// Цвета легаси-заголовков по старым блокам (для фолбэка)
+$legacyTitleColors = [];
+foreach ($notes as $n) {
+    if ($n['kind'] === 'title') {
+        $legacyTitleColors["{$n['day']}_{$n['time']}_{$n['room']}"] = (int)$n['color'];
+    }
+}
+
+// Группируем: день → преподаватель → "time" → блок
 $days = [];
 foreach ($notes as $n) {
+    // Преподаватель: teacher_id → цвет ячейки → цвет блока → фолбэк
+    $tid = (int)($n['teacher_id'] ?? 0);
+    if (!$tid || !in_array($tid, $activeTeacherIds, true)) {
+        $color = (int)$n['color'];
+        if (!$color) {
+            $color = $legacyTitleColors["{$n['day']}_{$n['time']}_{$n['room']}"] ?? 0;
+        }
+        $tid = $colorToTeacher[$color] ?? $fallbackTeacherId;
+    }
+
     $day = (int)$n['day'];
-    $key = $n['time'] . '_' . $n['room'];
-    if (!isset($days[$day][$key])) {
-        $days[$day][$key] = [
-            'time' => substr($n['time'], 0, 5),
-            'room' => (int)$n['room'],
+    $time = substr($n['time'], 0, 5);
+    if (!isset($days[$day][$tid][$time])) {
+        $days[$day][$tid][$time] = [
+            'time' => $time,
             'title' => null,
-            'title_color' => 0,
+            'title_id' => null,
             'students' => []
         ];
     }
     if ($n['kind'] === 'title') {
-        $days[$day][$key]['title'] = trim($n['content']);
-        $days[$day][$key]['title_color'] = (int)$n['color'];
+        if ($days[$day][$tid][$time]['title'] === null || $days[$day][$tid][$time]['title'] === '') {
+            $days[$day][$tid][$time]['title'] = trim($n['content']);
+            $days[$day][$tid][$time]['title_id'] = (int)$n['id'];
+        }
     } elseif (trim($n['content']) !== '') {
-        $days[$day][$key]['students'][] = [
+        $days[$day][$tid][$time]['students'][] = [
+            'id' => (int)$n['id'],
             'name' => trim($n['content']),
-            'color' => (int)$n['color'],
             'temp' => !empty($n['temp_until'])
         ];
     }
 }
 
-// Блоки без учеников и без заголовка не показываем; сортируем по времени
-foreach ($days as $day => $blocks) {
-    $blocks = array_filter($blocks, fn($b) => !empty($b['students']) || ($b['title'] !== null && $b['title'] !== ''));
-    usort($blocks, fn($a, $b) => [$a['time'], $a['room']] <=> [$b['time'], $b['room']]);
-    $days[$day] = $blocks;
+// Сортируем блоки по времени
+foreach ($days as $day => $byTeacher) {
+    foreach ($byTeacher as $tid => $blocksList) {
+        ksort($blocksList);
+        $days[$day][$tid] = $blocksList;
+    }
 }
 
 $dayNames = [1 => 'Пн', 2 => 'Вт', 3 => 'Ср', 4 => 'Чт', 5 => 'Пт', 6 => 'Сб', 7 => 'Вс'];
@@ -78,11 +104,61 @@ require_once __DIR__ . '/templates/header.php';
 ?>
 
 <style>
+/* Чипы преподавателей */
+.teacher-chips {
+    display: flex;
+    gap: 6px;
+    padding: 12px 16px 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.teacher-chips::-webkit-scrollbar { display: none; }
+
+.teacher-chip {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.teacher-chip .tdot {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    border: 1px solid rgba(255,255,255,0.25);
+}
+
+.teacher-chip.active {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.scolor-1 { background: rgba(20, 184, 166, 0.7); }
+.scolor-2 { background: rgba(168, 85, 247, 0.7); }
+.scolor-3 { background: rgba(59, 130, 246, 0.7); }
+.scolor-4 { background: rgba(249, 115, 22, 0.7); }
+.scolor-5 { background: rgba(236, 72, 153, 0.7); }
+.scolor-6 { background: rgba(234, 179, 8, 0.7); }
+.scolor-7 { background: rgba(34, 197, 94, 0.7); }
+.scolor-8 { background: rgba(239, 68, 68, 0.7); }
+
 /* Чипы дней */
 .day-chips {
     display: flex;
     gap: 6px;
-    padding: 12px 16px;
+    padding: 10px 16px;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
@@ -109,46 +185,16 @@ require_once __DIR__ . '/templates/header.php';
     color: var(--accent);
 }
 
-/* Легенда */
-.sched-legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 0 16px 8px;
-    font-size: 12px;
-    color: var(--text-secondary);
-}
-
-.sched-legend-item {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.sched-color {
-    width: 12px;
-    height: 12px;
-    border-radius: 3px;
-    border: 1px solid rgba(255,255,255,0.2);
-}
-
-.scolor-1 { background: rgba(20, 184, 166, 0.6); }
-.scolor-2 { background: rgba(168, 85, 247, 0.6); }
-.scolor-3 { background: rgba(59, 130, 246, 0.6); }
-.scolor-4 { background: rgba(249, 115, 22, 0.6); }
-.scolor-5 { background: rgba(236, 72, 153, 0.6); }
-.scolor-6 { background: rgba(234, 179, 8, 0.6); }
-.scolor-7 { background: rgba(34, 197, 94, 0.6); }
-.scolor-8 { background: rgba(239, 68, 68, 0.6); }
-.scolor-temp { background: rgba(245, 158, 11, 0.6); border-style: dashed; }
-
 /* День */
 .day-pane { display: none; padding: 0 16px 16px; }
 .day-pane.active { display: block; }
 
+.teacher-pane { display: none; }
+.teacher-pane.active { display: block; }
+
 .day-empty {
     text-align: center;
-    padding: 48px 16px;
+    padding: 32px 16px;
     color: var(--text-muted);
     font-size: 14px;
 }
@@ -192,15 +238,12 @@ require_once __DIR__ . '/templates/header.php';
     font-size: 14px;
     color: var(--text-primary);
     flex: 1;
+    min-height: 18px;
 }
 
-.lesson-room {
-    font-size: 11px;
+.lesson-title.is-empty {
     color: var(--text-muted);
-    background: rgba(255, 255, 255, 0.07);
-    padding: 2px 8px;
-    border-radius: 999px;
-    white-space: nowrap;
+    font-weight: 500;
 }
 
 .lesson-students {
@@ -211,13 +254,14 @@ require_once __DIR__ . '/templates/header.php';
 }
 
 .student-chip {
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 14px;
     color: #ecfdf5;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid transparent;
     border-left: 3px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
 }
 
 .student-chip.c1 { background: linear-gradient(135deg, rgba(20, 184, 166, 0.35), rgba(20, 184, 166, 0.15)); border-left-color: rgba(20, 184, 166, 0.9); }
@@ -236,13 +280,214 @@ require_once __DIR__ . '/templates/header.php';
     color: #fef3c7;
 }
 
-.edit-note {
-    padding: 4px 16px 12px;
-    font-size: 11px;
+/* Кнопка + в карточке */
+.add-student-chip {
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
     color: var(--text-muted);
-    text-align: center;
+    background: transparent;
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+    cursor: pointer;
 }
+
+.add-student-chip:active {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* Кнопка добавления урока */
+.add-lesson-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px dashed var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.add-lesson-btn:active {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* ===== Модалка ===== */
+.sched-modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+    align-items: flex-end;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+}
+
+.sched-modal-overlay.active { display: flex; }
+
+.sched-modal {
+    background: var(--bg-card);
+    border-radius: 16px 16px 0 0;
+    width: 100%;
+    max-width: 480px;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    animation: sheetUp 0.25s ease;
+}
+
+@keyframes sheetUp {
+    from { transform: translateY(40px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.sched-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.sched-modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.sched-modal-slot {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.sched-modal-body { padding: 16px 20px; }
+
+.sched-modal-body label.fld {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: 12px 0 6px;
+}
+
+.sched-modal-body label.fld:first-child { margin-top: 0; }
+
+.sched-modal-body input[type="text"],
+.sched-modal-body select {
+    width: 100%;
+    padding: 12px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-size: 16px;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.sched-temp-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+    padding: 12px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.sched-temp-row input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--accent);
+    flex-shrink: 0;
+}
+
+.sched-temp-row .t-label { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.sched-temp-row .t-hint { font-size: 11px; color: var(--text-muted); }
+
+.sched-modal-footer {
+    display: flex;
+    gap: 10px;
+    padding: 14px 20px 20px;
+    border-top: 1px solid var(--border);
+}
+
+.sched-modal-footer .m-delete {
+    margin-right: auto;
+    padding: 12px 16px;
+    background: transparent;
+    border: 1px solid rgba(239, 68, 68, 0.5);
+    border-radius: 10px;
+    color: #f87171;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+}
+
+.sched-modal-footer .m-cancel {
+    padding: 12px 16px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+}
+
+.sched-modal-footer .m-save {
+    padding: 12px 22px;
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    color: #04201c;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: inherit;
+}
+
+/* Тост */
+.sched-toast {
+    position: fixed;
+    bottom: calc(var(--bottom-nav-height, 64px) + 16px);
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 14px;
+    z-index: 10001;
+    opacity: 0;
+    transition: all 0.25s;
+    pointer-events: none;
+    border-left: 3px solid #22c55e;
+    white-space: nowrap;
+}
+
+.sched-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.sched-toast.err { border-left-color: #f43f5e; }
 </style>
+
+<!-- Чипы преподавателей (выбирается один) -->
+<div class="teacher-chips">
+    <?php foreach ($teachers as $i => $teacher):
+        $colorIndex = ($teacher['id'] % 8) ?: 8;
+    ?>
+        <button class="teacher-chip" data-teacher="<?= $teacher['id'] ?>" data-color="<?= $colorIndex ?>" data-name="<?= e($teacher['name']) ?>" onclick="selectTeacher(<?= $teacher['id'] ?>)">
+            <span class="tdot scolor-<?= $colorIndex ?>"></span><?= e($teacher['name']) ?>
+        </button>
+    <?php endforeach; ?>
+</div>
 
 <!-- Чипы дней -->
 <div class="day-chips">
@@ -253,47 +498,127 @@ require_once __DIR__ . '/templates/header.php';
     <?php endforeach; ?>
 </div>
 
-<!-- Легенда преподавателей -->
-<div class="sched-legend">
-    <?php foreach ($teachers as $teacher):
-        $colorIndex = ($teacher['id'] % 8) ?: 8;
-    ?>
-        <span class="sched-legend-item"><span class="sched-color scolor-<?= $colorIndex ?>"></span><?= e($teacher['name']) ?></span>
-    <?php endforeach; ?>
-    <span class="sched-legend-item"><span class="sched-color scolor-temp"></span>временно</span>
-</div>
-
-<!-- Дни -->
+<!-- Дни × преподаватели -->
 <?php foreach ($dayNames as $d => $short): ?>
     <div class="day-pane <?= $d === $currentDay ? 'active' : '' ?>" data-day="<?= $d ?>">
-        <?php if (empty($days[$d])): ?>
-            <div class="day-empty"><?= $dayFull[$d] ?>: занятий нет</div>
-        <?php else: ?>
-            <?php foreach ($days[$d] as $block): ?>
-                <div class="lesson-card bc<?= $block['title_color'] ?>">
-                    <div class="lesson-card-header">
-                        <span class="lesson-time"><?= $block['time'] ?></span>
-                        <span class="lesson-title"><?= e($block['title'] ?: 'Урок') ?></span>
-                        <span class="lesson-room">каб. <?= $block['room'] ?></span>
-                    </div>
-                    <?php if (!empty($block['students'])): ?>
-                        <div class="lesson-students">
-                            <?php foreach ($block['students'] as $st): ?>
-                                <span class="student-chip c<?= $st['color'] ?><?= $st['temp'] ? ' temp' : '' ?>">
-                                    <?= e($st['name']) ?><?= $st['temp'] ? ' ⏳' : '' ?>
-                                </span>
-                            <?php endforeach; ?>
+        <?php foreach ($teachers as $teacher):
+            $tid = (int)$teacher['id'];
+            $colorIndex = ($tid % 8) ?: 8;
+            $blocksList = $days[$d][$tid] ?? [];
+        ?>
+            <div class="teacher-pane" data-teacher="<?= $tid ?>">
+                <?php if (empty($blocksList)): ?>
+                    <div class="day-empty"><?= $dayFull[$d] ?>: занятий нет</div>
+                <?php else: ?>
+                    <?php foreach ($blocksList as $block): ?>
+                        <div class="lesson-card bc<?= $colorIndex ?>" data-day="<?= $d ?>" data-time="<?= $block['time'] ?>" data-teacher="<?= $tid ?>" data-color="<?= $colorIndex ?>">
+                            <div class="lesson-card-header">
+                                <span class="lesson-time"><?= $block['time'] ?></span>
+                                <span class="lesson-title<?= ($block['title'] ?? '') === '' || $block['title'] === null ? ' is-empty' : '' ?>"
+                                      <?= $block['title_id'] ? 'data-id="' . $block['title_id'] . '"' : '' ?>
+                                      onclick="openTitleModal(this)"><?= $block['title'] !== null && $block['title'] !== '' ? e($block['title']) : 'без названия' ?></span>
+                            </div>
+                            <div class="lesson-students">
+                                <?php foreach ($block['students'] as $st): ?>
+                                    <span class="student-chip c<?= $colorIndex ?><?= $st['temp'] ? ' temp' : '' ?>"
+                                          data-id="<?= $st['id'] ?>"
+                                          data-name="<?= e($st['name']) ?>"
+                                          data-temp="<?= $st['temp'] ? 1 : 0 ?>"
+                                          onclick="openStudentModal(this)"><?= e($st['name']) ?><?= $st['temp'] ? ' ⏳' : '' ?></span>
+                                <?php endforeach; ?>
+                                <button class="add-student-chip" onclick="openStudentModalNew(this)">+</button>
+                            </div>
                         </div>
-                    <?php endif; ?>
-                </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+                <button class="add-lesson-btn" data-day="<?= $d ?>" data-teacher="<?= $tid ?>" onclick="openLessonModal(this)">+ Добавить урок</button>
+            </div>
+        <?php endforeach; ?>
     </div>
 <?php endforeach; ?>
 
-<div class="edit-note">Редактирование расписания — в полной версии на компьютере</div>
+<!-- Модалка ученика / заголовка -->
+<div id="schedModal" class="sched-modal-overlay">
+    <div class="sched-modal" onclick="event.stopPropagation()">
+        <div class="sched-modal-header">
+            <h3 id="schedModalTitle">Ученик</h3>
+            <span class="sched-modal-slot" id="schedModalSlot"></span>
+        </div>
+        <div class="sched-modal-body">
+            <label class="fld" id="schedModalNameLabel">Имя ученика</label>
+            <input type="text" id="schedModalName" maxlength="160" autocomplete="off">
+            <div class="sched-temp-row" id="schedModalTempRow">
+                <input type="checkbox" id="schedModalTemp">
+                <div>
+                    <div class="t-label">⏳ Временно</div>
+                    <div class="t-hint">Только на ближайший урок — потом удалится</div>
+                </div>
+            </div>
+        </div>
+        <div class="sched-modal-footer">
+            <button class="m-delete" id="schedModalDelete" onclick="deleteFromModal()">Удалить</button>
+            <button class="m-cancel" onclick="closeSchedModal()">Отмена</button>
+            <button class="m-save" id="schedModalSave" onclick="saveFromModal()">Сохранить</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модалка нового урока -->
+<div id="lessonModal" class="sched-modal-overlay">
+    <div class="sched-modal" onclick="event.stopPropagation()">
+        <div class="sched-modal-header">
+            <h3>Новый урок</h3>
+            <span class="sched-modal-slot" id="lessonModalSlot"></span>
+        </div>
+        <div class="sched-modal-body">
+            <label class="fld">Время</label>
+            <select id="lessonModalTime">
+                <?php for ($h = 8; $h <= 21; $h++): ?>
+                    <option value="<?= sprintf('%02d:00', $h) ?>"><?= sprintf('%02d:00', $h) ?></option>
+                <?php endfor; ?>
+            </select>
+            <label class="fld">Название (класс + предмет)</label>
+            <input type="text" id="lessonModalTitle" maxlength="160" placeholder="Например: 9 Мат." autocomplete="off">
+        </div>
+        <div class="sched-modal-footer">
+            <button class="m-cancel" onclick="closeLessonModal()">Отмена</button>
+            <button class="m-save" onclick="saveLessonModal()">Создать</button>
+        </div>
+    </div>
+</div>
+
+<div id="schedToast" class="sched-toast"></div>
 
 <script>
+const DAY_SHORT = {1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 7: 'Вс'};
+
+// ===== Выбор преподавателя (один) =====
+
+function selectTeacher(id) {
+    document.querySelectorAll('.teacher-chip').forEach(chip => {
+        chip.classList.toggle('active', parseInt(chip.dataset.teacher) === id);
+    });
+    document.querySelectorAll('.teacher-pane').forEach(pane => {
+        pane.classList.toggle('active', parseInt(pane.dataset.teacher) === id);
+    });
+    localStorage.setItem('mobileScheduleTeacher', id);
+}
+
+function currentTeacher() {
+    const chip = document.querySelector('.teacher-chip.active');
+    return chip ? parseInt(chip.dataset.teacher) : null;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const chips = document.querySelectorAll('.teacher-chip');
+    if (!chips.length) return;
+    const saved = parseInt(localStorage.getItem('mobileScheduleTeacher') || '0');
+    const exists = Array.from(chips).some(c => parseInt(c.dataset.teacher) === saved);
+    selectTeacher(exists ? saved : parseInt(chips[0].dataset.teacher));
+});
+
+// ===== Дни =====
+
 function showDay(day) {
     document.querySelectorAll('.day-chip').forEach(chip => {
         chip.classList.toggle('active', parseInt(chip.dataset.day) === day);
@@ -301,6 +626,242 @@ function showDay(day) {
     document.querySelectorAll('.day-pane').forEach(pane => {
         pane.classList.toggle('active', parseInt(pane.dataset.day) === day);
     });
+}
+
+// ===== Модалка ученика / заголовка =====
+
+let mTarget = null;   // элемент (плашка или заголовок), null для нового
+let mCard = null;     // карточка урока
+let mKind = 'student';
+
+function modalSlotText(card) {
+    const chip = document.querySelector('.teacher-chip.active');
+    const tname = chip ? chip.dataset.name : '';
+    return `${DAY_SHORT[card.dataset.day]} · ${card.dataset.time} · ${tname}`;
+}
+
+function openStudentModal(el) {
+    mTarget = el;
+    mCard = el.closest('.lesson-card');
+    mKind = 'student';
+
+    document.getElementById('schedModalTitle').textContent = 'Ученик';
+    document.getElementById('schedModalNameLabel').textContent = 'Имя ученика';
+    document.getElementById('schedModalSlot').textContent = modalSlotText(mCard);
+    document.getElementById('schedModalName').value = el.dataset.name || '';
+    document.getElementById('schedModalTemp').checked = el.dataset.temp === '1';
+    document.getElementById('schedModalTempRow').style.display = '';
+    document.getElementById('schedModalDelete').style.display = '';
+    document.getElementById('schedModal').classList.add('active');
+}
+
+function openStudentModalNew(btn) {
+    mTarget = null;
+    mCard = btn.closest('.lesson-card');
+    mKind = 'student';
+
+    document.getElementById('schedModalTitle').textContent = 'Добавить ученика';
+    document.getElementById('schedModalNameLabel').textContent = 'Имя ученика';
+    document.getElementById('schedModalSlot').textContent = modalSlotText(mCard);
+    document.getElementById('schedModalName').value = '';
+    document.getElementById('schedModalTemp').checked = false;
+    document.getElementById('schedModalTempRow').style.display = '';
+    document.getElementById('schedModalDelete').style.display = 'none';
+    document.getElementById('schedModal').classList.add('active');
+    document.getElementById('schedModalName').focus();
+}
+
+function openTitleModal(el) {
+    mTarget = el;
+    mCard = el.closest('.lesson-card');
+    mKind = 'title';
+
+    document.getElementById('schedModalTitle').textContent = 'Название урока';
+    document.getElementById('schedModalNameLabel').textContent = 'Название (класс + предмет)';
+    document.getElementById('schedModalSlot').textContent = modalSlotText(mCard);
+    document.getElementById('schedModalName').value = el.classList.contains('is-empty') ? '' : (el.textContent || '').trim();
+    document.getElementById('schedModalTempRow').style.display = 'none';
+    document.getElementById('schedModalDelete').style.display = el.dataset.id ? '' : 'none';
+    document.getElementById('schedModal').classList.add('active');
+}
+
+function closeSchedModal() {
+    document.getElementById('schedModal').classList.remove('active');
+    mTarget = null;
+    mCard = null;
+}
+
+document.getElementById('schedModal').addEventListener('click', function(e) {
+    if (e.target === this) closeSchedModal();
+});
+
+async function apiSaveNote(payload) {
+    const response = await fetch('/zarplata/api/planner.php?action=save_note', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    return response.json();
+}
+
+async function saveFromModal() {
+    if (!mCard) return;
+
+    const name = document.getElementById('schedModalName').value.trim();
+    const temp = document.getElementById('schedModalTemp').checked;
+
+    if (!name && mKind === 'student') {
+        toast('Введите имя', true);
+        return;
+    }
+
+    const payload = {
+        id: mTarget && mTarget.dataset.id ? parseInt(mTarget.dataset.id) : null,
+        day: parseInt(mCard.dataset.day),
+        time: mCard.dataset.time,
+        teacher_id: parseInt(mCard.dataset.teacher),
+        kind: mKind,
+        content: name,
+        temp: mKind === 'student' ? temp : false
+    };
+
+    try {
+        const result = await apiSaveNote(payload);
+        if (!result.success) {
+            toast(result.error || 'Ошибка сохранения', true);
+            return;
+        }
+
+        const color = mCard.dataset.color || '1';
+
+        if (mKind === 'title') {
+            if (name === '') {
+                delete mTarget.dataset.id;
+                mTarget.textContent = 'без названия';
+                mTarget.classList.add('is-empty');
+            } else {
+                if (result.data && result.data.id) mTarget.dataset.id = result.data.id;
+                mTarget.textContent = name;
+                mTarget.classList.remove('is-empty');
+            }
+        } else if (mTarget) {
+            renderChip(mTarget, name, temp);
+        } else {
+            const chip = document.createElement('span');
+            chip.className = 'student-chip c' + color;
+            chip.onclick = function() { openStudentModal(chip); };
+            if (result.data && result.data.id) chip.dataset.id = result.data.id;
+            renderChip(chip, name, temp);
+            mCard.querySelector('.lesson-students').insertBefore(chip, mCard.querySelector('.add-student-chip'));
+        }
+
+        toast('Сохранено');
+        closeSchedModal();
+    } catch (err) {
+        toast('Ошибка сети', true);
+    }
+}
+
+function renderChip(chip, name, temp) {
+    chip.dataset.name = name;
+    chip.dataset.temp = temp ? '1' : '0';
+    chip.classList.toggle('temp', temp);
+    chip.textContent = name + (temp ? ' ⏳' : '');
+}
+
+async function deleteFromModal() {
+    if (!mTarget || !mTarget.dataset.id || !mCard) return closeSchedModal();
+
+    const payload = {
+        id: parseInt(mTarget.dataset.id),
+        day: parseInt(mCard.dataset.day),
+        time: mCard.dataset.time,
+        teacher_id: parseInt(mCard.dataset.teacher),
+        kind: mKind,
+        content: ''
+    };
+
+    try {
+        const result = await apiSaveNote(payload);
+        if (!result.success) {
+            toast(result.error || 'Ошибка удаления', true);
+            return;
+        }
+
+        if (mKind === 'title') {
+            delete mTarget.dataset.id;
+            mTarget.textContent = 'без названия';
+            mTarget.classList.add('is-empty');
+        } else {
+            mTarget.remove();
+        }
+        toast('Удалено');
+        closeSchedModal();
+    } catch (err) {
+        toast('Ошибка сети', true);
+    }
+}
+
+// ===== Новый урок =====
+
+let lessonDay = null;
+let lessonTeacher = null;
+
+function openLessonModal(btn) {
+    lessonDay = parseInt(btn.dataset.day);
+    lessonTeacher = parseInt(btn.dataset.teacher);
+
+    const chip = document.querySelector('.teacher-chip.active');
+    document.getElementById('lessonModalSlot').textContent = `${DAY_SHORT[lessonDay]} · ${chip ? chip.dataset.name : ''}`;
+    document.getElementById('lessonModalTitle').value = '';
+    document.getElementById('lessonModal').classList.add('active');
+}
+
+function closeLessonModal() {
+    document.getElementById('lessonModal').classList.remove('active');
+}
+
+document.getElementById('lessonModal').addEventListener('click', function(e) {
+    if (e.target === this) closeLessonModal();
+});
+
+async function saveLessonModal() {
+    const time = document.getElementById('lessonModalTime').value;
+    const title = document.getElementById('lessonModalTitle').value.trim() || 'Урок';
+
+    try {
+        const result = await apiSaveNote({
+            id: null,
+            day: lessonDay,
+            time: time,
+            teacher_id: lessonTeacher,
+            kind: 'title',
+            content: title
+        });
+
+        if (!result.success) {
+            toast(result.error || 'Ошибка', true);
+            return;
+        }
+
+        toast('Урок создан');
+        // Проще перезагрузить — карточка встанет на своё место по времени
+        setTimeout(() => location.reload(), 400);
+    } catch (err) {
+        toast('Ошибка сети', true);
+    }
+}
+
+// ===== Тост =====
+
+let toastTimer = null;
+function toast(message, isError = false) {
+    const el = document.getElementById('schedToast');
+    el.textContent = message;
+    el.classList.toggle('err', isError);
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
 }
 </script>
 
