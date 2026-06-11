@@ -36,8 +36,143 @@ switch ($action) {
     case 'remove_student_slot':
         handleRemoveStudentSlot();
         break;
+    case 'save_note':
+        handleSaveNote();
+        break;
+    case 'set_note_color':
+        handleSetNoteColor();
+        break;
     default:
         jsonError('Неизвестное действие', 400);
+}
+
+/**
+ * Гарантировать наличие таблицы заметок планировщика
+ */
+function ensurePlannerNotesTable() {
+    dbExecute("
+        CREATE TABLE IF NOT EXISTS planner_notes (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            day TINYINT NOT NULL,
+            time VARCHAR(5) NOT NULL,
+            room TINYINT NOT NULL DEFAULT 1,
+            kind ENUM('title','student') NOT NULL DEFAULT 'student',
+            position SMALLINT NOT NULL DEFAULT 0,
+            content VARCHAR(160) NOT NULL DEFAULT '',
+            color TINYINT NOT NULL DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            KEY idx_cell (day, time, room)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ", []);
+}
+
+/**
+ * Сохранить ячейку расписания-таблицы (свободный текст).
+ * content = '' удаляет запись. Для kind=title запись уникальна на блок.
+ */
+function handleSaveNote() {
+    ensurePlannerNotesTable();
+
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+    if (!$data) {
+        jsonError('Неверные данные', 400);
+    }
+
+    $id = isset($data['id']) && $data['id'] ? (int)$data['id'] : null;
+    $day = (int)($data['day'] ?? 0);
+    $time = substr((string)($data['time'] ?? ''), 0, 5);
+    $room = (int)($data['room'] ?? 1);
+    $kind = ($data['kind'] ?? 'student') === 'title' ? 'title' : 'student';
+    $content = mb_substr(trim((string)($data['content'] ?? '')), 0, 160);
+
+    if ($day < 1 || $day > 7) {
+        jsonError('Неверный день недели', 400);
+    }
+    if ($room < 1 || $room > 3) {
+        jsonError('Неверный номер кабинета', 400);
+    }
+    if (!preg_match('/^\d{2}:\d{2}$/', $time)) {
+        jsonError('Неверное время', 400);
+    }
+
+    // Удаление: пустой текст по существующей записи
+    if ($content === '') {
+        if ($id) {
+            dbExecute("DELETE FROM planner_notes WHERE id = ?", [$id]);
+        }
+        jsonSuccess(['deleted' => true]);
+        return;
+    }
+
+    // Обновление существующей записи
+    if ($id) {
+        dbExecute("UPDATE planner_notes SET content = ? WHERE id = ?", [$content, $id]);
+        jsonSuccess(['id' => $id]);
+        return;
+    }
+
+    // Заголовок блока: одна запись на (day, time, room)
+    if ($kind === 'title') {
+        $existing = dbQueryOne(
+            "SELECT id FROM planner_notes WHERE day = ? AND time = ? AND room = ? AND kind = 'title' LIMIT 1",
+            [$day, $time, $room]
+        );
+        if ($existing) {
+            dbExecute("UPDATE planner_notes SET content = ? WHERE id = ?", [$content, $existing['id']]);
+            jsonSuccess(['id' => (int)$existing['id']]);
+            return;
+        }
+    }
+
+    // Новая запись: позиция в конец блока
+    $maxPos = dbQueryOne(
+        "SELECT COALESCE(MAX(position), 0) AS p FROM planner_notes WHERE day = ? AND time = ? AND room = ? AND kind = ?",
+        [$day, $time, $room, $kind]
+    );
+    $position = $kind === 'title' ? 0 : ((int)($maxPos['p'] ?? 0) + 1);
+
+    $newId = dbExecute(
+        "INSERT INTO planner_notes (day, time, room, kind, position, content, color) VALUES (?, ?, ?, ?, ?, ?, 0)",
+        [$day, $time, $room, $kind, $position, $content]
+    );
+
+    if (!$newId) {
+        $row = dbQueryOne(
+            "SELECT id FROM planner_notes WHERE day = ? AND time = ? AND room = ? AND kind = ? AND content = ? ORDER BY id DESC LIMIT 1",
+            [$day, $time, $room, $kind, $content]
+        );
+        $newId = $row ? (int)$row['id'] : null;
+    }
+
+    jsonSuccess(['id' => $newId]);
+}
+
+/**
+ * Установить цвет ячейки/блока (палитра преподавателей, 0 = нейтральный)
+ */
+function handleSetNoteColor() {
+    ensurePlannerNotesTable();
+
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+    if (!$data) {
+        jsonError('Неверные данные', 400);
+    }
+
+    $id = (int)($data['id'] ?? 0);
+    $color = (int)($data['color'] ?? 0);
+
+    if (!$id) {
+        jsonError('Не указана запись', 400);
+    }
+    if ($color < 0 || $color > 8) {
+        jsonError('Неверный цвет', 400);
+    }
+
+    dbExecute("UPDATE planner_notes SET color = ? WHERE id = ?", [$color, $id]);
+    jsonSuccess(['id' => $id, 'color' => $color]);
 }
 
 /**
