@@ -35,15 +35,11 @@ dbExecute("
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 ", []);
 
-// Миграция: колонка temp_until для «временных» учеников (добавлен на 1 урок)
-try {
-    dbQuery("SELECT temp_until FROM planner_notes LIMIT 1", []);
-} catch (PDOException $e) {
-    if (strpos($e->getMessage(), 'temp_until') !== false || strpos($e->getMessage(), 'Unknown column') !== false) {
-        dbExecute("ALTER TABLE planner_notes ADD COLUMN temp_until DATE NULL", []);
-    } else {
-        throw $e;
-    }
+// Миграция: колонка temp_until для «временных» учеников (добавлен на 1 урок).
+// dbQuery глотает исключения, поэтому проверяем колонку через SHOW COLUMNS.
+$tempColumn = dbQuery("SHOW COLUMNS FROM planner_notes LIKE 'temp_until'", []);
+if (empty($tempColumn)) {
+    dbExecute("ALTER TABLE planner_notes ADD COLUMN temp_until DATE NULL", []);
 }
 
 // Удаляем временных учеников, чей урок уже прошёл
