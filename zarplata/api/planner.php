@@ -60,6 +60,7 @@ function ensurePlannerNotesTable() {
             day TINYINT NOT NULL,
             time VARCHAR(5) NOT NULL,
             room TINYINT NOT NULL DEFAULT 1,
+            teacher_id INT NULL,
             kind ENUM('title','student') NOT NULL DEFAULT 'student',
             position SMALLINT NOT NULL DEFAULT 0,
             content VARCHAR(160) NOT NULL DEFAULT '',
@@ -70,6 +71,16 @@ function ensurePlannerNotesTable() {
             KEY idx_cell (day, time, room)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ", []);
+
+    // Колонки, добавленные после первой версии таблицы
+    $tempColumn = dbQuery("SHOW COLUMNS FROM planner_notes LIKE 'temp_until'", []);
+    if (empty($tempColumn)) {
+        dbExecute("ALTER TABLE planner_notes ADD COLUMN temp_until DATE NULL", []);
+    }
+    $teacherColumn = dbQuery("SHOW COLUMNS FROM planner_notes LIKE 'teacher_id'", []);
+    if (empty($teacherColumn)) {
+        dbExecute("ALTER TABLE planner_notes ADD COLUMN teacher_id INT NULL", []);
+    }
 }
 
 /**
@@ -102,6 +113,7 @@ function handleSaveNote() {
     $day = (int)($data['day'] ?? 0);
     $time = substr((string)($data['time'] ?? ''), 0, 5);
     $room = (int)($data['room'] ?? 1);
+    $teacherId = (int)($data['teacher_id'] ?? 0);
     $kind = ($data['kind'] ?? 'student') === 'title' ? 'title' : 'student';
     $content = mb_substr(trim((string)($data['content'] ?? '')), 0, 160);
     $isTemp = !empty($data['temp']) && $kind === 'student';
@@ -115,10 +127,23 @@ function handleSaveNote() {
         jsonError('Неверный день недели', 400);
     }
     if ($room < 1 || $room > 3) {
-        jsonError('Неверный номер кабинета', 400);
+        $room = 1;
     }
     if (!preg_match('/^\d{2}:\d{2}$/', $time)) {
         jsonError('Неверное время', 400);
+    }
+
+    // Новые записи требуют преподавателя (колонка планировщика)
+    if (!$id && !$teacherId && $content !== '') {
+        jsonError('Не указан преподаватель', 400);
+    }
+    if ($teacherId) {
+        $teacherRow = dbQueryOne("SELECT id FROM teachers WHERE id = ? AND active = 1", [$teacherId]);
+        if (!$teacherRow) {
+            jsonError('Преподаватель не найден', 400);
+        }
+        // Цвет всегда соответствует преподавателю
+        $color = ($teacherId % 8) ?: 8;
     }
 
     // Удаление: пустой текст по существующей записи
@@ -152,11 +177,11 @@ function handleSaveNote() {
         return;
     }
 
-    // Заголовок блока: одна запись на (day, time, room)
+    // Заголовок блока: одна запись на (day, time, teacher_id)
     if ($kind === 'title') {
         $existing = dbQueryOne(
-            "SELECT id FROM planner_notes WHERE day = ? AND time = ? AND room = ? AND kind = 'title' LIMIT 1",
-            [$day, $time, $room]
+            "SELECT id FROM planner_notes WHERE day = ? AND time = ? AND teacher_id = ? AND kind = 'title' LIMIT 1",
+            [$day, $time, $teacherId]
         );
         if ($existing) {
             dbExecute("UPDATE planner_notes SET content = ? WHERE id = ?", [$content, $existing['id']]);
@@ -168,33 +193,21 @@ function handleSaveNote() {
 
     // Новая запись: позиция в конец блока
     $maxPos = dbQueryOne(
-        "SELECT COALESCE(MAX(position), 0) AS p FROM planner_notes WHERE day = ? AND time = ? AND room = ? AND kind = ?",
-        [$day, $time, $room, $kind]
+        "SELECT COALESCE(MAX(position), 0) AS p FROM planner_notes WHERE day = ? AND time = ? AND teacher_id = ? AND kind = ?",
+        [$day, $time, $teacherId, $kind]
     );
     $position = $kind === 'title' ? 0 : ((int)($maxPos['p'] ?? 0) + 1);
 
-    try {
-        $newId = dbExecute(
-            "INSERT INTO planner_notes (day, time, room, kind, position, content, color, temp_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            [$day, $time, $room, $kind, $position, $content, $color, $tempUntil]
-        );
-    } catch (PDOException $e) {
-        // Фолбэк для БД без колонки temp_until
-        if (strpos($e->getMessage(), 'temp_until') !== false || strpos($e->getMessage(), 'Unknown column') !== false) {
-            $newId = dbExecute(
-                "INSERT INTO planner_notes (day, time, room, kind, position, content, color) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                [$day, $time, $room, $kind, $position, $content, $color]
-            );
-        } else {
-            throw $e;
-        }
-    }
+    $newId = dbExecute(
+        "INSERT INTO planner_notes (day, time, room, teacher_id, kind, position, content, color, temp_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [$day, $time, $room, $teacherId, $kind, $position, $content, $color, $tempUntil]
+    );
     plannerRecordVersion();
 
     if (!$newId) {
         $row = dbQueryOne(
-            "SELECT id FROM planner_notes WHERE day = ? AND time = ? AND room = ? AND kind = ? AND content = ? ORDER BY id DESC LIMIT 1",
-            [$day, $time, $room, $kind, $content]
+            "SELECT id FROM planner_notes WHERE day = ? AND time = ? AND teacher_id = ? AND kind = ? AND content = ? ORDER BY id DESC LIMIT 1",
+            [$day, $time, $teacherId, $kind, $content]
         );
         $newId = $row ? (int)$row['id'] : null;
     }

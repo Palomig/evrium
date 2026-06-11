@@ -14,6 +14,7 @@ require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/config/auth.php';
 require_once __DIR__ . '/config/helpers.php';
 require_once __DIR__ . '/config/planner_snapshots.php';
+require_once __DIR__ . '/config/student_helpers.php';
 
 requireAuth();
 $user = getCurrentUser();
@@ -50,19 +51,76 @@ if (empty($tempColumn)) {
     dbExecute("ALTER TABLE planner_notes ADD COLUMN temp_until DATE NULL", []);
 }
 
+// Миграция: колонка teacher_id (столбцы планировщика = преподаватели).
+// Бэкофилл из цветов: цвет ячейки → преподаватель, фолбэк — цвет блока → c1.
+$teacherColumn = dbQuery("SHOW COLUMNS FROM planner_notes LIKE 'teacher_id'", []);
+if (empty($teacherColumn)) {
+    dbExecute("ALTER TABLE planner_notes ADD COLUMN teacher_id INT NULL", []);
+}
+$nullTeacherCount = dbQueryOne("SELECT COUNT(*) AS c FROM planner_notes WHERE teacher_id IS NULL", []);
+if ((int)($nullTeacherCount['c'] ?? 0) > 0) {
+    $colorMap = plannerColorTeacherMap();
+    $defaultTeacher = $colorMap[1] ?? (reset($colorMap) ?: null);
+
+    $allNotes = dbQuery("SELECT id, day, time, room, kind, color FROM planner_notes WHERE teacher_id IS NULL", []);
+    $blocksTmp = [];
+    foreach ($allNotes as $r) {
+        $blocksTmp["{$r['day']}_{$r['time']}_{$r['room']}"][] = $r;
+    }
+    foreach ($blocksTmp as $rows) {
+        // Цвет блока: цвет заголовка, иначе самый частый цвет учеников
+        $titleColor = 0;
+        $cellColors = [];
+        foreach ($rows as $r) {
+            if ($r['kind'] === 'title') {
+                $titleColor = (int)$r['color'];
+            } elseif ((int)$r['color']) {
+                $cellColors[] = (int)$r['color'];
+            }
+        }
+        $blockColor = $titleColor;
+        if (!$blockColor && $cellColors) {
+            $counts = array_count_values($cellColors);
+            arsort($counts);
+            $blockColor = (int)array_key_first($counts);
+        }
+        $blockTeacher = $colorMap[$blockColor] ?? $defaultTeacher;
+
+        foreach ($rows as $r) {
+            $cellColor = (int)$r['color'];
+            $noteTeacher = ($cellColor && isset($colorMap[$cellColor])) ? $colorMap[$cellColor] : $blockTeacher;
+            if ($noteTeacher) {
+                dbExecute("UPDATE planner_notes SET teacher_id = ? WHERE id = ?", [$noteTeacher, $r['id']]);
+            }
+        }
+    }
+}
+
 // Удаляем временных учеников, чей урок уже прошёл (не в режиме просмотра версии)
 $deletedTemp = 0;
 if (!$snapshotView) {
     $deletedTemp = dbExecute("DELETE FROM planner_notes WHERE temp_until IS NOT NULL AND temp_until < CURDATE()", []);
 }
 
-// Преподаватели — для легенды и палитры цветов
+// Преподаватели — столбцы планировщика (порядок стабильный, по id)
 $teachers = dbQuery("
     SELECT id, name, display_name
     FROM teachers
     WHERE active = 1
-    ORDER BY name
+    ORDER BY id
 ", []);
+
+// Колонки-преподаватели: цвет и короткая метка
+$teacherCols = [];
+foreach ($teachers as $t) {
+    $label = $t['display_name'] ?: $t['name'];
+    $teacherCols[] = [
+        'id' => (int)$t['id'],
+        'color' => (((int)$t['id']) % 8) ?: 8,
+        'label' => $label,
+        'badge' => mb_strtoupper(mb_substr($label, 0, 1))
+    ];
+}
 
 // ===== Сидирование из students.schedule при пустой таблице =====
 $notesCount = dbQueryOne("SELECT COUNT(*) AS c FROM planner_notes", []);
@@ -160,25 +218,60 @@ if (!$snapshotView) {
     }
 }
 
-// ===== Загружаем все заметки и группируем по блокам =====
+// ===== Загружаем все заметки и группируем по блокам (день × время × преподаватель) =====
 if ($snapshotView) {
     $notes = json_decode($snapshotView['data'], true) ?: [];
 } else {
     $notes = dbQuery("
-        SELECT id, day, time, room, kind, position, content, color, temp_until
+        SELECT id, day, time, room, kind, position, content, color, temp_until, teacher_id
         FROM planner_notes
         ORDER BY day, time, room, kind, position, id
     ", []);
 }
 
+// Карта цвет → преподаватель и список активных id (для записей без teacher_id —
+// старые снапшоты и недомигрированные строки)
+$colorMap = [];
+$activeTeacherIds = [];
+foreach ($teacherCols as $tc) {
+    $colorMap[$tc['color']] = $tc['id'];
+    $activeTeacherIds[] = $tc['id'];
+}
+$fallbackTeacherId = $colorMap[1] ?? ($activeTeacherIds[0] ?? 0);
+
+// Первый проход: цвета заголовков по старым блокам (день_время_кабинет) — для фолбэка
+$legacyTitleColors = [];
+foreach ($notes as $note) {
+    if (($note['kind'] ?? '') === 'title') {
+        $legacyTitleColors["{$note['day']}_{$note['time']}_{$note['room']}"] = (int)($note['color'] ?? 0);
+    }
+}
+
+// Определить преподавателя записи: teacher_id → цвет ячейки → цвет блока → фолбэк
+function plannerResolveNoteTeacher($note, $colorMap, $activeTeacherIds, $legacyTitleColors, $fallbackTeacherId) {
+    $tid = (int)($note['teacher_id'] ?? 0);
+    if ($tid && in_array($tid, $activeTeacherIds, true)) {
+        return $tid;
+    }
+    $color = (int)($note['color'] ?? 0);
+    if (!$color) {
+        $color = $legacyTitleColors["{$note['day']}_{$note['time']}_{$note['room']}"] ?? 0;
+    }
+    return $colorMap[$color] ?? $fallbackTeacherId;
+}
+
 $blocks = [];
 foreach ($notes as $note) {
-    $key = "{$note['day']}_{$note['time']}_{$note['room']}";
+    $noteTeacher = plannerResolveNoteTeacher($note, $colorMap, $activeTeacherIds, $legacyTitleColors, $fallbackTeacherId);
+    $key = "{$note['day']}_{$note['time']}_{$noteTeacher}";
     if (!isset($blocks[$key])) {
         $blocks[$key] = ['title' => null, 'students' => []];
     }
     if ($note['kind'] === 'title') {
-        $blocks[$key]['title'] = $note;
+        // Если заголовков несколько (слияние старых кабинетов) — берём первый непустой
+        if ($blocks[$key]['title'] === null || trim($blocks[$key]['title']['content']) === '') {
+            $blocks[$key]['title'] = $note;
+        }
     } else {
         $blocks[$key]['students'][] = $note;
     }
@@ -190,16 +283,17 @@ $daysOfWeek = [
 ];
 
 /**
- * Рендер одного блока урока (день × время × кабинет)
+ * Рендер одного блока урока (день × время × преподаватель)
  */
-function renderLessonBlock($day, $time, $room, $blocks) {
-    $key = "{$day}_{$time}_{$room}";
+function renderLessonBlock($day, $time, $teacherCol, $blocks) {
+    $teacherId = $teacherCol['id'];
+    $color = $teacherCol['color'];
+    $key = "{$day}_{$time}_{$teacherId}";
     $block = $blocks[$key] ?? ['title' => null, 'students' => []];
     $title = $block['title'];
-    $blockColor = $title ? (int)$title['color'] : 0;
     ?>
-    <div class="lesson-block bc<?= $blockColor ?>" data-day="<?= $day ?>" data-time="<?= $time ?>" data-room="<?= $room ?>">
-        <span class="block-room"><?= $room ?></span>
+    <div class="lesson-block bc<?= $color ?>" data-day="<?= $day ?>" data-time="<?= $time ?>" data-teacher="<?= $teacherId ?>" data-color="<?= $color ?>">
+        <span class="block-room" title="<?= e($teacherCol['label']) ?>"><?= e($teacherCol['badge']) ?></span>
         <div class="block-title<?= $title && $title['content'] !== '' ? '' : ' is-empty' ?>"
              data-kind="title"
              <?= $title ? 'data-id="' . $title['id'] . '"' : '' ?>><?= $title ? e($title['content']) : '' ?></div>
@@ -207,7 +301,7 @@ function renderLessonBlock($day, $time, $room, $blocks) {
             <?php foreach ($block['students'] as $st):
                 $isTemp = !empty($st['temp_until']);
             ?>
-                <div class="pcell c<?= (int)$st['color'] ?><?= $isTemp ? ' temp' : '' ?>"
+                <div class="pcell c<?= $color ?><?= $isTemp ? ' temp' : '' ?>"
                      data-kind="student"
                      data-id="<?= $st['id'] ?>"
                      data-temp="<?= $isTemp ? 1 : 0 ?>"
@@ -640,7 +734,7 @@ body.readonly .block-title {
     z-index: 5;
 }
 
-/* Ячейка день×час: 3 кабинета */
+/* Ячейка день×час: колонка на каждого преподавателя */
 .schedule-cell {
     background: #080a0e;
     min-height: 56px;
@@ -657,9 +751,22 @@ body.readonly .block-title {
 
 .rooms-container {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
     gap: 2px;
     height: 100%;
+}
+
+.room-filter-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.teacher-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    display: inline-block;
+    border: 1px solid rgba(255,255,255,0.25);
 }
 
 /* ========== БЛОК УРОКА ========== */
@@ -1137,10 +1244,12 @@ body.readonly .block-title {
         <div class="filter-divider"></div>
 
         <div class="filter-group">
-            <span class="filter-label">Каб:</span>
-            <button class="room-filter-btn active" data-room="1" onclick="toggleRoomFilter(this)">1</button>
-            <button class="room-filter-btn active" data-room="2" onclick="toggleRoomFilter(this)">2</button>
-            <button class="room-filter-btn active" data-room="3" onclick="toggleRoomFilter(this)">3</button>
+            <span class="filter-label">Преп:</span>
+            <?php foreach ($teacherCols as $tc): ?>
+                <button class="room-filter-btn active" data-teacher="<?= $tc['id'] ?>" onclick="toggleTeacherFilter(this)">
+                    <span class="teacher-dot tcolor-<?= $tc['color'] ?>"></span><?= e($tc['label']) ?>
+                </button>
+            <?php endforeach; ?>
         </div>
 
         <div class="filter-divider"></div>
@@ -1154,7 +1263,7 @@ body.readonly .block-title {
 
         <span class="edit-hint">
             <span class="material-icons">edit</span>
-            Клик — редактировать · ПКМ — цвет/удалить
+            Клик — редактировать · ПКМ — удалить
         </span>
     </div>
 </div>
@@ -1189,8 +1298,8 @@ body.readonly .block-title {
                     <div class="time-cell"><?= $time ?></div>
                     <?php for ($dayNum = 1; $dayNum <= 5; $dayNum++): ?>
                         <div class="schedule-cell" data-day="<?= $dayNum ?>" data-time="<?= $time ?>">
-                            <div class="rooms-container">
-                                <?php for ($room = 1; $room <= 3; $room++) renderLessonBlock($dayNum, $time, $room, $blocks); ?>
+                            <div class="rooms-container" style="grid-template-columns: repeat(<?= count($teacherCols) ?>, 1fr);">
+                                <?php foreach ($teacherCols as $tc) renderLessonBlock($dayNum, $time, $tc, $blocks); ?>
                             </div>
                         </div>
                     <?php endfor; ?>
@@ -1212,8 +1321,8 @@ body.readonly .block-title {
                     <div class="time-cell"><?= $time ?></div>
                     <?php for ($dayNum = 6; $dayNum <= 7; $dayNum++): ?>
                         <div class="schedule-cell" data-day="<?= $dayNum ?>" data-time="<?= $time ?>">
-                            <div class="rooms-container">
-                                <?php for ($room = 1; $room <= 3; $room++) renderLessonBlock($dayNum, $time, $room, $blocks); ?>
+                            <div class="rooms-container" style="grid-template-columns: repeat(<?= count($teacherCols) ?>, 1fr);">
+                                <?php foreach ($teacherCols as $tc) renderLessonBlock($dayNum, $time, $tc, $blocks); ?>
                             </div>
                         </div>
                     <?php endfor; ?>
@@ -1425,7 +1534,7 @@ async function commitTitleEdit(cell, value, original) {
         id: cell.dataset.id ? parseInt(cell.dataset.id) : null,
         day: parseInt(block.dataset.day),
         time: block.dataset.time,
-        room: parseInt(block.dataset.room),
+        teacher_id: parseInt(block.dataset.teacher),
         kind: 'title',
         content: value
     };
@@ -1472,9 +1581,12 @@ function openCellModal(block, cell) {
     const tempCheckbox = document.getElementById('cellModalTemp');
     const deleteBtn = document.getElementById('cellModalDelete');
 
+    const blockTeacher = teachersData.find(t => parseInt(t.id) === parseInt(block.dataset.teacher));
+    const teacherLabel = blockTeacher ? (blockTeacher.display_name || blockTeacher.name) : '';
+
     document.getElementById('cellModalTitle').textContent = cell ? 'Ученик' : 'Добавить ученика';
     document.getElementById('cellModalSlot').textContent =
-        `${DAY_SHORT[block.dataset.day]} · ${block.dataset.time} · каб. ${block.dataset.room}`;
+        `${DAY_SHORT[block.dataset.day]} · ${block.dataset.time} · ${teacherLabel}`;
 
     nameInput.value = cell ? (cell.dataset.name || '') : '';
     tempCheckbox.checked = cell ? cell.dataset.temp === '1' : false;
@@ -1532,16 +1644,14 @@ async function saveCellModal() {
     const saveBtn = document.getElementById('cellModalSave');
     saveBtn.disabled = true;
 
-    // Новая плашка наследует цвет блока (заголовка); если блок без цвета — teal
-    const blockColorMatch = block.className.match(/\bbc(\d+)\b/);
-    const inheritedColor = (blockColorMatch && parseInt(blockColorMatch[1]) > 0)
-        ? parseInt(blockColorMatch[1]) : 1;
+    // Цвет плашки = цвет преподавателя-колонки
+    const inheritedColor = parseInt(block.dataset.color) || 1;
 
     const payload = {
         id: cell && cell.dataset.id ? parseInt(cell.dataset.id) : null,
         day: parseInt(block.dataset.day),
         time: block.dataset.time,
-        room: parseInt(block.dataset.room),
+        teacher_id: parseInt(block.dataset.teacher),
         kind: 'student',
         content: name,
         temp: temp,
@@ -1594,7 +1704,7 @@ async function deleteCellModal() {
         id: parseInt(cell.dataset.id),
         day: parseInt(block.dataset.day),
         time: block.dataset.time,
-        room: parseInt(block.dataset.room),
+        teacher_id: parseInt(block.dataset.teacher),
         kind: 'student',
         content: ''
     };
@@ -1619,7 +1729,8 @@ async function deleteCellModal() {
     }
 }
 
-// ========== КОНТЕКСТНОЕ МЕНЮ (цвет + удаление) ==========
+// ========== КОНТЕКСТНОЕ МЕНЮ (удаление) ==========
+// Цвет больше не выбирается вручную — он определяется колонкой преподавателя
 
 let contextTarget = null;
 
@@ -1632,24 +1743,9 @@ document.addEventListener('contextmenu', function(e) {
     contextTarget = cell;
 
     const menu = document.getElementById('contextMenu');
-    let html = '';
-
-    teachersData.forEach(t => {
-        const colorIndex = (t.id % 8) || 8;
-        const name = t.display_name || t.name;
-        html += `<div class="context-menu-item" onclick="setCellColor(${colorIndex})">
-                    <span class="swatch tcolor-${colorIndex}"></span>${escapeHtml(name)}
-                 </div>`;
-    });
-    html += `<div class="context-menu-item" onclick="setCellColor(0)">
-                <span class="swatch" style="background: rgba(255,255,255,0.08);"></span>Без цвета
-             </div>`;
-    html += '<div class="context-menu-divider"></div>';
-    html += `<div class="context-menu-item danger" onclick="deleteCell()">
+    menu.innerHTML = `<div class="context-menu-item danger" onclick="deleteCell()">
                 <span class="material-icons" style="font-size: 16px;">delete</span>Удалить
              </div>`;
-
-    menu.innerHTML = html;
     menu.classList.add('active');
 
     let x = e.clientX, y = e.clientY;
@@ -1683,34 +1779,6 @@ function escapeHtml(s) {
     return div.innerHTML;
 }
 
-async function setCellColor(color) {
-    if (!contextTarget || !contextTarget.dataset.id) return hideContextMenu();
-    const cell = contextTarget;
-    hideContextMenu();
-
-    try {
-        const response = await fetch('/zarplata/api/planner.php?action=set_note_color', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: parseInt(cell.dataset.id), color: color })
-        });
-        const result = await response.json();
-
-        if (result.success) {
-            if (cell.dataset.kind === 'title') {
-                const block = cell.closest('.lesson-block');
-                block.className = block.className.replace(/\bbc\d+\b/g, '').trim() + ' bc' + color;
-            } else {
-                cell.className = cell.className.replace(/\bc\d+\b/g, '').trim() + ' c' + color;
-            }
-        } else {
-            showNotification(result.error || 'Ошибка', 'error');
-        }
-    } catch (err) {
-        showNotification('Ошибка сети', 'error');
-    }
-}
-
 async function deleteCell() {
     if (!contextTarget || !contextTarget.dataset.id) return hideContextMenu();
     const cell = contextTarget;
@@ -1721,7 +1789,7 @@ async function deleteCell() {
         id: parseInt(cell.dataset.id),
         day: parseInt(block.dataset.day),
         time: block.dataset.time,
-        room: parseInt(block.dataset.room),
+        teacher_id: parseInt(block.dataset.teacher),
         kind: cell.dataset.kind || 'student',
         content: ''
     };
@@ -1737,7 +1805,7 @@ async function deleteCell() {
         if (result.success) {
             if (cell.dataset.kind === 'title') {
                 delete cell.dataset.id;
-                renderCellContent(cell, '');
+                renderTitleContent(cell, '');
             } else {
                 cell.remove();
             }
@@ -1862,22 +1930,24 @@ function updateGridColumns() {
     }
 }
 
-function toggleRoomFilter(button) {
+const TEACHER_COUNT = <?= max(count($teacherCols), 1) ?>;
+
+function toggleTeacherFilter(button) {
     button.classList.toggle('active');
-    updateVisibleRooms();
+    updateVisibleTeachers();
     saveFilters();
 }
 
-function updateVisibleRooms() {
-    const activeRooms = Array.from(document.querySelectorAll('.room-filter-btn.active'))
-        .map(btn => parseInt(btn.dataset.room));
+function updateVisibleTeachers() {
+    const activeTeachers = Array.from(document.querySelectorAll('.room-filter-btn.active'))
+        .map(btn => parseInt(btn.dataset.teacher));
 
     document.querySelectorAll('.lesson-block').forEach(block => {
-        const room = parseInt(block.dataset.room);
-        block.classList.toggle('hidden', activeRooms.length > 0 && !activeRooms.includes(room));
+        const teacher = parseInt(block.dataset.teacher);
+        block.classList.toggle('hidden', activeTeachers.length > 0 && !activeTeachers.includes(teacher));
     });
 
-    const visibleCount = activeRooms.length === 0 ? 3 : activeRooms.length;
+    const visibleCount = activeTeachers.length === 0 ? TEACHER_COUNT : activeTeachers.length;
     document.querySelectorAll('.rooms-container').forEach(container => {
         container.style.gridTemplateColumns = `repeat(${visibleCount}, 1fr)`;
     });
@@ -1886,13 +1956,13 @@ function updateVisibleRooms() {
 function saveFilters() {
     const filters = {
         days: Array.from(document.querySelectorAll('.day-filter-btn.active')).map(btn => btn.dataset.day),
-        rooms: Array.from(document.querySelectorAll('.room-filter-btn.active')).map(btn => btn.dataset.room)
+        teachers: Array.from(document.querySelectorAll('.room-filter-btn.active')).map(btn => btn.dataset.teacher)
     };
-    localStorage.setItem('plannerFilters', JSON.stringify(filters));
+    localStorage.setItem('plannerFiltersV2', JSON.stringify(filters));
 }
 
 function restoreFilters() {
-    const saved = localStorage.getItem('plannerFilters');
+    const saved = localStorage.getItem('plannerFiltersV2');
     if (!saved) return;
 
     try {
@@ -1905,11 +1975,11 @@ function restoreFilters() {
             updateVisibleDays();
         }
 
-        if (filters.rooms && filters.rooms.length > 0 && filters.rooms.length < 3) {
+        if (filters.teachers && filters.teachers.length > 0 && filters.teachers.length < TEACHER_COUNT) {
             document.querySelectorAll('.room-filter-btn').forEach(btn => {
-                btn.classList.toggle('active', filters.rooms.includes(btn.dataset.room));
+                btn.classList.toggle('active', filters.teachers.includes(btn.dataset.teacher));
             });
-            updateVisibleRooms();
+            updateVisibleTeachers();
         }
     } catch (e) {
         console.error('Error restoring filters:', e);
