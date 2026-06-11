@@ -271,7 +271,7 @@ require_once __DIR__ . '/templates/header.php';
 <div class="card mb-4">
     <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
         <h3 style="margin: 0;">Ближайшие уроки</h3>
-        <a href="/zarplata/schedule.php" class="btn btn-text">
+        <a href="/zarplata/planner.php" class="btn btn-text">
             Все уроки
             <span class="material-icons" style="font-size: 18px; margin-left: 4px;">arrow_forward</span>
         </a>
