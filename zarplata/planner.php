@@ -1179,6 +1179,19 @@ body:not(.show-morning) .morning-row:not(.has-lessons) {
     margin: 4px 0;
 }
 
+/* Кого/что удаляем — подпись над пунктом меню */
+.context-menu-target {
+    padding: 6px 12px 4px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
+}
+
 /* ========== УВЕДОМЛЕНИЯ ========== */
 .notification {
     position: fixed;
@@ -1810,10 +1823,18 @@ document.addEventListener('contextmenu', function(e) {
     e.preventDefault();
     contextTarget = cell;
 
+    const isTitle = cell.dataset.kind === 'title';
+    const label = isTitle ? 'Удалить урок' : 'Удалить ученика';
+    const target = isTitle
+        ? (cell.textContent || '').trim()
+        : (cell.dataset.name || '').trim();
+
     const menu = document.getElementById('contextMenu');
-    menu.innerHTML = `<div class="context-menu-item danger" onclick="deleteCell()">
-                <span class="material-icons" style="font-size: 16px;">delete</span>Удалить
-             </div>`;
+    menu.innerHTML = `
+        ${target ? `<div class="context-menu-target">${escapeHtml(target)}</div>` : ''}
+        <div class="context-menu-item danger" onclick="deleteCell()">
+            <span class="material-icons" style="font-size: 16px;">delete</span>${label}
+        </div>`;
     menu.classList.add('active');
 
     let x = e.clientX, y = e.clientY;
