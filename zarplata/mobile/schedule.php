@@ -1,83 +1,75 @@
 <?php
 /**
- * Mobile Schedule Page
- * Свайп между днями + горизонтальный скролл кабинетов
+ * Mobile Schedule Page — расписание из планировщика (planner_notes)
+ * Дни-чипы сверху, блоки уроков карточками. Только просмотр,
+ * редактирование — в десктопном планировщике.
  */
 
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/auth.php';
 require_once __DIR__ . '/../config/helpers.php';
-require_once __DIR__ . '/../config/student_helpers.php';
 
 requireAuth();
 $user = getCurrentUser();
 
-// Получить преподавателей
+// Преподаватели для легенды (цвет = (id % 8) ?: 8, как в планировщике)
 $teachers = dbQuery("
-    SELECT t.id, COALESCE(t.display_name, t.name) as name
-    FROM teachers t
-    WHERE t.active = 1
-    ORDER BY t.name
+    SELECT id, COALESCE(display_name, name) AS name
+    FROM teachers
+    WHERE active = 1
+    ORDER BY name
 ", []);
 
-// Получить все активные шаблоны расписания
+// Все записи расписания (просроченные временные не показываем)
+$notes = [];
 try {
-    $templates = dbQuery(
-        "SELECT lt.*, COALESCE(t.display_name, t.name) as teacher_name
-         FROM lessons_template lt
-         LEFT JOIN teachers t ON lt.teacher_id = t.id
-         WHERE lt.active = 1
-         ORDER BY lt.day_of_week ASC, lt.time_start ASC",
+    $notes = dbQuery(
+        "SELECT day, time, room, kind, content, color, temp_until
+         FROM planner_notes
+         WHERE (temp_until IS NULL OR temp_until >= CURDATE())
+         ORDER BY day, time, room, kind, position, id",
         []
     );
 } catch (PDOException $e) {
-    $templates = [];
+    $notes = [];
 }
 
-// Добавляем поле room если его нет + данные о студентах
-foreach ($templates as &$template) {
-    if (!isset($template['room'])) {
-        $template['room'] = 1;
+// Группируем: день → "time_room" → блок
+$days = [];
+foreach ($notes as $n) {
+    $day = (int)$n['day'];
+    $key = $n['time'] . '_' . $n['room'];
+    if (!isset($days[$day][$key])) {
+        $days[$day][$key] = [
+            'time' => substr($n['time'], 0, 5),
+            'room' => (int)$n['room'],
+            'title' => null,
+            'title_color' => 0,
+            'students' => []
+        ];
     }
-
-    // Получаем студентов для урока
-    $studentsData = getStudentsForLesson(
-        $template['teacher_id'],
-        $template['day_of_week'],
-        substr($template['time_start'], 0, 5)
-    );
-
-    $template['actual_student_count'] = $studentsData['count'];
-    $template['students_list'] = array_column($studentsData['students'], 'name');
-
-    if (empty($template['subject'])) {
-        $template['subject'] = $studentsData['subject'] ?: 'Математика';
-    }
-}
-unset($template);
-
-// Группируем по дням
-$scheduleByDay = [];
-$dayNames = ['', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-$dayNamesFull = ['', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
-
-for ($d = 1; $d <= 7; $d++) {
-    $scheduleByDay[$d] = [];
-}
-
-foreach ($templates as $t) {
-    $day = (int)$t['day_of_week'];
-    if ($day >= 1 && $day <= 7) {
-        $scheduleByDay[$day][] = $t;
+    if ($n['kind'] === 'title') {
+        $days[$day][$key]['title'] = trim($n['content']);
+        $days[$day][$key]['title_color'] = (int)$n['color'];
+    } elseif (trim($n['content']) !== '') {
+        $days[$day][$key]['students'][] = [
+            'name' => trim($n['content']),
+            'color' => (int)$n['color'],
+            'temp' => !empty($n['temp_until'])
+        ];
     }
 }
 
-// Сегодняшний день недели (1 = Monday)
-$todayDayOfWeek = (int)date('N');
+// Блоки без учеников и без заголовка не показываем; сортируем по времени
+foreach ($days as $day => $blocks) {
+    $blocks = array_filter($blocks, fn($b) => !empty($b['students']) || ($b['title'] !== null && $b['title'] !== ''));
+    usort($blocks, fn($a, $b) => [$a['time'], $a['room']] <=> [$b['time'], $b['room']]);
+    $days[$day] = $blocks;
+}
 
-// JSON для JavaScript
-$templatesJson = json_encode($templates, JSON_UNESCAPED_UNICODE);
-$teachersJson = json_encode($teachers, JSON_UNESCAPED_UNICODE);
+$dayNames = [1 => 'Пн', 2 => 'Вт', 3 => 'Ср', 4 => 'Чт', 5 => 'Пт', 6 => 'Сб', 7 => 'Вс'];
+$dayFull = [1 => 'Понедельник', 2 => 'Вторник', 3 => 'Среда', 4 => 'Четверг', 5 => 'Пятница', 6 => 'Суббота', 7 => 'Воскресенье'];
+$currentDay = (int)date('N');
 
 define('PAGE_TITLE', 'Расписание');
 define('ACTIVE_PAGE', 'schedule');
@@ -86,866 +78,230 @@ require_once __DIR__ . '/templates/header.php';
 ?>
 
 <style>
-/* Schedule specific styles */
-.schedule-container {
+/* Чипы дней */
+.day-chips {
     display: flex;
-    flex-direction: column;
-    height: calc(100vh - var(--header-height) - var(--bottom-nav-height) - var(--safe-area-bottom));
-    overflow: hidden;
-}
-
-/* Filters bar */
-.filters-bar {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 16px;
-    background: var(--bg-card);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-}
-
-.filter-group {
-    display: flex;
-    align-items: center;
     gap: 6px;
-}
-
-.filter-label {
-    font-size: 12px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.room-filters {
-    display: flex;
-    gap: 4px;
-}
-
-.room-filter {
-    min-width: 36px;
-    height: 32px;
-    padding: 0 10px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
-    cursor: pointer;
-    -webkit-transition: all 0.15s ease;
-    transition: all 0.15s ease;
-}
-
-.room-filter.active {
-    background: var(--accent);
-    color: white;
-    border-color: var(--accent);
-}
-
-/* Room visibility - controlled by JS */
-.room-header.hidden,
-.room-cell.hidden {
-    display: none !important;
-}
-
-/* Day tabs - horizontal scroll */
-.day-tabs {
-    display: flex;
-    overflow-x: auto;
-    gap: 8px;
     padding: 12px 16px;
-    background: var(--bg-card);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
+    overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
 }
 
-.day-tabs::-webkit-scrollbar {
-    display: none;
-}
+.day-chips::-webkit-scrollbar { display: none; }
 
-.day-tab {
+.day-chip {
     flex-shrink: 0;
-    min-width: 48px;
-    padding: 10px 16px;
-    border-radius: 20px;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    background: var(--bg-elevated);
+    padding: 8px 14px;
+    border-radius: 999px;
     border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 700;
     cursor: pointer;
-    -webkit-transition: all 0.15s ease;
-    transition: all 0.15s ease;
-    text-align: center;
+    transition: all 0.15s;
 }
 
-.day-tab.active {
+.day-chip.active {
     background: var(--accent-dim);
-    color: var(--accent);
     border-color: var(--accent);
-}
-
-.day-tab.today {
-    position: relative;
-}
-
-.day-tab.today::after {
-    content: '';
-    position: absolute;
-    bottom: 6px;
-    left: 50%;
-    -webkit-transform: translateX(-50%);
-    transform: translateX(-50%);
-    width: 5px;
-    height: 5px;
-    background: var(--accent);
-    border-radius: 50%;
-}
-
-/* Day panels container - simple show/hide */
-.day-panels {
-    flex: 1;
-    overflow: hidden;
-    position: relative;
-}
-
-.day-panel {
-    display: none;
-    height: 100%;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-.day-panel.active {
-    display: block;
-}
-
-/* Room headers */
-.room-headers {
-    display: flex;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background: var(--bg-card);
-    border-bottom: 1px solid var(--border);
-}
-
-.room-header-time {
-    width: 60px;
-    min-width: 60px;
-    padding: 10px 8px;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-muted);
-    background: var(--bg-card);
-    border-right: 1px solid var(--border);
-    position: sticky;
-    left: 0;
-    z-index: 11;
-}
-
-.room-header {
-    flex: 1;
-    min-width: 140px;
-    padding: 10px 12px;
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-muted);
-    text-align: center;
-    border-right: 1px solid var(--border);
-}
-
-.room-header:last-child {
-    border-right: none;
-}
-
-/* Schedule grid - horizontal scroll */
-.schedule-grid-wrapper {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-.schedule-grid {
-    min-width: 100%;
-    display: table;
-}
-
-.schedule-row {
-    display: flex;
-    border-bottom: 1px solid var(--border);
-}
-
-.time-cell {
-    width: 60px;
-    min-width: 60px;
-    padding: 12px 8px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    font-weight: 600;
     color: var(--accent);
-    background: var(--bg-card);
-    border-right: 1px solid var(--border);
-    position: sticky;
-    left: 0;
-    z-index: 5;
+}
+
+/* Легенда */
+.sched-legend {
     display: flex;
-    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 0 16px 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
 }
 
-.room-cell {
-    flex: 1;
-    min-width: 140px;
-    padding: 8px;
-    border-right: 1px solid var(--border);
-    min-height: 80px;
+.sched-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
 
-.room-cell:last-child {
-    border-right: none;
+.sched-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    border: 1px solid rgba(255,255,255,0.2);
 }
 
-/* Lesson card */
+.scolor-1 { background: rgba(20, 184, 166, 0.6); }
+.scolor-2 { background: rgba(168, 85, 247, 0.6); }
+.scolor-3 { background: rgba(59, 130, 246, 0.6); }
+.scolor-4 { background: rgba(249, 115, 22, 0.6); }
+.scolor-5 { background: rgba(236, 72, 153, 0.6); }
+.scolor-6 { background: rgba(234, 179, 8, 0.6); }
+.scolor-7 { background: rgba(34, 197, 94, 0.6); }
+.scolor-8 { background: rgba(239, 68, 68, 0.6); }
+.scolor-temp { background: rgba(245, 158, 11, 0.6); border-style: dashed; }
+
+/* День */
+.day-pane { display: none; padding: 0 16px 16px; }
+.day-pane.active { display: block; }
+
+.day-empty {
+    text-align: center;
+    padding: 48px 16px;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+/* Карточка блока урока */
 .lesson-card {
-    background: var(--bg-elevated);
+    background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 12px;
-    cursor: pointer;
-    transition: border-color 0.15s ease, transform 0.15s ease;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-}
-
-.lesson-card:active {
-    border-color: var(--accent);
-    transform: scale(0.98);
-}
-
-.lesson-card-subject {
-    font-size: 14px;
-    font-weight: 600;
-    margin-bottom: 4px;
-    white-space: nowrap;
+    border-radius: 12px;
+    margin-bottom: 10px;
     overflow: hidden;
-    text-overflow: ellipsis;
 }
 
-.lesson-card-teacher {
-    font-size: 12px;
-    color: var(--text-secondary);
-    margin-bottom: 6px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.lesson-card-meta {
+.lesson-card-header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-top: auto;
+    gap: 10px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid var(--border);
 }
 
-.lesson-card-students {
-    font-size: 12px;
-    color: var(--text-muted);
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
+.lesson-card.bc1 .lesson-card-header { background: rgba(20, 184, 166, 0.22); }
+.lesson-card.bc2 .lesson-card-header { background: rgba(168, 85, 247, 0.22); }
+.lesson-card.bc3 .lesson-card-header { background: rgba(59, 130, 246, 0.22); }
+.lesson-card.bc4 .lesson-card-header { background: rgba(249, 115, 22, 0.22); }
+.lesson-card.bc5 .lesson-card-header { background: rgba(236, 72, 153, 0.22); }
+.lesson-card.bc6 .lesson-card-header { background: rgba(234, 179, 8, 0.22); }
+.lesson-card.bc7 .lesson-card-header { background: rgba(34, 197, 94, 0.22); }
+.lesson-card.bc8 .lesson-card-header { background: rgba(239, 68, 68, 0.22); }
 
-.lesson-card-students svg {
-    width: 14px;
-    height: 14px;
-}
-
-.lesson-card-type {
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.lesson-card-type.group {
-    background: var(--lesson-group-dim);
-    color: var(--lesson-group);
-}
-
-.lesson-card-type.individual {
-    background: var(--lesson-individual-dim);
-    color: var(--lesson-individual);
-}
-
-/* Empty cell */
-.empty-cell {
-    height: 100%;
-    min-height: 64px;
-    border: 1px dashed var(--border);
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-muted);
-    font-size: 12px;
-    cursor: pointer;
-    transition: border-color 0.15s ease;
-}
-
-.empty-cell:active {
-    border-color: var(--accent);
-    border-style: solid;
-}
-
-/* Empty day message */
-.empty-day {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    padding: 48px 24px;
-    text-align: center;
-}
-
-.empty-day svg {
-    width: 64px;
-    height: 64px;
-    color: var(--text-muted);
-    opacity: 0.4;
-    margin-bottom: 16px;
-}
-
-.empty-day-title {
-    font-size: 18px;
-    font-weight: 600;
-    margin-bottom: 8px;
-}
-
-.empty-day-text {
-    font-size: 14px;
-    color: var(--text-secondary);
-}
-
-/* Lesson Modal */
-.lesson-modal-content {
-    padding: 20px;
-}
-
-.lesson-detail {
-    margin-bottom: 16px;
-}
-
-.lesson-detail-label {
-    font-size: 12px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 4px;
-}
-
-.lesson-detail-value {
-    font-size: 16px;
+.lesson-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 15px;
     color: var(--text-primary);
 }
 
-.students-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 8px;
+.lesson-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text-primary);
+    flex: 1;
 }
 
-.student-tag {
-    padding: 6px 12px;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
-    border-radius: 16px;
+.lesson-room {
+    font-size: 11px;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.07);
+    padding: 2px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.lesson-students {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 14px;
+}
+
+.student-chip {
+    padding: 4px 10px;
+    border-radius: 6px;
     font-size: 13px;
+    color: #ecfdf5;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid transparent;
+    border-left: 3px solid rgba(255, 255, 255, 0.2);
+}
+
+.student-chip.c1 { background: linear-gradient(135deg, rgba(20, 184, 166, 0.35), rgba(20, 184, 166, 0.15)); border-left-color: rgba(20, 184, 166, 0.9); }
+.student-chip.c2 { background: linear-gradient(135deg, rgba(168, 85, 247, 0.35), rgba(168, 85, 247, 0.15)); border-left-color: rgba(168, 85, 247, 0.9); }
+.student-chip.c3 { background: linear-gradient(135deg, rgba(59, 130, 246, 0.35), rgba(59, 130, 246, 0.15)); border-left-color: rgba(59, 130, 246, 0.9); }
+.student-chip.c4 { background: linear-gradient(135deg, rgba(249, 115, 22, 0.35), rgba(249, 115, 22, 0.15)); border-left-color: rgba(249, 115, 22, 0.9); }
+.student-chip.c5 { background: linear-gradient(135deg, rgba(236, 72, 153, 0.35), rgba(236, 72, 153, 0.15)); border-left-color: rgba(236, 72, 153, 0.9); }
+.student-chip.c6 { background: linear-gradient(135deg, rgba(234, 179, 8, 0.35), rgba(234, 179, 8, 0.15)); border-left-color: rgba(234, 179, 8, 0.9); }
+.student-chip.c7 { background: linear-gradient(135deg, rgba(34, 197, 94, 0.35), rgba(34, 197, 94, 0.15)); border-left-color: rgba(34, 197, 94, 0.9); }
+.student-chip.c8 { background: linear-gradient(135deg, rgba(239, 68, 68, 0.35), rgba(239, 68, 68, 0.15)); border-left-color: rgba(239, 68, 68, 0.9); }
+
+.student-chip.temp {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.4), rgba(245, 158, 11, 0.16)) !important;
+    border: 1px dashed rgba(245, 158, 11, 0.75) !important;
+    border-left: 3px solid #f59e0b !important;
+    color: #fef3c7;
+}
+
+.edit-note {
+    padding: 4px 16px 12px;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
 }
 </style>
 
-<div class="schedule-container">
-    <!-- Filters Bar -->
-    <div class="filters-bar">
-        <div class="filter-group">
-            <span class="filter-label">Каб:</span>
-            <div class="room-filters" id="roomFilters">
-                <button class="room-filter active" data-room="all" onclick="toggleRoomFilter('all')">Все</button>
-                <button class="room-filter" data-room="1" onclick="toggleRoomFilter(1)">1</button>
-                <button class="room-filter" data-room="2" onclick="toggleRoomFilter(2)">2</button>
-                <button class="room-filter" data-room="3" onclick="toggleRoomFilter(3)">3</button>
-            </div>
-        </div>
-    </div>
+<!-- Чипы дней -->
+<div class="day-chips">
+    <?php foreach ($dayNames as $d => $short): ?>
+        <button class="day-chip <?= $d === $currentDay ? 'active' : '' ?>" data-day="<?= $d ?>" onclick="showDay(<?= $d ?>)">
+            <?= $short ?><?= $d === $currentDay ? ' · сегодня' : '' ?>
+        </button>
+    <?php endforeach; ?>
+</div>
 
-    <!-- Day Tabs -->
-    <div class="day-tabs" id="dayTabs">
-        <?php for ($d = 1; $d <= 7; $d++): ?>
-            <button class="day-tab<?= $d === $todayDayOfWeek ? ' today' : '' ?>"
-                    data-day="<?= $d ?>"
-                    onclick="switchDay(<?= $d ?>)">
-                <?= $dayNames[$d] ?>
-            </button>
-        <?php endfor; ?>
-    </div>
+<!-- Легенда преподавателей -->
+<div class="sched-legend">
+    <?php foreach ($teachers as $teacher):
+        $colorIndex = ($teacher['id'] % 8) ?: 8;
+    ?>
+        <span class="sched-legend-item"><span class="sched-color scolor-<?= $colorIndex ?>"></span><?= e($teacher['name']) ?></span>
+    <?php endforeach; ?>
+    <span class="sched-legend-item"><span class="sched-color scolor-temp"></span>временно</span>
+</div>
 
-    <!-- Day Panels -->
-    <div class="day-panels" id="dayPanels">
-        <?php for ($d = 1; $d <= 7; $d++): ?>
-            <div class="day-panel<?= $d === $todayDayOfWeek ? ' active' : '' ?>" data-day="<?= $d ?>">
-                <?php
-                $dayLessons = $scheduleByDay[$d];
-                if (empty($dayLessons)):
-                ?>
-                    <div class="empty-day">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                        </svg>
-                        <div class="empty-day-title">Нет уроков</div>
-                        <div class="empty-day-text"><?= $dayNamesFull[$d] ?> — выходной</div>
+<!-- Дни -->
+<?php foreach ($dayNames as $d => $short): ?>
+    <div class="day-pane <?= $d === $currentDay ? 'active' : '' ?>" data-day="<?= $d ?>">
+        <?php if (empty($days[$d])): ?>
+            <div class="day-empty"><?= $dayFull[$d] ?>: занятий нет</div>
+        <?php else: ?>
+            <?php foreach ($days[$d] as $block): ?>
+                <div class="lesson-card bc<?= $block['title_color'] ?>">
+                    <div class="lesson-card-header">
+                        <span class="lesson-time"><?= $block['time'] ?></span>
+                        <span class="lesson-title"><?= e($block['title'] ?: 'Урок') ?></span>
+                        <span class="lesson-room">каб. <?= $block['room'] ?></span>
                     </div>
-                <?php else:
-                    // Группируем по времени
-                    $timeSlots = [];
-                    foreach ($dayLessons as $lesson) {
-                        $time = substr($lesson['time_start'], 0, 5);
-                        if (!isset($timeSlots[$time])) {
-                            $timeSlots[$time] = [1 => null, 2 => null, 3 => null];
-                        }
-                        $room = (int)($lesson['room'] ?? 1);
-                        if ($room >= 1 && $room <= 3) {
-                            $timeSlots[$time][$room] = $lesson;
-                        }
-                    }
-                    ksort($timeSlots);
-                ?>
-                    <div class="schedule-grid-wrapper">
-                        <!-- Room Headers -->
-                        <div class="room-headers">
-                            <div class="room-header-time">Время</div>
-                            <div class="room-header" data-room="1">Каб. 1</div>
-                            <div class="room-header" data-room="2">Каб. 2</div>
-                            <div class="room-header" data-room="3">Каб. 3</div>
-                        </div>
-
-                        <!-- Schedule Grid -->
-                        <div class="schedule-grid">
-                            <?php foreach ($timeSlots as $time => $rooms): ?>
-                                <div class="schedule-row">
-                                    <div class="time-cell"><?= $time ?></div>
-                                    <?php for ($r = 1; $r <= 3; $r++): ?>
-                                        <div class="room-cell" data-room="<?= $r ?>">
-                                            <?php if ($rooms[$r]):
-                                                $lesson = $rooms[$r];
-                                            ?>
-                                                <div class="lesson-card" onclick="openLesson(<?= $lesson['id'] ?>)">
-                                                    <div class="lesson-card-subject"><?= htmlspecialchars($lesson['subject'] ?? 'Урок') ?></div>
-                                                    <div class="lesson-card-teacher"><?= htmlspecialchars($lesson['teacher_name']) ?></div>
-                                                    <div class="lesson-card-meta">
-                                                        <span class="lesson-card-students">
-                                                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197"/>
-                                                            </svg>
-                                                            <?= $lesson['actual_student_count'] ?? $lesson['expected_students'] ?? 0 ?>
-                                                        </span>
-                                                        <span class="lesson-card-type <?= $lesson['lesson_type'] ?? 'group' ?>">
-                                                            <?= ($lesson['lesson_type'] ?? 'group') === 'group' ? 'Гр' : 'Инд' ?>
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            <?php else: ?>
-                                                <div class="empty-cell" onclick="addLesson(<?= $d ?>, '<?= $time ?>', <?= $r ?>)">
-                                                    <span>+</span>
-                                                </div>
-                                            <?php endif; ?>
-                                        </div>
-                                    <?php endfor; ?>
-                                </div>
+                    <?php if (!empty($block['students'])): ?>
+                        <div class="lesson-students">
+                            <?php foreach ($block['students'] as $st): ?>
+                                <span class="student-chip c<?= $st['color'] ?><?= $st['temp'] ? ' temp' : '' ?>">
+                                    <?= e($st['name']) ?><?= $st['temp'] ? ' ⏳' : '' ?>
+                                </span>
                             <?php endforeach; ?>
                         </div>
-                    </div>
-                <?php endif; ?>
-            </div>
-        <?php endfor; ?>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
     </div>
-</div>
+<?php endforeach; ?>
 
-<!-- FAB Button -->
-<button class="fab" onclick="openAddModal()">
-    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-    </svg>
-</button>
-
-<!-- Lesson Detail Modal -->
-<div class="modal" id="lessonModal">
-    <div class="modal-content">
-        <div class="modal-handle"></div>
-        <div class="modal-header">
-            <h3 class="modal-title" id="lessonModalTitle">Урок</h3>
-            <button class="modal-close" onclick="closeModal('lessonModal')">
-                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-            </button>
-        </div>
-        <div class="modal-body" id="lessonModalBody">
-            <!-- Content loaded dynamically -->
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal('lessonModal')">Закрыть</button>
-            <button class="btn btn-primary" id="editLessonBtn">Редактировать</button>
-        </div>
-    </div>
-</div>
-
-<!-- Add/Edit Lesson Modal -->
-<div class="modal modal-fullscreen" id="addLessonModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3 class="modal-title" id="addLessonModalTitle">Добавить урок</h3>
-            <button class="modal-close" onclick="closeModal('addLessonModal')">
-                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-            </button>
-        </div>
-        <div class="modal-body">
-            <form id="lessonForm">
-                <input type="hidden" name="id" id="lessonId">
-
-                <div class="form-group">
-                    <label class="form-label">Преподаватель</label>
-                    <select name="teacher_id" id="teacherSelect" class="form-control" required>
-                        <option value="">Выберите преподавателя</option>
-                        <?php foreach ($teachers as $t): ?>
-                            <option value="<?= $t['id'] ?>"><?= htmlspecialchars($t['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">День недели</label>
-                    <select name="day_of_week" id="daySelect" class="form-control" required>
-                        <?php for ($d = 1; $d <= 7; $d++): ?>
-                            <option value="<?= $d ?>"><?= $dayNamesFull[$d] ?></option>
-                        <?php endfor; ?>
-                    </select>
-                </div>
-
-                <div style="display: flex; gap: 12px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label class="form-label">Начало</label>
-                        <input type="time" name="time_start" id="timeStart" class="form-control" required>
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label class="form-label">Конец</label>
-                        <input type="time" name="time_end" id="timeEnd" class="form-control" required>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Кабинет</label>
-                    <select name="room" id="roomSelect" class="form-control" required>
-                        <option value="1">Кабинет 1</option>
-                        <option value="2">Кабинет 2</option>
-                        <option value="3">Кабинет 3</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Предмет</label>
-                    <input type="text" name="subject" id="subjectInput" class="form-control" placeholder="Математика">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Тип занятия</label>
-                    <select name="lesson_type" id="lessonTypeSelect" class="form-control">
-                        <option value="group">Групповое</option>
-                        <option value="individual">Индивидуальное</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Ожидаемое кол-во учеников</label>
-                    <input type="number" name="expected_students" id="expectedStudents" class="form-control" value="1" min="1">
-                </div>
-            </form>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal('addLessonModal')">Отмена</button>
-            <button class="btn btn-primary" onclick="saveLesson()">Сохранить</button>
-        </div>
-    </div>
-</div>
+<div class="edit-note">Редактирование расписания — в полной версии на компьютере</div>
 
 <script>
-// Data
-const templates = <?= $templatesJson ?>;
-const teachers = <?= $teachersJson ?>;
-const todayDay = <?= $todayDayOfWeek ?>;
-let currentDay = todayDay;
-let selectedRooms = [1, 2, 3]; // Массив выбранных кабинетов
-let currentLesson = null;
-
-// ===== LocalStorage =====
-function saveToStorage(key, value) {
-    try { localStorage.setItem('schedule_' + key, JSON.stringify(value)); } catch (e) {}
-}
-
-function loadFromStorage(key, defaultValue) {
-    try {
-        const val = localStorage.getItem('schedule_' + key);
-        return val !== null ? JSON.parse(val) : defaultValue;
-    } catch (e) { return defaultValue; }
-}
-
-// ===== Room Filter (Multiple Selection) =====
-function toggleRoomFilter(room) {
-    if (room === 'all') {
-        // Выбрать все
-        selectedRooms = [1, 2, 3];
-    } else {
-        room = parseInt(room);
-        const idx = selectedRooms.indexOf(room);
-        if (idx > -1) {
-            // Убрать из выбранных (но не последний)
-            if (selectedRooms.length > 1) {
-                selectedRooms.splice(idx, 1);
-            }
-        } else {
-            // Добавить к выбранным
-            selectedRooms.push(room);
-            selectedRooms.sort();
-        }
-    }
-    saveToStorage('rooms', selectedRooms);
-    applyRoomFilter();
-    updateRoomFilterButtons();
-}
-
-function applyRoomFilter() {
-    document.querySelectorAll('.room-header[data-room], .room-cell[data-room]').forEach(el => {
-        const r = parseInt(el.dataset.room);
-        el.classList.toggle('hidden', !selectedRooms.includes(r));
+function showDay(day) {
+    document.querySelectorAll('.day-chip').forEach(chip => {
+        chip.classList.toggle('active', parseInt(chip.dataset.day) === day);
+    });
+    document.querySelectorAll('.day-pane').forEach(pane => {
+        pane.classList.toggle('active', parseInt(pane.dataset.day) === day);
     });
 }
-
-function updateRoomFilterButtons() {
-    const allSelected = selectedRooms.length === 3;
-    document.querySelectorAll('.room-filter').forEach(btn => {
-        const r = btn.dataset.room;
-        if (r === 'all') {
-            btn.classList.toggle('active', allSelected);
-        } else {
-            btn.classList.toggle('active', selectedRooms.includes(parseInt(r)));
-        }
-    });
-}
-
-// ===== Day Switching (Simple show/hide) =====
-function switchDay(day) {
-    currentDay = day;
-    saveToStorage('day', day);
-
-    // Update tabs
-    document.querySelectorAll('.day-tab').forEach(tab => {
-        tab.classList.toggle('active', parseInt(tab.dataset.day) === day);
-    });
-
-    // Scroll tab into view
-    const activeTab = document.querySelector(`.day-tab[data-day="${day}"]`);
-    activeTab?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-
-    // Show/hide panels
-    document.querySelectorAll('.day-panel').forEach(panel => {
-        panel.classList.toggle('active', parseInt(panel.dataset.day) === day);
-    });
-}
-
-// ===== Initialize =====
-(function init() {
-    // Load saved day
-    const savedDay = loadFromStorage('day', todayDay);
-    currentDay = savedDay;
-
-    // Load saved rooms
-    const savedRooms = loadFromStorage('rooms', [1, 2, 3]);
-    selectedRooms = Array.isArray(savedRooms) ? savedRooms : [1, 2, 3];
-
-    // Apply filters
-    applyRoomFilter();
-    updateRoomFilterButtons();
-
-    // Switch to saved day
-    switchDay(currentDay);
-
-    // Scroll to active tab
-    setTimeout(() => {
-        const activeTab = document.querySelector(`.day-tab[data-day="${currentDay}"]`);
-        activeTab?.scrollIntoView({ behavior: 'auto', inline: 'center', block: 'nearest' });
-    }, 50);
-})();
-
-function openLesson(id) {
-    const lesson = templates.find(t => t.id == id);
-    if (!lesson) return;
-
-    currentLesson = lesson;
-
-    document.getElementById('lessonModalTitle').textContent = lesson.subject || 'Урок';
-
-    const studentsList = (lesson.students_list || []).map(s =>
-        `<span class="student-tag">${escapeHtml(s)}</span>`
-    ).join('') || '<span class="text-muted">Нет учеников</span>';
-
-    document.getElementById('lessonModalBody').innerHTML = `
-        <div class="lesson-detail">
-            <div class="lesson-detail-label">Преподаватель</div>
-            <div class="lesson-detail-value">${escapeHtml(lesson.teacher_name)}</div>
-        </div>
-        <div class="lesson-detail">
-            <div class="lesson-detail-label">Время</div>
-            <div class="lesson-detail-value">${lesson.time_start.substring(0, 5)} — ${lesson.time_end.substring(0, 5)}</div>
-        </div>
-        <div class="lesson-detail">
-            <div class="lesson-detail-label">Кабинет</div>
-            <div class="lesson-detail-value">Кабинет ${lesson.room || 1}</div>
-        </div>
-        <div class="lesson-detail">
-            <div class="lesson-detail-label">Тип</div>
-            <div class="lesson-detail-value">${lesson.lesson_type === 'individual' ? 'Индивидуальное' : 'Групповое'}</div>
-        </div>
-        <div class="lesson-detail">
-            <div class="lesson-detail-label">Ученики (${lesson.actual_student_count || 0})</div>
-            <div class="students-list">${studentsList}</div>
-        </div>
-    `;
-
-    document.getElementById('editLessonBtn').onclick = () => {
-        closeModal('lessonModal');
-        editLesson(lesson);
-    };
-
-    openModal('lessonModal');
-}
-
-function editLesson(lesson) {
-    document.getElementById('addLessonModalTitle').textContent = 'Редактировать урок';
-    document.getElementById('lessonId').value = lesson.id;
-    document.getElementById('teacherSelect').value = lesson.teacher_id;
-    document.getElementById('daySelect').value = lesson.day_of_week;
-    document.getElementById('timeStart').value = lesson.time_start.substring(0, 5);
-    document.getElementById('timeEnd').value = lesson.time_end.substring(0, 5);
-    document.getElementById('roomSelect').value = lesson.room || 1;
-    document.getElementById('subjectInput').value = lesson.subject || '';
-    document.getElementById('lessonTypeSelect').value = lesson.lesson_type || 'group';
-    document.getElementById('expectedStudents').value = lesson.expected_students || 1;
-
-    openModal('addLessonModal');
-}
-
-function addLesson(day, time, room) {
-    document.getElementById('addLessonModalTitle').textContent = 'Добавить урок';
-    document.getElementById('lessonForm').reset();
-    document.getElementById('lessonId').value = '';
-    document.getElementById('daySelect').value = day;
-    document.getElementById('timeStart').value = time;
-    document.getElementById('roomSelect').value = room;
-
-    // Default end time +1.5 hours
-    const [h, m] = time.split(':').map(Number);
-    const endMinutes = h * 60 + m + 90;
-    const endH = Math.floor(endMinutes / 60) % 24;
-    const endM = endMinutes % 60;
-    document.getElementById('timeEnd').value =
-        String(endH).padStart(2, '0') + ':' + String(endM).padStart(2, '0');
-
-    openModal('addLessonModal');
-}
-
-function openAddModal() {
-    document.getElementById('addLessonModalTitle').textContent = 'Добавить урок';
-    document.getElementById('lessonForm').reset();
-    document.getElementById('lessonId').value = '';
-    document.getElementById('daySelect').value = currentDay;
-
-    openModal('addLessonModal');
-}
-
-async function saveLesson() {
-    const form = document.getElementById('lessonForm');
-    const formData = new FormData(form);
-    const data = Object.fromEntries(formData.entries());
-
-    const id = data.id;
-    const action = id ? 'update_template' : 'add_template';
-
-    try {
-        MobileApp.showLoading();
-
-        const response = await fetch(`../api/schedule.php?action=${action}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            MobileApp.showToast(id ? 'Урок обновлён' : 'Урок добавлен', 'success');
-            closeModal('addLessonModal');
-            setTimeout(() => location.reload(), 500);
-        } else {
-            MobileApp.showToast(result.error || 'Ошибка сохранения', 'error');
-        }
-    } catch (error) {
-        MobileApp.showToast('Ошибка сети', 'error');
-    } finally {
-        MobileApp.hideLoading();
-    }
-}
-
-function openModal(id) {
-    const modal = document.getElementById(id);
-    if (!modal) return;
-    modal.classList.add('active');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeModal(id) {
-    const modal = document.getElementById(id);
-    if (!modal) return;
-    modal.classList.remove('active');
-    document.body.style.overflow = '';
-}
-
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// Close modals on overlay click
-document.querySelectorAll('.modal').forEach(modal => {
-    modal.addEventListener('click', e => {
-        if (e.target === modal) {
-            modal.classList.remove('active');
-            document.body.style.overflow = '';
-        }
-    });
-});
 </script>
 
 <?php require_once __DIR__ . '/templates/footer.php'; ?>

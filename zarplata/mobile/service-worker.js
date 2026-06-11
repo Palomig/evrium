@@ -3,8 +3,8 @@
  * Версия: 1.0.1
  */
 
-const CACHE_NAME = 'zarplata-pwa-v2';
-const STATIC_CACHE = 'zarplata-static-v2';
+const CACHE_NAME = 'zarplata-pwa-v3';
+const STATIC_CACHE = 'zarplata-static-v3';
 
 // Статические ресурсы для кэширования
 const STATIC_ASSETS = [
