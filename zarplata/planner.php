@@ -611,10 +611,18 @@ body {
 .pcell.c7 { background: linear-gradient(135deg, rgba(34, 197, 94, 0.35), rgba(34, 197, 94, 0.15)); border-left: 3px solid rgba(34, 197, 94, 0.9); }
 .pcell.c8 { background: linear-gradient(135deg, rgba(239, 68, 68, 0.35), rgba(239, 68, 68, 0.15)); border-left: 3px solid rgba(239, 68, 68, 0.9); }
 
-/* Поле ввода внутри ячейки/заголовка */
+/* Поле ввода внутри ячейки/заголовка.
+   min-width: 0 и size=1 обязательны: дефолтная внутренняя ширина input
+   (~20 символов) распирает грид-колонки, т.к. обёртка сетки max-content */
+.pcell,
+.block-title {
+    min-width: 0;
+}
+
 .pcell input,
 .block-title input {
     width: 100%;
+    min-width: 0;
     background: transparent;
     border: none;
     outline: none;
@@ -912,6 +920,7 @@ function beginEdit(cell) {
     const input = document.createElement('input');
     input.type = 'text';
     input.maxLength = 160;
+    input.size = 1;
     input.value = original.trim();
 
     cell.classList.add('editing');
