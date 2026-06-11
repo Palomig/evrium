@@ -12,6 +12,7 @@ require_once __DIR__ . '/mobile/config/mobile_detect.php';
 redirectToMobileIfNeeded('settings.php');
 
 requireAuth();
+requireAdmin();
 $user = getCurrentUser();
 
 // Получить все настройки
@@ -726,6 +727,159 @@ require_once __DIR__ . '/templates/header.php';
         </script>
     </div>
 </div>
+
+<!-- Пользователи панели -->
+<div class="card mt-4" style="margin-top: 24px;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="margin: 0;">Пользователи панели</h3>
+        <button class="btn btn-primary" onclick="toggleUserForm()">
+            <span class="material-icons" style="margin-right: 6px; font-size: 18px;">person_add</span>
+            Добавить
+        </button>
+    </div>
+
+    <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px;">
+        Преподаватели видят только расписание (своя колонка), уроки, посещаемость и свою зарплату.
+        Галка «Дашборд» открывает пользователю главную страницу.
+    </p>
+
+    <!-- Форма создания -->
+    <div id="user-create-form" style="display: none; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+            <div>
+                <label style="font-size: 12px;">Логин</label>
+                <input type="text" id="nu-username" placeholder="ruslan" autocomplete="off">
+            </div>
+            <div>
+                <label style="font-size: 12px;">Имя</label>
+                <input type="text" id="nu-name" placeholder="Руслан Романович" autocomplete="off">
+            </div>
+            <div>
+                <label style="font-size: 12px;">Роль</label>
+                <select id="nu-role" onchange="document.getElementById('nu-teacher-wrap').style.display = this.value === 'teacher' ? '' : 'none'">
+                    <option value="teacher">Преподаватель</option>
+                    <option value="admin">Администратор</option>
+                </select>
+            </div>
+            <div id="nu-teacher-wrap">
+                <label style="font-size: 12px;">Преподаватель</label>
+                <select id="nu-teacher"></select>
+            </div>
+            <div>
+                <label style="font-size: 12px;">Пароль (мин. 8)</label>
+                <input type="text" id="nu-password" autocomplete="off">
+            </div>
+        </div>
+        <div style="margin-top: 12px; display: flex; gap: 8px;">
+            <button class="btn btn-primary" onclick="createPanelUser()">Создать</button>
+            <button class="btn btn-secondary" onclick="toggleUserForm()">Отмена</button>
+        </div>
+    </div>
+
+    <!-- Список -->
+    <div style="overflow-x: auto;">
+        <table style="width: 100%;">
+            <thead>
+                <tr>
+                    <th>Логин</th>
+                    <th>Имя</th>
+                    <th>Роль</th>
+                    <th>Преподаватель</th>
+                    <th>Дашборд</th>
+                    <th>Активен</th>
+                    <th style="text-align: right;">Действия</th>
+                </tr>
+            </thead>
+            <tbody id="users-table-body">
+                <tr><td colspan="7" style="color: var(--text-muted);">Загрузка…</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+let panelUsersData = null;
+
+async function usersApi(action, payload) {
+    const opts = payload
+        ? { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) }
+        : {};
+    const r = await fetch('/zarplata/api/users.php?action=' + action, opts);
+    return r.json();
+}
+
+async function loadPanelUsers() {
+    const result = await usersApi('list');
+    if (!result.success) return;
+    panelUsersData = result.data;
+
+    // Селект преподавателей в форме создания
+    const tsel = document.getElementById('nu-teacher');
+    tsel.innerHTML = panelUsersData.teachers
+        .map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+
+    const roleNames = { owner: 'Владелец', admin: 'Админ', teacher: 'Преподаватель' };
+    const tbody = document.getElementById('users-table-body');
+    tbody.innerHTML = panelUsersData.users.map(u => {
+        const dashChecked = u.can_dashboard === null
+            ? (u.role !== 'teacher') : !!parseInt(u.can_dashboard);
+        const isSelf = parseInt(u.id) === parseInt(panelUsersData.self_id);
+        return `<tr style="${parseInt(u.active) ? '' : 'opacity: 0.45;'}">
+            <td><strong>${u.username}</strong>${isSelf ? ' <span style="color: var(--text-muted); font-size: 11px;">(вы)</span>' : ''}</td>
+            <td>${u.name || ''}</td>
+            <td>${roleNames[u.role] || u.role}</td>
+            <td>${u.teacher_name || '—'}</td>
+            <td><input type="checkbox" ${dashChecked ? 'checked' : ''} onchange="updatePanelUser(${u.id}, {can_dashboard: this.checked ? 1 : 0})"></td>
+            <td><input type="checkbox" ${parseInt(u.active) ? 'checked' : ''} ${isSelf ? 'disabled' : ''} onchange="updatePanelUser(${u.id}, {active: this.checked ? 1 : 0})"></td>
+            <td style="text-align: right;">
+                <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 12px;" onclick="resetPanelPassword(${u.id}, '${u.username}')">Сбросить пароль</button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+function toggleUserForm() {
+    const form = document.getElementById('user-create-form');
+    form.style.display = form.style.display === 'none' ? '' : 'none';
+}
+
+async function createPanelUser() {
+    const payload = {
+        username: document.getElementById('nu-username').value.trim(),
+        name: document.getElementById('nu-name').value.trim(),
+        role: document.getElementById('nu-role').value,
+        teacher_id: parseInt(document.getElementById('nu-teacher').value) || null,
+        password: document.getElementById('nu-password').value
+    };
+    const result = await usersApi('create', payload);
+    if (!result.success) {
+        alert(result.error || 'Ошибка');
+        return;
+    }
+    document.getElementById('nu-username').value = '';
+    document.getElementById('nu-name').value = '';
+    document.getElementById('nu-password').value = '';
+    toggleUserForm();
+    loadPanelUsers();
+}
+
+async function updatePanelUser(id, fields) {
+    const result = await usersApi('update', Object.assign({id: id}, fields));
+    if (!result.success) {
+        alert(result.error || 'Ошибка');
+    }
+    loadPanelUsers();
+}
+
+async function resetPanelPassword(id, username) {
+    const pwd = prompt(`Новый пароль для «${username}» (мин. 8 символов):`);
+    if (pwd === null) return;
+    const result = await usersApi('reset_password', {id: id, password: pwd});
+    alert(result.success ? 'Пароль изменён' : (result.error || 'Ошибка'));
+}
+
+document.addEventListener('DOMContentLoaded', loadPanelUsers);
+</script>
 
 <script src="/zarplata/assets/js/settings.js"></script>
 

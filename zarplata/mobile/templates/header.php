@@ -82,26 +82,31 @@ if (!defined('SHOW_BOTTOM_NAV')) {
         <div class="menu-nav">
             <div class="menu-section">
                 <div class="menu-section-label">Основное</div>
+                <?php if (canSeeDashboard()): ?>
                 <a href="index.php" class="menu-item <?= ACTIVE_PAGE === 'dashboard' ? 'active' : '' ?>">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
                     </svg>
                     <span>Главная</span>
                 </a>
+                <?php endif; ?>
                 <a href="schedule.php" class="menu-item <?= ACTIVE_PAGE === 'schedule' ? 'active' : '' ?>">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                     </svg>
                     <span>Расписание</span>
                 </a>
+                <?php if (isAdmin()): ?>
                 <a href="students.php" class="menu-item <?= ACTIVE_PAGE === 'students' ? 'active' : '' ?>">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
                     </svg>
                     <span>Ученики</span>
                 </a>
+                <?php endif; ?>
             </div>
 
+            <?php if (isAdmin()): ?>
             <div class="menu-section">
                 <div class="menu-section-label">Финансы</div>
                 <a href="payments.php" class="menu-item <?= ACTIVE_PAGE === 'payments' ? 'active' : '' ?>">
@@ -156,9 +161,16 @@ if (!defined('SHOW_BOTTOM_NAV')) {
                     <span>Настройки</span>
                 </a>
             </div>
+            <?php endif; ?>
         </div>
 
         <div class="menu-footer">
+            <a href="/zarplata/password.php" class="menu-item">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                </svg>
+                <span>Сменить пароль</span>
+            </a>
             <a href="logout.php" class="menu-item">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>

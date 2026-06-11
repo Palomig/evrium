@@ -51,6 +51,16 @@ if (!$lessonId) {
     exit;
 }
 
+// Учитель может отмечать только свои уроки
+if (isTeacherUser()) {
+    $ownLesson = dbQueryOne("SELECT teacher_id FROM lessons_instance WHERE id = ?", [$lessonId]);
+    if (!$ownLesson || (int)$ownLesson["teacher_id"] !== (int)getCurrentTeacherId()) {
+        http_response_code(403);
+        echo json_encode(["success" => false, "error" => "Можно отмечать только свои уроки"]);
+        exit;
+    }
+}
+
 // Mark lesson complete
 if (!empty($body['complete'])) {
     // Count actual attendees

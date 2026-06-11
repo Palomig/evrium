@@ -36,10 +36,12 @@ function getCurrentUser() {
         return null;
     }
 
-    return dbQueryOne(
-        "SELECT id, username, name, email, role, active FROM users WHERE id = ?",
-        [getCurrentUserId()]
-    );
+    // SELECT * — устойчиво к появлению новых колонок (teacher_id, can_dashboard)
+    $user = dbQueryOne("SELECT * FROM users WHERE id = ?", [getCurrentUserId()]);
+    if ($user) {
+        unset($user['password_hash']);
+    }
+    return $user;
 }
 
 /**
@@ -76,12 +78,78 @@ function isAdmin() {
 }
 
 /**
+ * Проверить, является ли пользователь преподавателем
+ * @return bool
+ */
+function isTeacherUser() {
+    return getCurrentUserRole() === 'teacher';
+}
+
+/**
+ * ID преподавателя, к которому привязан текущий пользователь-учитель
+ * @return int|null
+ */
+function getCurrentTeacherId() {
+    $tid = $_SESSION['teacher_id'] ?? null;
+    return $tid ? (int)$tid : null;
+}
+
+/**
+ * Видит ли текущий пользователь дашборд.
+ * admin/owner — да (если явно не выключено), teacher — только если включено.
+ */
+function canSeeDashboard() {
+    if (!isLoggedIn()) {
+        return false;
+    }
+    $flag = $_SESSION['can_dashboard'] ?? null; // NULL = по роли
+    if ($flag !== null && $flag !== '') {
+        return (int)$flag === 1;
+    }
+    return isAdmin();
+}
+
+/**
+ * Требовать доступ к дашборду; преподавателей уводим на расписание
+ * @param string $redirect Куда отправить без доступа
+ */
+function requireDashboardAccess($redirect = '/zarplata/planner.php') {
+    requireAuth();
+    if (!canSeeDashboard()) {
+        header('Location: ' . $redirect);
+        exit;
+    }
+}
+
+/**
+ * Миграция схемы users под роли преподавателей (одноразовая).
+ * dbQuery глотает исключения, поэтому проверки через SHOW COLUMNS.
+ */
+function ensureUsersRolesSchema() {
+    $teacherCol = dbQuery("SHOW COLUMNS FROM users LIKE 'teacher_id'", []);
+    if (empty($teacherCol)) {
+        dbExecute("ALTER TABLE users ADD COLUMN teacher_id INT NULL", []);
+    }
+    $dashCol = dbQuery("SHOW COLUMNS FROM users LIKE 'can_dashboard'", []);
+    if (empty($dashCol)) {
+        dbExecute("ALTER TABLE users ADD COLUMN can_dashboard TINYINT NULL", []);
+    }
+    $roleCol = dbQuery("SHOW COLUMNS FROM users LIKE 'role'", []);
+    if (!empty($roleCol) && strpos($roleCol[0]['Type'] ?? '', 'teacher') === false) {
+        dbExecute("ALTER TABLE users MODIFY COLUMN role ENUM('admin','owner','teacher') NOT NULL DEFAULT 'admin'", []);
+    }
+}
+
+/**
  * Авторизовать пользователя
  * @param string $username Имя пользователя
  * @param string $password Пароль
  * @return bool Успешность авторизации
  */
 function login($username, $password) {
+    // Схема под роли преподавателей (одноразовая авто-миграция)
+    ensureUsersRolesSchema();
+
     // Получить пользователя из БД
     $user = dbQueryOne(
         "SELECT * FROM users WHERE username = ? AND active = 1",
@@ -102,6 +170,8 @@ function login($username, $password) {
     $_SESSION['username'] = $user['username'];
     $_SESSION['user_name'] = $user['name'];
     $_SESSION['user_role'] = $user['role'];
+    $_SESSION['teacher_id'] = $user['teacher_id'] ?? null;
+    $_SESSION['can_dashboard'] = $user['can_dashboard'] ?? null;
 
     // Логирование входа
     logAudit('user_login', 'user', $user['id'], null, null, 'Вход в систему');

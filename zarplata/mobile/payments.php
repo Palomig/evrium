@@ -9,6 +9,7 @@ require_once __DIR__ . '/../config/auth.php';
 require_once __DIR__ . '/../config/helpers.php';
 
 requireAuth();
+requireAdmin();
 $user = getCurrentUser();
 
 // Определяем текущую неделю

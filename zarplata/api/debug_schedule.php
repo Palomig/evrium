@@ -15,6 +15,11 @@ if (!isLoggedIn()) {
     jsonError('Необходима авторизация', 401);
 }
 
+// Только для администраторов
+if (!isAdmin()) {
+    jsonError('Доступ запрещён', 403);
+}
+
 $dayOfWeek = (int)date('N');
 $dayOfWeekStr = (string)$dayOfWeek;
 $today = date('Y-m-d');

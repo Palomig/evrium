@@ -15,6 +15,11 @@ if (!isLoggedIn()) {
     jsonError('Требуется авторизация', 401);
 }
 
+// Только для администраторов
+if (!isAdmin()) {
+    jsonError('Доступ запрещён', 403);
+}
+
 // Проверяем роль (только owner может удалять все выплаты)
 $user = getCurrentUser();
 if ($user['role'] !== 'owner') {

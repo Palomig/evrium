@@ -17,6 +17,11 @@ if (!isLoggedIn()) {
     jsonError('Необходима авторизация', 401);
 }
 
+// Только для администраторов
+if (!isAdmin()) {
+    jsonError('Доступ запрещён', 403);
+}
+
 // Получаем данные
 $input = json_decode(file_get_contents('php://input'), true);
 $date = $input['date'] ?? null;

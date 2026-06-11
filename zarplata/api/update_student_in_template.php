@@ -13,6 +13,11 @@ if (!isLoggedIn()) {
     jsonError('Требуется авторизация', 401);
 }
 
+// Только для администраторов
+if (!isAdmin()) {
+    jsonError('Доступ запрещён', 403);
+}
+
 // Получаем данные
 $input = file_get_contents('php://input');
 $data = json_decode($input, true);

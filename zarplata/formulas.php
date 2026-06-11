@@ -12,6 +12,7 @@ require_once __DIR__ . '/mobile/config/mobile_detect.php';
 redirectToMobileIfNeeded('formulas.php');
 
 requireAuth();
+requireAdmin();
 $user = getCurrentUser();
 
 // Получить все формулы

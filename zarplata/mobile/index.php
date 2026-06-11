@@ -8,7 +8,7 @@ require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/auth.php';
 require_once __DIR__ . '/../config/helpers.php';
 
-requireAuth();
+requireDashboardAccess('/zarplata/mobile/schedule.php');
 $user = getCurrentUser();
 
 // Получаем статистику
