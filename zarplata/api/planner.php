@@ -60,11 +60,25 @@ function ensurePlannerNotesTable() {
             position SMALLINT NOT NULL DEFAULT 0,
             content VARCHAR(160) NOT NULL DEFAULT '',
             color TINYINT NOT NULL DEFAULT 0,
+            temp_until DATE NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             KEY idx_cell (day, time, room)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ", []);
+}
+
+/**
+ * Дата ближайшего урока по дню недели (для временных учеников).
+ * Если урок сегодня — сегодня; иначе ближайший такой день недели.
+ */
+function plannerTempUntil($day) {
+    $todayDow = (int)date('N'); // 1=Пн ... 7=Вс
+    $diff = $day - $todayDow;
+    if ($diff < 0) {
+        $diff += 7;
+    }
+    return date('Y-m-d', strtotime("+{$diff} days"));
 }
 
 /**
@@ -86,6 +100,8 @@ function handleSaveNote() {
     $room = (int)($data['room'] ?? 1);
     $kind = ($data['kind'] ?? 'student') === 'title' ? 'title' : 'student';
     $content = mb_substr(trim((string)($data['content'] ?? '')), 0, 160);
+    $isTemp = !empty($data['temp']) && $kind === 'student';
+    $tempUntil = $isTemp ? plannerTempUntil($day) : null;
 
     if ($day < 1 || $day > 7) {
         jsonError('Неверный день недели', 400);
@@ -108,7 +124,20 @@ function handleSaveNote() {
 
     // Обновление существующей записи
     if ($id) {
-        dbExecute("UPDATE planner_notes SET content = ? WHERE id = ?", [$content, $id]);
+        if ($kind === 'student') {
+            try {
+                dbExecute("UPDATE planner_notes SET content = ?, temp_until = ? WHERE id = ?", [$content, $tempUntil, $id]);
+            } catch (PDOException $e) {
+                // Фолбэк для БД без колонки temp_until
+                if (strpos($e->getMessage(), 'temp_until') !== false || strpos($e->getMessage(), 'Unknown column') !== false) {
+                    dbExecute("UPDATE planner_notes SET content = ? WHERE id = ?", [$content, $id]);
+                } else {
+                    throw $e;
+                }
+            }
+        } else {
+            dbExecute("UPDATE planner_notes SET content = ? WHERE id = ?", [$content, $id]);
+        }
         jsonSuccess(['id' => $id]);
         return;
     }
@@ -133,10 +162,22 @@ function handleSaveNote() {
     );
     $position = $kind === 'title' ? 0 : ((int)($maxPos['p'] ?? 0) + 1);
 
-    $newId = dbExecute(
-        "INSERT INTO planner_notes (day, time, room, kind, position, content, color) VALUES (?, ?, ?, ?, ?, ?, 0)",
-        [$day, $time, $room, $kind, $position, $content]
-    );
+    try {
+        $newId = dbExecute(
+            "INSERT INTO planner_notes (day, time, room, kind, position, content, color, temp_until) VALUES (?, ?, ?, ?, ?, ?, 0, ?)",
+            [$day, $time, $room, $kind, $position, $content, $tempUntil]
+        );
+    } catch (PDOException $e) {
+        // Фолбэк для БД без колонки temp_until
+        if (strpos($e->getMessage(), 'temp_until') !== false || strpos($e->getMessage(), 'Unknown column') !== false) {
+            $newId = dbExecute(
+                "INSERT INTO planner_notes (day, time, room, kind, position, content, color) VALUES (?, ?, ?, ?, ?, ?, 0)",
+                [$day, $time, $room, $kind, $position, $content]
+            );
+        } else {
+            throw $e;
+        }
+    }
 
     if (!$newId) {
         $row = dbQueryOne(
