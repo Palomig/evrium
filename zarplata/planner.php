@@ -1329,7 +1329,7 @@ body:not(.show-morning) .morning-row:not(.has-lessons) {
                         $rowClass = ' morning-row' . ($rowHasLessons ? ' has-lessons' : '');
                     }
                 ?>
-                    <div class="time-cell<?= $rowClass ?>"><?= $time ?></div>
+                    <div class="time-cell<?= $rowClass ?>" data-time="<?= $time ?>"><?= $time ?></div>
                     <?php for ($dayNum = 1; $dayNum <= 5; $dayNum++): ?>
                         <div class="schedule-cell<?= $rowClass ?>" data-day="<?= $dayNum ?>" data-time="<?= $time ?>">
                             <div class="rooms-container" style="grid-template-columns: repeat(<?= count($teacherCols) ?>, 1fr);">
@@ -1487,6 +1487,23 @@ function toggleMorning() {
     localStorage.setItem('plannerShowMorning', show ? '1' : '0');
 }
 
+// Пересчитать флаг «в строке есть уроки» — чтобы утренняя строка с уроком
+// оставалась видимой и при выключенной кнопке «Утро»
+function refreshMorningRow(block) {
+    if (!block) return;
+    const time = block.dataset.time;
+    const rowCells = document.querySelectorAll(`.morning-row[data-time="${time}"]`);
+    if (!rowCells.length) return;
+
+    let hasLessons = false;
+    rowCells.forEach(cell => {
+        if (cell.querySelector('.pcell[data-id], .block-title[data-id]')) {
+            hasLessons = true;
+        }
+    });
+    rowCells.forEach(cell => cell.classList.toggle('has-lessons', hasLessons));
+}
+
 // ========== РЕДАКТИРОВАНИЕ ЗАГОЛОВКА БЛОКА (инлайн) ==========
 
 let editingEl = null;
@@ -1607,6 +1624,7 @@ async function commitTitleEdit(cell, value, original) {
             cell.dataset.id = result.data.id;
         }
         renderTitleContent(cell, value);
+        refreshMorningRow(block);
     } catch (err) {
         console.error('Save error:', err);
         showNotification('Ошибка сети', 'error');
@@ -1734,6 +1752,7 @@ async function saveCellModal() {
 
         closeCellModal();
         updateStudentCount();
+        refreshMorningRow(block);
     } catch (err) {
         console.error('Save error:', err);
         showNotification('Ошибка сети', 'error');
@@ -1769,6 +1788,7 @@ async function deleteCellModal() {
             cell.remove();
             closeCellModal();
             updateStudentCount();
+            refreshMorningRow(block);
         } else {
             showNotification(result.error || 'Ошибка удаления', 'error');
         }
@@ -1858,6 +1878,7 @@ async function deleteCell() {
                 cell.remove();
             }
             updateStudentCount();
+            refreshMorningRow(block);
         } else {
             showNotification(result.error || 'Ошибка удаления', 'error');
         }
