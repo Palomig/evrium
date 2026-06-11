@@ -112,15 +112,12 @@ require_once __DIR__ . '/templates/header-premium.php';
         <table id="students-table">
             <thead>
                 <tr>
-                    <th>ID</th>
-                    <th>ФИО</th>
-                    <th>Класс</th>
-                    <th>Тип</th>
+                    <th style="width: 28%;">Ученик</th>
                     <th>Расписание</th>
                     <th>Цена</th>
-                    <th>Контакты</th>
+                    <th>Связь</th>
                     <th>Статус</th>
-                    <th>Действия</th>
+                    <th style="text-align: right;">Действия</th>
                 </tr>
             </thead>
             <tbody>
@@ -138,7 +135,6 @@ require_once __DIR__ . '/templates/header-premium.php';
                         data-teacher-id="<?= $student['teacher_id'] ?? 'none' ?>"
                         data-is-sick="<?= $student['is_sick'] ?? 0 ?>"
                         class="student-row">
-                        <td><?= $student['id'] ?></td>
                         <td>
                             <?php
                             $tier = $student['tier'] ?? 'C';
@@ -150,40 +146,32 @@ require_once __DIR__ . '/templates/header-premium.php';
                                 'D' => '#A29BFE'
                             ];
                             $tierColor = $tierColors[$tier] ?? '#FFA502';
-                            ?>
-                            <span class="tier-badge" style="background-color: <?= $tierColor ?>; color: #121212; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 8px;">
-                                <?= $tier ?>
-                            </span>
-                            <strong><?= e($student['name']) ?></strong>
-                            <?php if ($student['notes']): ?>
-                                <br>
-                                <small style="color: var(--text-medium-emphasis);">
-                                    <?= e(truncate($student['notes'], 50)) ?>
-                                </small>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <?php if ($student['class']): ?>
-                                <span class="badge badge-info"><?= $student['class'] ?> класс</span>
-                            <?php else: ?>
-                                —
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <?php
                             $lessonType = $student['lesson_type'] ?? 'group';
-                            if ($lessonType === 'individual'):
                             ?>
-                                <span class="badge badge-warning">
-                                    <span class="material-icons" style="font-size: 14px;">person</span>
-                                    Соло
+                            <div class="entity-cell">
+                                <span class="tier-badge" style="background-color: <?= $tierColor ?>; color: #121212;" title="Тир <?= $tier ?>">
+                                    <?= $tier ?>
                                 </span>
-                            <?php else: ?>
-                                <span class="badge badge-success">
-                                    <span class="material-icons" style="font-size: 14px;">group</span>
-                                    Группа
-                                </span>
-                            <?php endif; ?>
+                                <div class="entity-info">
+                                    <div class="entity-name"><?= e($student['name']) ?></div>
+                                    <div class="entity-meta">
+                                        <span><?= $student['class'] ? $student['class'] . ' класс' : 'без класса' ?></span>
+                                        <span class="meta-sep">·</span>
+                                        <?php if ($lessonType === 'individual'): ?>
+                                            <span style="color: var(--lesson-individual);">Соло</span>
+                                        <?php else: ?>
+                                            <span style="color: var(--lesson-group);">Группа</span>
+                                        <?php endif; ?>
+                                        <span class="meta-sep">·</span>
+                                        <span>ID <?= $student['id'] ?></span>
+                                    </div>
+                                    <?php if ($student['notes']): ?>
+                                        <div class="entity-note" title="<?= e($student['notes']) ?>">
+                                            <?= e(truncate($student['notes'], 50)) ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
                         </td>
                         <td>
                             <?php if ($schedule && !empty($schedule)): ?>
@@ -227,12 +215,12 @@ require_once __DIR__ . '/templates/header-premium.php';
                                 // Выводим расписание: каждый день на отдельной строке
                                 $dayLines = [];
                                 foreach ($scheduleByDay as $dayName => $dayLessons) {
-                                    $dayLines[] = '<strong>' . e($dayName) . ':</strong> ' . e(implode(', ', $dayLessons));
+                                    $dayLines[] = '<div><span class="day-key">' . e($dayName) . '</span> ' . e(implode(', ', $dayLessons)) . '</div>';
                                 }
-                                echo implode('<br>', $dayLines);
+                                echo '<div class="schedule-cell">' . implode('', $dayLines) . '</div>';
                                 ?>
                             <?php else: ?>
-                                <span style="color: var(--text-medium-emphasis);">Не указано</span>
+                                <span style="color: var(--text-muted);">Не указано</span>
                             <?php endif; ?>
                         </td>
                         <td>
@@ -247,52 +235,39 @@ require_once __DIR__ . '/templates/header-premium.php';
                             }
                             $paymentLabel = $paymentType === 'monthly' ? '/мес' : '/урок';
                             ?>
-                            <strong><?= formatMoney($price) ?><?= $paymentLabel ?></strong>
+                            <span class="money"><?= formatMoney($price) ?></span><span class="text-muted" style="font-size: 12px;"><?= $paymentLabel ?></span>
                         </td>
                         <td>
-                            <!-- Контакты ученика -->
-                            <div style="margin-bottom: 8px;">
-                                <small style="color: var(--text-medium-emphasis); display: block; margin-bottom: 4px;">Ученик:</small>
-                                <?php if ($student['student_telegram']): ?>
-                                    <a href="https://t.me/<?= e($student['student_telegram']) ?>" target="_blank" class="messenger-btn messenger-telegram" title="Telegram ученика">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161l-1.84 8.673c-.139.623-.5.775-.99.483l-2.738-2.018-1.32 1.27c-.146.146-.27.27-.552.27l.197-2.8 5.094-4.602c.222-.197-.048-.307-.344-.11l-6.3 3.965-2.71-.85c-.59-.185-.602-.59.124-.874l10.6-4.086c.49-.183.92.11.76.874z"/>
-                                        </svg>
-                                    </a>
-                                <?php endif; ?>
-                                <?php if ($student['student_whatsapp']): ?>
-                                    <a href="https://wa.me/<?= e(preg_replace('/[^0-9]/', '', $student['student_whatsapp'])) ?>" target="_blank" class="messenger-btn messenger-whatsapp" title="WhatsApp ученика">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                                        </svg>
-                                    </a>
-                                <?php endif; ?>
-                                <?php if (!$student['student_telegram'] && !$student['student_whatsapp']): ?>
-                                    <span style="color: var(--text-medium-emphasis);">—</span>
-                                <?php endif; ?>
-                            </div>
-
-                            <!-- Контакты родителя -->
-                            <div>
-                                <small style="color: var(--text-medium-emphasis); display: block; margin-bottom: 4px;">Родитель:</small>
-                                <?php if ($student['parent_telegram']): ?>
-                                    <a href="https://t.me/<?= e($student['parent_telegram']) ?>" target="_blank" class="messenger-btn messenger-telegram" title="Telegram родителя">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161l-1.84 8.673c-.139.623-.5.775-.99.483l-2.738-2.018-1.32 1.27c-.146.146-.27.27-.552.27l.197-2.8 5.094-4.602c.222-.197-.048-.307-.344-.11l-6.3 3.965-2.71-.85c-.59-.185-.602-.59.124-.874l10.6-4.086c.49-.183.92.11.76.874z"/>
-                                        </svg>
-                                    </a>
-                                <?php endif; ?>
-                                <?php if ($student['parent_whatsapp']): ?>
-                                    <a href="https://wa.me/<?= e(preg_replace('/[^0-9]/', '', $student['parent_whatsapp'])) ?>" target="_blank" class="messenger-btn messenger-whatsapp" title="WhatsApp родителя">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                                        </svg>
-                                    </a>
-                                <?php endif; ?>
-                                <?php if (!$student['parent_telegram'] && !$student['parent_whatsapp']): ?>
-                                    <span style="color: var(--text-medium-emphasis);">—</span>
-                                <?php endif; ?>
-                            </div>
+                            <?php
+                            // Компактные контакты: чип = мессенджер + роль (У = ученик, Р = родитель)
+                            $tgIconPath = 'M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161l-1.84 8.673c-.139.623-.5.775-.99.483l-2.738-2.018-1.32 1.27c-.146.146-.27.27-.552.27l.197-2.8 5.094-4.602c.222-.197-.048-.307-.344-.11l-6.3 3.965-2.71-.85c-.59-.185-.602-.59.124-.874l10.6-4.086c.49-.183.92.11.76.874z';
+                            $waIconPath = 'M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z';
+                            $contactLinks = [];
+                            if ($student['student_telegram']) {
+                                $contactLinks[] = ['url' => 'https://t.me/' . $student['student_telegram'], 'type' => 'telegram', 'icon' => $tgIconPath, 'who' => 'У', 'title' => 'Telegram ученика'];
+                            }
+                            if ($student['student_whatsapp']) {
+                                $contactLinks[] = ['url' => 'https://wa.me/' . preg_replace('/[^0-9]/', '', $student['student_whatsapp']), 'type' => 'whatsapp', 'icon' => $waIconPath, 'who' => 'У', 'title' => 'WhatsApp ученика'];
+                            }
+                            if ($student['parent_telegram']) {
+                                $contactLinks[] = ['url' => 'https://t.me/' . $student['parent_telegram'], 'type' => 'telegram', 'icon' => $tgIconPath, 'who' => 'Р', 'title' => 'Telegram родителя'];
+                            }
+                            if ($student['parent_whatsapp']) {
+                                $contactLinks[] = ['url' => 'https://wa.me/' . preg_replace('/[^0-9]/', '', $student['parent_whatsapp']), 'type' => 'whatsapp', 'icon' => $waIconPath, 'who' => 'Р', 'title' => 'WhatsApp родителя'];
+                            }
+                            ?>
+                            <?php if ($contactLinks): ?>
+                                <div class="contacts-cell">
+                                    <?php foreach ($contactLinks as $cl): ?>
+                                        <a href="<?= e($cl['url']) ?>" target="_blank" class="contact-chip <?= $cl['type'] ?>" title="<?= $cl['title'] ?>">
+                                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="<?= $cl['icon'] ?>"/></svg>
+                                            <span><?= $cl['who'] ?></span>
+                                        </a>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php else: ?>
+                                <span style="color: var(--text-muted);">—</span>
+                            <?php endif; ?>
                         </td>
                         <td>
                             <?php
@@ -315,22 +290,24 @@ require_once __DIR__ . '/templates/header-premium.php';
                             <?php endif; ?>
                         </td>
                         <td>
-                            <button class="btn btn-text" onclick="viewStudent(<?= $student['id'] ?>)" title="Просмотр">
-                                <span class="material-icons" style="font-size: 18px;">visibility</span>
-                            </button>
-                            <button class="btn btn-text" onclick="editStudent(<?= $student['id'] ?>)" title="Редактировать">
-                                <span class="material-icons" style="font-size: 18px;">edit</span>
-                            </button>
-                            <button class="btn btn-text btn-sick-toggle" onclick="toggleStudentSick(<?= $student['id'] ?>)" title="<?= $isSick ? 'Отметить как здорового' : 'Отметить как болеющего' ?>">
-                                <span class="material-icons" style="font-size: 18px; color: <?= $isSick ? '#4ade80' : '#f87171' ?>;">
-                                    <?= $isSick ? 'health_and_safety' : 'sick' ?>
-                                </span>
-                            </button>
-                            <button class="btn btn-text" onclick="toggleStudentActive(<?= $student['id'] ?>)" title="Изменить статус">
-                                <span class="material-icons" style="font-size: 18px;">
-                                    <?= $student['active'] ? 'block' : 'check_circle' ?>
-                                </span>
-                            </button>
+                            <div class="row-actions">
+                                <button class="btn btn-text" onclick="viewStudent(<?= $student['id'] ?>)" title="Просмотр">
+                                    <span class="material-icons" style="font-size: 18px;">visibility</span>
+                                </button>
+                                <button class="btn btn-text" onclick="editStudent(<?= $student['id'] ?>)" title="Редактировать">
+                                    <span class="material-icons" style="font-size: 18px;">edit</span>
+                                </button>
+                                <button class="btn btn-text btn-sick-toggle" onclick="toggleStudentSick(<?= $student['id'] ?>)" title="<?= $isSick ? 'Отметить как здорового' : 'Отметить как болеющего' ?>">
+                                    <span class="material-icons" style="font-size: 18px; color: <?= $isSick ? '#4ade80' : '#f87171' ?>;">
+                                        <?= $isSick ? 'health_and_safety' : 'sick' ?>
+                                    </span>
+                                </button>
+                                <button class="btn btn-text" onclick="toggleStudentActive(<?= $student['id'] ?>)" title="Изменить статус">
+                                    <span class="material-icons" style="font-size: 18px;">
+                                        <?= $student['active'] ? 'block' : 'check_circle' ?>
+                                    </span>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -682,7 +659,7 @@ require_once __DIR__ . '/templates/header-premium.php';
         display: block;
         height: 4px;
         width: 100%;
-        background: linear-gradient(90deg, #d9ab5e, #b9883f);
+        background: linear-gradient(90deg, #14b8a6, #0d9488);
     }
 
     .modal-header {
@@ -772,7 +749,7 @@ require_once __DIR__ . '/templates/header-premium.php';
         cursor: pointer;
         font-size: 0.875rem;
         font-weight: 600;
-        font-family: 'Montserrat', sans-serif;
+        font-family: 'Manrope', sans-serif;
         transition: all 0.2s;
         display: flex;
         align-items: center;
@@ -781,14 +758,14 @@ require_once __DIR__ . '/templates/header-premium.php';
     }
 
     .btn-toggle:hover {
-        border-color: #d9ab5e;
+        border-color: #14b8a6;
         background: rgba(255, 255, 255, 0.08);
     }
 
     .btn-toggle.active {
-        background: rgba(217, 171, 94, 0.15);
-        border-color: #d9ab5e;
-        color: #d9ab5e;
+        background: rgba(20, 184, 166, 0.15);
+        border-color: #14b8a6;
+        color: #14b8a6;
     }
 
     /* Цены */
@@ -821,20 +798,20 @@ require_once __DIR__ . '/templates/header-premium.php';
         cursor: pointer;
         font-size: 0.875rem;
         font-weight: 600;
-        font-family: 'Montserrat', sans-serif;
+        font-family: 'Manrope', sans-serif;
         transition: all 0.2s;
         min-width: 50px;
     }
 
     .btn-day:hover {
-        border-color: #d9ab5e;
+        border-color: #14b8a6;
         background: rgba(255, 255, 255, 0.08);
     }
 
     .btn-day.active {
-        background: rgba(217, 171, 94, 0.15);
-        border-color: #d9ab5e;
-        color: #d9ab5e;
+        background: rgba(20, 184, 166, 0.15);
+        border-color: #14b8a6;
+        color: #14b8a6;
     }
 
     /* Кнопки тира */
@@ -853,20 +830,20 @@ require_once __DIR__ . '/templates/header-premium.php';
         cursor: pointer;
         font-size: 1rem;
         font-weight: 700;
-        font-family: 'Montserrat', sans-serif;
+        font-family: 'Manrope', sans-serif;
         transition: all 0.2s;
         min-width: 60px;
     }
 
     .btn-tier:hover {
-        border-color: #d9ab5e;
+        border-color: #14b8a6;
         background: rgba(255, 255, 255, 0.08);
     }
 
     .btn-tier.active {
-        background: rgba(217, 171, 94, 0.15);
-        border-color: #d9ab5e;
-        color: #d9ab5e;
+        background: rgba(20, 184, 166, 0.15);
+        border-color: #14b8a6;
+        color: #14b8a6;
     }
 
     /* Список расписания */
@@ -947,10 +924,10 @@ require_once __DIR__ . '/templates/header-premium.php';
     /* Панель фильтров */
     .filters-panel {
         background-color: var(--md-surface);
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 24px;
-        box-shadow: var(--elevation-2);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 14px 18px;
+        margin-bottom: 20px;
     }
 
     .filters-content {
@@ -981,42 +958,42 @@ require_once __DIR__ . '/templates/header-premium.php';
 
     .class-filter-btn,
     .type-filter-btn {
-        padding: 10px 16px;
-        border: 2px solid rgba(255, 255, 255, 0.12);
-        border-radius: 8px;
-        background-color: var(--md-surface-3);
+        padding: 7px 13px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background-color: var(--md-surface-2);
         color: var(--text-medium-emphasis);
         cursor: pointer;
-        font-size: 0.875rem;
+        font-size: 13px;
         font-weight: 600;
-        font-family: 'Montserrat', sans-serif;
-        transition: all 0.2s var(--transition-standard);
+        font-family: 'Manrope', sans-serif;
+        transition: all 0.15s var(--transition-standard);
         user-select: none;
     }
 
     .class-filter-btn:hover,
     .type-filter-btn:hover {
-        border-color: var(--md-primary);
         background-color: var(--md-surface-4);
+        color: var(--text-high-emphasis);
     }
 
     .class-filter-btn.active,
     .type-filter-btn.active {
-        background-color: rgba(187, 134, 252, 0.15);
-        border-color: var(--md-primary);
-        color: var(--md-primary);
+        background-color: var(--accent-dim);
+        border-color: var(--accent);
+        color: var(--accent);
     }
 
     .search-input {
-        padding: 10px 16px;
-        border: 2px solid rgba(255, 255, 255, 0.12);
-        border-radius: 8px;
-        background-color: var(--md-surface-3);
+        padding: 8px 14px;
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        background-color: var(--md-surface-2);
         color: var(--text-high-emphasis);
-        font-size: 0.875rem;
-        font-family: 'Montserrat', sans-serif;
+        font-size: 13px;
+        font-family: 'Manrope', sans-serif;
         min-width: 250px;
-        transition: all 0.2s;
+        transition: all 0.15s ease;
     }
 
     .search-input:focus {
@@ -1030,17 +1007,17 @@ require_once __DIR__ . '/templates/header-premium.php';
     }
 
     .teacher-filter-select {
-        padding: 10px 40px 10px 16px;
-        border: 2px solid rgba(255, 255, 255, 0.12);
-        border-radius: 8px;
-        background-color: var(--md-surface-3);
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23d9ab5e' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+        padding: 8px 38px 8px 14px;
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        background-color: var(--md-surface-2);
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2314b8a6' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
         background-repeat: no-repeat;
         background-position: right 12px center;
         color: var(--text-high-emphasis);
         font-size: 0.875rem;
         font-weight: 600;
-        font-family: 'Montserrat', sans-serif;
+        font-family: 'Manrope', sans-serif;
         min-width: 200px;
         appearance: none;
         cursor: pointer;
@@ -1081,7 +1058,7 @@ require_once __DIR__ . '/templates/header-premium.php';
         border-radius: 10px;
         color: #ffffff;
         font-size: 14px;
-        font-family: 'Montserrat', sans-serif;
+        font-family: 'Manrope', sans-serif;
         transition: all 0.2s;
     }
 
@@ -1096,14 +1073,14 @@ require_once __DIR__ . '/templates/header-premium.php';
 
     .modal .form-control:focus {
         outline: none;
-        border-color: #d9ab5e;
+        border-color: #14b8a6;
         background: rgba(255, 255, 255, 0.08);
-        box-shadow: 0 0 0 3px rgba(217, 171, 94, 0.15);
+        box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
     }
 
     .modal select.form-control {
         appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23d9ab5e' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2314b8a6' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
         background-repeat: no-repeat;
         background-position: right 12px center;
         padding-right: 40px;
@@ -1118,7 +1095,7 @@ require_once __DIR__ . '/templates/header-premium.php';
 
     .modal select.form-control option:hover,
     .modal select.form-control option:checked {
-        background: #d9ab5e;
+        background: #14b8a6;
         color: #ffffff;
     }
 
@@ -1159,13 +1136,13 @@ require_once __DIR__ . '/templates/header-premium.php';
     }
 
     .modal-footer .btn-primary {
-        background: linear-gradient(135deg, #d9ab5e, #b9883f);
+        background: linear-gradient(135deg, #14b8a6, #0d9488);
         color: #ffffff;
     }
 
     .modal-footer .btn-primary:hover {
         transform: translateY(-2px);
-        box-shadow: 0 10px 20px -10px rgba(217, 171, 94, 0.5);
+        box-shadow: 0 10px 20px -10px rgba(20, 184, 166, 0.5);
     }
 
     /* Стили для статуса "Болеет" */

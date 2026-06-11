@@ -309,7 +309,7 @@ require_once __DIR__ . '/templates/header-premium.php';
     .audit-action-icon.create { background: rgba(16, 185, 129, 0.15); color: #10b981; }
     .audit-action-icon.update { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
     .audit-action-icon.delete { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
-    .audit-action-icon.approve { background: rgba(217, 171, 94, 0.15); color: #d9ab5e; }
+    .audit-action-icon.approve { background: rgba(20, 184, 166, 0.15); color: #14b8a6; }
     .audit-action-icon.info { background: rgba(99, 102, 241, 0.15); color: #6366f1; }
 
     .audit-action-text {

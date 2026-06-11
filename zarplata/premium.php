@@ -166,88 +166,74 @@ require_once __DIR__ . '/templates/header-premium.php';
 ?>
 
 <!-- Stats Cards -->
-<div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px; margin-bottom: 32px;">
-    <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-row">
             <div>
-                <div style="font-size: 2rem; font-weight: 300; margin-bottom: 4px;">
-                    <?= $todayLessons[0]['completed'] ?? 0 ?> / <?= $todayLessons[0]['total'] ?? 0 ?>
-                </div>
-                <div style="font-size: 0.875rem; color: var(--text-medium-emphasis);">Уроки сегодня</div>
+                <div class="stat-value"><?= $todayLessons[0]['completed'] ?? 0 ?> <span class="stat-value-dim">/ <?= $todayLessons[0]['total'] ?? 0 ?></span></div>
+                <div class="stat-label">Уроки сегодня</div>
             </div>
-            <div style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background-color: rgba(187, 134, 252, 0.12); color: var(--md-primary);">
+            <div class="stat-icon" style="background: var(--accent-dim); color: var(--accent);">
                 <span class="material-icons">today</span>
             </div>
         </div>
     </div>
 
-    <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+    <div class="stat-card">
+        <div class="stat-row">
             <div>
-                <div style="font-size: 2rem; font-weight: 300; margin-bottom: 4px;">
-                    <?= $weekLessons[0]['completed'] ?? 0 ?> / <?= $weekLessons[0]['total'] ?? 0 ?>
-                </div>
-                <div style="font-size: 0.875rem; color: var(--text-medium-emphasis);">Уроки за неделю</div>
+                <div class="stat-value"><?= $weekLessons[0]['completed'] ?? 0 ?> <span class="stat-value-dim">/ <?= $weekLessons[0]['total'] ?? 0 ?></span></div>
+                <div class="stat-label">Уроки за неделю</div>
             </div>
-            <div style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background-color: rgba(3, 218, 198, 0.12); color: var(--md-secondary);">
+            <div class="stat-icon" style="background: var(--lesson-individual-dim); color: var(--lesson-individual);">
                 <span class="material-icons">event_note</span>
             </div>
         </div>
     </div>
 
-    <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+    <div class="stat-card">
+        <div class="stat-row">
             <div>
-                <div style="font-size: 2rem; font-weight: 300; margin-bottom: 4px;">
-                    <?= formatMoney($pendingPayments['total'] ?? 0) ?>
-                </div>
-                <div style="font-size: 0.875rem; color: var(--text-medium-emphasis);">Ожидают выплаты</div>
+                <div class="stat-value"><?= formatMoney($pendingPayments['total'] ?? 0) ?></div>
+                <div class="stat-label">Ожидают выплаты</div>
             </div>
-            <div style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background-color: rgba(255, 152, 0, 0.12); color: var(--md-warning);">
+            <div class="stat-icon" style="background: var(--status-amber-dim); color: var(--status-amber);">
                 <span class="material-icons">pending</span>
             </div>
         </div>
     </div>
 
-    <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+    <div class="stat-card">
+        <div class="stat-row">
             <div>
-                <div style="font-size: 2rem; font-weight: 300; margin-bottom: 4px;">
-                    <?= formatMoney($monthPayments['total'] ?? 0) ?>
-                </div>
-                <div style="font-size: 0.875rem; color: var(--text-medium-emphasis);">Выплачено за месяц</div>
+                <div class="stat-value"><?= formatMoney($monthPayments['total'] ?? 0) ?></div>
+                <div class="stat-label">Выплачено за месяц</div>
             </div>
-            <div style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background-color: rgba(76, 175, 80, 0.12); color: var(--md-success);">
+            <div class="stat-icon" style="background: var(--status-green-dim); color: var(--status-green);">
                 <span class="material-icons">account_balance</span>
             </div>
         </div>
     </div>
 
-    <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+    <div class="stat-card">
+        <div class="stat-row">
             <div>
-                <div style="font-size: 2rem; font-weight: 300; margin-bottom: 4px;">
-                    <?= formatMoney($expectedSalaryRaw) ?>
-                </div>
-                <div style="font-size: 0.875rem; color: var(--text-medium-emphasis);">Ожидаемая зарплата</div>
-                <div style="font-size: 0.75rem; color: var(--text-disabled); margin-top: 4px;">
-                    по расписанию на <?= date('F Y') ?>
-                </div>
+                <div class="stat-value"><?= formatMoney($expectedSalaryRaw) ?></div>
+                <div class="stat-label">Ожидаемая зарплата</div>
+                <div class="stat-note">по расписанию на <?= date('F Y') ?></div>
             </div>
-            <div style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background-color: rgba(33, 150, 243, 0.12); color: #2196F3;">
+            <div class="stat-icon" style="background: var(--status-blue-dim); color: var(--status-blue);">
                 <span class="material-icons">event_available</span>
             </div>
         </div>
     </div>
 
-    <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+    <div class="stat-card">
+        <div class="stat-row">
             <div>
-                <div style="font-size: 2rem; font-weight: 300; margin-bottom: 4px;">
-                    <?= formatMoney($realSalary['total'] ?? 0) ?>
-                </div>
-                <div style="font-size: 0.875rem; color: var(--text-medium-emphasis);">Реальная зарплата</div>
-                <div style="font-size: 0.75rem; color: var(--text-disabled); margin-top: 4px;">
+                <div class="stat-value"><?= formatMoney($realSalary['total'] ?? 0) ?></div>
+                <div class="stat-label">Реальная зарплата</div>
+                <div class="stat-note">
                     <?php
                     $diff = ($realSalary['total'] ?? 0) - $expectedSalaryRaw;
                     if ($diff > 0) {
@@ -260,7 +246,7 @@ require_once __DIR__ . '/templates/header-premium.php';
                     ?>
                 </div>
             </div>
-            <div style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background-color: rgba(156, 39, 176, 0.12); color: #9C27B0;">
+            <div class="stat-icon" style="background: var(--lesson-group-dim); color: var(--lesson-group);">
                 <span class="material-icons">fact_check</span>
             </div>
         </div>
@@ -271,7 +257,7 @@ require_once __DIR__ . '/templates/header-premium.php';
 <div class="card mb-4">
     <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
         <h3 style="margin: 0;">Ближайшие уроки</h3>
-        <a href="/zarplata/schedule.php" class="btn btn-text">
+        <a href="premium-schedule.php" class="btn btn-text">
             Все уроки
             <span class="material-icons" style="font-size: 18px; margin-left: 4px;">arrow_forward</span>
         </a>
@@ -325,7 +311,7 @@ require_once __DIR__ . '/templates/header-premium.php';
 <div class="card">
     <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
         <h3 style="margin: 0;">Последние уроки</h3>
-        <a href="/zarplata/lessons.php" class="btn btn-text">
+        <a href="premium-schedule.php" class="btn btn-text">
             Все уроки
             <span class="material-icons" style="font-size: 18px; margin-left: 4px;">arrow_forward</span>
         </a>

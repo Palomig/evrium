@@ -251,7 +251,7 @@ require_once __DIR__ . '/templates/header-premium.php';
     display: block;
     height: 4px;
     width: 100%;
-    background: linear-gradient(90deg, #d9ab5e, #b9883f);
+    background: linear-gradient(90deg, #14b8a6, #0d9488);
 }
 
 .modal-header {
@@ -325,7 +325,7 @@ require_once __DIR__ . '/templates/header-premium.php';
     border-radius: 10px;
     color: #ffffff;
     font-size: 14px;
-    font-family: 'Montserrat', sans-serif;
+    font-family: 'Manrope', sans-serif;
     transition: all 0.2s;
 }
 
@@ -345,14 +345,14 @@ require_once __DIR__ . '/templates/header-premium.php';
 .modal select:focus,
 .modal textarea:focus {
     outline: none;
-    border-color: #d9ab5e;
+    border-color: #14b8a6;
     background: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 0 0 3px rgba(217, 171, 94, 0.15);
+    box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
 }
 
 .modal select {
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23d9ab5e' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2314b8a6' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 12px center;
     padding-right: 40px;
@@ -367,7 +367,7 @@ require_once __DIR__ . '/templates/header-premium.php';
 
 .modal select option:hover,
 .modal select option:checked {
-    background: #d9ab5e;
+    background: #14b8a6;
     color: #ffffff;
 }
 
@@ -383,7 +383,7 @@ require_once __DIR__ . '/templates/header-premium.php';
 }
 
 .modal small strong {
-    color: #d9ab5e;
+    color: #14b8a6;
 }
 
 /* Футер */
@@ -426,13 +426,13 @@ require_once __DIR__ . '/templates/header-premium.php';
 }
 
 .modal-actions .btn-primary {
-    background: linear-gradient(135deg, #d9ab5e, #b9883f);
+    background: linear-gradient(135deg, #14b8a6, #0d9488);
     color: #ffffff;
 }
 
 .modal-actions .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 20px -10px rgba(217, 171, 94, 0.5);
+    box-shadow: 0 10px 20px -10px rgba(20, 184, 166, 0.5);
 }
 </style>
 

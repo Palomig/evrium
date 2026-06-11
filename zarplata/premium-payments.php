@@ -1353,7 +1353,7 @@ require_once __DIR__ . '/templates/header-premium.php';
                                 'payment_updated' => ['icon' => 'edit', 'color' => '#f59e0b', 'class' => 'update'],
                                 'payment_deleted' => ['icon' => 'delete', 'color' => '#ef4444', 'class' => 'delete'],
                                 'payment_approved' => ['icon' => 'check_circle', 'color' => '#10b981', 'class' => 'approve'],
-                                'payment_paid' => ['icon' => 'payments', 'color' => '#d9ab5e', 'class' => 'approve'],
+                                'payment_paid' => ['icon' => 'payments', 'color' => '#14b8a6', 'class' => 'approve'],
                                 'adjustment_created' => ['icon' => 'tune', 'color' => '#8b5cf6', 'class' => 'info'],
                                 'lesson_completed' => ['icon' => 'done', 'color' => '#10b981', 'class' => 'approve'],
                                 'payments_cleared_all' => ['icon' => 'delete_sweep', 'color' => '#ef4444', 'class' => 'delete']
@@ -1990,9 +1990,9 @@ require_once __DIR__ . '/templates/header-premium.php';
     .form-group select:focus,
     .form-group textarea:focus {
         outline: none;
-        border-color: #d9ab5e;
+        border-color: #14b8a6;
         background: rgba(255, 255, 255, 0.08);
-        box-shadow: 0 0 0 3px rgba(217, 171, 94, 0.15);
+        box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
     }
 
     .form-group small {
@@ -2010,7 +2010,7 @@ require_once __DIR__ . '/templates/header-premium.php';
 
     .form-group select {
         appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23d9ab5e' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2314b8a6' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
         background-repeat: no-repeat;
         background-position: right 12px center;
         padding-right: 40px;
@@ -2103,7 +2103,7 @@ require_once __DIR__ . '/templates/header-premium.php';
     }
 
     .payout-tab.active {
-        background: #d9ab5e;
+        background: #14b8a6;
         color: #ffffff;
     }
 
@@ -2148,8 +2148,8 @@ require_once __DIR__ . '/templates/header-premium.php';
     }
 
     .payout-week-item.selected {
-        background: rgba(217, 171, 94, 0.15);
-        border-color: #d9ab5e;
+        background: rgba(20, 184, 166, 0.15);
+        border-color: #14b8a6;
     }
 
     .payout-week-item.disabled {
