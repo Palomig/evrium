@@ -34,8 +34,12 @@ if ($period === 'month') {
 }
 
 // Все учителя — чтобы показать даже тех, у кого 0 в этом периоде
+$teacherFilter = isTeacherUser() ? getCurrentTeacherId() : null;
+
 $teachers = dbQuery(
-    "SELECT id, COALESCE(display_name, name) AS name FROM teachers ORDER BY id ASC",
+    "SELECT id, COALESCE(display_name, name) AS name FROM teachers"
+    . ($teacherFilter ? " WHERE id = " . (int)$teacherFilter : "")
+    . " ORDER BY id ASC",
     []
 );
 
@@ -68,10 +72,12 @@ foreach ($rows as $r) {
     $byTeacher[$tid]['lessons'] += (int)$r['lessons'];
 }
 
+$visibleIds = array_map(fn($t) => (int)$t["id"], $teachers);
 $grandTotal   = 0.0;
 $grandLessons = 0;
-foreach ($byTeacher as $t) {
-    $grandTotal   += $t['total'];
+foreach ($byTeacher as $tid => $t) {
+    if (!in_array($tid, $visibleIds, true)) continue;
+    $grandTotal   += $t["total"];
     $grandLessons += $t['lessons'];
 }
 

@@ -13,6 +13,7 @@ require_once __DIR__ . '/../config/student_helpers.php';
 
 requireAuth();
 $user = getCurrentUser();
+$teacherFilter = isTeacherUser() ? (int)getCurrentTeacherId() : 0;
 
 $today = date('Y-m-d');
 $date  = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date'] ?? '') ? $_GET['date'] : $today;
@@ -27,7 +28,7 @@ $instances = dbQuery(
             COALESCE(t.display_name, t.name) as teacher_name
      FROM lessons_instance li
      LEFT JOIN teachers t ON li.teacher_id = t.id
-     WHERE li.lesson_date = ?
+     WHERE li.lesson_date = ?" . ($teacherFilter ? " AND li.teacher_id = " . $teacherFilter : "") . "
      ORDER BY li.time_start ASC",
     [$date]
 );
@@ -70,7 +71,7 @@ if (empty($instances) && $date >= $today) {
                 COALESCE(t.display_name, t.name) as teacher_name
          FROM lessons_instance li
          LEFT JOIN teachers t ON li.teacher_id = t.id
-         WHERE li.lesson_date = ?
+         WHERE li.lesson_date = ?" . ($teacherFilter ? " AND li.teacher_id = " . $teacherFilter : "") . "
          ORDER BY li.time_start ASC",
         [$date]
     );

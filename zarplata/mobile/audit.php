@@ -8,6 +8,7 @@ require_once __DIR__ . '/../config/auth.php';
 require_once __DIR__ . '/../config/helpers.php';
 
 requireAuth();
+requireAdmin();
 
 $logs = dbQuery("
     SELECT a.*, u.name as user_name

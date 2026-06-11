@@ -49,10 +49,12 @@ switch ($period) {
 }
 
 // ── Уроки в диапазоне, только уже начавшиеся и не отменённые ──────────────
+$teacherFilter = isTeacherUser() ? (int)getCurrentTeacherId() : 0;
+
 $lessons = dbQuery(
     "SELECT id, teacher_id, lesson_date, time_start, status
      FROM lessons_instance
-     WHERE lesson_date >= ? AND lesson_date <= ? AND status != 'cancelled'
+     WHERE lesson_date >= ? AND lesson_date <= ? AND status != 'cancelled'" . ($teacherFilter ? " AND teacher_id = " . $teacherFilter : "") . "
      ORDER BY lesson_date DESC, time_start DESC",
     [$fromDate, $today]
 );

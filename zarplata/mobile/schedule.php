@@ -22,6 +22,12 @@ $teachers = dbQuery("
     ORDER BY id
 ", []);
 
+// Учитель видит и редактирует только своё расписание
+if (isTeacherUser() && getCurrentTeacherId()) {
+    $ownId = getCurrentTeacherId();
+    $teachers = array_values(array_filter($teachers, fn($t) => (int)$t['id'] === $ownId));
+}
+
 $colorToTeacher = plannerColorTeacherMap();
 $activeTeacherIds = array_values($colorToTeacher);
 $fallbackTeacherId = $colorToTeacher[1] ?? ($activeTeacherIds[0] ?? 0);

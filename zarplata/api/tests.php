@@ -12,6 +12,11 @@ require_once __DIR__ . '/../bot/config.php';
 
 requireAuth();
 
+// Только для администраторов
+if (!isAdmin()) {
+    jsonError('Доступ запрещён', 403);
+}
+
 header('Content-Type: application/json; charset=utf-8');
 
 $input = file_get_contents('php://input');

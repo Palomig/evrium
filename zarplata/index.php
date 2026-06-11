@@ -12,7 +12,7 @@ require_once __DIR__ . '/config/helpers.php';
 require_once __DIR__ . '/mobile/config/mobile_detect.php';
 redirectToMobileIfNeeded('index.php');
 
-requireAuth();
+requireDashboardAccess();
 $user = getCurrentUser();
 
 // Получаем статистику для dashboard

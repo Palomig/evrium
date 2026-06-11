@@ -554,6 +554,20 @@ body.readonly .add-cell-btn {
     display: none;
 }
 
+/* Чужая колонка для учителя — только просмотр */
+.lesson-block.foreign .add-cell-btn {
+    display: none;
+}
+
+.lesson-block.foreign .pcell,
+.lesson-block.foreign .block-title {
+    cursor: default;
+}
+
+.lesson-block.foreign .block-title.is-empty::before {
+    content: '·';
+}
+
 body.readonly .pcell,
 body.readonly .block-title {
     cursor: default;
@@ -1436,6 +1450,12 @@ body:not(.show-morning) .morning-row:not(.has-lessons) {
 <script>
 const teachersData = <?= json_encode($teachers, JSON_UNESCAPED_UNICODE) ?>;
 const READ_ONLY = <?= $snapshotView ? 'true' : 'false' ?>;
+// Для роли teacher: редактируется только своя колонка (0 = админ, без ограничений)
+const MY_TEACHER = <?= isTeacherUser() ? (int)(getCurrentTeacherId() ?: -1) : 0 ?>;
+
+function isForeignBlock(block) {
+    return MY_TEACHER !== 0 && block && parseInt(block.dataset.teacher) !== MY_TEACHER;
+}
 
 // ========== SIDEBAR TOGGLE ==========
 
@@ -1489,6 +1509,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (READ_ONLY) {
         document.body.classList.add('readonly');
     }
+
+    // Чужие колонки для учителя — только просмотр
+    if (MY_TEACHER !== 0) {
+        document.querySelectorAll('.lesson-block').forEach(block => {
+            if (isForeignBlock(block)) block.classList.add('foreign');
+        });
+    }
 });
 
 // ========== УТРЕННИЕ ЧАСЫ БУДНЕЙ ==========
@@ -1523,6 +1550,10 @@ let editingEl = null;
 
 document.addEventListener('click', function(e) {
     if (READ_ONLY) return;
+
+    // Учитель не может редактировать чужие колонки
+    const clickedBlock = e.target.closest('.lesson-block');
+    if (clickedBlock && isForeignBlock(clickedBlock)) return;
 
     // Заголовок блока — инлайн-редактирование
     const title = e.target.closest('.block-title');
@@ -1819,6 +1850,7 @@ document.addEventListener('contextmenu', function(e) {
     if (READ_ONLY) return;
     const cell = e.target.closest('.pcell, .block-title');
     if (!cell || !cell.dataset.id) return;
+    if (isForeignBlock(cell.closest('.lesson-block'))) return;
 
     e.preventDefault();
     contextTarget = cell;

@@ -14,6 +14,7 @@ require_once __DIR__ . '/mobile/config/mobile_detect.php';
 redirectToMobileIfNeeded('student_payments.php');
 
 requireAuth();
+requireAdmin();
 $user = getCurrentUser();
 
 // Текущий месяц

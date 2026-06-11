@@ -146,6 +146,23 @@ function handleSaveNote() {
         $color = ($teacherId % 8) ?: 8;
     }
 
+    // Учитель может редактировать только свою колонку
+    if (isTeacherUser()) {
+        $ownTeacherId = getCurrentTeacherId();
+        if (!$ownTeacherId) {
+            jsonError('Аккаунт не привязан к преподавателю', 403);
+        }
+        if ($teacherId && $teacherId !== $ownTeacherId) {
+            jsonError('Можно редактировать только своё расписание', 403);
+        }
+        if ($id) {
+            $note = dbQueryOne("SELECT teacher_id FROM planner_notes WHERE id = ?", [$id]);
+            if (!$note || (int)$note['teacher_id'] !== $ownTeacherId) {
+                jsonError('Можно редактировать только своё расписание', 403);
+            }
+        }
+    }
+
     // Удаление: пустой текст по существующей записи
     if ($content === '') {
         if ($id) {
@@ -235,6 +252,13 @@ function handleSetNoteColor() {
     }
     if ($color < 0 || $color > 8) {
         jsonError('Неверный цвет', 400);
+    }
+
+    if (isTeacherUser()) {
+        $note = dbQueryOne("SELECT teacher_id FROM planner_notes WHERE id = ?", [$id]);
+        if (!$note || (int)$note['teacher_id'] !== getCurrentTeacherId()) {
+            jsonError('Можно редактировать только своё расписание', 403);
+        }
     }
 
     dbExecute("UPDATE planner_notes SET color = ? WHERE id = ?", [$color, $id]);

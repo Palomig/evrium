@@ -11,17 +11,22 @@ require_once __DIR__ . '/../config/student_helpers.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
-// Разрешаем доступ без авторизации для run_cron с секретным ключом
+// Доступ: админ-сессия ИЛИ секретный ключ (для внешнего запуска run_cron и т.п.)
+// Раньше run_cron/send_test/force_send были открыты без авторизации — закрыто.
+define('BOT_DIAG_KEY', 'evr-diag-x7q4m9');
+
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 $secretKey = $_GET['key'] ?? '';
 
-// Для run_cron, diagnostic, send_test, force_send, debug_cron разрешаем без авторизации
-if (in_array($action, ['run_cron', 'diagnostic', 'send_test', 'force_send', 'debug_cron'])) {
-    // Разрешаем без авторизации
-} else {
-    session_start();
+if (!hash_equals(BOT_DIAG_KEY, $secretKey)) {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
     if (!isLoggedIn()) {
         jsonError('Необходима авторизация', 401);
+    }
+    if (!isAdmin()) {
+        jsonError('Доступ запрещён', 403);
     }
 }
 

@@ -57,6 +57,13 @@ if (!$lesson) {
     exit;
 }
 
+// Учитель может отправлять только свои уроки
+if (isTeacherUser() && (int)$lesson["teacher_id"] !== (int)getCurrentTeacherId()) {
+    http_response_code(403);
+    echo json_encode(["success" => false, "error" => "Можно отмечать только свои уроки"]);
+    exit;
+}
+
 // Разрешаем только после старта урока
 $startTs = strtotime($lesson['lesson_date'] . ' ' . $lesson['time_start']);
 if ($startTs === false) {

@@ -8,6 +8,7 @@ require_once __DIR__ . '/../config/auth.php';
 require_once __DIR__ . '/../config/helpers.php';
 
 requireAuth();
+requireAdmin();
 
 $formulas = dbQuery("SELECT * FROM payment_formulas WHERE active = 1 ORDER BY name", []);
 

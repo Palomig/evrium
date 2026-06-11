@@ -23,6 +23,11 @@ if (!isLoggedIn()) {
     jsonError('Требуется авторизация', 401);
 }
 
+// Только для администраторов
+if (!isAdmin()) {
+    jsonError('Доступ запрещён', 403);
+}
+
 switch ($action) {
     case 'list':
         handleList();
