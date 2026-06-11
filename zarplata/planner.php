@@ -13,9 +13,17 @@
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/config/auth.php';
 require_once __DIR__ . '/config/helpers.php';
+require_once __DIR__ . '/config/planner_snapshots.php';
 
 requireAuth();
 $user = getCurrentUser();
+
+// ===== Режим просмотра версии из истории (только чтение) =====
+$snapshotView = null;
+if (!empty($_GET['snapshot'])) {
+    ensurePlannerSnapshotsTable();
+    $snapshotView = dbQueryOne("SELECT * FROM planner_snapshots WHERE id = ?", [(int)$_GET['snapshot']]);
+}
 
 // ===== Таблица заметок (создаётся при первом открытии) =====
 dbExecute("
@@ -42,8 +50,11 @@ if (empty($tempColumn)) {
     dbExecute("ALTER TABLE planner_notes ADD COLUMN temp_until DATE NULL", []);
 }
 
-// Удаляем временных учеников, чей урок уже прошёл
-dbExecute("DELETE FROM planner_notes WHERE temp_until IS NOT NULL AND temp_until < CURDATE()", []);
+// Удаляем временных учеников, чей урок уже прошёл (не в режиме просмотра версии)
+$deletedTemp = 0;
+if (!$snapshotView) {
+    $deletedTemp = dbExecute("DELETE FROM planner_notes WHERE temp_until IS NOT NULL AND temp_until < CURDATE()", []);
+}
 
 // Преподаватели — для легенды и палитры цветов
 $teachers = dbQuery("
@@ -140,12 +151,25 @@ if ((int)($notesCount['c'] ?? 0) === 0) {
     }
 }
 
+// Базовая версия истории (если её ещё нет) и фиксация авточистки временных
+if (!$snapshotView) {
+    ensurePlannerSnapshotsTable();
+    $hasVersions = dbQueryOne("SELECT id FROM planner_snapshots LIMIT 1", []);
+    if (!$hasVersions || $deletedTemp > 0) {
+        plannerRecordVersion();
+    }
+}
+
 // ===== Загружаем все заметки и группируем по блокам =====
-$notes = dbQuery("
-    SELECT id, day, time, room, kind, position, content, color, temp_until
-    FROM planner_notes
-    ORDER BY day, time, room, kind, position, id
-", []);
+if ($snapshotView) {
+    $notes = json_decode($snapshotView['data'], true) ?: [];
+} else {
+    $notes = dbQuery("
+        SELECT id, day, time, room, kind, position, content, color, temp_until
+        FROM planner_notes
+        ORDER BY day, time, room, kind, position, id
+    ", []);
+}
 
 $blocks = [];
 foreach ($notes as $note) {
@@ -370,6 +394,127 @@ body {
 
 .student-count strong {
     color: var(--accent);
+}
+
+/* Кнопка истории */
+.history-btn {
+    padding: 6px 12px;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    background-color: var(--bg-elevated);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.history-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.history-btn .material-icons {
+    font-size: 16px;
+}
+
+/* Баннер просмотра версии */
+.snapshot-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    margin-bottom: 12px;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    border-radius: 10px;
+    color: #fbbf24;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.snapshot-banner .material-icons {
+    font-size: 18px;
+}
+
+.snapshot-banner .snapshot-back {
+    margin-left: auto;
+    color: var(--accent);
+    font-weight: 600;
+    text-decoration: none;
+    padding: 4px 12px;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    transition: all 0.15s;
+}
+
+.snapshot-banner .snapshot-back:hover {
+    background: var(--accent-dim);
+}
+
+/* Read-only режим (просмотр версии) */
+body.readonly .add-cell-btn {
+    display: none;
+}
+
+body.readonly .pcell,
+body.readonly .block-title {
+    cursor: default;
+}
+
+/* Список версий в модалке истории */
+.history-list {
+    max-height: 420px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.history-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+    color: var(--text-primary);
+}
+
+.history-item:hover {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+}
+
+.history-item .material-icons {
+    font-size: 18px;
+    color: var(--text-muted);
+}
+
+.history-item-date {
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.history-item-range {
+    margin-left: auto;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.history-empty {
+    text-align: center;
+    padding: 32px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
 }
 
 .edit-hint {
@@ -960,6 +1105,15 @@ body {
 }
 </style>
 
+<?php if ($snapshotView): ?>
+<!-- Баннер просмотра версии -->
+<div class="snapshot-banner">
+    <span class="material-icons">history</span>
+    <span>Версия от <strong><?= date('d.m.Y H:i', strtotime($snapshotView['updated_at'])) ?></strong> — только просмотр</span>
+    <a href="planner.php" class="snapshot-back">Вернуться к расписанию</a>
+</div>
+<?php endif; ?>
+
 <!-- Панель фильтров -->
 <div class="filters-panel">
     <div class="filters-content">
@@ -990,6 +1144,11 @@ body {
         <div class="filter-divider"></div>
 
         <span class="student-count">Учеников: <strong id="studentCount">0</strong></span>
+
+        <button class="history-btn" onclick="openHistoryModal()">
+            <span class="material-icons">history</span>
+            История
+        </button>
 
         <span class="edit-hint">
             <span class="material-icons">edit</span>
@@ -1089,6 +1248,24 @@ body {
     </div>
 </div>
 
+<!-- Модалка истории версий -->
+<div id="historyModal" class="modal-overlay">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h3>История изменений</h3>
+            <span class="modal-slot-info">версии создаются при правках</span>
+        </div>
+        <div class="modal-body">
+            <div class="history-list" id="historyList">
+                <div class="history-empty">Загрузка…</div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeHistoryModal()">Закрыть</button>
+        </div>
+    </div>
+</div>
+
 <!-- Контекстное меню (наполняется JS) -->
 <div id="contextMenu" class="context-menu"></div>
 
@@ -1100,6 +1277,7 @@ body {
 
 <script>
 const teachersData = <?= json_encode($teachers, JSON_UNESCAPED_UNICODE) ?>;
+const READ_ONLY = <?= $snapshotView ? 'true' : 'false' ?>;
 
 // ========== SIDEBAR TOGGLE ==========
 
@@ -1144,6 +1322,10 @@ document.addEventListener('DOMContentLoaded', function() {
     restoreFilters();
     updateGridColumns();
     updateStudentCount();
+
+    if (READ_ONLY) {
+        document.body.classList.add('readonly');
+    }
 });
 
 // ========== РЕДАКТИРОВАНИЕ ЗАГОЛОВКА БЛОКА (инлайн) ==========
@@ -1151,6 +1333,8 @@ document.addEventListener('DOMContentLoaded', function() {
 let editingEl = null;
 
 document.addEventListener('click', function(e) {
+    if (READ_ONLY) return;
+
     // Заголовок блока — инлайн-редактирование
     const title = e.target.closest('.block-title');
     if (title && !title.querySelector('input')) {
@@ -1346,6 +1530,11 @@ async function saveCellModal() {
     const saveBtn = document.getElementById('cellModalSave');
     saveBtn.disabled = true;
 
+    // Новая плашка наследует цвет блока (заголовка); если блок без цвета — teal
+    const blockColorMatch = block.className.match(/\bbc(\d+)\b/);
+    const inheritedColor = (blockColorMatch && parseInt(blockColorMatch[1]) > 0)
+        ? parseInt(blockColorMatch[1]) : 1;
+
     const payload = {
         id: cell && cell.dataset.id ? parseInt(cell.dataset.id) : null,
         day: parseInt(block.dataset.day),
@@ -1353,7 +1542,8 @@ async function saveCellModal() {
         room: parseInt(block.dataset.room),
         kind: 'student',
         content: name,
-        temp: temp
+        temp: temp,
+        color: inheritedColor
     };
 
     try {
@@ -1373,7 +1563,7 @@ async function saveCellModal() {
             renderStudentCell(cell, name, temp);
         } else {
             const newCell = document.createElement('div');
-            newCell.className = 'pcell c0';
+            newCell.className = 'pcell c' + inheritedColor;
             newCell.dataset.kind = 'student';
             if (result.data && result.data.id) {
                 newCell.dataset.id = result.data.id;
@@ -1432,6 +1622,7 @@ async function deleteCellModal() {
 let contextTarget = null;
 
 document.addEventListener('contextmenu', function(e) {
+    if (READ_ONLY) return;
     const cell = e.target.closest('.pcell, .block-title');
     if (!cell || !cell.dataset.id) return;
 
@@ -1475,6 +1666,7 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         hideContextMenu();
         closeCellModal();
+        closeHistoryModal();
     }
 });
 
@@ -1555,6 +1747,54 @@ async function deleteCell() {
         showNotification('Ошибка сети', 'error');
     }
 }
+
+// ========== ИСТОРИЯ ВЕРСИЙ ==========
+
+async function openHistoryModal() {
+    document.getElementById('historyModal').classList.add('active');
+    const list = document.getElementById('historyList');
+    list.innerHTML = '<div class="history-empty">Загрузка…</div>';
+
+    try {
+        const response = await fetch('/zarplata/api/planner.php?action=list_snapshots');
+        const result = await response.json();
+
+        if (!result.success || !result.data.snapshots || result.data.snapshots.length === 0) {
+            list.innerHTML = '<div class="history-empty">Версий пока нет — они создаются автоматически при изменениях расписания</div>';
+            return;
+        }
+
+        list.innerHTML = '';
+        result.data.snapshots.forEach(s => {
+            const updated = new Date(s.updated_at.replace(' ', 'T'));
+            const created = new Date(s.created_at.replace(' ', 'T'));
+            const dateStr = updated.toLocaleDateString('ru-RU', {day: 'numeric', month: 'long'});
+            const timeStr = updated.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
+            const createdTime = created.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
+            const range = createdTime !== timeStr ? `${createdTime}–${timeStr}` : timeStr;
+
+            const item = document.createElement('a');
+            item.className = 'history-item';
+            item.href = 'planner.php?snapshot=' + s.id;
+            item.innerHTML = `
+                <span class="material-icons">schedule</span>
+                <span class="history-item-date">${dateStr}, ${timeStr}</span>
+                <span class="history-item-range">${range}</span>
+            `;
+            list.appendChild(item);
+        });
+    } catch (err) {
+        list.innerHTML = '<div class="history-empty">Ошибка загрузки истории</div>';
+    }
+}
+
+function closeHistoryModal() {
+    document.getElementById('historyModal').classList.remove('active');
+}
+
+document.getElementById('historyModal').addEventListener('click', function(e) {
+    if (e.target === this) closeHistoryModal();
+});
 
 // ========== СЧЁТЧИК УЧЕНИКОВ ==========
 

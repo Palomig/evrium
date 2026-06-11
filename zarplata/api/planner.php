@@ -7,6 +7,7 @@
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/auth.php';
 require_once __DIR__ . '/../config/helpers.php';
+require_once __DIR__ . '/../config/planner_snapshots.php';
 
 // Устанавливаем JSON заголовки
 header('Content-Type: application/json; charset=utf-8');
@@ -41,6 +42,9 @@ switch ($action) {
         break;
     case 'set_note_color':
         handleSetNoteColor();
+        break;
+    case 'list_snapshots':
+        handleListSnapshots();
         break;
     default:
         jsonError('Неизвестное действие', 400);
@@ -102,6 +106,10 @@ function handleSaveNote() {
     $content = mb_substr(trim((string)($data['content'] ?? '')), 0, 160);
     $isTemp = !empty($data['temp']) && $kind === 'student';
     $tempUntil = $isTemp ? plannerTempUntil($day) : null;
+    $color = (int)($data['color'] ?? 0);
+    if ($color < 0 || $color > 8) {
+        $color = 0;
+    }
 
     if ($day < 1 || $day > 7) {
         jsonError('Неверный день недели', 400);
@@ -117,6 +125,7 @@ function handleSaveNote() {
     if ($content === '') {
         if ($id) {
             dbExecute("DELETE FROM planner_notes WHERE id = ?", [$id]);
+            plannerRecordVersion();
         }
         jsonSuccess(['deleted' => true]);
         return;
@@ -138,6 +147,7 @@ function handleSaveNote() {
         } else {
             dbExecute("UPDATE planner_notes SET content = ? WHERE id = ?", [$content, $id]);
         }
+        plannerRecordVersion();
         jsonSuccess(['id' => $id]);
         return;
     }
@@ -150,6 +160,7 @@ function handleSaveNote() {
         );
         if ($existing) {
             dbExecute("UPDATE planner_notes SET content = ? WHERE id = ?", [$content, $existing['id']]);
+            plannerRecordVersion();
             jsonSuccess(['id' => (int)$existing['id']]);
             return;
         }
@@ -164,20 +175,21 @@ function handleSaveNote() {
 
     try {
         $newId = dbExecute(
-            "INSERT INTO planner_notes (day, time, room, kind, position, content, color, temp_until) VALUES (?, ?, ?, ?, ?, ?, 0, ?)",
-            [$day, $time, $room, $kind, $position, $content, $tempUntil]
+            "INSERT INTO planner_notes (day, time, room, kind, position, content, color, temp_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            [$day, $time, $room, $kind, $position, $content, $color, $tempUntil]
         );
     } catch (PDOException $e) {
         // Фолбэк для БД без колонки temp_until
         if (strpos($e->getMessage(), 'temp_until') !== false || strpos($e->getMessage(), 'Unknown column') !== false) {
             $newId = dbExecute(
-                "INSERT INTO planner_notes (day, time, room, kind, position, content, color) VALUES (?, ?, ?, ?, ?, ?, 0)",
-                [$day, $time, $room, $kind, $position, $content]
+                "INSERT INTO planner_notes (day, time, room, kind, position, content, color) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                [$day, $time, $room, $kind, $position, $content, $color]
             );
         } else {
             throw $e;
         }
     }
+    plannerRecordVersion();
 
     if (!$newId) {
         $row = dbQueryOne(
@@ -213,7 +225,20 @@ function handleSetNoteColor() {
     }
 
     dbExecute("UPDATE planner_notes SET color = ? WHERE id = ?", [$color, $id]);
+    plannerRecordVersion();
     jsonSuccess(['id' => $id, 'color' => $color]);
+}
+
+/**
+ * Список версий истории (новые сверху)
+ */
+function handleListSnapshots() {
+    ensurePlannerSnapshotsTable();
+    $snapshots = dbQuery(
+        "SELECT id, created_at, updated_at FROM planner_snapshots ORDER BY updated_at DESC, id DESC LIMIT 100",
+        []
+    );
+    jsonSuccess(['snapshots' => $snapshots]);
 }
 
 /**
