@@ -183,7 +183,7 @@ const isActive = (item: NavItem) => {
   .nav-item > .nav-trigger:hover { background: #fff; border-color: var(--ink); text-decoration: none; }
   .nav-item.is-active > a,
   .nav-item.is-active > .nav-trigger { background: var(--mar); border-color: var(--ink); color: var(--ink); }
-  .nav-trigger .caret { opacity: .7; transition: transform .15s ease; }
+  .nav-trigger .caret { flex: 0 0 auto; width: 10px; height: 10px; opacity: .7; transition: transform .15s ease; }
   .has-dropdown.is-open .nav-trigger .caret,
   .has-dropdown:hover .nav-trigger .caret { transform: rotate(180deg); }
 
