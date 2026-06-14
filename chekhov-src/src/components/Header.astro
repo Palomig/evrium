@@ -30,7 +30,7 @@ const isActive = (item: NavItem) => {
     <a class="brand" href="/">
       <span class="brand-logo">Э</span>
       <span class="brand-text">
-        <span class="brand-title">{site.centerName} <span class="brand-em">·</span> {site.centerTagline}</span>
+        <span class="brand-title">{site.centerName}<span class="brand-tagline"> <span class="brand-em">·</span> {site.centerTagline}</span></span>
         <span class="brand-sub">математика · информатика · физика</span>
       </span>
     </a>
@@ -133,9 +133,12 @@ const isActive = (item: NavItem) => {
     display: flex; align-items: center; gap: 12px;
     color: var(--ink);
     text-decoration: none;
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+    min-width: 0;
   }
   .brand:hover { text-decoration: none; }
+  .brand-text { min-width: 0; }
+  .brand-title { white-space: nowrap; }
   .brand-logo {
     width: 42px; height: 42px;
     background: var(--mar); color: var(--ink);
@@ -281,6 +284,13 @@ const isActive = (item: NavItem) => {
   @media (max-width: 1024px) {
     .primary-nav, .header-cta { display: none; }
     .burger { display: block; margin-left: auto; }
+  }
+  /* На телефонах оставляем логотип + «Эвриум», длинный тег-лайн прячем,
+     чтобы шапка не растягивала страницу по ширине */
+  @media (max-width: 560px) {
+    .brand-tagline, .brand-sub { display: none; }
+    .header-inner { gap: 12px; padding: 12px 16px; }
+    .top-bar-inner { padding-left: 16px; padding-right: 16px; }
   }
 </style>
 

@@ -2,6 +2,7 @@
 import { site } from '../data/site.ts';
 const rows = Object.values(site.prices);
 ---
+<div class="price-table-wrap">
 <table class="price-table">
   <thead>
     <tr>
@@ -20,6 +21,7 @@ const rows = Object.values(site.prices);
     ))}
   </tbody>
 </table>
+</div>
 <p class="muted small" style="margin-top: 12px;">
   Групповые занятия — фиксированная оплата за месяц. Первая диагностика — бесплатно.
 </p>
