@@ -168,6 +168,7 @@ section { padding: 60px 0; }
   padding: 20px;
 }
 
+.price-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 table.price-table {
   width: 100%;
   border-collapse: separate;
@@ -177,6 +178,11 @@ table.price-table {
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow-md);
+}
+@media (max-width: 560px) {
+  .price-table { font-size: 14px; }
+  .price-table th, .price-table td { padding: 11px 12px; }
+  .price-table .price { white-space: normal; }
 }
 .price-table th, .price-table td {
   padding: 14px 16px;
