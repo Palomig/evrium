@@ -270,7 +270,7 @@ details.faq-item[open] summary { margin-bottom: 10px; }
 .todo {
   display: inline-block;
   background: var(--mar);
-  color: var(--ink);
+  color: var(--on-accent);
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 12px;
