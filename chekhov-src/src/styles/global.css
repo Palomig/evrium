@@ -1,26 +1,28 @@
 :root {
-  /* ── Новая дизайн-система: тёплый editorial (marigold + cream + ink) ── */
-  --paper:    #FBF5E9;   /* тёплый кремовый фон */
-  --paper-2:  #F4EAD4;   /* секции-акценты */
-  --ink:      #1C1813;   /* почти-чёрный тёплый */
-  --ink-2:    #585047;   /* приглушённый текст */
-  --mar:      #FFB200;   /* фирменный золотой */
-  --mar-2:    #F59300;   /* тёмный золотой */
-  --leaf:     #1C7A4A;   /* зелёный «бесплатно/успех» */
-  --leaf-bg:  #E3F2E7;
-  --line:     #E7D9BC;   /* тёплая тонкая линия */
+  /* ── Дизайн-система: приглушённый синий (editorial) ── */
+  --paper:      #F4F6FB;   /* прохладный светлый фон */
+  --paper-2:    #E7ECF6;   /* секции-акценты */
+  --ink:        #16213C;   /* глубокий сине-чёрный */
+  --ink-2:      #4A5670;   /* приглушённый текст */
+  --mar:        #3A6098;   /* акцент (синий) */
+  --mar-2:      #2C4C7C;   /* тёмный акцент */
+  --on-accent:  #F6F8FD;   /* светлый текст НА акценте */
+  --accent-soft:#9FBEE6;   /* светлый оттенок акцента (на тёмном фоне) */
+  --leaf:       #1C7A4A;   /* зелёный «бесплатно/успех» */
+  --leaf-bg:    #E3F2E7;
+  --line:       #D9E0EC;   /* тонкая линия */
 
   /* ── Легаси-алиасы (используются по всему сайту) — переотображены ── */
-  --c-bg:           #FBF5E9;
-  --c-bg-soft:      #F4EAD4;
-  --c-text:         #1C1813;
-  --c-muted:        #585047;
-  --muted:          #585047;     /* фолбэк для otzyvy */
-  --c-primary:      #1C1813;
-  --c-primary-soft: #A8600A;     /* цвет ссылок (тёплый) */
-  --c-accent:       #FFB200;
-  --c-accent-dark:  #F59300;
-  --c-border:       #E7D9BC;     /* тонкие линии */
+  --c-bg:           #F4F6FB;
+  --c-bg-soft:      #E7ECF6;
+  --c-text:         #16213C;
+  --c-muted:        #4A5670;
+  --muted:          #4A5670;     /* фолбэк для otzyvy */
+  --c-primary:      #16213C;
+  --c-primary-soft: #2C4C7C;     /* цвет ссылок (синий) */
+  --c-accent:       #3A6098;
+  --c-accent-dark:  #2C4C7C;
+  --c-border:       #D9E0EC;     /* тонкие линии */
   --c-success:      #1FA855;     /* WhatsApp */
   --c-tg:           #229ED9;     /* Telegram */
 
@@ -83,7 +85,7 @@ section { padding: 60px 0; }
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .07em;
-  color: var(--ink);
+  color: var(--on-accent);
   background: var(--mar);
   padding: 6px 12px;
   border: 2px solid var(--ink);
@@ -114,8 +116,8 @@ section { padding: 60px 0; }
 .btn:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--ink); }
 .btn-primary { background: var(--ink); color: var(--paper); }
 .btn-primary:hover { background: #2c261d; color: var(--paper); }
-.btn-accent { background: var(--mar); color: var(--ink); }
-.btn-accent:hover { background: var(--mar-2); }
+.btn-accent { background: var(--mar); color: var(--on-accent); }
+.btn-accent:hover { background: var(--mar-2); color: var(--on-accent); }
 .btn-ghost { background: #fff; color: var(--ink); }
 .btn-ghost:hover { background: var(--ink); color: var(--paper); }
 .btn-wa { background: var(--c-success); color: #fff; }
@@ -196,7 +198,7 @@ table.price-table {
   font-size: 13px;
   text-transform: uppercase;
   letter-spacing: .03em;
-  color: var(--ink);
+  color: var(--on-accent);
 }
 .price-table tr:last-child td { border-bottom: 0; }
 .price-table .price { font-family: 'Unbounded', sans-serif; font-weight: 700; color: var(--ink); white-space: nowrap; }
@@ -249,7 +251,7 @@ details.faq-item[open] summary { margin-bottom: 10px; }
 .hero > .container { position: relative; z-index: 1; }
 .hero h1 { color: var(--ink); }
 .hero .lead { color: var(--ink-2); font-size: 1.2em; }
-.hero .eyebrow { background: var(--mar); color: var(--ink); }
+.hero .eyebrow { background: var(--mar); color: var(--on-accent); }
 .hero-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; align-items: center; }
 @media (max-width: 900px) { .hero { padding: 48px 0; } .hero-grid { grid-template-columns: 1fr; } }
 

@@ -108,8 +108,8 @@ const isActive = (item: NavItem) => {
     text-decoration: none;
     font-weight: 500;
   }
-  .top-bar-item:hover { color: var(--mar); text-decoration: none; }
-  .top-bar-item svg { flex-shrink: 0; color: var(--mar); }
+  .top-bar-item:hover { color: var(--accent-soft); text-decoration: none; }
+  .top-bar-item svg { flex-shrink: 0; color: var(--accent-soft); }
   @media (max-width: 640px) {
     .top-bar-inner { font-size: 12px; gap: 14px; padding: 7px 16px; justify-content: center; flex-wrap: wrap; }
   }
@@ -141,7 +141,7 @@ const isActive = (item: NavItem) => {
   .brand-title { white-space: nowrap; }
   .brand-logo {
     width: 42px; height: 42px;
-    background: var(--mar); color: var(--ink);
+    background: var(--mar); color: var(--on-accent);
     display: grid; place-items: center;
     border-radius: 12px;
     border: 2px solid var(--ink);
@@ -185,7 +185,7 @@ const isActive = (item: NavItem) => {
   .nav-item > a:hover,
   .nav-item > .nav-trigger:hover { background: #fff; border-color: var(--ink); text-decoration: none; }
   .nav-item.is-active > a,
-  .nav-item.is-active > .nav-trigger { background: var(--mar); border-color: var(--ink); color: var(--ink); }
+  .nav-item.is-active > .nav-trigger { background: var(--mar); border-color: var(--ink); color: var(--on-accent); }
   .nav-trigger .caret { flex: 0 0 auto; width: 10px; height: 10px; opacity: .7; transition: transform .15s ease; }
   .has-dropdown.is-open .nav-trigger .caret,
   .has-dropdown:hover .nav-trigger .caret { transform: rotate(180deg); }
@@ -234,7 +234,7 @@ const isActive = (item: NavItem) => {
     text-decoration: none;
   }
   .dropdown a:hover { background: var(--paper-2); text-decoration: none; }
-  .dropdown a.is-active { background: var(--mar); color: var(--ink); font-weight: 700; }
+  .dropdown a.is-active { background: var(--mar); color: var(--on-accent); font-weight: 700; }
 
   .header-cta { padding: 11px 18px; min-height: 44px; font-size: 14px; border-radius: 12px; }
 
