@@ -392,12 +392,13 @@ const faqSchema = {
   .v2-kicker { display: inline-block; font-weight: 700; font-size: 14px; color: var(--ink); background: var(--paper); border: 2px solid var(--ink); padding: 6px 14px; border-radius: 999px; margin-bottom: 20px; }
   .v2-h1 { font-size: clamp(33px, 5.4vw, 60px); font-weight: 800; margin: 0 0 18px; color: var(--on-accent); }
   .v2-h1 em { font-style: normal; background: var(--ink); color: var(--accent-soft); padding: 0 .12em; border-radius: 6px; }
-  /* Текст на синем hero — светлый */
+  /* Текст на синем hero — светлый (специфичность выше, чем у .v2 :is(h1,h2,h3)) */
+  .v2-hero .v2-h1 { color: var(--on-accent); }
   .v2-hero .v2-btn-line { color: var(--on-accent); border-color: var(--on-accent); }
   .v2-sub { font-size: clamp(17px, 1.6vw, 20px); color: var(--on-accent); max-width: 520px; margin: 0 0 26px; font-weight: 500; }
   .v2-hero-cta { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 22px; }
   .v2-hero-marks { list-style: none; display: flex; flex-wrap: wrap; gap: 8px 14px; padding: 0; margin: 0; }
-  .v2-hero-marks li { font-weight: 600; font-size: 14px; background: rgba(28,24,19,.08); border: 1.5px solid var(--ink); padding: 5px 12px; border-radius: 999px; }
+  .v2-hero-marks li { font-weight: 600; font-size: 14px; color: var(--on-accent); background: rgba(255,255,255,.14); border: 1.5px solid rgba(246,248,253,.55); padding: 5px 12px; border-radius: 999px; }
 
   /* Hero form card */
   .v2-formcard { padding: 26px; position: relative; container-type: inline-size; }
@@ -528,7 +529,8 @@ const faqSchema = {
   /* FINAL CTA */
   .v2-final { background: var(--mar); border-top: 3px solid var(--ink); padding: 64px 0; }
   .v2-final-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 44px; align-items: center; }
-  .v2-final-h { margin: 0 0 12px; color: var(--on-accent); }
+  .v2-final-h { margin: 0 0 12px; }
+  .v2-final .v2-final-h { color: var(--on-accent); }
   .v2-final-sub { font-size: 17px; font-weight: 500; max-width: 460px; color: var(--on-accent); }
   .v2-final-sub a { font-weight: 700; color: var(--on-accent); text-decoration: underline; }
   .v2-final-form { padding: 24px; }
