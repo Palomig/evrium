@@ -48,6 +48,41 @@
 Только необходимые
 </button> <button type="button" class="cookie-btn cookie-btn-accent" data-cookie-accept data-astro-cid-fzbxxtek>
 Принять
-</button> </div> </div> </div>  <script type="module">const o="cookie-consent-v1",t=document.querySelector("[data-cookie-banner]"),r=document.querySelector("[data-cookie-accept]"),s=document.querySelector("[data-cookie-decline]"),i=()=>{try{return JSON.parse(localStorage.getItem(o)||"null")}catch{return null}},c=()=>{t&&(t.hidden=!1,document.body.classList.add("cookie-banner-open"))},d=()=>{t&&(t.hidden=!0,document.body.classList.remove("cookie-banner-open"))},a=e=>{const n={version:1,analytics:e,ts:new Date().toISOString()};try{localStorage.setItem(o,JSON.stringify(n))}catch{}d(),document.dispatchEvent(new CustomEvent("cookie-consent-change",{detail:n}))};i()||c();r?.addEventListener("click",()=>a(!0));s?.addEventListener("click",()=>a(!1));document.addEventListener("click",e=>{e.target instanceof Element&&e.target.closest("[data-cookie-reopen]")&&(e.preventDefault(),c())});</script> </body></html>  <script type="speculationrules">
+</button> </div> </div> </div>  <script type="module">const o="cookie-consent-v1",t=document.querySelector("[data-cookie-banner]"),r=document.querySelector("[data-cookie-accept]"),s=document.querySelector("[data-cookie-decline]"),i=()=>{try{return JSON.parse(localStorage.getItem(o)||"null")}catch{return null}},c=()=>{t&&(t.hidden=!1,document.body.classList.add("cookie-banner-open"))},d=()=>{t&&(t.hidden=!0,document.body.classList.remove("cookie-banner-open"))},a=e=>{const n={version:1,analytics:e,ts:new Date().toISOString()};try{localStorage.setItem(o,JSON.stringify(n))}catch{}d(),document.dispatchEvent(new CustomEvent("cookie-consent-change",{detail:n}))};i()||c();r?.addEventListener("click",()=>a(!0));s?.addEventListener("click",()=>a(!1));document.addEventListener("click",e=>{e.target instanceof Element&&e.target.closest("[data-cookie-reopen]")&&(e.preventDefault(),c())});</script> <!-- Сквозная аналитика: захват источника (utm/yclid/clientID) и проброс в форму заявки --> <script>
+    (function () {
+      var KEY = 'attr_v1';
+      function load() { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; } }
+      function save(o) { try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {} }
+      var p = new URLSearchParams(location.search);
+      var cur = {};
+      ['utm_source','utm_medium','utm_campaign','utm_term','utm_content'].forEach(function (k) { if (p.get(k)) cur[k] = p.get(k); });
+      var y = p.get('yclid'); if (y) cur.yclid = y;
+      var data = load() || { landing: location.pathname, referrer: document.referrer || '' };
+      if (Object.keys(cur).length) { for (var k in cur) data[k] = cur[k]; data.ts = new Date().toISOString(); }
+      save(data);
+
+      function inject() {
+        document.querySelectorAll('form[data-lead-form]').forEach(function (f) {
+          for (var k in data) {
+            if (!data[k] || f.querySelector('[name="' + k + '"]')) continue;
+            var i = document.createElement('input'); i.type = 'hidden'; i.name = k; i.value = data[k]; f.appendChild(i);
+          }
+        });
+      }
+      inject();
+
+      function addClientId() {
+        if (!window.ym) return;
+        try { window.ym(window.__ymId || 0, 'getClientID', function (id) {
+          document.querySelectorAll('form[data-lead-form]').forEach(function (f) {
+            if (f.querySelector('[name="ym_client_id"]')) return;
+            var i = document.createElement('input'); i.type = 'hidden'; i.name = 'ym_client_id'; i.value = id; f.appendChild(i);
+          });
+        }); } catch (e) {}
+      }
+      if (window.ym) addClientId();
+      else document.addEventListener('cookie-consent-change', function () { setTimeout(addClientId, 1500); });
+    })();
+  </script> </body> </html>  <script type="speculationrules">
 { "prefetch": [ { "source": "list", "urls": ["/ceny/", "/matematika/", "/otzyvy/"] } ] }
 </script> <script type="module">function l(t){let e=String(t).replace(/\D/g,"");e.startsWith("8")&&(e="7"+e.slice(1)),e.startsWith("7")||(e="7"+e),e=e.slice(0,11);let a="+7";return e.length>1&&(a+=" ("+e.slice(1,4)),e.length>=4&&(a+=")"),e.length>=5&&(a+=" "+e.slice(4,7)),e.length>=8&&(a+=" "+e.slice(7,9)),e.length>=10&&(a+=" "+e.slice(9,11)),a}document.querySelectorAll('[data-lead-form] input[name="phone"]').forEach(t=>{t.addEventListener("focus",()=>{t.value||(t.value="+7 ")}),t.addEventListener("input",()=>{t.value=l(t.value)}),t.addEventListener("blur",()=>{t.value.replace(/\D/g,"").length<=1&&(t.value="")}),t.addEventListener("paste",e=>{e.preventDefault(),t.value=l((e.clipboardData||window.clipboardData).getData("text"))})});document.querySelectorAll("[data-lead-form]").forEach(t=>{const e=t.querySelector("[data-status]");t.addEventListener("submit",async a=>{a.preventDefault();const o=new FormData(t);if(!o.get("website")){e&&(e.hidden=!1,e.className="form-status",e.textContent="Отправляем…");try{const i=await fetch(t.action,{method:"POST",body:o}),r=await i.json().catch(()=>({}));if(i.ok&&r.ok)e&&(e.className="form-status ok",e.textContent="Спасибо! Получили заявку — свяжемся в ближайшее время."),t.reset(),window.ym&&window.ym(window.__ymId||0,"reachGoal","form_submit");else throw new Error(r.error||"fail")}catch{e&&(e.className="form-status err",e.textContent="Не удалось отправить. Напишите в WhatsApp или Telegram.")}}})});document.querySelectorAll("[data-open-track]").forEach(t=>t.addEventListener("click",()=>{window.ym&&window.ym(window.__ymId||0,"reachGoal","open_lead_dialog")}));"commandForElement"in HTMLButtonElement.prototype||document.querySelectorAll("button[commandfor][command]").forEach(t=>{t.addEventListener("click",()=>{const e=document.getElementById(t.getAttribute("commandfor"));if(!(e instanceof HTMLDialogElement))return;const a=t.getAttribute("command");a==="show-modal"?e.showModal():a==="close"&&e.close()})});const n=document.getElementById("v2-dialog");n&&!("closedBy"in HTMLDialogElement.prototype)&&n.addEventListener("click",t=>{if(t.target!==n)return;const e=n.getBoundingClientRect();e.top<=t.clientY&&t.clientY<=e.top+e.height&&e.left<=t.clientX&&t.clientX<=e.left+e.width||n.close()});const c=t=>{!t||!t.matches||!t.matches("[data-v2-validate] input, [data-v2-validate] select")||t.setAttribute("aria-invalid",t.matches(":user-invalid")?"true":"false")};document.addEventListener("blur",t=>c(t.target),!0);document.addEventListener("input",t=>{t.target&&t.target.hasAttribute&&t.target.hasAttribute("aria-invalid")&&c(t.target)});</script>

@@ -106,6 +106,16 @@ $goal      = $pick('goal', 30);
 $messenger = $pick('messenger', 30);
 $comment   = $pick('comment', 1500);
 
+// Сквозная аналитика: источник заявки
+$utmSource   = $pick('utm_source', 100);
+$utmMedium   = $pick('utm_medium', 100);
+$utmCampaign = $pick('utm_campaign', 150);
+$utmTerm     = $pick('utm_term', 150);
+$utmContent  = $pick('utm_content', 150);
+$yclid       = $pick('yclid', 50);
+$ymClientId  = $pick('ym_client_id', 40);
+$landing     = $pick('landing', 200);
+
 if ($name === '' || mb_strlen($name) < 2) {
     http_response_code(422);
     echo json_encode(['ok' => false, 'error' => 'invalid_name']);
@@ -144,6 +154,14 @@ $lead = [
     'goal' => $goal,
     'messenger' => $messenger,
     'comment' => $comment,
+    'utm_source' => $utmSource,
+    'utm_medium' => $utmMedium,
+    'utm_campaign' => $utmCampaign,
+    'utm_term' => $utmTerm,
+    'utm_content' => $utmContent,
+    'yclid' => $yclid,
+    'ym_client_id' => $ymClientId,
+    'landing' => $landing,
 ];
 
 // --- Лог в файл -----------------------------------------------------------
@@ -184,7 +202,16 @@ if (!empty($config['telegram_token']) && !empty($config['telegram_chat_id'])) {
     if ($messenger) $lines[] = '<b>Связь:</b> ' . htmlspecialchars($messenger);
     if ($comment)   $lines[] = '<b>Комментарий:</b> ' . htmlspecialchars($comment);
     $lines[] = '';
-    $lines[] = '<i>Источник: ' . htmlspecialchars($lead['referer'] ?: '—') . '</i>';
+    if ($utmSource || $utmCampaign) {
+        $src = $utmSource ?: '—';
+        if ($utmMedium)   $src .= ' / ' . $utmMedium;
+        if ($utmCampaign) $src .= ' / ' . $utmCampaign;
+        $lines[] = '<b>Источник:</b> ' . htmlspecialchars($src);
+        if ($utmTerm) $lines[] = '<b>Запрос:</b> ' . htmlspecialchars($utmTerm);
+    } else {
+        $lines[] = '<i>Источник: ' . htmlspecialchars($lead['referer'] ?: ($landing ?: '—')) . '</i>';
+    }
+    if ($yclid) $lines[] = '<i>yclid: ' . htmlspecialchars($yclid) . ' (клик Яндекс.Директа)</i>';
 
     $payload = http_build_query([
         'chat_id' => $config['telegram_chat_id'],

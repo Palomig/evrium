@@ -174,5 +174,43 @@ const schemas = [
   <Footer />
   <FloatingCTA />
   <CookieBanner />
+
+  <!-- Сквозная аналитика: захват источника (utm/yclid/clientID) и проброс в форму заявки -->
+  <script is:inline>
+    (function () {
+      var KEY = 'attr_v1';
+      function load() { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; } }
+      function save(o) { try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {} }
+      var p = new URLSearchParams(location.search);
+      var cur = {};
+      ['utm_source','utm_medium','utm_campaign','utm_term','utm_content'].forEach(function (k) { if (p.get(k)) cur[k] = p.get(k); });
+      var y = p.get('yclid'); if (y) cur.yclid = y;
+      var data = load() || { landing: location.pathname, referrer: document.referrer || '' };
+      if (Object.keys(cur).length) { for (var k in cur) data[k] = cur[k]; data.ts = new Date().toISOString(); }
+      save(data);
+
+      function inject() {
+        document.querySelectorAll('form[data-lead-form]').forEach(function (f) {
+          for (var k in data) {
+            if (!data[k] || f.querySelector('[name="' + k + '"]')) continue;
+            var i = document.createElement('input'); i.type = 'hidden'; i.name = k; i.value = data[k]; f.appendChild(i);
+          }
+        });
+      }
+      inject();
+
+      function addClientId() {
+        if (!window.ym) return;
+        try { window.ym(window.__ymId || 0, 'getClientID', function (id) {
+          document.querySelectorAll('form[data-lead-form]').forEach(function (f) {
+            if (f.querySelector('[name="ym_client_id"]')) return;
+            var i = document.createElement('input'); i.type = 'hidden'; i.name = 'ym_client_id'; i.value = id; f.appendChild(i);
+          });
+        }); } catch (e) {}
+      }
+      if (window.ym) addClientId();
+      else document.addEventListener('cookie-consent-change', function () { setTimeout(addClientId, 1500); });
+    })();
+  </script>
 </body>
 </html>
