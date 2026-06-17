@@ -10,13 +10,6 @@ import { site } from '../data/site.ts';
 const title = `${site.centerName} — репетиторский центр в Чехове | Математика, информатика, физика`;
 const description = 'Репетиторский центр «Эвриум» в Чехове. Очные занятия по математике, физике и информатике для 2–11 классов. Подготовка к ОГЭ, ЕГЭ, олимпиадам. Бесплатный пробный урок.';
 
-const stats = [
-  { n: '4+', l: 'года с учениками' },
-  { n: '2–11', l: 'классы' },
-  { n: '3', l: 'предмета очно' },
-  { n: '1-й', l: 'урок бесплатно' },
-];
-
 const subjects = [
   { name: 'Математика', href: '/matematika/', desc: 'Школьная программа, ОГЭ, ЕГЭ и олимпиадная математика, 2–11 класс.', emoji: '∑' },
   { name: 'Физика', href: '/fizika/', desc: 'Механика, электричество, оптика — через понимание, а не зубрёжку.', emoji: '⚛' },
@@ -117,15 +110,6 @@ const faqSchema = {
         </aside>
       </div>
     </header>
-
-    <!-- STATS -->
-    <section class="v2-stats">
-      <div class="wrap v2-stats-row" data-reveal>
-        {stats.map((s) => (
-          <div class="v2-stat"><span class="v2-stat-n">{s.n}</span><span class="v2-stat-l">{s.l}</span></div>
-        ))}
-      </div>
-    </section>
 
     <!-- FREE TRIAL -->
     <section class="v2-sec v2-trial">
