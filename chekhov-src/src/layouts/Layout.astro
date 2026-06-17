@@ -153,6 +153,17 @@ const schemas = [
         });
       }
     })();
+
+    // Глобальный трекинг кликов по CTA (WhatsApp/Telegram/телефон) — на всех страницах
+    document.addEventListener('click', function (e) {
+      var el = e.target.closest && e.target.closest('[data-cta]');
+      if (!el || !window.ym) return;
+      var n = el.getAttribute('data-cta') || '';
+      var g = n.indexOf('whatsapp') === 0 ? 'click_whatsapp'
+            : n.indexOf('telegram') === 0 ? 'click_telegram'
+            : n.indexOf('phone') === 0 ? 'click_phone' : null;
+      if (g) window.ym(window.__ymId || 0, 'reachGoal', g);
+    });
   </script>
 </head>
 <body>
