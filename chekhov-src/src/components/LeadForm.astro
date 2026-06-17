@@ -203,19 +203,5 @@ const { compact = false, subject = '', goal = '' } = Astro.props;
     });
   });
 
-  document.querySelectorAll('[data-cta]').forEach((el) => {
-    el.addEventListener('click', () => {
-      const name = el.getAttribute('data-cta');
-      if (!name || !window.ym) return;
-      const goalMap = {
-        whatsapp_floating: 'click_whatsapp', whatsapp_footer: 'click_whatsapp',
-        whatsapp_form: 'click_whatsapp', whatsapp_hero: 'click_whatsapp',
-        telegram_floating: 'click_telegram', telegram_footer: 'click_telegram',
-        telegram_form: 'click_telegram', telegram_hero: 'click_telegram',
-        phone_floating: 'click_phone', phone_footer: 'click_phone', phone_form: 'click_phone',
-      };
-      const goal = goalMap[name];
-      if (goal) window.ym(window.__ymId || 0, 'reachGoal', goal);
-    });
-  });
+  // Трекинг кликов по CTA вынесен в Layout.astro (глобально на всех страницах).
 </script>
