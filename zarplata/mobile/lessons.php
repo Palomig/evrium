@@ -696,6 +696,18 @@ require_once __DIR__ . '/templates/header.php';
     margin-top: var(--header-height);
     padding-bottom: calc(var(--bottom-nav-height) + 24px + env(safe-area-inset-bottom, 0px));
 }
+
+/* Анимация свайпа между днями */
+.main-content { transition: transform .2s ease, opacity .2s ease; will-change: transform; }
+.main-content.swipe-leave-left  { transform: translateX(-32px); opacity: 0; }
+.main-content.swipe-leave-right { transform: translateX(32px);  opacity: 0; }
+.main-content.swipe-enter-left  { animation: dayEnterLeft  .26s ease; }
+.main-content.swipe-enter-right { animation: dayEnterRight .26s ease; }
+@keyframes dayEnterLeft  { from { transform: translateX(-32px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes dayEnterRight { from { transform: translateX(32px);  opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+    .main-content, .main-content.swipe-enter-left, .main-content.swipe-enter-right { transition: none; animation: none; }
+}
 </style>
 
 <script>
@@ -731,13 +743,31 @@ const NEXT_DATE_URL = <?= json_encode('lessons.php?date=' . $nextDate) ?>;
         if (Math.abs(dx) < Math.abs(dy) * 1.8) return;
 
         if (dx < 0) {
-            // свайп влево → следующий день
-            window.location.href = NEXT_DATE_URL;
+            navigateDay(NEXT_DATE_URL, 'left');  // свайп влево → следующий день
         } else {
-            // свайп вправо → предыдущий день
-            window.location.href = PREV_DATE_URL;
+            navigateDay(PREV_DATE_URL, 'right'); // свайп вправо → предыдущий день
         }
     }, { passive: true });
+
+    function navigateDay(url, leaveDir) {
+        // Новая страница «въедет» с противоположной стороны
+        try { sessionStorage.setItem('dayEnterDir', leaveDir === 'left' ? 'right' : 'left'); } catch (e) {}
+        const mc = document.querySelector('.main-content');
+        if (mc) mc.classList.add(leaveDir === 'left' ? 'swipe-leave-left' : 'swipe-leave-right');
+        setTimeout(() => { window.location.href = url; }, 170);
+    }
+
+    // Анимация въезда после перехода свайпом
+    let enterDir = null;
+    try { enterDir = sessionStorage.getItem('dayEnterDir'); sessionStorage.removeItem('dayEnterDir'); } catch (e) {}
+    if (enterDir) {
+        const mc = document.querySelector('.main-content');
+        if (mc) {
+            const cls = enterDir === 'right' ? 'swipe-enter-right' : 'swipe-enter-left';
+            mc.classList.add(cls);
+            mc.addEventListener('animationend', () => mc.classList.remove(cls), { once: true });
+        }
+    }
 })();
 
 // ── Expand / collapse lesson ──────────────────────────────────────────────

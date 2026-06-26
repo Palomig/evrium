@@ -482,6 +482,15 @@ require_once __DIR__ . '/templates/header.php';
 
 .sched-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .sched-toast.err { border-left-color: #f43f5e; }
+
+/* Анимация свайпа между днями */
+.day-pane.pane-enter-right { animation: paneFromRight .26s ease; }
+.day-pane.pane-enter-left  { animation: paneFromLeft  .26s ease; }
+@keyframes paneFromRight { from { transform: translateX(32px);  opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes paneFromLeft  { from { transform: translateX(-32px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+    .day-pane.pane-enter-right, .day-pane.pane-enter-left { animation: none; }
+}
 </style>
 
 <!-- Чипы преподавателей (выбирается один) -->
@@ -626,13 +635,25 @@ document.addEventListener('DOMContentLoaded', function() {
 // ===== Дни =====
 
 function showDay(day) {
+    const prevPane = document.querySelector('.day-pane.active');
+    const prevDay = prevPane ? parseInt(prevPane.dataset.day) : day;
+    const forward = day > prevDay; // переход к более позднему дню
+
     document.querySelectorAll('.day-chip').forEach(chip => {
         const isActive = parseInt(chip.dataset.day) === day;
         chip.classList.toggle('active', isActive);
         if (isActive) chip.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
     });
     document.querySelectorAll('.day-pane').forEach(pane => {
-        pane.classList.toggle('active', parseInt(pane.dataset.day) === day);
+        const isActive = parseInt(pane.dataset.day) === day;
+        pane.classList.toggle('active', isActive);
+        if (isActive && day !== prevDay) {
+            const cls = forward ? 'pane-enter-right' : 'pane-enter-left';
+            pane.classList.remove('pane-enter-left', 'pane-enter-right');
+            void pane.offsetWidth; // перезапуск анимации
+            pane.classList.add(cls);
+            pane.addEventListener('animationend', () => pane.classList.remove(cls), { once: true });
+        }
     });
 }
 
