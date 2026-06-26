@@ -748,13 +748,9 @@ function toggleLesson(header) {
 
 // ── Toggle student attendance ─────────────────────────────────────────────
 async function toggleAttendance(tile) {
-    const lessonId  = parseInt(tile.dataset.lessonId);
-    const studentId = parseInt(tile.dataset.studentId);
-
-    if (!studentId) {
-        showToast('Ученик не найден в БД');
-        return;
-    }
+    const lessonId    = parseInt(tile.dataset.lessonId);
+    const studentId   = parseInt(tile.dataset.studentId) || 0;
+    const studentName = tile.dataset.studentName || '';
 
     const wasPresent = tile.classList.contains('tile-present');
     const nowPresent = !wasPresent;
@@ -768,7 +764,7 @@ async function toggleAttendance(tile) {
         const res = await fetch('api/attendance.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lesson_instance_id: lessonId, student_id: studentId, attended: nowPresent }),
+            body: JSON.stringify({ lesson_instance_id: lessonId, student_id: studentId, student_name: studentName, attended: nowPresent }),
         });
         if (!res.ok) throw new Error('HTTP ' + res.status);
     } catch (e) {
@@ -817,13 +813,13 @@ async function submitLesson(lessonId) {
     if (tilesEl) {
         const greyTiles = tilesEl.querySelectorAll('.student-tile:not(.tile-present):not(.tile-absent)');
         for (const tile of greyTiles) {
-            const studentId = parseInt(tile.dataset.studentId);
-            if (!studentId) continue;
+            const studentId   = parseInt(tile.dataset.studentId) || 0;
+            const studentName = tile.dataset.studentName || '';
             tile.classList.add('tile-absent');
             pending.push(fetch('api/attendance.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ lesson_instance_id: lessonId, student_id: studentId, attended: false }),
+                body: JSON.stringify({ lesson_instance_id: lessonId, student_id: studentId, student_name: studentName, attended: false }),
             }).catch(() => {}));
         }
     }
