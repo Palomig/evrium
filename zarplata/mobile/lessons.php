@@ -678,6 +678,44 @@ require_once __DIR__ . '/templates/header.php';
 <script>
 const LESSON_DATE = <?= json_encode($date) ?>;
 const VAPID_PUBLIC_KEY = <?= $vapidJson ?>;
+const PREV_DATE_URL = <?= json_encode('lessons.php?date=' . $prevDate) ?>;
+const NEXT_DATE_URL = <?= json_encode('lessons.php?date=' . $nextDate) ?>;
+
+// ── Свайп влево/вправо — переключение между днями ─────────────────────────
+(function initDaySwipe() {
+    let startX = 0, startY = 0, startT = 0, tracking = false;
+
+    document.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) { tracking = false; return; }
+        const t = e.touches[0];
+        startX = t.clientX;
+        startY = t.clientY;
+        startT = Date.now();
+        tracking = true;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        if (!tracking) return;
+        tracking = false;
+        const t = e.changedTouches[0];
+        const dx = t.clientX - startX;
+        const dy = t.clientY - startY;
+        const dt = Date.now() - startT;
+
+        // Горизонтальный жест: достаточно длинный, преобладает над вертикалью, быстрый
+        if (dt > 700) return;
+        if (Math.abs(dx) < 70) return;
+        if (Math.abs(dx) < Math.abs(dy) * 1.8) return;
+
+        if (dx < 0) {
+            // свайп влево → следующий день
+            window.location.href = NEXT_DATE_URL;
+        } else {
+            // свайп вправо → предыдущий день
+            window.location.href = PREV_DATE_URL;
+        }
+    }, { passive: true });
+})();
 
 // ── Expand / collapse lesson ──────────────────────────────────────────────
 function toggleLesson(header) {
