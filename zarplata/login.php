@@ -23,11 +23,12 @@ $error = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
+    $remember = !empty($_POST['remember']);
 
     if (empty($username) || empty($password)) {
         $error = 'Пожалуйста, заполните все поля';
     } else {
-        if (login($username, $password)) {
+        if (login($username, $password, $remember)) {
             redirect('/zarplata/');
         } else {
             $error = 'Неверное имя пользователя или пароль';
@@ -226,6 +227,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <span class="material-icons" id="password-icon">visibility</span>
                                 </button>
                             </div>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 20px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.875rem; color: var(--text-medium-emphasis);">
+                                <input type="checkbox" name="remember" value="1" checked style="width: 18px; height: 18px; accent-color: var(--md-primary); cursor: pointer;">
+                                Запомнить меня на этом устройстве
+                            </label>
                         </div>
 
                         <div class="form-group mb-4">

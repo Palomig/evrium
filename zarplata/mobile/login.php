@@ -20,11 +20,12 @@ $error = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
+    $remember = !empty($_POST['remember']);
 
     if (empty($username) || empty($password)) {
         $error = 'Заполните все поля';
     } else {
-        if (login($username, $password)) {
+        if (login($username, $password, $remember)) {
             header('Location: index.php');
             exit;
         } else {
@@ -356,6 +357,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </button>
                     </div>
                 </div>
+
+                <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 18px; cursor: pointer; font-size: 15px; color: rgba(255,255,255,0.75);">
+                    <input type="checkbox" name="remember" value="1" checked style="width: 20px; height: 20px; cursor: pointer;">
+                    Запомнить меня на этом устройстве
+                </label>
 
                 <button type="submit" class="btn-login">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
