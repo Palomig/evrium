@@ -627,12 +627,52 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function showDay(day) {
     document.querySelectorAll('.day-chip').forEach(chip => {
-        chip.classList.toggle('active', parseInt(chip.dataset.day) === day);
+        const isActive = parseInt(chip.dataset.day) === day;
+        chip.classList.toggle('active', isActive);
+        if (isActive) chip.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
     });
     document.querySelectorAll('.day-pane').forEach(pane => {
         pane.classList.toggle('active', parseInt(pane.dataset.day) === day);
     });
 }
+
+// ── Свайп влево/вправо — переключение между днями ─────────────────────────
+(function initDaySwipe() {
+    let startX = 0, startY = 0, startT = 0, tracking = false;
+
+    document.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) { tracking = false; return; }
+        // Игнорируем жесты на горизонтальных лентах чипов и при открытой модалке
+        if (e.target.closest('.day-chips, .teacher-chips, .sched-modal-overlay')) { tracking = false; return; }
+        if (document.querySelector('.sched-modal-overlay.active')) { tracking = false; return; }
+        const t = e.touches[0];
+        startX = t.clientX;
+        startY = t.clientY;
+        startT = Date.now();
+        tracking = true;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        if (!tracking) return;
+        tracking = false;
+        const t = e.changedTouches[0];
+        const dx = t.clientX - startX;
+        const dy = t.clientY - startY;
+        const dt = Date.now() - startT;
+
+        // Горизонтальный жест: длинный, преобладает над вертикалью, быстрый
+        if (dt > 700) return;
+        if (Math.abs(dx) < 70) return;
+        if (Math.abs(dx) < Math.abs(dy) * 1.8) return;
+
+        const active = document.querySelector('.day-chip.active');
+        const cur = active ? parseInt(active.dataset.day) : <?= $currentDay ?>;
+        const next = dx < 0 ? cur + 1 : cur - 1; // влево → след. день, вправо → пред.
+        if (next >= 1 && next <= 7) {
+            showDay(next);
+        }
+    }, { passive: true });
+})();
 
 // ===== Модалка ученика / заголовка =====
 
