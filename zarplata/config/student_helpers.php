@@ -116,6 +116,80 @@ function getStudentsForLesson($teacherId, $dayOfWeek, $timeStart) {
 }
 
 /**
+ * Слоты уроков на день из планировщика — только те, где есть ученики.
+ *
+ * Источник истины тот же, что и getStudentsForLesson(): planner_notes.
+ * Атрибуция преподавателя к ученику-записи идентична. Возвращает
+ * уникальные пары (преподаватель, время) с количеством учеников.
+ *
+ * @param int $dayOfWeek День недели (1-7)
+ * @return array [['teacher_id'=>int, 'time'=>'HH:MM', 'count'=>int], ...] по времени
+ */
+function getLessonSlotsForDay($dayOfWeek) {
+    $dayOfWeek = (int)$dayOfWeek;
+
+    $colorToTeacher = plannerColorTeacherMap();
+    $activeTeacherIds = array_values($colorToTeacher);
+
+    $notes = dbQuery(
+        "SELECT room, kind, content, color, teacher_id, time FROM planner_notes
+         WHERE day = ?
+           AND (temp_until IS NULL OR temp_until >= CURDATE())
+         ORDER BY time, room, kind, position, id",
+        [$dayOfWeek]
+    );
+
+    // Цвета легаси-заголовков по (время, кабинет) для фолбэка
+    $titleColorByRoomTime = [];
+    foreach ($notes as $n) {
+        if ($n['kind'] === 'title') {
+            $key = substr($n['time'], 0, 5) . '_' . (int)$n['room'];
+            $titleColorByRoomTime[$key] = (int)$n['color'];
+        }
+    }
+
+    $slots = []; // "time|teacher" => count
+    foreach ($notes as $n) {
+        if ($n['kind'] !== 'student' || trim($n['content']) === '') {
+            continue;
+        }
+        $time = substr($n['time'], 0, 5);
+
+        // Преподаватель: teacher_id записи → цвет ячейки → цвет блока → c1
+        $noteTeacher = (int)($n['teacher_id'] ?? 0);
+        if (!$noteTeacher || !in_array($noteTeacher, $activeTeacherIds, true)) {
+            $color = (int)$n['color'];
+            if (!$color) {
+                $color = $titleColorByRoomTime[$time . '_' . (int)$n['room']] ?? 0;
+            }
+            if (!$color) {
+                $color = 1;
+            }
+            $noteTeacher = $colorToTeacher[$color] ?? 0;
+        }
+        if (!$noteTeacher) {
+            continue;
+        }
+
+        $key = $time . '|' . $noteTeacher;
+        $slots[$key] = ($slots[$key] ?? 0) + 1;
+    }
+
+    $result = [];
+    foreach ($slots as $key => $count) {
+        list($time, $teacherId) = explode('|', $key, 2);
+        $result[] = [
+            'teacher_id' => (int)$teacherId,
+            'time'       => $time,
+            'count'      => $count,
+        ];
+    }
+
+    usort($result, fn($a, $b) => strcmp($a['time'], $b['time']) ?: ($a['teacher_id'] <=> $b['teacher_id']));
+    return $result;
+}
+
+/**
  * Карта «цвет планировщика → ID активного преподавателя».
  * colorIndex = (teacher_id % 8) ?: 8 — тот же расчёт, что в planner.php.
  */

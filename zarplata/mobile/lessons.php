@@ -20,68 +20,103 @@ $date  = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date'] ?? '') ? $_GET['date'
 $dayOfWeek = (int)(new DateTime($date))->format('N');  // 1=Mon … 7=Sun
 
 // ── Получить уроки на выбранный день ──────────────────────────────────────
-// Сначала ищем lesson_instance за этот день, при отсутствии — создаём из шаблонов
-$instances = dbQuery(
-    "SELECT li.id, li.teacher_id, li.time_start, li.time_end, li.subject,
-            li.expected_students, li.actual_students, li.status,
-            li.extra_group_count, li.extra_individual_count,
-            COALESCE(t.display_name, t.name) as teacher_name
-     FROM lessons_instance li
-     LEFT JOIN teachers t ON li.teacher_id = t.id
-     WHERE li.lesson_date = ?" . ($teacherFilter ? " AND li.teacher_id = " . $teacherFilter : "") . "
-     ORDER BY li.time_start ASC",
-    [$date]
-);
+// Источник истины — планировщик (planner_notes): берём слоты с учениками.
+// Для каждого слота находим/создаём lesson_instance. Дополнительно держим
+// уже существующие уроки с введёнными данными (посещаемость/доп. ученики).
 
-// Если экземпляров нет — генерируем их из шаблонов (только для сегодня и будущих)
-if (empty($instances) && $date >= $today) {
-    $templates = dbQuery(
-        "SELECT * FROM lessons_template WHERE day_of_week = ? AND active = 1 ORDER BY time_start ASC",
-        [$dayOfWeek]
+// Загрузка экземпляров за день (ключ: "teacher_id|HH:MM")
+$fetchInstances = function () use ($date, $teacherFilter) {
+    $rows = dbQuery(
+        "SELECT li.id, li.teacher_id, li.time_start, li.time_end, li.subject,
+                li.expected_students, li.actual_students, li.status,
+                li.extra_group_count, li.extra_individual_count,
+                COALESCE(t.display_name, t.name) as teacher_name
+         FROM lessons_instance li
+         LEFT JOIN teachers t ON li.teacher_id = t.id
+         WHERE li.lesson_date = ?" . ($teacherFilter ? " AND li.teacher_id = " . (int)$teacherFilter : "") . "
+         ORDER BY li.time_start ASC",
+        [$date]
     );
+    $map = [];
+    foreach ($rows as $r) {
+        $map[$r['teacher_id'] . '|' . substr($r['time_start'], 0, 5)] = $r;
+    }
+    return $map;
+};
 
-    foreach ($templates as $tmpl) {
-        // Получаем студентов для подтверждения ожидаемого количества
-        $sd = getStudentsForLesson($tmpl['teacher_id'], $dayOfWeek, substr($tmpl['time_start'], 0, 5));
+// Слоты с учениками из планировщика
+$slots = getLessonSlotsForDay($dayOfWeek);
+if ($teacherFilter) {
+    $slots = array_values(array_filter($slots, fn($s) => $s['teacher_id'] === (int)$teacherFilter));
+}
 
-        // Пустые уроки (без учеников в планировщике) не создаём
-        if ($sd['count'] === 0) {
+// Шаблоны дня — для метаданных при создании экземпляра (время конца, формула)
+$tplByKey = [];
+foreach (dbQuery("SELECT * FROM lessons_template WHERE day_of_week = ? AND active = 1", [$dayOfWeek]) as $t) {
+    $tplByKey[$t['teacher_id'] . '|' . substr($t['time_start'], 0, 5)] = $t;
+}
+
+$existing = $fetchInstances();
+
+// Создаём недостающие экземпляры для слотов с учениками (сегодня и будущее)
+if ($date >= $today) {
+    $created = false;
+    foreach ($slots as $slot) {
+        $key = $slot['teacher_id'] . '|' . $slot['time'];
+        if (isset($existing[$key])) {
             continue;
         }
-
-        $expectedCount = max(1, $sd['count']);
+        $tpl = $tplByKey[$key] ?? null;
+        $timeEnd = $tpl['time_end'] ?? date('H:i:s', strtotime($slot['time'] . ':00') + 3600);
+        $sd = getStudentsForLesson($slot['teacher_id'], $dayOfWeek, $slot['time']);
 
         dbExecute(
-            "INSERT IGNORE INTO lessons_instance
+            "INSERT INTO lessons_instance
                 (template_id, teacher_id, lesson_date, time_start, time_end,
                  lesson_type, subject, expected_students, formula_id, status)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'scheduled')",
             [
-                $tmpl['id'],
-                $tmpl['teacher_id'],
+                $tpl['id'] ?? null,
+                $slot['teacher_id'],
                 $date,
-                $tmpl['time_start'],
-                $tmpl['time_end'] ?? null,
-                $tmpl['lesson_type'] ?? 'group',
-                $tmpl['subject'] ?? null,
-                $expectedCount,
-                $tmpl['formula_id'] ?? null,
+                $slot['time'] . ':00',
+                $timeEnd,
+                $tpl['lesson_type'] ?? 'group',
+                $tpl['subject'] ?? ($sd['subject'] ?? null),
+                max(1, $slot['count']),
+                $tpl['formula_id'] ?? null,
             ]
         );
+        $created = true;
     }
-
-    // Re-fetch
-    $instances = dbQuery(
-        "SELECT li.id, li.teacher_id, li.time_start, li.time_end, li.subject,
-                li.expected_students, li.actual_students, li.status,
-                COALESCE(t.display_name, t.name) as teacher_name
-         FROM lessons_instance li
-         LEFT JOIN teachers t ON li.teacher_id = t.id
-         WHERE li.lesson_date = ?" . ($teacherFilter ? " AND li.teacher_id = " . $teacherFilter : "") . "
-         ORDER BY li.time_start ASC",
-        [$date]
-    );
+    if ($created) {
+        $existing = $fetchInstances();
+    }
 }
+
+// Собираем итоговый список: слоты с учениками + уроки с введёнными данными
+$selected = [];
+foreach ($slots as $slot) {
+    $key = $slot['teacher_id'] . '|' . $slot['time'];
+    if (isset($existing[$key])) {
+        $selected[$key] = $existing[$key];
+    }
+}
+foreach ($existing as $key => $inst) {
+    if (isset($selected[$key])) {
+        continue;
+    }
+    $hasData = (int)$inst['actual_students'] > 0
+        || (int)($inst['extra_group_count'] ?? 0) > 0
+        || (int)($inst['extra_individual_count'] ?? 0) > 0
+        || $inst['status'] === 'completed';
+    if ($hasData) {
+        $selected[$key] = $inst;
+    }
+}
+
+$instances = array_values($selected);
+usort($instances, fn($a, $b) => strcmp($a['time_start'], $b['time_start']));
 
 // ── Для каждого урока: список студентов + сохранённая посещаемость ─────────
 foreach ($instances as &$lesson) {
@@ -117,18 +152,6 @@ foreach ($instances as &$lesson) {
     $lesson['student_ids'] = $nameToId;
 }
 unset($lesson);
-
-// Показываем только уроки с учениками. Пустые (нет учеников в планировщике)
-// скрываем, но сохраняем те, где уже есть отметки/доп. ученики/проведён —
-// чтобы не потерять введённые данные.
-$instances = array_values(array_filter($instances, function ($lesson) {
-    return !empty($lesson['students_list'])
-        || !empty($lesson['attendance'])
-        || (int)$lesson['actual_students'] > 0
-        || (int)($lesson['extra_group_count'] ?? 0) > 0
-        || (int)($lesson['extra_individual_count'] ?? 0) > 0
-        || $lesson['status'] === 'completed';
-}));
 
 // ── Format date for display ────────────────────────────────────────────────
 $dayNamesRu = ['', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
