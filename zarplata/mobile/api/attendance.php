@@ -15,6 +15,33 @@ require_once __DIR__ . '/../../config/student_helpers.php';
 
 header('Content-Type: application/json');
 
+/**
+ * Найти ученика по имени или создать запись (источник имён — расписание).
+ * @param string $name
+ * @return int student_id (0 если имя пустое)
+ */
+function resolveStudentIdByName($name) {
+    $name = trim((string)$name);
+    if ($name === '') {
+        return 0;
+    }
+    $row = dbQueryOne("SELECT id FROM students WHERE name = ? ORDER BY id LIMIT 1", [$name]);
+    if ($row) {
+        return (int)$row['id'];
+    }
+    try {
+        $id = (int)dbExecute("INSERT INTO students (name, active) VALUES (?, 1)", [$name]);
+        if ($id) {
+            return $id;
+        }
+    } catch (Exception $e) {
+        error_log('resolveStudentIdByName failed: ' . $e->getMessage());
+    }
+    // На случай гонки — повторно ищем
+    $row = dbQueryOne("SELECT id FROM students WHERE name = ? ORDER BY id LIMIT 1", [$name]);
+    return $row ? (int)$row['id'] : 0;
+}
+
 requireAuth();
 $user = getCurrentUser();
 
@@ -79,11 +106,16 @@ if (!empty($body['complete'])) {
     exit;
 }
 
-// Toggle single student attendance
+// Toggle single student attendance.
+// Ученики берутся из расписания (планировщика), не из справочника БД.
+// Поэтому отмечаем по имени: находим запись student по имени или заводим её.
 $studentId = (int)($body['student_id'] ?? 0);
 if (!$studentId) {
+    $studentId = resolveStudentIdByName($body['student_name'] ?? '');
+}
+if (!$studentId) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Missing student_id']);
+    echo json_encode(['success' => false, 'error' => 'Missing student']);
     exit;
 }
 
