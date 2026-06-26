@@ -6,9 +6,35 @@
 
 require_once __DIR__ . '/db.php';
 
-// Инициализация сессии
+// Сколько хранить вход на устройстве (cookie сессии и токен «запомнить меня»)
+define('REMEMBER_LIFETIME', 60 * 60 * 24 * 30); // 30 дней
+define('REMEMBER_COOKIE', 'zp_remember');
+
+// Инициализация сессии с долгоживущей cookie, чтобы вход не слетал
+// при закрытии браузера и переживал чистку сессий на шаредхостинге
 if (session_status() === PHP_SESSION_NONE) {
+    @ini_set('session.gc_maxlifetime', (string)REMEMBER_LIFETIME);
+    session_set_cookie_params([
+        'lifetime' => REMEMBER_LIFETIME,
+        'path'     => '/',
+        'httponly' => true,
+        'samesite' => 'Lax',
+        'secure'   => isHttpsRequest(),
+    ]);
     session_start();
+}
+
+// Сессии нет, но устройство «запомнено» — восстановить вход по токену
+tryRememberLogin();
+
+/**
+ * Запрос пришёл по HTTPS (с учётом прокси хостинга)
+ * @return bool
+ */
+function isHttpsRequest() {
+    return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
+        || (($_SERVER['SERVER_PORT'] ?? '') == 443);
 }
 
 /**
@@ -146,7 +172,7 @@ function ensureUsersRolesSchema() {
  * @param string $password Пароль
  * @return bool Успешность авторизации
  */
-function login($username, $password) {
+function login($username, $password, $remember = false) {
     // Схема под роли преподавателей (одноразовая авто-миграция)
     ensureUsersRolesSchema();
 
@@ -166,17 +192,30 @@ function login($username, $password) {
     }
 
     // Установить сессию
+    establishSession($user);
+
+    // Запомнить устройство (постоянный токен)
+    if ($remember) {
+        issueRememberToken($user['id']);
+    }
+
+    // Логирование входа
+    logAudit('user_login', 'user', $user['id'], null, null, 'Вход в систему');
+
+    return true;
+}
+
+/**
+ * Записать данные пользователя в текущую сессию
+ * @param array $user Строка из таблицы users
+ */
+function establishSession($user) {
     $_SESSION['user_id'] = $user['id'];
     $_SESSION['username'] = $user['username'];
     $_SESSION['user_name'] = $user['name'];
     $_SESSION['user_role'] = $user['role'];
     $_SESSION['teacher_id'] = $user['teacher_id'] ?? null;
     $_SESSION['can_dashboard'] = $user['can_dashboard'] ?? null;
-
-    // Логирование входа
-    logAudit('user_login', 'user', $user['id'], null, null, 'Вход в систему');
-
-    return true;
 }
 
 /**
@@ -188,9 +227,164 @@ function logout() {
         logAudit('user_logout', 'user', getCurrentUserId(), null, null, 'Выход из системы');
     }
 
+    // Удалить токен «запомнить меня» для этого устройства
+    forgetRememberToken();
+
     // Очистить сессию
     $_SESSION = [];
     session_destroy();
+}
+
+// ============================================================
+//  «Запомнить устройство» — постоянный токен (selector/validator)
+// ============================================================
+
+/**
+ * Создать таблицу токенов, если её ещё нет (авто-миграция)
+ */
+function ensureRememberSchema() {
+    try {
+        $exists = dbQuery("SHOW TABLES LIKE 'remember_tokens'", []);
+        if (empty($exists)) {
+            dbExecute(
+                "CREATE TABLE remember_tokens (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    selector CHAR(32) NOT NULL,
+                    validator_hash CHAR(64) NOT NULL,
+                    expires_at DATETIME NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uniq_selector (selector),
+                    KEY idx_user (user_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+                []
+            );
+        }
+    } catch (Exception $e) {
+        error_log('ensureRememberSchema failed: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Выдать токен «запомнить меня» и поставить cookie на устройство
+ * @param int $userId
+ */
+function issueRememberToken($userId) {
+    ensureRememberSchema();
+
+    $selector  = bin2hex(random_bytes(16)); // 32 hex
+    $validator = bin2hex(random_bytes(32)); // 64 hex
+    $expiresAt = date('Y-m-d H:i:s', time() + REMEMBER_LIFETIME);
+
+    try {
+        dbExecute(
+            "INSERT INTO remember_tokens (user_id, selector, validator_hash, expires_at)
+             VALUES (?, ?, ?, ?)",
+            [$userId, $selector, hash('sha256', $validator), $expiresAt]
+        );
+    } catch (Exception $e) {
+        error_log('issueRememberToken failed: ' . $e->getMessage());
+        return;
+    }
+
+    setRememberCookie($selector . ':' . $validator, time() + REMEMBER_LIFETIME);
+}
+
+/**
+ * Если активной сессии нет, но cookie токена валидна — восстановить вход
+ */
+function tryRememberLogin() {
+    if (isLoggedIn()) {
+        return;
+    }
+    if (empty($_COOKIE[REMEMBER_COOKIE])) {
+        return;
+    }
+
+    $parts = explode(':', $_COOKIE[REMEMBER_COOKIE], 2);
+    if (count($parts) !== 2) {
+        clearRememberCookie();
+        return;
+    }
+    list($selector, $validator) = $parts;
+
+    $row = dbQueryOne("SELECT * FROM remember_tokens WHERE selector = ?", [$selector]);
+    if (!$row) {
+        clearRememberCookie();
+        return;
+    }
+
+    // Просрочен — удалить и выйти
+    if (strtotime($row['expires_at']) < time()) {
+        dbExecute("DELETE FROM remember_tokens WHERE id = ?", [$row['id']]);
+        clearRememberCookie();
+        return;
+    }
+
+    // Сверка секрета в постоянном времени
+    if (!hash_equals($row['validator_hash'], hash('sha256', $validator))) {
+        clearRememberCookie();
+        return;
+    }
+
+    // Пользователь ещё активен?
+    $user = dbQueryOne("SELECT * FROM users WHERE id = ? AND active = 1", [$row['user_id']]);
+    if (!$user) {
+        dbExecute("DELETE FROM remember_tokens WHERE id = ?", [$row['id']]);
+        clearRememberCookie();
+        return;
+    }
+
+    // Восстановить сессию и продлить срок жизни токена (скользящее окно)
+    establishSession($user);
+    $newExpiry = date('Y-m-d H:i:s', time() + REMEMBER_LIFETIME);
+    dbExecute("UPDATE remember_tokens SET expires_at = ? WHERE id = ?", [$newExpiry, $row['id']]);
+    setRememberCookie($_COOKIE[REMEMBER_COOKIE], time() + REMEMBER_LIFETIME);
+}
+
+/**
+ * Удалить токен текущего устройства из БД и стереть cookie
+ */
+function forgetRememberToken() {
+    if (!empty($_COOKIE[REMEMBER_COOKIE])) {
+        $parts = explode(':', $_COOKIE[REMEMBER_COOKIE], 2);
+        if (count($parts) === 2) {
+            try {
+                dbExecute("DELETE FROM remember_tokens WHERE selector = ?", [$parts[0]]);
+            } catch (Exception $e) {
+                error_log('forgetRememberToken failed: ' . $e->getMessage());
+            }
+        }
+    }
+    clearRememberCookie();
+}
+
+/**
+ * Поставить cookie токена устройства
+ */
+function setRememberCookie($value, $expires) {
+    setcookie(REMEMBER_COOKIE, $value, [
+        'expires'  => $expires,
+        'path'     => '/',
+        'httponly' => true,
+        'samesite' => 'Lax',
+        'secure'   => isHttpsRequest(),
+    ]);
+    $_COOKIE[REMEMBER_COOKIE] = $value;
+}
+
+/**
+ * Стереть cookie токена устройства
+ */
+function clearRememberCookie() {
+    setcookie(REMEMBER_COOKIE, '', [
+        'expires'  => time() - 3600,
+        'path'     => '/',
+        'httponly' => true,
+        'samesite' => 'Lax',
+        'secure'   => isHttpsRequest(),
+    ]);
+    unset($_COOKIE[REMEMBER_COOKIE]);
 }
 
 /**
