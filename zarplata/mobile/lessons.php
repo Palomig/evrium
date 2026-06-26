@@ -43,6 +43,12 @@ if (empty($instances) && $date >= $today) {
     foreach ($templates as $tmpl) {
         // Получаем студентов для подтверждения ожидаемого количества
         $sd = getStudentsForLesson($tmpl['teacher_id'], $dayOfWeek, substr($tmpl['time_start'], 0, 5));
+
+        // Пустые уроки (без учеников в планировщике) не создаём
+        if ($sd['count'] === 0) {
+            continue;
+        }
+
         $expectedCount = max(1, $sd['count']);
 
         dbExecute(
@@ -111,6 +117,18 @@ foreach ($instances as &$lesson) {
     $lesson['student_ids'] = $nameToId;
 }
 unset($lesson);
+
+// Показываем только уроки с учениками. Пустые (нет учеников в планировщике)
+// скрываем, но сохраняем те, где уже есть отметки/доп. ученики/проведён —
+// чтобы не потерять введённые данные.
+$instances = array_values(array_filter($instances, function ($lesson) {
+    return !empty($lesson['students_list'])
+        || !empty($lesson['attendance'])
+        || (int)$lesson['actual_students'] > 0
+        || (int)($lesson['extra_group_count'] ?? 0) > 0
+        || (int)($lesson['extra_individual_count'] ?? 0) > 0
+        || $lesson['status'] === 'completed';
+}));
 
 // ── Format date for display ────────────────────────────────────────────────
 $dayNamesRu = ['', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
