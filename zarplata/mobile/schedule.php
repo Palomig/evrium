@@ -441,6 +441,16 @@ body.schedule-week-mode .mobile-content {
     display: none;
 }
 
+.week-time.week-row-alt,
+.week-cell.week-row-alt {
+    background: rgba(255, 255, 255, 0.035);
+}
+
+.week-cell.week-row-alt .lesson-card,
+.week-cell.week-row-alt .week-empty-slot {
+    background-color: rgba(255, 255, 255, 0.026);
+}
+
 .week-day-hidden {
     display: none;
 }
@@ -818,12 +828,13 @@ body.schedule-week-mode .mobile-content {
 
                 <?php foreach ($weekHours as $h):
                     $time = sprintf('%02d:00', $h);
+                    $rowToneClass = $h % 2 === 0 ? ' week-row-base' : ' week-row-alt';
                 ?>
-                    <div class="week-time week-row<?= $h < 14 ? ' morning-slot' : '' ?>"><?= $time ?></div>
+                    <div class="week-time week-row<?= $rowToneClass ?><?= $h < 14 ? ' morning-slot' : '' ?>"><?= $time ?></div>
                     <?php foreach ($dayNames as $d => $short):
                         $block = $days[$d][$tid][$time] ?? null;
                     ?>
-                        <div class="week-cell week-row<?= $h < 14 ? ' morning-slot' : '' ?>" data-week-day="<?= $d ?>">
+                        <div class="week-cell week-row<?= $rowToneClass ?><?= $h < 14 ? ' morning-slot' : '' ?>" data-week-day="<?= $d ?>">
                             <?php if ($block): ?>
                                 <div class="lesson-card bc<?= $colorIndex ?>" data-day="<?= $d ?>" data-time="<?= $time ?>" data-teacher="<?= $tid ?>" data-color="<?= $colorIndex ?>">
                                     <div class="lesson-card-header">
