@@ -290,14 +290,20 @@ require_once __DIR__ . '/templates/header.php';
     position: relative;
     overflow: auto;
     -webkit-overflow-scrolling: touch;
-    padding: 0 0 10px 16px;
+    padding: 0 0 10px;
     max-height: calc(100vh - 190px);
+    --week-zoom: 1;
+    --week-time-col: calc(54px * var(--week-zoom));
+    --week-day-col: calc(118px * var(--week-zoom));
+    --week-row-height: calc(92px * var(--week-zoom));
+    --week-card-height: calc(82px * var(--week-zoom));
 }
 
 .week-grid {
     display: grid;
-    grid-template-columns: 54px repeat(7, minmax(118px, 1fr));
-    min-width: 900px;
+    grid-template-columns: var(--week-time-col) repeat(7, var(--week-day-col));
+    width: max-content;
+    min-width: calc(var(--week-time-col) + (7 * var(--week-day-col)));
     border: 1px solid var(--border);
     border-right: 0;
     border-bottom: 0;
@@ -315,13 +321,13 @@ require_once __DIR__ . '/templates/header.php';
     position: sticky;
     top: 0;
     z-index: 2;
-    min-height: 38px;
+    min-height: calc(38px * var(--week-zoom));
     display: flex;
     align-items: center;
     justify-content: center;
     background: var(--bg-elevated);
     color: var(--text-primary);
-    font-size: 12px;
+    font-size: calc(12px * var(--week-zoom));
     font-weight: 800;
 }
 
@@ -341,29 +347,29 @@ require_once __DIR__ . '/templates/header.php';
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 92px;
+    min-height: var(--week-row-height);
     background: var(--bg-elevated);
     color: var(--text-secondary);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
+    font-size: calc(12px * var(--week-zoom));
     font-weight: 700;
     box-shadow: 8px 0 14px rgba(0, 0, 0, 0.18);
 }
 
 .week-cell {
-    min-height: 92px;
-    padding: 4px;
+    min-height: var(--week-row-height);
+    padding: calc(4px * var(--week-zoom));
 }
 
 .week-cell .lesson-card {
-    min-height: 82px;
+    min-height: var(--week-card-height);
     margin: 0;
     border-radius: 8px;
 }
 
 .week-cell .lesson-card-header {
-    gap: 6px;
-    padding: 6px 8px;
+    gap: calc(6px * var(--week-zoom));
+    padding: calc(6px * var(--week-zoom)) calc(8px * var(--week-zoom));
 }
 
 .week-cell .lesson-time {
@@ -371,21 +377,21 @@ require_once __DIR__ . '/templates/header.php';
 }
 
 .week-cell .lesson-title {
-    min-height: 16px;
-    font-size: 12px;
+    min-height: calc(16px * var(--week-zoom));
+    font-size: calc(12px * var(--week-zoom));
     text-align: center;
 }
 
 .week-cell .lesson-students {
-    gap: 4px;
-    padding: 6px;
+    gap: calc(4px * var(--week-zoom));
+    padding: calc(6px * var(--week-zoom));
 }
 
 .week-cell .student-chip {
     max-width: 100%;
-    padding: 4px 6px;
+    padding: calc(4px * var(--week-zoom)) calc(6px * var(--week-zoom));
     border-radius: 6px;
-    font-size: 11px;
+    font-size: calc(11px * var(--week-zoom));
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -393,20 +399,20 @@ require_once __DIR__ . '/templates/header.php';
 
 .week-cell .add-student-chip {
     width: 100%;
-    padding: 4px;
+    padding: calc(4px * var(--week-zoom));
     border-radius: 6px;
-    font-size: 12px;
+    font-size: calc(12px * var(--week-zoom));
 }
 
 .week-empty-slot {
     width: 100%;
-    height: 82px;
+    height: var(--week-card-height);
     border: 1px dashed rgba(255, 255, 255, 0.12);
     border-radius: 8px;
     background: transparent;
     color: var(--text-muted);
     font-family: inherit;
-    font-size: 14px;
+    font-size: calc(14px * var(--week-zoom));
 }
 
 .week-empty-slot:active {
@@ -851,6 +857,8 @@ require_once __DIR__ . '/templates/header.php';
 
 <script>
 const DAY_SHORT = {1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 7: 'Вс'};
+const WEEK_ZOOM_MIN = 0.7;
+const WEEK_ZOOM_MAX = 1.45;
 
 // ===== Выбор преподавателя (один) =====
 
@@ -903,6 +911,47 @@ function setMorningSlots(forceValue = null) {
     localStorage.setItem('mobileScheduleShowMorning', showMorning ? '1' : '0');
 }
 
+function clampWeekZoom(value) {
+    return Math.min(WEEK_ZOOM_MAX, Math.max(WEEK_ZOOM_MIN, value));
+}
+
+function applyWeekZoom(value) {
+    const zoom = clampWeekZoom(Number(value) || 1);
+    document.querySelectorAll('.week-scroll').forEach(el => {
+        el.style.setProperty('--week-zoom', zoom.toFixed(2));
+    });
+    localStorage.setItem('mobileScheduleWeekZoom', zoom.toFixed(2));
+}
+
+function touchDistance(touches) {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.hypot(dx, dy);
+}
+
+function initWeekPinchZoom() {
+    let startDistance = 0;
+    let startZoom = 1;
+
+    document.querySelectorAll('.week-scroll').forEach(scroll => {
+        scroll.addEventListener('touchstart', (e) => {
+            if (e.touches.length !== 2) return;
+            startDistance = touchDistance(e.touches);
+            startZoom = parseFloat(localStorage.getItem('mobileScheduleWeekZoom') || '1') || 1;
+        }, { passive: true });
+
+        scroll.addEventListener('touchmove', (e) => {
+            if (e.touches.length !== 2 || !startDistance) return;
+            e.preventDefault();
+            applyWeekZoom(startZoom * (touchDistance(e.touches) / startDistance));
+        }, { passive: false });
+
+        scroll.addEventListener('touchend', (e) => {
+            if (e.touches.length < 2) startDistance = 0;
+        }, { passive: true });
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const chips = document.querySelectorAll('.teacher-chip');
     if (!chips.length) return;
@@ -911,6 +960,8 @@ document.addEventListener('DOMContentLoaded', function() {
     selectTeacher(exists ? saved : parseInt(chips[0].dataset.teacher));
     setScheduleMode(localStorage.getItem('mobileScheduleMode') || 'day');
     setMorningSlots(localStorage.getItem('mobileScheduleShowMorning') === '1');
+    applyWeekZoom(localStorage.getItem('mobileScheduleWeekZoom') || '1');
+    initWeekPinchZoom();
 });
 
 // ===== Дни =====
