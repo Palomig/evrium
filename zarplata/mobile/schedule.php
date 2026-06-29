@@ -102,6 +102,7 @@ foreach ($days as $day => $byTeacher) {
 $dayNames = [1 => 'Пн', 2 => 'Вт', 3 => 'Ср', 4 => 'Чт', 5 => 'Пт', 6 => 'Сб', 7 => 'Вс'];
 $dayFull = [1 => 'Понедельник', 2 => 'Вторник', 3 => 'Среда', 4 => 'Четверг', 5 => 'Пятница', 6 => 'Суббота', 7 => 'Воскресенье'];
 $currentDay = (int)date('N');
+$weekHours = range(8, 21);
 
 define('PAGE_TITLE', 'Расписание');
 define('ACTIVE_PAGE', 'schedule');
@@ -160,6 +161,37 @@ require_once __DIR__ . '/templates/header.php';
 .scolor-7 { background: rgba(34, 197, 94, 0.7); }
 .scolor-8 { background: rgba(239, 68, 68, 0.7); }
 
+/* Переключатель режима */
+.schedule-mode-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    margin: 10px 16px 0;
+    padding: 4px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg-card);
+}
+
+.schedule-mode-btn {
+    min-height: 38px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.schedule-mode-btn.active {
+    background: var(--accent);
+    color: #04201c;
+}
+
+.schedule-day-mode.is-hidden { display: none; }
+
 /* Чипы дней */
 .day-chips {
     display: flex;
@@ -198,6 +230,9 @@ require_once __DIR__ . '/templates/header.php';
 .teacher-pane { display: none; }
 .teacher-pane.active { display: block; }
 
+.week-pane { display: none; padding: 10px 0 18px; }
+.week-pane.active { display: block; }
+
 .day-empty {
     text-align: center;
     padding: 32px 16px;
@@ -231,6 +266,119 @@ require_once __DIR__ . '/templates/header.php';
 .lesson-card.bc6 .lesson-card-header { background: rgba(234, 179, 8, 0.22); }
 .lesson-card.bc7 .lesson-card-header { background: rgba(34, 197, 94, 0.22); }
 .lesson-card.bc8 .lesson-card-header { background: rgba(239, 68, 68, 0.22); }
+
+.week-scroll {
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 0 10px 16px;
+}
+
+.week-grid {
+    display: grid;
+    grid-template-columns: 54px repeat(7, minmax(118px, 1fr));
+    min-width: 900px;
+    border: 1px solid var(--border);
+    border-right: 0;
+    border-bottom: 0;
+    background: var(--bg-card);
+}
+
+.week-head,
+.week-time,
+.week-cell {
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+}
+
+.week-head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.week-time {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 92px;
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.week-cell {
+    min-height: 92px;
+    padding: 4px;
+}
+
+.week-cell .lesson-card {
+    min-height: 82px;
+    margin: 0;
+    border-radius: 8px;
+}
+
+.week-cell .lesson-card-header {
+    gap: 6px;
+    padding: 6px 8px;
+}
+
+.week-cell .lesson-time {
+    display: none;
+}
+
+.week-cell .lesson-title {
+    min-height: 16px;
+    font-size: 12px;
+    text-align: center;
+}
+
+.week-cell .lesson-students {
+    gap: 4px;
+    padding: 6px;
+}
+
+.week-cell .student-chip {
+    max-width: 100%;
+    padding: 4px 6px;
+    border-radius: 6px;
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.week-cell .add-student-chip {
+    width: 100%;
+    padding: 4px;
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+.week-empty-slot {
+    width: 100%;
+    height: 82px;
+    border: 1px dashed rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.week-empty-slot:active {
+    border-color: var(--accent);
+    color: var(--accent);
+}
 
 .lesson-time {
     font-family: 'JetBrains Mono', monospace;
@@ -504,6 +652,12 @@ require_once __DIR__ . '/templates/header.php';
     <?php endforeach; ?>
 </div>
 
+<div class="schedule-mode-toggle" role="group" aria-label="Режим расписания">
+    <button class="schedule-mode-btn active" type="button" data-mode="day" onclick="setScheduleMode('day')">День</button>
+    <button class="schedule-mode-btn" type="button" data-mode="week" onclick="setScheduleMode('week')">Вся неделя</button>
+</div>
+
+<div id="scheduleDayMode" class="schedule-day-mode">
 <!-- Чипы дней -->
 <div class="day-chips">
     <?php foreach ($dayNames as $d => $short): ?>
@@ -549,6 +703,58 @@ require_once __DIR__ . '/templates/header.php';
                 <button class="add-lesson-btn" data-day="<?= $d ?>" data-teacher="<?= $tid ?>" onclick="openLessonModal(this)">+ Добавить урок</button>
             </div>
         <?php endforeach; ?>
+    </div>
+<?php endforeach; ?>
+</div>
+
+<!-- Вся неделя × преподаватели -->
+<?php foreach ($teachers as $teacher):
+    $tid = (int)$teacher['id'];
+    $colorIndex = ($tid % 8) ?: 8;
+?>
+    <div class="week-pane" data-teacher="<?= $tid ?>">
+        <div class="week-scroll">
+            <div class="week-grid">
+                <div class="week-head"></div>
+                <?php foreach ($dayNames as $d => $short): ?>
+                    <div class="week-head"><?= e($short) ?></div>
+                <?php endforeach; ?>
+
+                <?php foreach ($weekHours as $h):
+                    $time = sprintf('%02d:00', $h);
+                ?>
+                    <div class="week-time"><?= $time ?></div>
+                    <?php foreach ($dayNames as $d => $short):
+                        $block = $days[$d][$tid][$time] ?? null;
+                    ?>
+                        <div class="week-cell">
+                            <?php if ($block): ?>
+                                <div class="lesson-card bc<?= $colorIndex ?>" data-day="<?= $d ?>" data-time="<?= $time ?>" data-teacher="<?= $tid ?>" data-color="<?= $colorIndex ?>">
+                                    <div class="lesson-card-header">
+                                        <span class="lesson-time"><?= $time ?></span>
+                                        <span class="lesson-title<?= ($block['title'] ?? '') === '' || $block['title'] === null ? ' is-empty' : '' ?>"
+                                              <?= $block['title_id'] ? 'data-id="' . $block['title_id'] . '"' : '' ?>
+                                              onclick="openTitleModal(this)"><?= $block['title'] !== null && $block['title'] !== '' ? e($block['title']) : 'без названия' ?></span>
+                                    </div>
+                                    <div class="lesson-students">
+                                        <?php foreach ($block['students'] as $st): ?>
+                                            <span class="student-chip c<?= $colorIndex ?><?= $st['temp'] ? ' temp' : '' ?>"
+                                                  data-id="<?= $st['id'] ?>"
+                                                  data-name="<?= e($st['name']) ?>"
+                                                  data-temp="<?= $st['temp'] ? 1 : 0 ?>"
+                                                  onclick="openStudentModal(this)"><?= e($st['name']) ?><?= $st['temp'] ? ' ⏳' : '' ?></span>
+                                        <?php endforeach; ?>
+                                        <button class="add-student-chip" onclick="openStudentModalNew(this)">+</button>
+                                    </div>
+                                </div>
+                            <?php else: ?>
+                                <button class="week-empty-slot" type="button" data-day="<?= $d ?>" data-teacher="<?= $tid ?>" data-time="<?= $time ?>" onclick="openLessonModal(this)">+</button>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endforeach; ?>
+            </div>
+        </div>
     </div>
 <?php endforeach; ?>
 
@@ -610,11 +816,17 @@ const DAY_SHORT = {1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'С
 // ===== Выбор преподавателя (один) =====
 
 function selectTeacher(id) {
+    const modeButton = document.querySelector('.schedule-mode-btn.active');
+    const isWeekMode = modeButton ? modeButton.dataset.mode === 'week' : localStorage.getItem('mobileScheduleMode') === 'week';
+
     document.querySelectorAll('.teacher-chip').forEach(chip => {
         chip.classList.toggle('active', parseInt(chip.dataset.teacher) === id);
     });
     document.querySelectorAll('.teacher-pane').forEach(pane => {
         pane.classList.toggle('active', parseInt(pane.dataset.teacher) === id);
+    });
+    document.querySelectorAll('.week-pane').forEach(pane => {
+        pane.classList.toggle('active', isWeekMode && parseInt(pane.dataset.teacher) === id);
     });
     localStorage.setItem('mobileScheduleTeacher', id);
 }
@@ -624,12 +836,27 @@ function currentTeacher() {
     return chip ? parseInt(chip.dataset.teacher) : null;
 }
 
+function setScheduleMode(mode) {
+    const nextMode = mode === 'week' ? 'week' : 'day';
+    document.querySelectorAll('.schedule-mode-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === nextMode);
+    });
+    const dayMode = document.getElementById('scheduleDayMode');
+    if (dayMode) dayMode.classList.toggle('is-hidden', nextMode === 'week');
+    document.querySelectorAll('.week-pane').forEach(pane => {
+        const isCurrentTeacher = parseInt(pane.dataset.teacher) === currentTeacher();
+        pane.classList.toggle('active', nextMode === 'week' && isCurrentTeacher);
+    });
+    localStorage.setItem('mobileScheduleMode', nextMode);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const chips = document.querySelectorAll('.teacher-chip');
     if (!chips.length) return;
     const saved = parseInt(localStorage.getItem('mobileScheduleTeacher') || '0');
     const exists = Array.from(chips).some(c => parseInt(c.dataset.teacher) === saved);
     selectTeacher(exists ? saved : parseInt(chips[0].dataset.teacher));
+    setScheduleMode(localStorage.getItem('mobileScheduleMode') || 'day');
 });
 
 // ===== Дни =====
@@ -663,8 +890,9 @@ function showDay(day) {
 
     document.addEventListener('touchstart', (e) => {
         if (e.touches.length !== 1) { tracking = false; return; }
+        if (localStorage.getItem('mobileScheduleMode') === 'week') { tracking = false; return; }
         // Игнорируем жесты на горизонтальных лентах чипов и при открытой модалке
-        if (e.target.closest('.day-chips, .teacher-chips, .sched-modal-overlay')) { tracking = false; return; }
+        if (e.target.closest('.day-chips, .teacher-chips, .week-scroll, .sched-modal-overlay')) { tracking = false; return; }
         if (document.querySelector('.sched-modal-overlay.active')) { tracking = false; return; }
         const t = e.touches[0];
         startX = t.clientX;
@@ -880,6 +1108,9 @@ function openLessonModal(btn) {
 
     const chip = document.querySelector('.teacher-chip.active');
     document.getElementById('lessonModalSlot').textContent = `${DAY_SHORT[lessonDay]} · ${chip ? chip.dataset.name : ''}`;
+    if (btn.dataset.time) {
+        document.getElementById('lessonModalTime').value = btn.dataset.time;
+    }
     document.getElementById('lessonModalTitle').value = '';
     document.getElementById('lessonModal').classList.add('active');
 }
