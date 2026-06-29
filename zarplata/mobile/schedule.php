@@ -190,8 +190,8 @@ require_once __DIR__ . '/templates/header.php';
     color: #04201c;
 }
 
-.schedule-morning-btn {
-    min-width: 78px;
+.schedule-settings-btn {
+    width: 44px;
     min-height: 38px;
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -203,13 +203,21 @@ require_once __DIR__ . '/templates/header.php';
     cursor: pointer;
 }
 
-.schedule-morning-btn.active {
+.schedule-settings-btn.active {
     border-color: var(--accent);
     background: var(--accent-dim);
     color: var(--accent);
 }
 
 .schedule-day-mode.is-hidden { display: none; }
+
+body.schedule-week-mode {
+    overscroll-behavior-y: none;
+}
+
+body.schedule-week-mode .mobile-content {
+    overflow: hidden;
+}
 
 /* Чипы дней */
 .day-chips {
@@ -249,7 +257,7 @@ require_once __DIR__ . '/templates/header.php';
 .teacher-pane { display: none; }
 .teacher-pane.active { display: block; }
 
-.week-pane { display: none; padding: 10px 0 18px; }
+.week-pane { display: none; padding: 10px 0 0; }
 .week-pane.active { display: block; }
 
 .day-empty {
@@ -291,7 +299,8 @@ require_once __DIR__ . '/templates/header.php';
     overflow: auto;
     -webkit-overflow-scrolling: touch;
     padding: 0 0 10px;
-    max-height: calc(100vh - 190px);
+    max-height: calc(100dvh - 190px);
+    overscroll-behavior: contain;
     --week-zoom: 1;
     --week-time-col: calc(54px * var(--week-zoom));
     --week-day-col: calc(118px * var(--week-zoom));
@@ -309,6 +318,14 @@ require_once __DIR__ . '/templates/header.php';
     border-bottom: 0;
     background: var(--bg-card);
 }
+
+.week-scroll[data-visible-days="1"] .week-grid { grid-template-columns: var(--week-time-col) repeat(1, var(--week-day-col)); min-width: calc(var(--week-time-col) + (1 * var(--week-day-col))); }
+.week-scroll[data-visible-days="2"] .week-grid { grid-template-columns: var(--week-time-col) repeat(2, var(--week-day-col)); min-width: calc(var(--week-time-col) + (2 * var(--week-day-col))); }
+.week-scroll[data-visible-days="3"] .week-grid { grid-template-columns: var(--week-time-col) repeat(3, var(--week-day-col)); min-width: calc(var(--week-time-col) + (3 * var(--week-day-col))); }
+.week-scroll[data-visible-days="4"] .week-grid { grid-template-columns: var(--week-time-col) repeat(4, var(--week-day-col)); min-width: calc(var(--week-time-col) + (4 * var(--week-day-col))); }
+.week-scroll[data-visible-days="5"] .week-grid { grid-template-columns: var(--week-time-col) repeat(5, var(--week-day-col)); min-width: calc(var(--week-time-col) + (5 * var(--week-day-col))); }
+.week-scroll[data-visible-days="6"] .week-grid { grid-template-columns: var(--week-time-col) repeat(6, var(--week-day-col)); min-width: calc(var(--week-time-col) + (6 * var(--week-day-col))); }
+.week-scroll[data-visible-days="7"] .week-grid { grid-template-columns: var(--week-time-col) repeat(7, var(--week-day-col)); min-width: calc(var(--week-time-col) + (7 * var(--week-day-col))); }
 
 .week-head,
 .week-time,
@@ -422,6 +439,40 @@ require_once __DIR__ . '/templates/header.php';
 
 .week-pane.hide-morning .morning-slot {
     display: none;
+}
+
+.week-day-hidden {
+    display: none;
+}
+
+.settings-section-title {
+    margin: 0 0 8px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.settings-day-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+
+.settings-day-btn {
+    min-height: 38px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.settings-day-btn.active {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+    color: var(--accent);
 }
 
 .lesson-time {
@@ -699,7 +750,7 @@ require_once __DIR__ . '/templates/header.php';
 <div class="schedule-toolbar" role="group" aria-label="Режим расписания">
     <button class="schedule-mode-btn active" type="button" data-mode="day" onclick="setScheduleMode('day')">День</button>
     <button class="schedule-mode-btn" type="button" data-mode="week" onclick="setScheduleMode('week')">Вся неделя</button>
-    <button class="schedule-morning-btn" type="button" onclick="setMorningSlots()">☀ Утро</button>
+    <button class="schedule-settings-btn" type="button" onclick="openScheduleSettings()" aria-label="Настройки расписания">⚙</button>
 </div>
 
 <div id="scheduleDayMode" class="schedule-day-mode">
@@ -762,7 +813,7 @@ require_once __DIR__ . '/templates/header.php';
             <div class="week-grid">
                 <div class="week-head week-corner"></div>
                 <?php foreach ($dayNames as $d => $short): ?>
-                    <div class="week-head week-day-head"><?= e($short) ?></div>
+                    <div class="week-head week-day-head" data-week-day="<?= $d ?>"><?= e($short) ?></div>
                 <?php endforeach; ?>
 
                 <?php foreach ($weekHours as $h):
@@ -772,7 +823,7 @@ require_once __DIR__ . '/templates/header.php';
                     <?php foreach ($dayNames as $d => $short):
                         $block = $days[$d][$tid][$time] ?? null;
                     ?>
-                        <div class="week-cell week-row<?= $h < 14 ? ' morning-slot' : '' ?>">
+                        <div class="week-cell week-row<?= $h < 14 ? ' morning-slot' : '' ?>" data-week-day="<?= $d ?>">
                             <?php if ($block): ?>
                                 <div class="lesson-card bc<?= $colorIndex ?>" data-day="<?= $d ?>" data-time="<?= $time ?>" data-teacher="<?= $tid ?>" data-color="<?= $colorIndex ?>">
                                     <div class="lesson-card-header">
@@ -853,12 +904,44 @@ require_once __DIR__ . '/templates/header.php';
     </div>
 </div>
 
+<!-- Настройки недельного вида -->
+<div id="scheduleSettingsModal" class="sched-modal-overlay">
+    <div class="sched-modal" onclick="event.stopPropagation()">
+        <div class="sched-modal-header">
+            <h3>Настройки</h3>
+            <span class="sched-modal-slot">Вся неделя</span>
+        </div>
+        <div class="sched-modal-body">
+            <div class="sched-temp-row">
+                <input type="checkbox" id="settingsMorningToggle" onchange="setMorningSlots(this.checked)">
+                <div>
+                    <div class="t-label">Показывать утро</div>
+                    <div class="t-hint">08:00-13:00 в недельной сетке</div>
+                </div>
+            </div>
+
+            <div style="margin-top: 16px;">
+                <p class="settings-section-title">Дни недели</p>
+                <div class="settings-day-grid">
+                    <?php foreach ($dayNames as $d => $short): ?>
+                        <button class="settings-day-btn" type="button" data-settings-day="<?= $d ?>" onclick="toggleVisibleWeekDay(<?= $d ?>)"><?= e($short) ?></button>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+        <div class="sched-modal-footer">
+            <button class="m-cancel" onclick="closeScheduleSettings()">Готово</button>
+        </div>
+    </div>
+</div>
+
 <div id="schedToast" class="sched-toast"></div>
 
 <script>
 const DAY_SHORT = {1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 7: 'Вс'};
 const WEEK_ZOOM_MIN = 0.7;
 const WEEK_ZOOM_MAX = 1.45;
+const ALL_WEEK_DAYS = [1, 2, 3, 4, 5, 6, 7];
 
 // ===== Выбор преподавателя (один) =====
 
@@ -894,6 +977,7 @@ function setScheduleMode(mode) {
         const isCurrentTeacher = parseInt(pane.dataset.teacher) === currentTeacher();
         pane.classList.toggle('active', nextMode === 'week' && isCurrentTeacher);
     });
+    document.body.classList.toggle('schedule-week-mode', nextMode === 'week');
     localStorage.setItem('mobileScheduleMode', nextMode);
 }
 
@@ -901,15 +985,86 @@ function setMorningSlots(forceValue = null) {
     const current = localStorage.getItem('mobileScheduleShowMorning') === '1';
     const showMorning = forceValue === null ? !current : Boolean(forceValue);
 
-    document.querySelectorAll('.schedule-morning-btn').forEach(btn => {
-        btn.classList.toggle('active', showMorning);
-        btn.setAttribute('aria-pressed', String(showMorning));
-    });
+    const morningInput = document.getElementById('settingsMorningToggle');
+    if (morningInput) morningInput.checked = showMorning;
     document.querySelectorAll('.week-pane').forEach(pane => {
         pane.classList.toggle('hide-morning', !showMorning);
     });
     localStorage.setItem('mobileScheduleShowMorning', showMorning ? '1' : '0');
+    syncScheduleSettingsButton();
 }
+
+function getVisibleWeekDays() {
+    const raw = localStorage.getItem('mobileScheduleWeekDays');
+    if (!raw) return [...ALL_WEEK_DAYS];
+
+    const parsed = raw.split(',')
+        .map(day => parseInt(day, 10))
+        .filter(day => ALL_WEEK_DAYS.includes(day));
+
+    return parsed.length ? [...new Set(parsed)] : [...ALL_WEEK_DAYS];
+}
+
+function setVisibleWeekDays(days) {
+    const visibleDays = days.filter(day => ALL_WEEK_DAYS.includes(day));
+    const safeDays = visibleDays.length ? visibleDays : [ALL_WEEK_DAYS[0]];
+    const visibleSet = new Set(safeDays);
+
+    document.querySelectorAll('[data-week-day]').forEach(el => {
+        el.classList.toggle('week-day-hidden', !visibleSet.has(parseInt(el.dataset.weekDay, 10)));
+    });
+    document.querySelectorAll('.settings-day-btn').forEach(btn => {
+        btn.classList.toggle('active', visibleSet.has(parseInt(btn.dataset.settingsDay, 10)));
+    });
+    document.querySelectorAll('.week-scroll').forEach(scroll => {
+        scroll.dataset.visibleDays = String(safeDays.length);
+    });
+
+    localStorage.setItem('mobileScheduleWeekDays', safeDays.join(','));
+    syncScheduleSettingsButton();
+}
+
+function toggleVisibleWeekDay(day) {
+    const visibleDays = getVisibleWeekDays();
+    const nextDays = visibleDays.includes(day)
+        ? visibleDays.filter(item => item !== day)
+        : [...visibleDays, day].sort((a, b) => a - b);
+
+    if (!nextDays.length) {
+        toast('Нужен хотя бы один день', true);
+        return;
+    }
+
+    setVisibleWeekDays(nextDays);
+}
+
+function syncScheduleSettingsButton() {
+    const showMorning = localStorage.getItem('mobileScheduleShowMorning') === '1';
+    const visibleDays = getVisibleWeekDays();
+    const hasCustomDays = visibleDays.length !== ALL_WEEK_DAYS.length;
+
+    document.querySelectorAll('.schedule-settings-btn').forEach(btn => {
+        const isActive = showMorning || hasCustomDays;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-pressed', String(isActive));
+    });
+}
+
+function openScheduleSettings() {
+    const modal = document.getElementById('scheduleSettingsModal');
+    if (!modal) return;
+    setMorningSlots(localStorage.getItem('mobileScheduleShowMorning') === '1');
+    setVisibleWeekDays(getVisibleWeekDays());
+    modal.classList.add('active');
+}
+
+function closeScheduleSettings() {
+    document.getElementById('scheduleSettingsModal').classList.remove('active');
+}
+
+document.getElementById('scheduleSettingsModal').addEventListener('click', function(e) {
+    if (e.target === this) closeScheduleSettings();
+});
 
 function clampWeekZoom(value) {
     return Math.min(WEEK_ZOOM_MAX, Math.max(WEEK_ZOOM_MIN, value));
@@ -960,6 +1115,7 @@ document.addEventListener('DOMContentLoaded', function() {
     selectTeacher(exists ? saved : parseInt(chips[0].dataset.teacher));
     setScheduleMode(localStorage.getItem('mobileScheduleMode') || 'day');
     setMorningSlots(localStorage.getItem('mobileScheduleShowMorning') === '1');
+    setVisibleWeekDays(getVisibleWeekDays());
     applyWeekZoom(localStorage.getItem('mobileScheduleWeekZoom') || '1');
     initWeekPinchZoom();
 });
