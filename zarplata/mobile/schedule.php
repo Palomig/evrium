@@ -162,9 +162,9 @@ require_once __DIR__ . '/templates/header.php';
 .scolor-8 { background: rgba(239, 68, 68, 0.7); }
 
 /* Переключатель режима */
-.schedule-mode-toggle {
+.schedule-toolbar {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr auto;
     gap: 4px;
     margin: 10px 16px 0;
     padding: 4px;
@@ -188,6 +188,25 @@ require_once __DIR__ . '/templates/header.php';
 .schedule-mode-btn.active {
     background: var(--accent);
     color: #04201c;
+}
+
+.schedule-morning-btn {
+    min-width: 78px;
+    min-height: 38px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.schedule-morning-btn.active {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+    color: var(--accent);
 }
 
 .schedule-day-mode.is-hidden { display: none; }
@@ -378,6 +397,10 @@ require_once __DIR__ . '/templates/header.php';
 .week-empty-slot:active {
     border-color: var(--accent);
     color: var(--accent);
+}
+
+.week-pane.hide-morning .morning-slot {
+    display: none;
 }
 
 .lesson-time {
@@ -652,9 +675,10 @@ require_once __DIR__ . '/templates/header.php';
     <?php endforeach; ?>
 </div>
 
-<div class="schedule-mode-toggle" role="group" aria-label="Режим расписания">
+<div class="schedule-toolbar" role="group" aria-label="Режим расписания">
     <button class="schedule-mode-btn active" type="button" data-mode="day" onclick="setScheduleMode('day')">День</button>
     <button class="schedule-mode-btn" type="button" data-mode="week" onclick="setScheduleMode('week')">Вся неделя</button>
+    <button class="schedule-morning-btn" type="button" onclick="setMorningSlots()">☀ Утро</button>
 </div>
 
 <div id="scheduleDayMode" class="schedule-day-mode">
@@ -723,11 +747,11 @@ require_once __DIR__ . '/templates/header.php';
                 <?php foreach ($weekHours as $h):
                     $time = sprintf('%02d:00', $h);
                 ?>
-                    <div class="week-time"><?= $time ?></div>
+                    <div class="week-time week-row<?= $h < 14 ? ' morning-slot' : '' ?>"><?= $time ?></div>
                     <?php foreach ($dayNames as $d => $short):
                         $block = $days[$d][$tid][$time] ?? null;
                     ?>
-                        <div class="week-cell">
+                        <div class="week-cell week-row<?= $h < 14 ? ' morning-slot' : '' ?>">
                             <?php if ($block): ?>
                                 <div class="lesson-card bc<?= $colorIndex ?>" data-day="<?= $d ?>" data-time="<?= $time ?>" data-teacher="<?= $tid ?>" data-color="<?= $colorIndex ?>">
                                     <div class="lesson-card-header">
@@ -850,6 +874,20 @@ function setScheduleMode(mode) {
     localStorage.setItem('mobileScheduleMode', nextMode);
 }
 
+function setMorningSlots(forceValue = null) {
+    const current = localStorage.getItem('mobileScheduleShowMorning') === '1';
+    const showMorning = forceValue === null ? !current : Boolean(forceValue);
+
+    document.querySelectorAll('.schedule-morning-btn').forEach(btn => {
+        btn.classList.toggle('active', showMorning);
+        btn.setAttribute('aria-pressed', String(showMorning));
+    });
+    document.querySelectorAll('.week-pane').forEach(pane => {
+        pane.classList.toggle('hide-morning', !showMorning);
+    });
+    localStorage.setItem('mobileScheduleShowMorning', showMorning ? '1' : '0');
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const chips = document.querySelectorAll('.teacher-chip');
     if (!chips.length) return;
@@ -857,6 +895,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const exists = Array.from(chips).some(c => parseInt(c.dataset.teacher) === saved);
     selectTeacher(exists ? saved : parseInt(chips[0].dataset.teacher));
     setScheduleMode(localStorage.getItem('mobileScheduleMode') || 'day');
+    setMorningSlots(localStorage.getItem('mobileScheduleShowMorning') === '1');
 });
 
 // ===== Дни =====
