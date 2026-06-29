@@ -287,9 +287,11 @@ require_once __DIR__ . '/templates/header.php';
 .lesson-card.bc8 .lesson-card-header { background: rgba(239, 68, 68, 0.22); }
 
 .week-scroll {
+    position: relative;
     overflow: auto;
     -webkit-overflow-scrolling: touch;
     padding: 0 0 10px 16px;
+    max-height: calc(100vh - 190px);
 }
 
 .week-grid {
@@ -323,7 +325,19 @@ require_once __DIR__ . '/templates/header.php';
     font-weight: 800;
 }
 
+.week-corner {
+    left: 0;
+    z-index: 4;
+}
+
+.week-day-head {
+    z-index: 3;
+}
+
 .week-time {
+    position: sticky;
+    left: 0;
+    z-index: 2;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -333,6 +347,7 @@ require_once __DIR__ . '/templates/header.php';
     font-family: 'JetBrains Mono', monospace;
     font-size: 12px;
     font-weight: 700;
+    box-shadow: 8px 0 14px rgba(0, 0, 0, 0.18);
 }
 
 .week-cell {
@@ -739,9 +754,9 @@ require_once __DIR__ . '/templates/header.php';
     <div class="week-pane" data-teacher="<?= $tid ?>">
         <div class="week-scroll">
             <div class="week-grid">
-                <div class="week-head"></div>
+                <div class="week-head week-corner"></div>
                 <?php foreach ($dayNames as $d => $short): ?>
-                    <div class="week-head"><?= e($short) ?></div>
+                    <div class="week-head week-day-head"><?= e($short) ?></div>
                 <?php endforeach; ?>
 
                 <?php foreach ($weekHours as $h):
@@ -1103,6 +1118,10 @@ function renderChip(chip, name, temp) {
     chip.textContent = name + (temp ? ' ⏳' : '');
 }
 
+function reloadScheduleAfterChange() {
+    setTimeout(() => location.reload(), 350);
+}
+
 async function deleteFromModal() {
     if (!mTarget || !mTarget.dataset.id || !mCard) return closeSchedModal();
 
@@ -1131,6 +1150,7 @@ async function deleteFromModal() {
         }
         toast('Удалено');
         closeSchedModal();
+        reloadScheduleAfterChange();
     } catch (err) {
         toast('Ошибка сети', true);
     }
