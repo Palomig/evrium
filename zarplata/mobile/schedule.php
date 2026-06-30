@@ -300,7 +300,7 @@ body.schedule-week-mode .mobile-content {
     -webkit-overflow-scrolling: touch;
     padding: 0 0 10px;
     --week-bottom-clearance: calc(var(--bottom-nav-height, 64px) + var(--safe-area-bottom, 0px));
-    max-height: calc(100dvh - 190px - var(--week-bottom-clearance));
+    max-height: var(--week-scroll-height, calc(100dvh - 190px - var(--week-bottom-clearance)));
     scroll-padding-bottom: 10px;
     overscroll-behavior: contain;
     --week-zoom: 1;
@@ -972,6 +972,7 @@ function selectTeacher(id) {
         pane.classList.toggle('active', isWeekMode && parseInt(pane.dataset.teacher) === id);
     });
     localStorage.setItem('mobileScheduleTeacher', id);
+    if (isWeekMode) requestAnimationFrame(updateWeekScrollHeight);
 }
 
 function currentTeacher() {
@@ -992,6 +993,20 @@ function setScheduleMode(mode) {
     });
     document.body.classList.toggle('schedule-week-mode', nextMode === 'week');
     localStorage.setItem('mobileScheduleMode', nextMode);
+    if (nextMode === 'week') requestAnimationFrame(updateWeekScrollHeight);
+}
+
+function updateWeekScrollHeight() {
+    const bottomNav = document.querySelector('.bottom-nav');
+    const bottomNavHeight = bottomNav ? bottomNav.offsetHeight : 0;
+    const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    const activeScroll = document.querySelector('.week-pane.active .week-scroll');
+
+    if (!activeScroll) return;
+
+    const top = activeScroll.getBoundingClientRect().top;
+    const height = Math.max(180, Math.floor(viewportHeight - top - bottomNavHeight - 8));
+    activeScroll.style.setProperty('--week-scroll-height', `${height}px`);
 }
 
 function setMorningSlots(forceValue = null) {
@@ -1005,6 +1020,7 @@ function setMorningSlots(forceValue = null) {
     });
     localStorage.setItem('mobileScheduleShowMorning', showMorning ? '1' : '0');
     syncScheduleSettingsButton();
+    requestAnimationFrame(updateWeekScrollHeight);
 }
 
 function getVisibleWeekDays() {
@@ -1035,6 +1051,7 @@ function setVisibleWeekDays(days) {
 
     localStorage.setItem('mobileScheduleWeekDays', safeDays.join(','));
     syncScheduleSettingsButton();
+    requestAnimationFrame(updateWeekScrollHeight);
 }
 
 function toggleVisibleWeekDay(day) {
@@ -1089,6 +1106,7 @@ function applyWeekZoom(value) {
         el.style.setProperty('--week-zoom', zoom.toFixed(2));
     });
     localStorage.setItem('mobileScheduleWeekZoom', zoom.toFixed(2));
+    requestAnimationFrame(updateWeekScrollHeight);
 }
 
 function touchDistance(touches) {
@@ -1131,7 +1149,13 @@ document.addEventListener('DOMContentLoaded', function() {
     setVisibleWeekDays(getVisibleWeekDays());
     applyWeekZoom(localStorage.getItem('mobileScheduleWeekZoom') || '1');
     initWeekPinchZoom();
+    updateWeekScrollHeight();
 });
+
+window.addEventListener('resize', updateWeekScrollHeight);
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', updateWeekScrollHeight);
+}
 
 // ===== Дни =====
 
