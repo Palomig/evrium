@@ -299,7 +299,9 @@ body.schedule-week-mode .mobile-content {
     overflow: auto;
     -webkit-overflow-scrolling: touch;
     padding: 0 0 10px;
-    max-height: calc(100dvh - 190px);
+    --week-bottom-clearance: calc(var(--bottom-nav-height, 64px) + var(--safe-area-bottom, 0px));
+    max-height: calc(100dvh - 190px - var(--week-bottom-clearance));
+    scroll-padding-bottom: 10px;
     overscroll-behavior: contain;
     --week-zoom: 1;
     --week-time-col: calc(54px * var(--week-zoom));
