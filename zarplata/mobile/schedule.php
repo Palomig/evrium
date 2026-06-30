@@ -443,12 +443,12 @@ body.schedule-week-mode .mobile-content {
 
 .week-time.week-row-alt,
 .week-cell.week-row-alt {
-    background: rgba(255, 255, 255, 0.035);
+    background: #171c24;
 }
 
 .week-cell.week-row-alt .lesson-card,
 .week-cell.week-row-alt .week-empty-slot {
-    background-color: rgba(255, 255, 255, 0.026);
+    background-color: #18202a;
 }
 
 .week-day-hidden {
