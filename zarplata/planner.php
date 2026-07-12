@@ -1447,9 +1447,54 @@ body:not(.show-morning) .morning-row:not(.has-lessons) {
     <span id="notification-text"></span>
 </div>
 
+<!-- Плашка: расписание изменили в другом окне/устройстве -->
+<div id="planner-live-banner">
+    <span class="material-icons">sync</span>
+    <span>Расписание изменилось</span>
+    <button type="button" onclick="location.reload()">Обновить</button>
+</div>
+<style>
+#planner-live-banner {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    gap: 12px;
+    background: #1f2530;
+    color: #e8ecf2;
+    border: 1px solid #33405a;
+    border-left: 3px solid #14b8a6;
+    padding: 10px 14px;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.4);
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity .22s ease, transform .22s ease;
+}
+#planner-live-banner.show { display: flex; opacity: 1; transform: translateX(-50%) translateY(0); }
+#planner-live-banner .material-icons { font-size: 20px; color: #14b8a6; }
+#planner-live-banner button {
+    background: #14b8a6;
+    color: #04211d;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+#planner-live-banner button:hover { background: #10a596; }
+@keyframes plannerSyncSpin { to { transform: rotate(360deg); } }
+#planner-live-banner.syncing .material-icons { animation: plannerSyncSpin .8s linear infinite; }
+</style>
+
 <script>
 const teachersData = <?= json_encode($teachers, JSON_UNESCAPED_UNICODE) ?>;
 const READ_ONLY = <?= $snapshotView ? 'true' : 'false' ?>;
+const PLANNER_VERSION = <?= json_encode(plannerVersionFingerprint()) ?>;
 // Для роли teacher: редактируется только своя колонка (0 = админ, без ограничений)
 const MY_TEACHER = <?= isTeacherUser() ? (int)(getCurrentTeacherId() ?: -1) : 0 ?>;
 
@@ -2122,6 +2167,94 @@ function showNotification(message, type = 'success') {
     notification.classList.add('show');
     setTimeout(() => notification.classList.remove('show'), 3000);
 }
+
+// ========== ЖИВОЕ ОБНОВЛЕНИЕ РАСПИСАНИЯ (поллинг) ==========
+// Каждые ~12с сверяем «отпечаток» расписания с сервером. Если кто-то изменил
+// его в другом окне/устройстве — показываем плашку. Если пользователь не
+// редактирует, мягко перезагружаем страницу; во время правки не трогаем,
+// чтобы не потерять ввод.
+(function initPlannerLiveSync() {
+    if (READ_ONLY) return; // в режиме просмотра версии не нужно
+
+    const POLL_MS = 12000;
+    const MUTATIONS = ['save_note', 'set_note_color', 'move_student', 'add_student_schedule', 'remove_student_slot'];
+    const origFetch = window.fetch.bind(window);
+
+    let baseline = PLANNER_VERSION;
+    let bannerVisible = false;
+    let autoReloadTimer = null;
+    let rebaseTimer = null;
+
+    const banner = document.getElementById('planner-live-banner');
+
+    function isEditing() {
+        const ae = document.activeElement;
+        if (ae && (ae.isContentEditable || ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return true;
+        if (document.querySelector('.modal-overlay.active, .context-menu.active')) return true;
+        return false;
+    }
+
+    function showBanner() {
+        if (banner && !bannerVisible) { banner.classList.add('show'); bannerVisible = true; }
+        // Автоперезагрузка только когда пользователь ничего не редактирует
+        if (!isEditing() && !autoReloadTimer) {
+            autoReloadTimer = setTimeout(() => {
+                autoReloadTimer = null;
+                if (isEditing()) return;        // отложить — правит прямо сейчас
+                if (document.hidden) return;      // вкладка не активна — подождём
+                location.reload();
+            }, 2500);
+        }
+    }
+
+    function hideBanner() {
+        if (banner) banner.classList.remove('show');
+        bannerVisible = false;
+        if (autoReloadTimer) { clearTimeout(autoReloadTimer); autoReloadTimer = null; }
+    }
+
+    async function fetchVersion() {
+        const res = await origFetch('/zarplata/api/planner.php?action=version', { cache: 'no-store' });
+        if (!res.ok) return null;
+        const json = await res.json();
+        return (json && json.data) ? json.data.version : null;
+    }
+
+    async function checkVersion() {
+        if (document.hidden) return;
+        try {
+            const v = await fetchVersion();
+            if (v && v !== baseline) showBanner();
+        } catch (e) { /* сеть недоступна — молча пропускаем */ }
+    }
+
+    // После собственной правки — обновляем базовую версию, чтобы не считать
+    // свои же изменения за «чужие» и не показывать лишнюю плашку.
+    function scheduleRebaseline() {
+        clearTimeout(rebaseTimer);
+        rebaseTimer = setTimeout(async () => {
+            try {
+                const v = await fetchVersion();
+                if (v) { baseline = v; hideBanner(); }
+            } catch (e) {}
+        }, 700);
+    }
+
+    // Перехватываем сохраняющие запросы планировщика, чтобы ре-базлайнить версию
+    window.fetch = function (...args) {
+        const p = origFetch(...args);
+        try {
+            const url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url) || '';
+            if (url.indexOf('/api/planner.php') !== -1 && MUTATIONS.some(a => url.indexOf('action=' + a) !== -1)) {
+                p.then(r => { if (r && r.ok) scheduleRebaseline(); }).catch(() => {});
+            }
+        } catch (e) {}
+        return p;
+    };
+
+    setInterval(checkVersion, POLL_MS);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVersion(); });
+})();
 </script>
 
 <?php require_once __DIR__ . '/templates/footer.php'; ?>

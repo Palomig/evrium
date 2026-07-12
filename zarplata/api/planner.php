@@ -46,8 +46,18 @@ switch ($action) {
     case 'list_snapshots':
         handleListSnapshots();
         break;
+    case 'version':
+        handlePlannerVersion();
+        break;
     default:
         jsonError('Неизвестное действие', 400);
+}
+
+/**
+ * Лёгкий отпечаток расписания — для поллинга изменений с других устройств
+ */
+function handlePlannerVersion() {
+    jsonSuccess(['version' => plannerVersionFingerprint()]);
 }
 
 /**
