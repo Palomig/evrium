@@ -17,6 +17,26 @@ function plannerNow() {
     return $dt->format('Y-m-d H:i:s');
 }
 
+/**
+ * Лёгкий «отпечаток» состояния расписания для обнаружения изменений.
+ * Меняется при любой правке: количество записей, максимальный id (вставки),
+ * последнее время изменения (правки/удаления через ON UPDATE).
+ * @return string напр. "42-1573-1719400000"
+ */
+function plannerVersionFingerprint() {
+    $row = dbQueryOne(
+        "SELECT COUNT(*) AS c,
+                COALESCE(MAX(id), 0) AS mid,
+                COALESCE(UNIX_TIMESTAMP(MAX(updated_at)), 0) AS mts
+         FROM planner_notes",
+        []
+    );
+    if (!$row) {
+        return '0-0-0';
+    }
+    return ((int)$row['c']) . '-' . ((int)$row['mid']) . '-' . ((int)$row['mts']);
+}
+
 function ensurePlannerSnapshotsTable() {
     dbExecute("
         CREATE TABLE IF NOT EXISTS planner_snapshots (
