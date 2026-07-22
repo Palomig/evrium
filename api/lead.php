@@ -35,7 +35,7 @@ $config = array_merge([
     'telegram_token' => null,    // 'XXXXXXXXX:YYYYYYY'
     'telegram_chat_id' => null,  // '123456789'
     'email_to' => null,          // 'tutor@example.com'
-    'log_dir' => dirname(__DIR__, 3) . '/storage/leads', // вне public
+    'log_dir' => dirname(__DIR__, 2) . '/storage/leads', // вне public_html, внутри папки сайта
 ], $config);
 
 // Фолбэк: подтягиваем токен бота и chat_id админа из настроек zarplata.
@@ -167,6 +167,14 @@ $lead = [
 // --- Лог в файл -----------------------------------------------------------
 $logDir = $config['log_dir'];
 if (!is_dir($logDir)) @mkdir($logDir, 0775, true);
+if (!is_dir($logDir) || !is_writable($logDir)) {
+    // open_basedir хостинга может не пускать за пределы public_html —
+    // запасная папка внутри сайта, закрытая от веба через .htaccess
+    $logDir = dirname(__DIR__) . '/storage/leads';
+    if (!is_dir($logDir)) @mkdir($logDir, 0775, true);
+    $ht = dirname($logDir) . '/.htaccess';
+    if (!is_file($ht)) @file_put_contents($ht, "Require all denied\n");
+}
 $logFile = rtrim($logDir, '/') . '/leads-' . date('Y-m') . '.jsonl';
 @file_put_contents(
     $logFile,
@@ -212,6 +220,9 @@ if (!empty($config['telegram_token']) && !empty($config['telegram_chat_id'])) {
         $lines[] = '<i>Источник: ' . htmlspecialchars($lead['referer'] ?: ($landing ?: '—')) . '</i>';
     }
     if ($yclid) $lines[] = '<i>yclid: ' . htmlspecialchars($yclid) . ' (клик Яндекс.Директа)</i>';
+    $lines[] = $ymClientId
+        ? '<i>ID в Метрике: <code>' . htmlspecialchars($ymClientId) . '</code> (Отчёты → Посетители → поиск по ID)</i>'
+        : '<i>ID в Метрике: нет (счётчик у посетителя не загрузился)</i>';
 
     $payload = http_build_query([
         'chat_id' => $config['telegram_chat_id'],

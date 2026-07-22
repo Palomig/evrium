@@ -122,36 +122,24 @@ const schemas = [
   ))}
 
   {/*
-    Яндекс Метрика — загружается ТОЛЬКО после согласия в cookie-плашке.
-    Без согласия скрипт mc.yandex.ru вообще не запрашивается, куки не ставятся.
-    noscript-пиксель убран сознательно: при выключенном JS мы не можем проверить
-    согласие, поэтому корректнее не трекать вовсе.
+    Яндекс Метрика — базовый счётчик (визиты, источники, карты кликов) загружается
+    всегда, иначе большинство посетителей (кто игнорирует cookie-плашку) невидимы.
+    Вебвизор (запись сессий) включается только после согласия в плашке; если
+    согласие дано в ходе сессии — запись начнётся со следующей страницы.
   */}
   <script type="text/javascript" is:inline define:vars={{ ymId: site.yandexMetrikaId }}>
     (function () {
-      let loaded = false;
-      function loadMetrika() {
-        if (loaded) return;
-        loaded = true;
-        (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
-        m[i].l=1*new Date();
-        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
-        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
-        (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
-        ym(ymId, "init", { clickmap:true, trackLinks:true, accurateTrackBounce:true, webvisor:true });
-        window.__ymId = ymId;
-      }
-
       let consent = null;
       try { consent = JSON.parse(localStorage.getItem('cookie-consent-v1') || 'null'); } catch (e) {}
-      if (consent && consent.analytics) {
-        loadMetrika();
-      } else {
-        // Если согласие появится в ходе сессии — подхватим без перезагрузки страницы
-        document.addEventListener('cookie-consent-change', function (e) {
-          if (e && e.detail && e.detail.analytics) loadMetrika();
-        });
-      }
+      var withWebvisor = !!(consent && consent.analytics);
+
+      (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+      m[i].l=1*new Date();
+      for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+      k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+      (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+      ym(ymId, "init", { clickmap:true, trackLinks:true, accurateTrackBounce:true, webvisor: withWebvisor });
+      window.__ymId = ymId;
     })();
 
     // Глобальный трекинг кликов по CTA (WhatsApp/Telegram/телефон) — на всех страницах

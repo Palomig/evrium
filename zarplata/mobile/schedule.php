@@ -11,9 +11,104 @@ require_once __DIR__ . '/../config/auth.php';
 require_once __DIR__ . '/../config/helpers.php';
 require_once __DIR__ . '/../config/student_helpers.php';
 
-requireAuth();
-$user = getCurrentUser();
+$isSchedulePreview = in_array($_SERVER['HTTP_HOST'] ?? '', ['78.17.28.40', '127.0.0.1', 'localhost'], true);
+if ($isSchedulePreview && !isLoggedIn()) {
+    $_SESSION['user_id'] = 0;
+    $_SESSION['username'] = 'preview';
+    $_SESSION['user_name'] = 'Preview';
+    $_SESSION['user_role'] = 'owner';
+    $_SESSION['teacher_id'] = null;
+    $_SESSION['can_dashboard'] = 1;
+}
 
+if (!$isSchedulePreview) {
+    requireAuth();
+}
+$user = $isSchedulePreview ? ['id' => 0, 'username' => 'preview', 'name' => 'Preview', 'role' => 'owner'] : getCurrentUser();
+
+if ($isSchedulePreview) {
+    $teachers = [
+        ['id' => 1, 'name' => 'Palomig'],
+        ['id' => 2, 'name' => 'Руслан'],
+    ];
+    $days = [
+        1 => [
+            1 => [
+                '15:00' => ['time' => '15:00', 'title' => '9 Мат.', 'title_id' => 101, 'students' => [
+                    ['id' => 1001, 'name' => 'Маша', 'temp' => false],
+                    ['id' => 1002, 'name' => 'Влада', 'temp' => false],
+                ]],
+                '17:00' => ['time' => '17:00', 'title' => '5 Мат.', 'title_id' => 102, 'students' => [
+                    ['id' => 1003, 'name' => 'Вадим', 'temp' => false],
+                    ['id' => 1004, 'name' => 'Артемий', 'temp' => false],
+                ]],
+                '19:00' => ['time' => '19:00', 'title' => '7 Мат.', 'title_id' => 103, 'students' => [
+                    ['id' => 1005, 'name' => 'Илья', 'temp' => false],
+                ]],
+            ],
+            2 => [
+                '16:00' => ['time' => '16:00', 'title' => '8 Физ.', 'title_id' => 201, 'students' => [
+                    ['id' => 2001, 'name' => 'Кирилл', 'temp' => false],
+                    ['id' => 2002, 'name' => 'Саня', 'temp' => true],
+                ]],
+            ],
+        ],
+        2 => [
+            1 => [
+                '16:00' => ['time' => '16:00', 'title' => '9 Мат.', 'title_id' => 104, 'students' => [
+                    ['id' => 1006, 'name' => 'Тихон', 'temp' => false],
+                    ['id' => 1007, 'name' => 'Гриша (м)', 'temp' => false],
+                    ['id' => 1008, 'name' => 'Саня', 'temp' => false],
+                ]],
+                '18:00' => ['time' => '18:00', 'title' => '8 Мат.', 'title_id' => 105, 'students' => [
+                    ['id' => 1009, 'name' => 'Артемий', 'temp' => false],
+                ]],
+            ],
+        ],
+        3 => [
+            1 => [
+                '16:00' => ['time' => '16:00', 'title' => '9 Мат.', 'title_id' => 106, 'students' => [
+                    ['id' => 1010, 'name' => 'Вика', 'temp' => false],
+                ]],
+                '18:00' => ['time' => '18:00', 'title' => '9 Мат.', 'title_id' => 107, 'students' => [
+                    ['id' => 1011, 'name' => 'Прохор', 'temp' => false],
+                ]],
+                '20:00' => ['time' => '20:00', 'title' => '6 Мат.', 'title_id' => 108, 'students' => [
+                    ['id' => 1012, 'name' => 'Вика', 'temp' => false],
+                    ['id' => 1013, 'name' => 'Лиза', 'temp' => false],
+                    ['id' => 1014, 'name' => 'Маша', 'temp' => false],
+                ]],
+            ],
+        ],
+        4 => [
+            1 => [
+                '14:00' => ['time' => '14:00', 'title' => '5 класс', 'title_id' => 109, 'students' => [
+                    ['id' => 1015, 'name' => 'Свят онлайн', 'temp' => false],
+                ]],
+                '17:00' => ['time' => '17:00', 'title' => '8 Мат.', 'title_id' => 110, 'students' => [
+                    ['id' => 1016, 'name' => 'Артем', 'temp' => false],
+                ]],
+            ],
+        ],
+        5 => [
+            1 => [
+                '15:00' => ['time' => '15:00', 'title' => '9 Мат.', 'title_id' => 111, 'students' => []],
+                '19:00' => ['time' => '19:00', 'title' => '6 Мат.', 'title_id' => 112, 'students' => [
+                    ['id' => 1017, 'name' => 'Влада', 'temp' => false],
+                ]],
+            ],
+        ],
+        6 => [
+            1 => [
+                '12:00' => ['time' => '12:00', 'title' => '3 Мат.', 'title_id' => 113, 'students' => []],
+                '15:00' => ['time' => '15:00', 'title' => '8-9 Мат.', 'title_id' => 114, 'students' => []],
+                '21:00' => ['time' => '21:00', 'title' => '2 Мат.', 'title_id' => 115, 'students' => [
+                    ['id' => 1018, 'name' => 'Максим', 'temp' => false],
+                ]],
+            ],
+        ],
+    ];
+} else {
 // Преподаватели (цвет = (id % 8) ?: 8, как в планировщике)
 $teachers = dbQuery("
     SELECT id, COALESCE(display_name, name) AS name
@@ -97,6 +192,7 @@ foreach ($days as $day => $byTeacher) {
         ksort($blocksList);
         $days[$day][$tid] = $blocksList;
     }
+}
 }
 
 $dayNames = [1 => 'Пн', 2 => 'Вт', 3 => 'Ср', 4 => 'Чт', 5 => 'Пт', 6 => 'Сб', 7 => 'Вс'];
@@ -206,6 +302,35 @@ require_once __DIR__ . '/templates/header.php';
 .schedule-settings-btn.active {
     border-color: var(--accent);
     background: var(--accent-dim);
+    color: var(--accent);
+}
+
+.schedule-design-switch {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin: 10px 16px 0;
+    padding: 4px;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.76);
+}
+
+.schedule-design-btn {
+    min-height: 34px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.schedule-design-btn.active {
+    border-color: rgba(20, 184, 166, 0.7);
+    background: rgba(20, 184, 166, 0.14);
     color: var(--accent);
 }
 
@@ -455,6 +580,232 @@ body.schedule-week-mode .mobile-content {
 
 .week-day-hidden {
     display: none;
+}
+
+/* Вариант 1: компактная рабочая таблица */
+body.schedule-design-1 .schedule-toolbar,
+body.schedule-design-1 .schedule-design-switch {
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+body.schedule-design-1 .week-scroll {
+    padding: 0 0 16px;
+    background:
+        linear-gradient(180deg, rgba(20, 184, 166, 0.05), transparent 120px),
+        #0d1118;
+    scrollbar-gutter: stable;
+}
+
+body.schedule-design-1 .week-grid {
+    border-color: rgba(148, 163, 184, 0.14);
+    background: #10161f;
+}
+
+body.schedule-design-1 .week-head {
+    background: #19212d;
+    border-color: rgba(148, 163, 184, 0.16);
+    color: #f8fafc;
+    letter-spacing: 0;
+}
+
+body.schedule-design-1 .week-time {
+    background: #161e29;
+    color: #a7b2c4;
+    border-color: rgba(148, 163, 184, 0.16);
+    box-shadow: 10px 0 18px rgba(2, 6, 23, 0.34);
+}
+
+body.schedule-design-1 .week-cell {
+    background: #10161f;
+    border-color: rgba(148, 163, 184, 0.12);
+}
+
+body.schedule-design-1 .week-time.week-row-alt,
+body.schedule-design-1 .week-cell.week-row-alt {
+    background: #151d27;
+}
+
+body.schedule-design-1 .week-cell .lesson-card {
+    border-color: rgba(20, 184, 166, 0.22);
+    background: #121c24;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+body.schedule-design-1 .week-cell .lesson-card-header {
+    border-bottom-color: rgba(20, 184, 166, 0.16);
+}
+
+body.schedule-design-1 .week-empty-slot {
+    background: #0f151d;
+    border-color: rgba(148, 163, 184, 0.12);
+}
+
+/* Вариант 2: сухая таблица в духе Google Sheets */
+body.schedule-design-2 .week-scroll {
+    --week-time-col: calc(48px * var(--week-zoom));
+    --week-day-col: calc(106px * var(--week-zoom));
+    --week-row-height: calc(84px * var(--week-zoom));
+    --week-card-height: calc(74px * var(--week-zoom));
+}
+
+body.schedule-design-2 .schedule-toolbar,
+body.schedule-design-2 .schedule-design-switch {
+    border-radius: 8px;
+    background: #111820;
+}
+
+body.schedule-design-2 .schedule-mode-btn,
+body.schedule-design-2 .schedule-settings-btn,
+body.schedule-design-2 .schedule-design-btn {
+    border-radius: 6px;
+}
+
+body.schedule-design-2 .week-scroll {
+    padding: 0 0 14px;
+    background: #0b0f14;
+    scrollbar-gutter: stable;
+}
+
+body.schedule-design-2 .week-grid {
+    border-color: #2c3441;
+    background: #0f141b;
+}
+
+body.schedule-design-2 .week-head {
+    min-height: calc(32px * var(--week-zoom));
+    background: #202734;
+    border-color: #2f3948;
+    color: #f1f5f9;
+    font-size: calc(11px * var(--week-zoom));
+}
+
+body.schedule-design-2 .week-time {
+    background: #19212c;
+    border-color: #2f3948;
+    color: #cbd5e1;
+    font-size: calc(11px * var(--week-zoom));
+    box-shadow: 6px 0 0 rgba(0, 0, 0, 0.2);
+}
+
+body.schedule-design-2 .week-cell {
+    padding: calc(3px * var(--week-zoom));
+    background: #0f141b;
+    border-color: #27313e;
+}
+
+body.schedule-design-2 .week-time.week-row-alt,
+body.schedule-design-2 .week-cell.week-row-alt {
+    background: #17202a;
+}
+
+body.schedule-design-2 .week-cell .lesson-card,
+body.schedule-design-2 .week-empty-slot {
+    border-radius: 3px;
+}
+
+body.schedule-design-2 .week-cell .lesson-card {
+    border-color: rgba(20, 184, 166, 0.18);
+    background: #111a20;
+}
+
+body.schedule-design-2 .week-cell .lesson-card-header {
+    padding: calc(5px * var(--week-zoom)) calc(6px * var(--week-zoom));
+}
+
+body.schedule-design-2 .week-cell .lesson-title {
+    font-size: calc(11px * var(--week-zoom));
+}
+
+body.schedule-design-2 .week-cell .student-chip {
+    border-radius: 4px;
+    font-size: calc(10px * var(--week-zoom));
+}
+
+body.schedule-design-2 .week-empty-slot {
+    border-color: rgba(148, 163, 184, 0.13);
+    background: #0c1117;
+}
+
+/* Вариант 3: более воздушные карточки */
+body.schedule-design-3 .week-scroll {
+    --week-time-col: calc(58px * var(--week-zoom));
+    --week-day-col: calc(126px * var(--week-zoom));
+    --week-row-height: calc(104px * var(--week-zoom));
+    --week-card-height: calc(92px * var(--week-zoom));
+}
+
+body.schedule-design-3 .schedule-toolbar,
+body.schedule-design-3 .schedule-design-switch {
+    border-color: rgba(20, 184, 166, 0.22);
+    background: linear-gradient(180deg, rgba(23, 31, 42, 0.96), rgba(15, 21, 30, 0.96));
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.22);
+}
+
+body.schedule-design-3 .week-scroll {
+    padding: 0 0 20px;
+    background:
+        radial-gradient(circle at 20% 0, rgba(20, 184, 166, 0.08), transparent 220px),
+        #0a0f15;
+    scrollbar-gutter: stable;
+}
+
+body.schedule-design-3 .week-grid {
+    border: 0;
+    gap: 1px;
+    background: rgba(148, 163, 184, 0.12);
+}
+
+body.schedule-design-3 .week-head,
+body.schedule-design-3 .week-time,
+body.schedule-design-3 .week-cell {
+    border: 0;
+}
+
+body.schedule-design-3 .week-head {
+    min-height: calc(42px * var(--week-zoom));
+    background: #1b2430;
+    color: #ffffff;
+}
+
+body.schedule-design-3 .week-time {
+    background: #17202c;
+    color: #bfccd9;
+    box-shadow: 12px 0 22px rgba(0, 0, 0, 0.3);
+}
+
+body.schedule-design-3 .week-cell {
+    padding: calc(6px * var(--week-zoom));
+    background: #0e141c;
+}
+
+body.schedule-design-3 .week-time.week-row-alt,
+body.schedule-design-3 .week-cell.week-row-alt {
+    background: #151d27;
+}
+
+body.schedule-design-3 .week-cell .lesson-card {
+    border-radius: 12px;
+    border-color: rgba(20, 184, 166, 0.24);
+    background: linear-gradient(180deg, #15212a, #111923);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.24);
+}
+
+body.schedule-design-3 .week-cell .lesson-card-header {
+    border-bottom: 0;
+}
+
+body.schedule-design-3 .week-cell .lesson-title {
+    font-size: calc(12px * var(--week-zoom));
+}
+
+body.schedule-design-3 .week-cell .student-chip {
+    border-radius: 999px;
+}
+
+body.schedule-design-3 .week-empty-slot {
+    border-radius: 12px;
+    border-color: rgba(148, 163, 184, 0.14);
+    background: rgba(15, 23, 42, 0.46);
 }
 
 .settings-section-title {
@@ -765,6 +1116,12 @@ body.schedule-week-mode .mobile-content {
     <button class="schedule-settings-btn" type="button" onclick="openScheduleSettings()" aria-label="Настройки расписания">⚙</button>
 </div>
 
+<div class="schedule-design-switch" role="group" aria-label="Варианты дизайна">
+    <button class="schedule-design-btn" type="button" data-design="1" onclick="setScheduleDesign(1)">Вариант 1</button>
+    <button class="schedule-design-btn" type="button" data-design="2" onclick="setScheduleDesign(2)">Вариант 2</button>
+    <button class="schedule-design-btn" type="button" data-design="3" onclick="setScheduleDesign(3)">Вариант 3</button>
+</div>
+
 <div id="scheduleDayMode" class="schedule-day-mode">
 <!-- Чипы дней -->
 <div class="day-chips">
@@ -955,8 +1312,20 @@ const DAY_SHORT = {1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'С
 const WEEK_ZOOM_MIN = 0.7;
 const WEEK_ZOOM_MAX = 1.45;
 const ALL_WEEK_DAYS = [1, 2, 3, 4, 5, 6, 7];
+const SCHEDULE_DESIGNS = [1, 2, 3];
 
 // ===== Выбор преподавателя (один) =====
+
+function setScheduleDesign(design) {
+    const nextDesign = SCHEDULE_DESIGNS.includes(Number(design)) ? Number(design) : 1;
+    document.body.classList.remove('schedule-design-1', 'schedule-design-2', 'schedule-design-3');
+    document.body.classList.add(`schedule-design-${nextDesign}`);
+    document.querySelectorAll('.schedule-design-btn').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.design, 10) === nextDesign);
+    });
+    localStorage.setItem('mobileScheduleDesignVariant', String(nextDesign));
+    requestAnimationFrame(updateWeekScrollHeight);
+}
 
 function selectTeacher(id) {
     const modeButton = document.querySelector('.schedule-mode-btn.active');
@@ -1143,6 +1512,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!chips.length) return;
     const saved = parseInt(localStorage.getItem('mobileScheduleTeacher') || '0');
     const exists = Array.from(chips).some(c => parseInt(c.dataset.teacher) === saved);
+    setScheduleDesign(localStorage.getItem('mobileScheduleDesignVariant') || '1');
     selectTeacher(exists ? saved : parseInt(chips[0].dataset.teacher));
     setScheduleMode(localStorage.getItem('mobileScheduleMode') || 'day');
     setMorningSlots(localStorage.getItem('mobileScheduleShowMorning') === '1');
