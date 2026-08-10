@@ -85,8 +85,10 @@ const faqSchema = {
           <span class="v2-sticker">1-й урок<br/>бесплатно</span>
           <h2 class="v2-formtitle">Запишитесь за минуту</h2>
           <p class="v2-formsub">Оставьте телефон — перезвоним и согласуем время.</p>
-          <form class="v2-form" action={`${site.basePath}/api/lead.php`} method="post" data-lead-form data-v2-validate novalidate>
+          <form class="v2-form" action={`${site.basePath}/api/lead.php`} method="post" data-lead-form data-v2-validate
+              data-token-url={`${site.basePath}/api/form-token.php`} novalidate>
             <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" class="v2-hp" />
+            <input type="hidden" name="form_token" data-form-token value="" />
             <input type="hidden" name="source" value="test2_hero" />
             <div class="v2-field">
               <input type="text" name="name" required minlength="2" placeholder="Имя" aria-label="Имя" />
@@ -103,6 +105,7 @@ const faqSchema = {
               </select>
               <span class="v2-err">Выберите класс.</span>
             </div>
+            <div data-captcha-container></div>
             <button type="submit" class="v2-btn v2-btn-mar v2-btn-block">Записаться бесплатно</button>
             <p class="v2-consent">Нажимая кнопку, соглашаетесь с обработкой персональных данных.</p>
             <div class="form-status" data-status hidden></div>
@@ -251,8 +254,10 @@ const faqSchema = {
             <a href={site.telegram} target="_blank" rel="nofollow noopener" data-cta="telegram_hero">Telegram</a>.
           </p>
         </div>
-        <form class="v2-card v2-form v2-final-form" action={`${site.basePath}/api/lead.php`} method="post" data-lead-form data-v2-validate novalidate>
+        <form class="v2-card v2-form v2-final-form" action={`${site.basePath}/api/lead.php`} method="post" data-lead-form data-v2-validate
+              data-token-url={`${site.basePath}/api/form-token.php`} novalidate>
           <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" class="v2-hp" />
+            <input type="hidden" name="form_token" data-form-token value="" />
           <input type="hidden" name="source" value="test2_final" />
           <div class="v2-field">
             <input type="text" name="name" required minlength="2" placeholder="Имя" aria-label="Имя" />
@@ -262,7 +267,8 @@ const faqSchema = {
             <input type="tel" name="phone" required placeholder="+7 (999) 555 22 11" inputmode="tel" autocomplete="tel" pattern="\+7 \(\d{3}\) \d{3} \d{2} \d{2}" title="+7 (999) 555 22 11" aria-label="Телефон" />
             <span class="v2-err">Телефон в формате +7 (999) 555 22 11.</span>
           </div>
-          <button type="submit" class="v2-btn v2-btn-ink v2-btn-block">Записаться бесплатно</button>
+          <div data-captcha-container></div>
+            <button type="submit" class="v2-btn v2-btn-ink v2-btn-block">Записаться бесплатно</button>
           <p class="v2-consent">Нажимая кнопку, соглашаетесь с обработкой персональных данных.</p>
           <div class="form-status" data-status hidden></div>
         </form>
@@ -276,8 +282,10 @@ const faqSchema = {
         <span class="v2-sticker v2-sticker-sm">1-й урок<br/>бесплатно</span>
         <h2 id="v2-dialog-title" class="v2-formtitle">Запишитесь за минуту</h2>
         <p class="v2-formsub">Перезвоним и согласуем удобное время.</p>
-        <form class="v2-form" action={`${site.basePath}/api/lead.php`} method="post" data-lead-form data-v2-validate novalidate>
+        <form class="v2-form" action={`${site.basePath}/api/lead.php`} method="post" data-lead-form data-v2-validate
+              data-token-url={`${site.basePath}/api/form-token.php`} novalidate>
           <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" class="v2-hp" />
+            <input type="hidden" name="form_token" data-form-token value="" />
           <input type="hidden" name="source" value="test2_dialog" />
           <div class="v2-field">
             <input type="text" name="name" required minlength="2" placeholder="Имя" aria-label="Имя" />
@@ -294,7 +302,8 @@ const faqSchema = {
             </select>
             <span class="v2-err">Выберите класс.</span>
           </div>
-          <button type="submit" class="v2-btn v2-btn-mar v2-btn-block">Записаться бесплатно</button>
+          <div data-captcha-container></div>
+            <button type="submit" class="v2-btn v2-btn-mar v2-btn-block">Записаться бесплатно</button>
           <p class="v2-consent">Нажимая кнопку, соглашаетесь с обработкой персональных данных.</p>
           <div class="form-status" data-status hidden></div>
         </form>
@@ -589,6 +598,8 @@ const faqSchema = {
 </script>
 
 <script>
+  import { attachGuards, primeLeadForm, refreshLeadForm } from '../scripts/lead-form';
+
   // Маска телефона +7 (999) 555 22 11
   function fmtPhone(raw) {
     let d = String(raw).replace(/\D/g, '');
@@ -613,12 +624,14 @@ const faqSchema = {
   // Отправка формы (ajax) → /api/lead.php
   document.querySelectorAll('[data-lead-form]').forEach((form) => {
     const status = form.querySelector('[data-status]');
+    primeLeadForm(form);
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const fd = new FormData(form);
       if (fd.get('website')) return;
       if (status) { status.hidden = false; status.className = 'form-status'; status.textContent = 'Отправляем…'; }
       try {
+        await attachGuards(form, fd);
         const res = await fetch(form.action, { method: 'POST', body: fd });
         const json = await res.json().catch(() => ({}));
         if (res.ok && json.ok) {
@@ -628,6 +641,9 @@ const faqSchema = {
         } else { throw new Error(json.error || 'fail'); }
       } catch (err) {
         if (status) { status.className = 'form-status err'; status.textContent = 'Не удалось отправить. Напишите в WhatsApp или Telegram.'; }
+      } finally {
+        // Токен одноразовый — готовим свежий под повторную отправку.
+        refreshLeadForm(form);
       }
     });
   });
