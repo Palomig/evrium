@@ -23,8 +23,16 @@ const { compact = false, subject = '', goal = '' } = Astro.props;
         </div>
       </div>
 
-      <form class="lead-form card" action={`${site.basePath}/api/lead.php`} method="post" data-lead-form novalidate>
+      <form
+        class="lead-form card"
+        action={`${site.basePath}/api/lead.php`}
+        method="post"
+        data-lead-form
+        data-token-url={`${site.basePath}/api/form-token.php`}
+        novalidate
+      >
         <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute; left:-9999px;" aria-hidden="true" />
+        <input type="hidden" name="form_token" data-form-token value="" />
         <div class="row">
           <label>Ваше имя
             <input type="text" name="name" required minlength="2" placeholder="Имя родителя или ученика" />
@@ -87,6 +95,8 @@ const { compact = false, subject = '', goal = '' } = Astro.props;
             <textarea name="comment" rows="3" placeholder="Удобное время, особенности, вопросы"></textarea>
           </label>
         </div>
+        <!-- Контейнер невидимой SmartCaptcha. Пустой, пока капча выключена на сервере. -->
+        <div data-captcha-container></div>
         <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">Отправить заявку</button>
         <p class="muted small consent">Нажимая «Отправить», вы соглашаетесь с обработкой персональных данных в целях обратной связи.</p>
         <div class="form-status" data-status hidden></div>
@@ -133,6 +143,8 @@ const { compact = false, subject = '', goal = '' } = Astro.props;
 </style>
 
 <script>
+  import { attachGuards, primeLeadForm, refreshLeadForm } from '../scripts/lead-form';
+
   // Маска телефона: +7 (999) 555 22 11
   function formatRuPhone(raw) {
     let d = String(raw).replace(/\D/g, '');
@@ -172,6 +184,9 @@ const { compact = false, subject = '', goal = '' } = Astro.props;
 
   document.querySelectorAll('[data-lead-form]').forEach((form) => {
     const status = form.querySelector('[data-status]');
+
+    primeLeadForm(form);
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const fd = new FormData(form);
@@ -182,6 +197,7 @@ const { compact = false, subject = '', goal = '' } = Astro.props;
         status.textContent = 'Отправляем…';
       }
       try {
+        await attachGuards(form, fd);
         const res = await fetch(form.action, { method: 'POST', body: fd });
         const json = await res.json().catch(() => ({}));
         if (res.ok && json.ok) {
@@ -199,6 +215,9 @@ const { compact = false, subject = '', goal = '' } = Astro.props;
           status.className = 'form-status err';
           status.textContent = 'Не удалось отправить. Напишите в WhatsApp или Telegram — отвечу быстрее.';
         }
+      } finally {
+        // Токен сгорел при любом исходе — готовим свежий под повторную отправку.
+        refreshLeadForm(form);
       }
     });
   });

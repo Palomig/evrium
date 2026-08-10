@@ -3,18 +3,20 @@
  * Приём заявок с сайта репетитора (эвриум.рф).
  *
  * Поведение:
- *   1) Валидирует поля (name, phone) + honeypot.
- *   2) Логирует заявку в JSONL (по одной строке на заявку).
+ *   1) Отсекает ботов: honeypot, подписанный одноразовый токен формы,
+ *      whitelist значений селектов, российский формат телефона.
+ *   2) Логирует заявку в JSONL (по одной строке на заявку),
+ *      отбитые попытки — в blocked-YYYY-MM.jsonl с причиной.
  *   3) При наличии Telegram-настроек — отправляет уведомление в бот.
  *   4) Возвращает JSON { ok: true } или { ok: false, error: "..." }.
  *
- * TODO репетитору:
- *   - Скопируйте config.example.php в config.php и заполните токен/чат-id Telegram.
- *   - Убедитесь, что storage/leads/ существует и доступен для записи веб-серверу.
- *   - При желании — добавьте отправку на e-mail через mail() или PHPMailer.
+ * Настройки — api/config.php или таблица settings базы zarplata,
+ * см. leadLoadConfig() в _lead_guard.php.
  */
 
 declare(strict_types=1);
+
+require_once __DIR__ . '/_lead_guard.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
@@ -25,71 +27,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// --- Конфигурация ---------------------------------------------------------
-// Необязательный файловый оверрайд (api/config.php). Если его нет — токен и
-// получатель берутся из БД zarplata (таблица settings), чтобы был единый
-// источник: тот же бот @evrium_bot, что шлёт уведомления по зарплате.
-$configFile = __DIR__ . '/config.php';
-$config = is_file($configFile) ? (require $configFile) : [];
-$config = array_merge([
-    'telegram_token' => null,    // 'XXXXXXXXX:YYYYYYY'
-    'telegram_chat_id' => null,  // '123456789'
-    'email_to' => null,          // 'tutor@example.com'
-    'log_dir' => dirname(__DIR__, 2) . '/storage/leads', // вне public_html, внутри папки сайта
-], $config);
+$config = leadLoadConfig();
+$ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 
-// Фолбэк: подтягиваем токен бота и chat_id админа из настроек zarplata.
-// Делаем это в защищённом блоке — недоступность БД не должна ломать ответ
-// формы (заявка к этому моменту уже будет записана в JSONL-лог ниже).
-if (empty($config['telegram_token']) || empty($config['telegram_chat_id'])) {
-    $dbConfig = __DIR__ . '/../zarplata/config/db.php';
-    if (is_file($dbConfig)) {
-        require_once $dbConfig; // определяет DB_HOST/DB_NAME/DB_USER/DB_PASS
-        try {
-            $settingsPdo = new PDO(
-                sprintf('mysql:host=%s;dbname=%s;charset=%s', DB_HOST, DB_NAME, DB_CHARSET),
-                DB_USER,
-                DB_PASS,
-                [
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                    PDO::ATTR_TIMEOUT => 3,
-                ]
-            );
-            $stmt = $settingsPdo->prepare(
-                "SELECT setting_key, setting_value FROM settings
-                 WHERE setting_key IN ('bot_token', 'leads_chat_id', 'admin_telegram_chat_id')"
-            );
-            $stmt->execute();
-            $s = [];
-            foreach ($stmt->fetchAll() as $row) {
-                $s[$row['setting_key']] = $row['setting_value'];
-            }
-            if (empty($config['telegram_token']) && !empty($s['bot_token'])) {
-                $config['telegram_token'] = $s['bot_token'];
-            }
-            // Получатель заявок: отдельная настройка leads_chat_id (приоритет),
-            // иначе — общий админ-чат zarplata (admin_telegram_chat_id).
-            if (empty($config['telegram_chat_id'])) {
-                $config['telegram_chat_id'] = $s['leads_chat_id'] ?? null;
-                if (empty($config['telegram_chat_id'])) {
-                    $config['telegram_chat_id'] = $s['admin_telegram_chat_id'] ?? null;
-                }
-            }
-        } catch (Throwable $e) {
-            error_log('[lead.php] Не удалось прочитать Telegram-настройки из БД: ' . $e->getMessage());
-        }
-    }
-}
-
-// --- Honeypot -------------------------------------------------------------
-if (!empty($_POST['website'])) {
-    // Бот заполнил скрытое поле — тихо отвечаем «ок».
-    echo json_encode(['ok' => true]);
-    exit;
-}
-
-// --- Извлечение и валидация ----------------------------------------------
+// --- Извлечение полей --------------------------------------------------------
 $pick = static function (string $key, int $max = 500): string {
     $v = trim((string)($_POST[$key] ?? ''));
     if ($v === '') return '';
@@ -116,26 +57,112 @@ $yclid       = $pick('yclid', 50);
 $ymClientId  = $pick('ym_client_id', 40);
 $landing     = $pick('landing', 200);
 
-if ($name === '' || mb_strlen($name) < 2) {
-    http_response_code(422);
-    echo json_encode(['ok' => false, 'error' => 'invalid_name']);
+/**
+ * Журнал отбитых попыток. Нужен, чтобы поймать ложные срабатывания: если живой
+ * человек не смог отправить заявку, это будет видно здесь с причиной.
+ */
+$logBlocked = static function (string $reason)
+        use ($ip, $name, $phone, $messenger, $comment, $config): void {
+    $logDir = $config['log_dir'];
+    if (!is_dir($logDir)) @mkdir($logDir, 0775, true);
+    @file_put_contents(
+        rtrim($logDir, '/') . '/blocked-' . date('Y-m') . '.jsonl',
+        json_encode([
+            'ts' => date('c'),
+            'reason' => $reason,
+            'ip' => $ip,
+            'ua' => substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 300),
+            'referer' => substr((string)($_SERVER['HTTP_REFERER'] ?? ''), 0, 300),
+            'name' => $name,
+            'phone' => $phone,
+            'messenger' => $messenger,
+            'comment' => mb_substr($comment, 0, 200),
+        ], JSON_UNESCAPED_UNICODE) . "\n",
+        FILE_APPEND | LOCK_EX
+    );
+};
+
+/** Записать причину и ответить ошибкой. */
+$reject = static function (string $reason, int $code = 422, string $error = 'invalid_request')
+        use ($logBlocked): void {
+    $logBlocked($reason);
+    http_response_code($code);
+    echo json_encode(['ok' => false, 'error' => $error]);
+};
+
+// --- Honeypot -------------------------------------------------------------
+if (!empty($_POST['website'])) {
+    // Бот заполнил скрытое поле — тихо отвечаем «ок», чтобы не подсказывать.
+    $logBlocked('honeypot');
+    echo json_encode(['ok' => true]);
     exit;
 }
 
-$digits = preg_replace('/\D+/', '', $phone);
-if (strlen($digits) < 10) {
-    http_response_code(422);
-    echo json_encode(['ok' => false, 'error' => 'invalid_phone']);
+// --- Токен формы ----------------------------------------------------------
+// Выдаётся form-token.php при загрузке страницы, подписан серверным секретом,
+// одноразовый и «созревает» пару секунд. Прямой POST мимо страницы его не имеет.
+[$tokenOk, $tokenReason] = leadCheckToken((string)($_POST['form_token'] ?? ''));
+if (!$tokenOk) {
+    $reject($tokenReason, 403, 'form_expired');
     exit;
+}
+
+// --- Капча (по умолчанию выключена) ---------------------------------------
+if (leadCaptchaEnabled($config)) {
+    [$capOk, $capReason] = leadCaptchaVerify(
+        (string)$config['smartcaptcha_server_key'],
+        trim((string)($_POST['smart-token'] ?? '')),
+        $ip
+    );
+    if (!$capOk) {
+        $reject($capReason, 403, 'captcha_failed');
+        exit;
+    }
+}
+
+// --- Валидация полей ------------------------------------------------------
+if ($name === '' || mb_strlen($name) < 2) {
+    $reject('invalid_name', 422, 'invalid_name');
+    exit;
+}
+
+// Телефон: приводим к 11 цифрам с семёркой впереди и требуем российский код.
+// 9xx — мобильные, 3xx/4xx — географические (Москва и область: 495/499/498/496).
+$digits = preg_replace('/\D+/', '', $phone);
+if (strlen($digits) === 10) {
+    $digits = '7' . $digits;
+} elseif (strlen($digits) === 11 && $digits[0] === '8') {
+    $digits = '7' . substr($digits, 1);
+}
+if (!preg_match('/^7[349]\d{9}$/', $digits)) {
+    $reject('invalid_phone', 422, 'invalid_phone');
+    exit;
+}
+
+// Селекты: принимаем только те значения, что реально есть в формах.
+// Пустое значение легально у всех четырёх: короткая форма на главной шлёт
+// только имя и телефон, поля мессенджера в ней нет вовсе.
+$allowed = [
+    'class'     => ['2', '3', '4', '5', '6', '7', '8', '9', '10', '11'],
+    'subject'   => ['matematika', 'informatika', 'fizika', 'neskolko'],
+    'goal'      => ['oge', 'ege', 'uspevaemost', 'kontrolnye', 'probely', 'drugoe'],
+    'messenger' => ['any', 'whatsapp', 'telegram', 'zvonok'],
+];
+foreach (
+    ['class' => $classNum, 'subject' => $subject, 'goal' => $goal, 'messenger' => $messenger]
+    as $field => $value
+) {
+    if ($value !== '' && !in_array($value, $allowed[$field], true)) {
+        $reject('invalid_' . $field, 422, 'invalid_request');
+        exit;
+    }
 }
 
 // --- Простейший rate-limit (1 заявка / 30 сек с одного IP) ---------------
-$ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 $rateFile = sys_get_temp_dir() . '/chekhov_lead_' . md5($ip);
 $now = time();
 if (is_file($rateFile) && ($now - (int)@file_get_contents($rateFile)) < 30) {
-    http_response_code(429);
-    echo json_encode(['ok' => false, 'error' => 'too_many_requests']);
+    $reject('rate_limited', 429, 'too_many_requests');
     exit;
 }
 @file_put_contents($rateFile, (string)$now);
@@ -167,14 +194,6 @@ $lead = [
 // --- Лог в файл -----------------------------------------------------------
 $logDir = $config['log_dir'];
 if (!is_dir($logDir)) @mkdir($logDir, 0775, true);
-if (!is_dir($logDir) || !is_writable($logDir)) {
-    // open_basedir хостинга может не пускать за пределы public_html —
-    // запасная папка внутри сайта, закрытая от веба через .htaccess
-    $logDir = dirname(__DIR__) . '/storage/leads';
-    if (!is_dir($logDir)) @mkdir($logDir, 0775, true);
-    $ht = dirname($logDir) . '/.htaccess';
-    if (!is_file($ht)) @file_put_contents($ht, "Require all denied\n");
-}
 $logFile = rtrim($logDir, '/') . '/leads-' . date('Y-m') . '.jsonl';
 @file_put_contents(
     $logFile,
