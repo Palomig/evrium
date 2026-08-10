@@ -75,6 +75,12 @@ const localBusiness = {
     latitude: site.geo.lat,
     longitude: site.geo.lng,
   },
+  openingHoursSpecification: [{
+    '@type': 'OpeningHoursSpecification',
+    dayOfWeek: site.openingHours.days,
+    opens: site.openingHours.opens,
+    closes: site.openingHours.closes,
+  }],
   areaServed: site.studentAreas.map((name) => ({ '@type': 'Place', name })),
   sameAs: [site.whatsapp, site.telegram, site.mapUrl].filter(Boolean),
 };

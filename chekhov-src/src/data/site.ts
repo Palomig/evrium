@@ -31,8 +31,11 @@ export const site = {
   mapUrl: 'https://yandex.ru/maps/10761/chehov/?ll=37.462147%2C55.152925&mode=poi&poi%5Bpoint%5D=37.461788%2C55.153002&poi%5Buri%5D=ymapsbm1%3A%2F%2Forg%3Foid%3D114273753176&z=20.4',
   // ID организации в Яндекс.Бизнесе (для виджета отзывов на /otzyvy/)
   yandexOrgId: '114273753176',
-  // TODO: координаты для Schema.org (уточнить точные)
-  geo: { lat: 55.1456, lng: 37.4538 }, // примерные координаты Чехова
+  // Координаты из карточки в Яндекс.Бизнесе (см. poi[point] в mapUrl выше) —
+  // должны совпадать с картой, иначе Яндекс видит разнобой в данных о компании.
+  geo: { lat: 55.153002, lng: 37.461788 },
+  // График работы для Schema.org и карточки на Картах
+  openingHours: { days: ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'], opens: '10:00', closes: '21:00' },
 
   prices: {
     diagnostic:  { label: 'Диагностика',            duration: '45–60 мин', price: 'бесплатно' },
