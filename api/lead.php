@@ -120,6 +120,15 @@ if (leadCaptchaEnabled($config)) {
     }
 }
 
+// --- Согласие на обработку персональных данных ----------------------------
+// Ст. 9 152-ФЗ: согласие должно быть конкретным и оформленным отдельно от
+// прочей информации. На сайте это обязательный чекбокс; здесь проверяем, что
+// он действительно стоял, и фиксируем в журнале, под какой редакцией документа.
+if (($_POST['consent'] ?? '') !== '1') {
+    $reject('consent_missing', 422, 'consent_required');
+    exit;
+}
+
 // --- Валидация полей ------------------------------------------------------
 if ($name === '' || mb_strlen($name) < 2) {
     $reject('invalid_name', 422, 'invalid_name');
@@ -171,6 +180,9 @@ if (is_file($rateFile) && ($now - (int)@file_get_contents($rateFile)) < 30) {
 $lead = [
     'ts' => date('c'),
     'ip' => $ip,
+    // Доказательство согласия: дата, IP и редакция документа, с которой согласились.
+    'consent' => true,
+    'consent_doc' => LEAD_CONSENT_VERSION,
     'ua' => substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 300),
     'referer' => substr((string)($_SERVER['HTTP_REFERER'] ?? ''), 0, 300),
     'name' => $name,

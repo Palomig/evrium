@@ -17,10 +17,9 @@
     <div class="cookie-text">
       <strong id="cookie-title">Сайт использует куки</strong>
       <p id="cookie-text">
-        Необходимые куки обеспечивают работу сайта, Яндекс&nbsp;Метрика собирает обезличенную
-        статистику посещений. С вашего согласия мы также включаем запись действий на странице —
-        это помогает понять, какие материалы полезны посетителям.
-        <a href="/politika-konfidencialnosti/">Политика конфиденциальности</a>.
+        Обезличенная статистика Яндекс&nbsp;Метрики — всегда, запись действий на странице —
+        только с вашего согласия.
+        <a href="/politika-konfidencialnosti/">Подробнее в политике</a>.
       </p>
     </div>
     <div class="cookie-actions">
@@ -111,17 +110,21 @@
     bottom: calc(20px + 130px);
   }
 
+  /* На мобильном плашка занимала треть экрана и закрывала кнопку записи —
+     держим её компактной: короткий текст, мелкий кегль, кнопки в один ряд. */
   @media (max-width: 720px) {
     .cookie-banner {
       left: 8px;
       right: 8px;
       bottom: 8px;
-      padding: 14px 16px;
+      padding: 12px 14px;
     }
     .cookie-inner {
       grid-template-columns: 1fr;
-      gap: 12px;
+      gap: 10px;
     }
+    .cookie-text strong { font-size: 14px; margin-bottom: 2px; }
+    .cookie-text p { font-size: 12.5px; line-height: 1.4; }
     .cookie-actions {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -129,9 +132,12 @@
     }
     .cookie-btn {
       width: 100%;
+      min-height: 40px;
+      padding: 8px 14px;
+      font-size: 13.5px;
     }
     :global(.cookie-banner-open) :global(.floating-cta) {
-      bottom: calc(20px + 180px);
+      bottom: calc(20px + 130px);
     }
   }
 </style>

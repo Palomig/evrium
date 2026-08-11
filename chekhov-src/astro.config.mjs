@@ -16,7 +16,13 @@ export default defineConfig({
   },
   integrations: [
     sitemap({
-      filter: (page) => !page.includes('/404') && !page.includes('/test-page'),
+      // Из карты сайта исключены служебные страницы и юридические документы:
+      // они отдаются с noindex, и держать их в sitemap — противоречие для робота.
+      filter: (page) =>
+        !page.includes('/404') &&
+        !page.includes('/test-page') &&
+        !page.includes('/politika-konfidencialnosti') &&
+        !page.includes('/soglasie-na-obrabotku-personalnyh-dannyh'),
       serialize(item) {
         item.lastmod = new Date().toISOString();
         return item;

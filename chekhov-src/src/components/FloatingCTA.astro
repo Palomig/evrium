@@ -1,7 +1,12 @@
 ---
 import { site } from '../data/site.ts';
 ---
-<div class="floating-cta" aria-label="Быстрая связь">
+<!--
+  Кнопки быстрой связи. На первом экране скрыты: там свой CTA и форма, а
+  плавающие кнопки перекрывали заголовок и текст. Появляются, когда посетитель
+  пролистал первый экран (см. скрипт ниже).
+-->
+<div class="floating-cta" data-floating-cta aria-label="Быстрая связь">
   <a class="fab fab-wa" href={site.whatsapp} target="_blank" rel="nofollow noopener" aria-label="Написать в WhatsApp" data-cta="whatsapp_floating">
     <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
       <path fill="currentColor" d="M19.05 4.91A10 10 0 0 0 4.6 18.6L3 22l3.5-.92a10 10 0 0 0 4.5 1.14h.01a10 10 0 0 0 7.04-17.31ZM12 20.4a8.4 8.4 0 0 1-4.27-1.17l-.31-.18-2.08.55.56-2.03-.2-.32A8.4 8.4 0 1 1 12 20.4Zm4.6-6.3c-.25-.13-1.49-.74-1.72-.82-.23-.08-.4-.13-.57.13-.16.25-.65.83-.8 1-.15.17-.3.19-.55.06-.25-.13-1.07-.4-2.04-1.26-.75-.67-1.26-1.5-1.41-1.76-.15-.25-.02-.39.11-.52.12-.12.25-.3.38-.45.13-.15.17-.25.25-.42.08-.17.04-.32-.02-.45-.06-.13-.57-1.37-.78-1.88-.21-.5-.42-.42-.57-.43H8c-.17 0-.45.06-.69.32-.24.25-.92.9-.92 2.18 0 1.28.94 2.52 1.07 2.7.13.17 1.84 2.81 4.46 3.94.62.27 1.11.43 1.49.55.62.2 1.19.17 1.64.1.5-.07 1.49-.6 1.7-1.18.21-.58.21-1.08.15-1.18-.06-.1-.23-.17-.48-.3Z"/>
@@ -31,6 +36,19 @@ import { site } from '../data/site.ts';
     flex-direction: column;
     gap: 10px;
     align-items: flex-end;
+    /* Скрыты, пока не пролистан первый экран (класс ставит скрипт) */
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(12px);
+    transition: opacity .2s ease, transform .2s ease, visibility .2s;
+  }
+  .floating-cta.is-visible {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .floating-cta { transition: none; }
   }
   .fab {
     display: inline-flex;
@@ -57,3 +75,16 @@ import { site } from '../data/site.ts';
     .fab { padding: 14px; }
   }
 </style>
+
+<script>
+  // Показываем кнопки после первого экрана: на нём и так есть кнопка записи
+  // и форма, а плавающие кнопки перекрывали текст.
+  const cta = document.querySelector('[data-floating-cta]');
+  if (cta) {
+    const threshold = () => Math.min(window.innerHeight * 0.6, 600);
+    const update = () => cta.classList.toggle('is-visible', window.scrollY > threshold());
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update, { passive: true });
+  }
+</script>

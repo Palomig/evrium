@@ -21,7 +21,7 @@ const why = [
   { t: 'Команда, а не один репетитор', d: 'По каждому предмету — свой специалист. Подберём под ученика и цель.' },
   { t: 'Понятный план', d: 'После диагностики — что подтянуть, в каком порядке и за какой срок.' },
   { t: 'Обратная связь родителям', d: 'Видите прогресс ребёнка, а не только оценки в дневнике.' },
-  { t: 'Прозрачные цены', d: 'Стоимость открыто. Индивидуальные 1 500 ₽ за урок, групповые от 700 ₽ за урок.' },
+  { t: 'Прозрачные цены', d: 'Стоимость открыто: индивидуальное занятие — 1 500 ₽, группа — от 6 000 ₽ в месяц.' },
 ];
 
 const steps = [
@@ -47,7 +47,7 @@ const faq = [
   { q: 'Сколько стоит пробный урок?', a: 'Бесплатно и ни к чему не обязывает. Две части: самостоятельная работа (видим уровень и пробелы) и разбор ошибок с планом.' },
   { q: 'Где проходят занятия?', a: 'Только очно, в кабинете в Чехове на ул. Московская, 87/1. Онлайн-формата нет.' },
   { q: 'С какого класса берёте?', a: '2–11 классы: текущая программа, подготовка к ОГЭ и ЕГЭ, олимпиадная математика.' },
-  { q: 'Сколько стоят занятия?', a: 'Индивидуальные — от 700 ₽ за занятие, групповые — от 6 000 ₽ в месяц. Все варианты — на странице «Цены».' },
+  { q: 'Сколько стоят занятия?', a: 'Индивидуальное занятие (60 минут) — 1 500 ₽. Групповые — фиксированная оплата за месяц: от 6 000 ₽ за занятия по 60 минут и от 10 000 ₽ за формат на 120 минут. Первая диагностика — бесплатно. Все форматы — на странице «Цены».' },
 ];
 
 // FAQPage schema (сохраняем структурированные данные на главной)
@@ -107,7 +107,11 @@ const faqSchema = {
             </div>
             <div data-captcha-container></div>
             <button type="submit" class="v2-btn v2-btn-mar v2-btn-block">Записаться бесплатно</button>
-            <p class="v2-consent">Нажимая кнопку, соглашаетесь с обработкой персональных данных.</p>
+            <label class="v2-consent">
+            <input type="checkbox" name="consent" value="1" required />
+            <span>Даю <a href={`${site.basePath}/soglasie-na-obrabotku-personalnyh-dannyh/`} target="_blank" rel="noopener">согласие на обработку персональных данных</a> и принимаю <a href={`${site.basePath}/politika-konfidencialnosti/`} target="_blank" rel="noopener">политику конфиденциальности</a>.</span>
+          </label>
+          <p class="v2-consent-err">Без согласия на обработку данных заявку отправить нельзя.</p>
             <div class="form-status" data-status hidden></div>
           </form>
         </aside>
@@ -151,7 +155,7 @@ const faqSchema = {
               <span class="v2-subject-mark" aria-hidden="true">{s.emoji}</span>
               <h3>{s.name}</h3>
               <p>{s.desc}</p>
-              <span class="v2-more">от 700 ₽ · подробнее →</span>
+              <span class="v2-more">цены и форматы →</span>
             </a>
           </div>
         ))}
@@ -269,7 +273,11 @@ const faqSchema = {
           </div>
           <div data-captcha-container></div>
             <button type="submit" class="v2-btn v2-btn-ink v2-btn-block">Записаться бесплатно</button>
-          <p class="v2-consent">Нажимая кнопку, соглашаетесь с обработкой персональных данных.</p>
+          <label class="v2-consent">
+            <input type="checkbox" name="consent" value="1" required />
+            <span>Даю <a href={`${site.basePath}/soglasie-na-obrabotku-personalnyh-dannyh/`} target="_blank" rel="noopener">согласие на обработку персональных данных</a> и принимаю <a href={`${site.basePath}/politika-konfidencialnosti/`} target="_blank" rel="noopener">политику конфиденциальности</a>.</span>
+          </label>
+          <p class="v2-consent-err">Без согласия на обработку данных заявку отправить нельзя.</p>
           <div class="form-status" data-status hidden></div>
         </form>
       </div>
@@ -304,7 +312,11 @@ const faqSchema = {
           </div>
           <div data-captcha-container></div>
             <button type="submit" class="v2-btn v2-btn-mar v2-btn-block">Записаться бесплатно</button>
-          <p class="v2-consent">Нажимая кнопку, соглашаетесь с обработкой персональных данных.</p>
+          <label class="v2-consent">
+            <input type="checkbox" name="consent" value="1" required />
+            <span>Даю <a href={`${site.basePath}/soglasie-na-obrabotku-personalnyh-dannyh/`} target="_blank" rel="noopener">согласие на обработку персональных данных</a> и принимаю <a href={`${site.basePath}/politika-konfidencialnosti/`} target="_blank" rel="noopener">политику конфиденциальности</a>.</span>
+          </label>
+          <p class="v2-consent-err">Без согласия на обработку данных заявку отправить нельзя.</p>
           <div class="form-status" data-status hidden></div>
         </form>
       </div>
@@ -414,12 +426,23 @@ const faqSchema = {
   }
   .v2-form input::placeholder { color: #8a8073; }
   .v2-form input:focus, .v2-form select:focus { outline: none; background: #fff; box-shadow: 3px 3px 0 var(--mar); }
-  /* Валидация (modern-web-guidance: :user-invalid + :has) */
-  .v2-form input:user-invalid, .v2-form select:user-invalid { background: var(--err-bg); box-shadow: 3px 3px 0 var(--err); }
+  /* Валидация. Состояние ставит скрипт (aria-invalid) — по нажатию «Отправить»
+     или после ухода из поля, а не пока человек ещё печатает. */
+  .v2-form input[aria-invalid="true"], .v2-form select[aria-invalid="true"] { background: var(--err-bg); box-shadow: 3px 3px 0 var(--err); }
   .v2-form input:user-valid, .v2-form select:user-valid { box-shadow: 3px 3px 0 var(--leaf); }
   .v2-err { display: none; color: var(--err); font-size: 12.5px; font-weight: 600; margin-top: 5px; }
-  .v2-field:has(:user-invalid) .v2-err { display: block; }
-  .v2-consent { margin: 2px 0 0; font-size: 11.5px; color: var(--ink-2); line-height: 1.45; }
+  .v2-field:has([aria-invalid="true"]) .v2-err { display: block; }
+
+  /* Согласие на обработку ПД — отдельное действие (ст. 9 152-ФЗ) */
+  .v2-consent { display: grid; grid-template-columns: auto 1fr; gap: 9px; align-items: start; margin: 4px 0 0; font-size: 12.5px; color: var(--ink-2); line-height: 1.45; cursor: pointer; }
+  .v2-form .v2-consent input[type="checkbox"] {
+    width: 20px; height: 20px; min-height: 0; padding: 0; margin: 1px 0 0;
+    border-width: 2px; border-radius: 5px; accent-color: var(--mar); flex: none;
+  }
+  .v2-form .v2-consent input[type="checkbox"]:user-valid { box-shadow: none; }
+  .v2-consent a { color: var(--mar); text-decoration: underline; }
+  .v2-consent-err { display: none; color: var(--err); font-size: 12.5px; font-weight: 600; margin: 4px 0 0; }
+  .v2-form:has(.v2-consent input[aria-invalid="true"]) .v2-consent-err { display: block; }
   .v2-form .form-status { padding: 11px 13px; border-radius: 10px; font-weight: 600; font-size: 14px; border: 2px solid var(--ink); }
   .v2-form .form-status.ok { background: var(--leaf-bg); color: var(--leaf); }
   .v2-form .form-status.err { background: var(--err-bg); color: var(--err); }
@@ -598,7 +621,10 @@ const faqSchema = {
 </script>
 
 <script>
-  import { attachGuards, primeLeadForm, refreshLeadForm } from '../scripts/lead-form';
+  import {
+    attachGuards, primeLeadForm, refreshLeadForm,
+    validateLeadForm, wireLeadValidation, resetLeadValidation,
+  } from '../scripts/lead-form';
 
   // Маска телефона +7 (999) 555 22 11
   function fmtPhone(raw) {
@@ -616,19 +642,27 @@ const faqSchema = {
   }
   document.querySelectorAll('[data-lead-form] input[name="phone"]').forEach((input) => {
     input.addEventListener('focus', () => { if (!input.value) input.value = '+7 '; });
+    // Вставка из буфера не перехватывается: браузер сам вставит текст, а этот
+    // обработчик input приведёт его к маске (paste всегда порождает input).
     input.addEventListener('input', () => { input.value = fmtPhone(input.value); });
     input.addEventListener('blur', () => { if (input.value.replace(/\D/g,'').length <= 1) input.value = ''; });
-    input.addEventListener('paste', (e) => { e.preventDefault(); input.value = fmtPhone((e.clipboardData||window.clipboardData).getData('text')); });
   });
 
   // Отправка формы (ajax) → /api/lead.php
   document.querySelectorAll('[data-lead-form]').forEach((form) => {
     const status = form.querySelector('[data-status]');
     primeLeadForm(form);
+    wireLeadValidation(form);
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const fd = new FormData(form);
       if (fd.get('website')) return;
+      // Пустая или неполная форма дальше браузера не уходит: novalidate снял
+      // штатную проверку, значит зовём её руками.
+      if (!validateLeadForm(form)) {
+        if (status) { status.hidden = false; status.className = 'form-status err'; status.textContent = 'Заполните выделенные поля.'; }
+        return;
+      }
       if (status) { status.hidden = false; status.className = 'form-status'; status.textContent = 'Отправляем…'; }
       try {
         await attachGuards(form, fd);
@@ -637,6 +671,7 @@ const faqSchema = {
         if (res.ok && json.ok) {
           if (status) { status.className = 'form-status ok'; status.textContent = 'Спасибо! Получили заявку — свяжемся в ближайшее время.'; }
           form.reset();
+          resetLeadValidation(form);
           if (window.ym) window.ym(window.__ymId || 0, 'reachGoal', 'form_submit');
         } else { throw new Error(json.error || 'fail'); }
       } catch (err) {
@@ -674,11 +709,5 @@ const faqSchema = {
       if (!inside) dlg.close();
     });
   }
-  // Синхронизация aria-invalid с :user-invalid (accessible-error-announcement)
-  const sync = (el) => {
-    if (!el || !el.matches || !el.matches('[data-v2-validate] input, [data-v2-validate] select')) return;
-    el.setAttribute('aria-invalid', el.matches(':user-invalid') ? 'true' : 'false');
-  };
-  document.addEventListener('blur', (e) => sync(e.target), true);
-  document.addEventListener('input', (e) => { if (e.target && e.target.hasAttribute && e.target.hasAttribute('aria-invalid')) sync(e.target); });
+  // Подсветка ошибок и aria-invalid — в wireLeadValidation() (scripts/lead-form.ts).
 </script>
