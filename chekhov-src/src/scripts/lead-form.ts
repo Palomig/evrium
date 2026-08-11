@@ -108,8 +108,27 @@ async function captchaToken(form: HTMLFormElement, clientKey: string): Promise<s
   });
 }
 
+/**
+ * ClientID Метрики в заявку.
+ *
+ * Основной путь — колбэк getClientID из Layout.astro: он дописывает в форму
+ * скрытое поле, когда догрузится tag.js. Но колбэк может не успеть (медленная
+ * сеть, мобильный браузер) — тогда заявка приходит без ID и её нельзя
+ * сопоставить с визитом в Метрике. Подстраховка: тот же ID лежит в куке
+ * _ym_uid, её видно синхронно в момент отправки.
+ *
+ * Пусто в обоих местах — значит счётчик у посетителя действительно не
+ * загрузился (блокировщик, обрыв). Это уже сигнал, а не потеря данных.
+ */
+function attachClientId(fd: FormData): void {
+  if (fd.get('ym_client_id')) return;
+  const m = document.cookie.match(/(?:^|;\s*)_ym_uid=([^;]+)/);
+  if (m) fd.set('ym_client_id', decodeURIComponent(m[1]));
+}
+
 /** Дополнить FormData токеном формы и, при необходимости, токеном капчи. */
 export async function attachGuards(form: HTMLFormElement, fd: FormData): Promise<void> {
+  attachClientId(fd);
   const state = await ensureToken(form);
   if (!state) throw new Error('no token');
   fd.set('form_token', state.token);
