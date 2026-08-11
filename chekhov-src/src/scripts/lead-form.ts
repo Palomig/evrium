@@ -134,3 +134,78 @@ export function refreshLeadForm(form: HTMLFormElement): void {
   invalidateToken(form);
   ensureToken(form);
 }
+
+/* --- Валидация на стороне браузера ---------------------------------------
+ *
+ * У форм стоит novalidate: браузерные «пузыри» мешают своей вёрстке ошибок,
+ * а отправка идёт через fetch. Значит проверять состав полей должны мы сами —
+ * иначе пустая форма улетает на сервер и человек видит общую ошибку.
+ *
+ * Ошибку показываем только после того, как поле «потрогали» или нажали
+ * «Отправить»: подсвечивать пустое поле, к которому ещё не притрагивались, —
+ * плохая практика. Состояние держим в aria-invalid: его же читают скринридеры,
+ * по нему же работает CSS (см. [aria-invalid="true"] в стилях форм).
+ */
+
+type LeadControl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+
+function leadControls(form: HTMLFormElement): LeadControl[] {
+  return Array.from(
+    form.querySelectorAll<LeadControl>('input, select, textarea')
+  ).filter((el) => el.name !== 'website' && el.type !== 'hidden' && !el.disabled);
+}
+
+function syncControl(el: LeadControl): void {
+  const shown = el.dataset.touched === '1' || el.form?.dataset.submitAttempted === '1';
+  el.setAttribute('aria-invalid', shown && !el.validity.valid ? 'true' : 'false');
+}
+
+/**
+ * Проверить форму перед отправкой. false — отправлять нельзя: подсветили поля
+ * и перевели фокус на первое проблемное, чтобы человек сразу видел, куда идти.
+ */
+export function validateLeadForm(form: HTMLFormElement): boolean {
+  form.dataset.submitAttempted = '1';
+  const controls = leadControls(form);
+  controls.forEach(syncControl);
+
+  const firstInvalid = controls.find((el) => !el.validity.valid);
+  if (!firstInvalid) return true;
+
+  firstInvalid.focus({ preventScroll: true });
+  firstInvalid.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  return false;
+}
+
+/** Подписать поля формы на подсветку ошибок. Вызывать один раз на форму. */
+export function wireLeadValidation(form: HTMLFormElement): void {
+  form.addEventListener(
+    'blur',
+    (e) => {
+      const el = e.target as LeadControl;
+      if (!el || !el.validity) return;
+      el.dataset.touched = '1';
+      syncControl(el);
+    },
+    true
+  );
+  form.addEventListener('input', (e) => {
+    const el = e.target as LeadControl;
+    if (el && el.validity) syncControl(el);
+  });
+  form.addEventListener('change', (e) => {
+    const el = e.target as LeadControl;
+    if (!el || !el.validity) return;
+    el.dataset.touched = '1';
+    syncControl(el);
+  });
+}
+
+/** После успешной отправки — снять подсветку, иначе пустая форма горит красным. */
+export function resetLeadValidation(form: HTMLFormElement): void {
+  delete form.dataset.submitAttempted;
+  leadControls(form).forEach((el) => {
+    delete el.dataset.touched;
+    el.setAttribute('aria-invalid', 'false');
+  });
+}

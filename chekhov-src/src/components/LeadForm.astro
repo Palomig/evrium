@@ -37,6 +37,7 @@ const { compact = false, subject = '', goal = '' } = Astro.props;
           <label>Ваше имя
             <input type="text" name="name" required minlength="2" placeholder="Имя родителя или ученика" />
           </label>
+          <span class="field-err">Введите имя.</span>
         </div>
         <div class="row">
           <label>Телефон
@@ -51,6 +52,7 @@ const { compact = false, subject = '', goal = '' } = Astro.props;
               title="Формат: +7 (999) 555 22 11"
             />
           </label>
+          <span class="field-err">Телефон в формате +7 (999) 555 22 11.</span>
         </div>
         <div class="row two">
           <label>Класс
@@ -97,8 +99,12 @@ const { compact = false, subject = '', goal = '' } = Astro.props;
         </div>
         <!-- Контейнер невидимой SmartCaptcha. Пустой, пока капча выключена на сервере. -->
         <div data-captcha-container></div>
+        <label class="consent">
+          <input type="checkbox" name="consent" value="1" required />
+          <span>Даю <a href={`${site.basePath}/soglasie-na-obrabotku-personalnyh-dannyh/`} target="_blank" rel="noopener">согласие на обработку персональных данных</a> в целях обратной связи и принимаю <a href={`${site.basePath}/politika-konfidencialnosti/`} target="_blank" rel="noopener">политику конфиденциальности</a>.</span>
+        </label>
+        <p class="consent-err">Без согласия на обработку данных заявку отправить нельзя.</p>
         <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">Отправить заявку</button>
-        <p class="muted small consent">Нажимая «Отправить», вы соглашаетесь с обработкой персональных данных в целях обратной связи.</p>
         <div class="form-status" data-status hidden></div>
       </form>
     </div>
@@ -136,14 +142,35 @@ const { compact = false, subject = '', goal = '' } = Astro.props;
     outline: 2px solid var(--c-accent);
     border-color: var(--c-accent);
   }
-  .consent { margin: 0; }
+  /* Ошибки полей: показывает скрипт через aria-invalid (см. lead-form.ts) */
+  .lead-form :is(input, select, textarea)[aria-invalid="true"] {
+    border-color: #b3261e;
+    background: #fdf5f4;
+  }
+  .field-err, .consent-err { display: none; color: #b3261e; font-size: 13px; font-weight: 600; margin: 4px 0 0; }
+  .row:has([aria-invalid="true"]) .field-err { display: block; }
+  .lead-form:has(.consent input[aria-invalid="true"]) .consent-err { display: block; }
+
+  /* Согласие на обработку ПД — отдельное действие (ст. 9 152-ФЗ) */
+  .consent {
+    display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start;
+    margin: 0; font-size: 13px; font-weight: 400; line-height: 1.45; color: var(--c-muted); cursor: pointer;
+  }
+  .lead-form .consent input[type="checkbox"] {
+    width: 20px; height: 20px; min-height: 0; margin: 1px 0 0; padding: 0;
+    border-radius: 5px; accent-color: var(--c-accent-dark); flex: none;
+  }
+  .consent a { color: var(--c-primary-soft); text-decoration: underline; }
   .form-status { padding: 12px; border-radius: 8px; font-weight: 600; }
   .form-status.ok { background: #e8f7ee; color: #1e7240; }
   .form-status.err { background: #fdecea; color: #b3261e; }
 </style>
 
 <script>
-  import { attachGuards, primeLeadForm, refreshLeadForm } from '../scripts/lead-form';
+  import {
+    attachGuards, primeLeadForm, refreshLeadForm,
+    validateLeadForm, wireLeadValidation, resetLeadValidation,
+  } from '../scripts/lead-form';
 
   // Маска телефона: +7 (999) 555 22 11
   function formatRuPhone(raw) {
@@ -175,22 +202,30 @@ const { compact = false, subject = '', goal = '' } = Astro.props;
         input.value = '';
       }
     });
-    input.addEventListener('paste', (e) => {
-      e.preventDefault();
-      const text = (e.clipboardData || window.clipboardData).getData('text');
-      input.value = formatRuPhone(text);
-    });
+    // paste специально не перехватываем: браузер вставит номер из контактов
+    // или буфера сам, а обработчик input приведёт его к маске.
   });
 
   document.querySelectorAll('[data-lead-form]').forEach((form) => {
     const status = form.querySelector('[data-status]');
 
     primeLeadForm(form);
+    wireLeadValidation(form);
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const fd = new FormData(form);
       if (fd.get('website')) return; // honeypot
+      // novalidate снял штатную проверку браузера — зовём её руками,
+      // иначе пустая форма уходит на сервер и человек ждёт общую ошибку.
+      if (!validateLeadForm(form)) {
+        if (status) {
+          status.hidden = false;
+          status.className = 'form-status err';
+          status.textContent = 'Заполните выделенные поля.';
+        }
+        return;
+      }
       if (status) {
         status.hidden = false;
         status.className = 'form-status';
@@ -206,6 +241,7 @@ const { compact = false, subject = '', goal = '' } = Astro.props;
             status.textContent = 'Спасибо! Я получил заявку и свяжусь с вами в ближайшее время.';
           }
           form.reset();
+          resetLeadValidation(form);
           if (window.ym) window.ym(window.__ymId || 0, 'reachGoal', 'form_submit');
         } else {
           throw new Error(json.error || 'Не удалось отправить');
