@@ -31,10 +31,22 @@ const steps = [
   { t: 'Регулярные занятия', d: 'Очно, по расписанию, с обратной связью родителям.' },
 ];
 
+// Отзывы с карточки в Яндекс.Картах — имя, дата и текст как у автора
+// (поправлены только опечатки и пробелы). Все три — с оценкой 5.
+// Проверено 11 августа 2026; полный список — в виджете на /otzyvy/.
 const reviews = [
-  { t: 'Позанимался 4 месяца и уверенно сдал ОГЭ. Классные, современные педагоги, всегда на одной волне с учениками.', a: 'отзыв на Яндекс.Картах' },
-  { t: 'Занимаюсь 2 года. Оценки в школе улучшились, ОГЭ по математике сдал на 5. На занятиях не заскучаешь.', a: 'отзыв на Яндекс.Картах' },
-  { t: 'Прекрасные педагоги, очень интересно объясняют, всё максимально понятно. Спасибо Станиславу Олеговичу и Руслану Романовичу.', a: 'отзыв на Яндекс.Картах' },
+  {
+    t: 'Отличные, молодые педагоги! Дочь с огромным удовольствием ходит на занятия в любую погоду. ОГЭ сдано с отличным результатом на пять баллов, решены все задачи повышенной сложности!',
+    a: 'Оксана П.', d: '8 июня',
+  },
+  {
+    t: 'Подготовили к ОГЭ с нуля. Уроки интересные и понятные, отзывчивые учителя на одной волне с учениками, супер.',
+    a: 'Шустов Глеб', d: '9 июня',
+  },
+  {
+    t: 'Отличное место, прекрасные педагоги, современные. Очень интересно объясняют, и всё максимально понятно. За эту атмосферу и знания огромное спасибо Станиславу Олеговичу и Руслану Романовичу.',
+    a: 'Валерия Жегалкина', d: '29 мая',
+  },
 ];
 
 const prices = [
@@ -68,7 +80,7 @@ const faqSchema = {
     <header class="v2-hero">
       <div class="wrap v2-hero-grid">
         <div class="v2-hero-copy">
-          <span class="v2-kicker">★★★★★ родители из Чехова рекомендуют</span>
+          <a class="v2-kicker" href={site.reviewsUrl} target="_blank" rel="nofollow noopener">★ {site.yandexRating.value} на Яндекс Картах · {site.yandexRating.reviews} отзывов</a>
           <h1 class="v2-h1">Репетиторы в Чехове, после которых ребёнок наконец <em>понимает</em>, а не зубрит</h1>
           <p class="v2-sub">Репетиторский центр «Эвриум» в Чехове. Очные занятия по математике, физике и информатике для 2–11 классов. Начните с бесплатного пробного урока.</p>
           <div class="v2-hero-cta">
@@ -199,12 +211,19 @@ const faqSchema = {
       <div class="wrap">
         <span class="v2-eyebrow">Отзывы</span>
         <h2 class="v2-h2">Что говорят семьи</h2>
+        <p class="v2-rating">
+          <strong>{site.yandexRating.value}</strong> на Яндекс&nbsp;Картах ·
+          <a href={site.reviewsUrl} target="_blank" rel="nofollow noopener">{site.yandexRating.reviews} отзывов</a>
+        </p>
         <div class="v2-reviews" data-reveal>
           {reviews.map((r) => (
             <figure class="v2-card v2-review">
-              <div class="v2-stars" aria-label="5 из 5">★★★★★</div>
+              <div class="v2-stars" aria-label="Оценка 5 из 5">★★★★★</div>
               <blockquote>{r.t}</blockquote>
-              <figcaption>— {r.a}</figcaption>
+              <figcaption>
+                <span class="v2-review-who">{r.a}</span>
+                <span class="v2-review-meta">{r.d} · Яндекс Карты</span>
+              </figcaption>
             </figure>
           ))}
         </div>
@@ -394,7 +413,8 @@ const faqSchema = {
     background-size: 26px 26px; -webkit-mask-image: linear-gradient(120deg, #000, transparent 60%); mask-image: linear-gradient(120deg, #000, transparent 60%);
   }
   .v2-hero-grid { position: relative; z-index: 1; display: grid; grid-template-columns: 1.25fr .85fr; gap: 48px; align-items: center; padding: 64px 22px 70px; }
-  .v2-kicker { display: inline-block; font-weight: 700; font-size: 14px; color: var(--ink); background: var(--paper); border: 2px solid var(--ink); padding: 6px 14px; border-radius: 999px; margin-bottom: 20px; }
+  .v2-kicker { display: inline-block; font-weight: 700; font-size: 14px; color: var(--ink); background: var(--paper); border: 2px solid var(--ink); padding: 6px 14px; border-radius: 999px; margin-bottom: 20px; text-decoration: none; }
+  a.v2-kicker:hover { background: var(--paper-2); text-decoration: none; }
   .v2-h1 { font-size: clamp(33px, 5.4vw, 60px); font-weight: 800; margin: 0 0 18px; color: var(--on-accent); }
   .v2-h1 em { font-style: normal; background: var(--ink); color: var(--accent-soft); padding: 0 .12em; border-radius: 6px; }
   /* Текст на синем hero — светлый (специфичность выше, чем у .v2 :is(h1,h2,h3)) */
@@ -519,7 +539,13 @@ const faqSchema = {
   .v2-review:nth-child(3) { rotate: 1deg; }
   .v2-stars { color: var(--mar-2); letter-spacing: 2px; font-size: 18px; }
   .v2-review blockquote { margin: 10px 0; font-size: 16px; font-weight: 500; }
-  .v2-review figcaption { color: var(--ink-2); font-size: 13.5px; }
+  .v2-review figcaption { color: var(--ink-2); font-size: 13.5px; display: grid; gap: 2px; }
+  .v2-review-who { font-weight: 600; color: var(--ink); }
+  .v2-review-meta { font-size: 12.5px; }
+  /* Рейтинг с карточки: конкретная цифра и количество вместо голых звёзд */
+  .v2-rating { margin: -12px 0 22px; font-size: 15px; color: var(--ink-2); }
+  .v2-rating strong { font-family: 'Unbounded', sans-serif; font-size: 20px; color: var(--ink); }
+  .v2-rating a { color: var(--mar); text-decoration: underline; }
 
   /* PRICING */
   .v2-prices { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; }
@@ -574,11 +600,12 @@ const faqSchema = {
       @keyframes v2-reveal { from { opacity: 0; transform: translateY(26px); } }
       [data-reveal] { animation: v2-reveal both linear; animation-timeline: view(); animation-range: entry 0% cover 32%; }
     }
-    /* Staggered появление hero на загрузке */
+    /* Staggered появление hero на загрузке.
+       Заголовок из анимации исключён намеренно: он и есть LCP-элемент,
+       а въезд из opacity: 0 откладывал его отрисовку. Остальное въезжает. */
     @keyframes v2-up { from { opacity: 0; transform: translateY(18px); } }
-    .v2-hero-copy > *, .v2-formcard { animation: v2-up .6s both ease-out; }
+    .v2-hero-copy > *:not(.v2-h1), .v2-formcard { animation: v2-up .6s both ease-out; }
     .v2-kicker { animation-delay: .02s; }
-    .v2-h1 { animation-delay: .08s; }
     .v2-sub { animation-delay: .16s; }
     .v2-hero-cta { animation-delay: .24s; }
     .v2-hero-marks { animation-delay: .30s; }
