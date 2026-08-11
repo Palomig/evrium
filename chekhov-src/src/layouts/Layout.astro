@@ -99,10 +99,13 @@ const schemas = [
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#1C1813" />
 
-  {/* Фирменные кириллические шрифты */}
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap" />
+  {/*
+    Фирменные кириллические шрифты — со своего домена (см. styles/fonts.css).
+    Предзагружаем только кириллические подмножества: ими набран весь текст
+    первого экрана, и заголовок перестаёт ждать чужого CDN.
+  */}
+  <link rel="preload" href={`${site.basePath}/fonts/unbounded-cyrillic.woff2`} as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href={`${site.basePath}/fonts/golos-text-cyrillic.woff2`} as="font" type="font/woff2" crossorigin />
 
   <title>{title}</title>
   <meta name="description" content={description} />
