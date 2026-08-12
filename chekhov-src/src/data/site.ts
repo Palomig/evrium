@@ -81,6 +81,7 @@ export const nav: NavItem[] = [
       { label: 'Математика',  href: '/matematika/' },
       { label: 'Информатика', href: '/informatika/' },
       { label: 'Физика',      href: '/fizika/' },
+      { label: 'Шахматы',     href: '/shahmaty/' },
     ],
   },
   {
@@ -88,6 +89,7 @@ export const nav: NavItem[] = [
     children: [
       { label: 'ОГЭ', href: '/oge/' },
       { label: 'ЕГЭ', href: '/ege/' },
+      { label: 'Поступление в 10 класс', href: '/postuplenie-v-10-klass/' },
     ],
   },
   {
