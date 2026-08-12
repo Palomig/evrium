@@ -152,8 +152,8 @@ if (!preg_match('/^7[349]\d{9}$/', $digits)) {
 // Пустое значение легально у всех четырёх: короткая форма на главной шлёт
 // только имя и телефон, поля мессенджера в ней нет вовсе.
 $allowed = [
-    'class'     => ['2', '3', '4', '5', '6', '7', '8', '9', '10', '11'],
-    'subject'   => ['matematika', 'informatika', 'fizika', 'neskolko'],
+    'class'     => ['doshkolnik', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11'],
+    'subject'   => ['matematika', 'informatika', 'fizika', 'shahmaty', 'neskolko'],
     'goal'      => ['oge', 'ege', 'uspevaemost', 'kontrolnye', 'probely', 'drugoe'],
     'messenger' => ['any', 'whatsapp', 'telegram', 'zvonok'],
 ];
@@ -219,8 +219,12 @@ if (!empty($config['telegram_token']) && !empty($config['telegram_chat_id'])) {
         'matematika' => 'математика',
         'informatika' => 'информатика',
         'fizika' => 'физика',
+        'shahmaty' => 'шахматы',
         'neskolko' => 'несколько',
     ];
+    // Класс приходит числом, кроме дошкольников — их в уведомлении
+    // печатать как «doshkolnik» некрасиво.
+    $classLabels = ['doshkolnik' => 'дошкольник'];
     $goalLabels = [
         'oge' => 'ОГЭ',
         'ege' => 'ЕГЭ',
@@ -235,7 +239,7 @@ if (!empty($config['telegram_token']) && !empty($config['telegram_chat_id'])) {
     $lines[] = '';
     $lines[] = '<b>Имя:</b> ' . htmlspecialchars($name);
     $lines[] = '<b>Телефон:</b> ' . htmlspecialchars($phone);
-    if ($classNum)  $lines[] = '<b>Класс:</b> ' . htmlspecialchars($classNum);
+    if ($classNum)  $lines[] = '<b>Класс:</b> ' . htmlspecialchars($classLabels[$classNum] ?? $classNum);
     if ($subject)   $lines[] = '<b>Предмет:</b> ' . htmlspecialchars($subjectLabels[$subject] ?? $subject);
     if ($goal)      $lines[] = '<b>Цель:</b> ' . htmlspecialchars($goalLabels[$goal] ?? $goal);
     if ($messenger) $lines[] = '<b>Связь:</b> ' . htmlspecialchars($messenger);

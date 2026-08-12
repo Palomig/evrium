@@ -14,6 +14,7 @@ const subjects = [
   { name: 'Математика', href: '/matematika/', desc: 'Школьная программа, ОГЭ, ЕГЭ и олимпиадная математика, 2–11 класс.', emoji: '∑' },
   { name: 'Физика', href: '/fizika/', desc: 'Механика, электричество, оптика — через понимание, а не зубрёжку.', emoji: '⚛' },
   { name: 'Информатика', href: '/informatika/', desc: 'ОГЭ и ЕГЭ, Python и алгоритмы простым языком.', emoji: '{ }' },
+  { name: 'Шахматы', href: '/shahmaty/', desc: 'С нуля и дальше: дошкольники с 5–6 лет и школьники, за настоящей доской.', emoji: '♞' },
 ];
 
 const why = [
@@ -113,6 +114,7 @@ const faqSchema = {
             <div class="v2-field">
               <select name="class" required aria-label="Класс">
                 <option value="">Класс ученика</option>
+                <option value="doshkolnik">Дошкольник</option>
                 {[2,3,4,5,6,7,8,9,10,11].map((n) => <option value={n}>{n} класс</option>)}
               </select>
               <span class="v2-err">Выберите класс.</span>
@@ -158,7 +160,7 @@ const faqSchema = {
     <section class="v2-sec v2-sub-sec">
       <div class="wrap">
         <span class="v2-eyebrow">Предметы</span>
-        <h2 class="v2-h2">Три предмета в одном кабинете</h2>
+        <h2 class="v2-h2">Четыре направления в одном кабинете</h2>
       </div>
       <div class="v2-rail" role="list">
         {subjects.map((s) => (
@@ -171,6 +173,11 @@ const faqSchema = {
             </a>
           </div>
         ))}
+      </div>
+      <div class="wrap">
+        <p class="v2-rail-note">Девятиклассникам: в 10 класс теперь берут по конкурсу.
+          <a href={`${site.basePath}/postuplenie-v-10-klass/`}>Как устроен отбор и сколько баллов нужно →</a>
+        </p>
       </div>
     </section>
 
@@ -325,6 +332,7 @@ const faqSchema = {
           <div class="v2-field">
             <select name="class" required aria-label="Класс">
               <option value="">Класс ученика</option>
+              <option value="doshkolnik">Дошкольник</option>
               {[2,3,4,5,6,7,8,9,10,11].map((n) => <option value={n}>{n} класс</option>)}
             </select>
             <span class="v2-err">Выберите класс.</span>
@@ -506,6 +514,8 @@ const faqSchema = {
   .v2-subject-mark { font-family: 'Unbounded', sans-serif; font-size: 30px; font-weight: 800; color: var(--mar-2); -webkit-text-stroke: 1.2px var(--ink); }
   .v2-subject h3 { font-size: 23px; margin: 12px 0 8px; }
   .v2-subject p { color: var(--ink-2); margin: 0 0 16px; }
+  .v2-rail-note { margin: 22px 0 0; font-size: 15px; color: var(--ink-2); }
+  .v2-rail-note a { color: var(--mar); font-weight: 600; text-decoration: underline; }
   .v2-more { margin-top: auto; font-family: 'Unbounded', sans-serif; font-weight: 700; font-size: 13px; color: var(--ink); }
   @media (prefers-reduced-motion: no-preference) {
     .v2-subject:hover, .v2-subject:focus-visible {

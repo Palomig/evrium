@@ -13,7 +13,7 @@ const { compact = false, subject = '', goal = '' } = Astro.props;
         <ul class="lead-bullets">
           <li>Очно, в нашем кабинете в Чехове</li>
           <li>2–11 класс, ОГЭ, ЕГЭ, олимпиады</li>
-          <li>Математика, информатика, физика</li>
+          <li>Математика, информатика, физика, шахматы</li>
           <li>Понятная обратная связь родителям</li>
         </ul>
         <div class="btn-row" style="margin-top: 16px;">
@@ -58,6 +58,7 @@ const { compact = false, subject = '', goal = '' } = Astro.props;
           <label>Класс
             <select name="class">
               <option value="">— выберите —</option>
+              <option value="doshkolnik">Дошкольник</option>
               {[2,3,4,5,6,7,8,9,10,11].map((n) => <option value={n}>{n} класс</option>)}
             </select>
           </label>
@@ -67,6 +68,7 @@ const { compact = false, subject = '', goal = '' } = Astro.props;
               <option value="matematika" selected={subject === 'matematika'}>Математика</option>
               <option value="informatika" selected={subject === 'informatika'}>Информатика</option>
               <option value="fizika" selected={subject === 'fizika'}>Физика</option>
+              <option value="shahmaty" selected={subject === 'shahmaty'}>Шахматы</option>
               <option value="neskolko">Несколько предметов</option>
             </select>
           </label>
