@@ -89,6 +89,7 @@ export const nav: NavItem[] = [
     children: [
       { label: 'ОГЭ', href: '/oge/' },
       { label: 'ЕГЭ', href: '/ege/' },
+      { label: 'Бесплатный пробник', href: '/probnik-oge-ege/' },
       { label: 'Поступление в 10 класс', href: '/postuplenie-v-10-klass/' },
     ],
   },
