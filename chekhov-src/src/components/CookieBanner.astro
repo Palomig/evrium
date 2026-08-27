@@ -1,9 +1,9 @@
 ---
-// Плашка о куки. Работает по модели opt-out: счётчик Метрики и Вебвизор
-// включены с первого хита, «Только необходимые» их отключает со следующей
-// загрузки страницы (см. Layout.astro). «Принять» ничего не включает
-// дополнительно — просто фиксирует согласие и убирает плашку.
-// Решение хранится в localStorage под ключом 'cookie-consent-v1'.
+// Информационная плашка о куки. Ничего не включает и не выключает:
+// Метрика и Вебвизор работают всегда (см. Layout.astro).
+// Кнопка «Хорошо» просто закрывает плашку; факт показа пишется в localStorage
+// под ключом 'cookie-consent-v1', чтобы не показывать её повторно.
+// Открыть заново — ссылка «Управление куки» в подвале (data-cookie-reopen).
 // Менять решение можно через ссылку в футере (data-cookie-reopen).
 ---
 <div
@@ -18,17 +18,14 @@
     <div class="cookie-text">
       <strong id="cookie-title">Сайт использует куки</strong>
       <p id="cookie-text">
-        Мы собираем обезличенную статистику Яндекс&nbsp;Метрики, включая действия
-        на странице. Не хотите — нажмите «Только необходимые».
+        Сайт использует куки и Яндекс&nbsp;Метрику: обезличенная статистика посещений
+        и действия на странице. Отказаться — средствами браузера.
         <a href="/politika-konfidencialnosti/">Подробнее в политике</a>.
       </p>
     </div>
     <div class="cookie-actions">
-      <button type="button" class="cookie-btn cookie-btn-ghost" data-cookie-decline>
-        Только необходимые
-      </button>
       <button type="button" class="cookie-btn cookie-btn-accent" data-cookie-accept>
-        Принять
+        Хорошо
       </button>
     </div>
   </div>
@@ -128,7 +125,7 @@
     .cookie-text p { font-size: 12.5px; line-height: 1.4; }
     .cookie-actions {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr;
       gap: 8px;
     }
     .cookie-btn {
@@ -150,7 +147,6 @@
 
   const banner = document.querySelector('[data-cookie-banner]');
   const acceptBtn = document.querySelector('[data-cookie-accept]');
-  const declineBtn = document.querySelector('[data-cookie-decline]');
 
   const readConsent = () => {
     try {
@@ -172,13 +168,13 @@
     document.body.classList.remove('cookie-banner-open');
   };
 
-  const setConsent = (analytics) => {
-    const consent = { version: 1, analytics, ts: new Date().toISOString() };
+  const dismiss = () => {
+    const consent = { version: 1, notice: 'seen', ts: new Date().toISOString() };
     try {
       localStorage.setItem(KEY, JSON.stringify(consent));
     } catch {}
     closeBanner();
-    // Уведомляем Layout.astro, который грузит Метрику по этому событию
+    // Событие оставлено для обратной совместимости со слушателями в Layout.astro
     document.dispatchEvent(new CustomEvent('cookie-consent-change', { detail: consent }));
   };
 
@@ -187,8 +183,7 @@
     openBanner();
   }
 
-  acceptBtn?.addEventListener('click', () => setConsent(true));
-  declineBtn?.addEventListener('click', () => setConsent(false));
+  acceptBtn?.addEventListener('click', dismiss);
 
   // Делегированный обработчик для ссылки «Управление куки» из футера
   document.addEventListener('click', (e) => {
