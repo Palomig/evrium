@@ -183,11 +183,6 @@ table.price-table {
   overflow: hidden;
   box-shadow: var(--shadow-md);
 }
-@media (max-width: 560px) {
-  .price-table { font-size: 14px; }
-  .price-table th, .price-table td { padding: 11px 12px; }
-  .price-table .price { white-space: normal; }
-}
 .price-table th, .price-table td {
   padding: 14px 16px;
   text-align: left;
@@ -204,6 +199,63 @@ table.price-table {
 }
 .price-table tr:last-child td { border-bottom: 0; }
 .price-table .price { font-family: 'Unbounded', sans-serif; font-weight: 700; color: var(--ink); white-space: nowrap; }
+
+/* Мобильный: таблица цен разворачивается в карточки — ничего не режется
+   и не требует горизонтального скролла (заголовки колонок не нужны). */
+@media (max-width: 560px) {
+  .price-table-wrap { overflow: visible; }
+  table.price-table {
+    display: block;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+  }
+  .price-table thead { display: none; }
+  .price-table tbody { display: block; }
+  .price-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 14px;
+    background: #fff;
+    border: 2px solid var(--ink);
+    border-radius: 14px;
+    box-shadow: var(--shadow-sm);
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+  .price-table tr:last-child { margin-bottom: 0; }
+  .price-table td { display: block; padding: 0; border-bottom: 0; }
+  .price-table td:first-child {
+    grid-column: 1;
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    line-height: 1.25;
+  }
+  .price-table td:nth-child(2) {
+    grid-column: 1;
+    font-size: 13px;
+    margin-top: 3px;
+  }
+  .price-table td.price {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    text-align: right;
+    /* на узких экранах сумма ужимается, чтобы не липнуть к названию */
+    font-size: clamp(15px, 4.4vw, 18px);
+    white-space: nowrap;
+  }
+  .price-table td.price .price-unit {
+    display: block;
+    font-family: 'Golos Text', ui-sans-serif, system-ui, sans-serif;
+    font-weight: 500;
+    font-size: 12px;
+    color: var(--c-muted);
+  }
+}
 
 details.faq-item {
   background: #fff;
