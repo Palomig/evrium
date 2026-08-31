@@ -1,6 +1,11 @@
 ---
 import { site } from '../data/site.ts';
-const rows = Object.values(site.prices);
+// Цену делим на сумму и единицу («1 500 ₽ / занятие»): на мобильном
+// единица уходит отдельной строкой под суммой, на десктопе остаётся в строку.
+const rows = Object.values(site.prices).map((r) => {
+  const [amount, unit] = r.price.split(' / ');
+  return { ...r, amount, unit };
+});
 ---
 <div class="price-table-wrap">
 <table class="price-table">
@@ -16,7 +21,7 @@ const rows = Object.values(site.prices);
       <tr>
         <td>{r.label}</td>
         <td class="muted">{r.duration}</td>
-        <td class="price">{r.price}</td>
+        <td class="price">{r.amount}{r.unit && <span class="price-unit"> / {r.unit}</span>}</td>
       </tr>
     ))}
   </tbody>
