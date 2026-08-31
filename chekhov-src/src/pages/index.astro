@@ -149,8 +149,8 @@ const faqSchema = {
             <p>Объясняем ошибки и составляем план: что подтянуть, в каком порядке, за какой срок.</p>
           </article>
           <article class="v2-card v2-trial-cta">
-            <p class="v2-trial-big">Честная диагностика. Ни оплаты, ни обязательств.</p>
-            <button type="button" class="v2-btn v2-btn-ink v2-btn-block" commandfor="v2-dialog" command="show-modal" data-open-track>Записаться на пробный урок</button>
+            <p class="v2-trial-big">Бесплатная диагностика. Ни оплаты, ни обязательств.</p>
+            <button type="button" class="v2-btn v2-btn-light v2-btn-block" commandfor="v2-dialog" command="show-modal" data-open-track>Записаться на пробный урок</button>
           </article>
         </div>
       </div>
@@ -404,6 +404,9 @@ const faqSchema = {
   .v2-btn:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--ink); }
   .v2-btn-ink { background: var(--ink); color: var(--paper); }
   .v2-btn-mar { background: var(--mar); color: var(--on-accent); }
+  .v2-btn-light { background: var(--paper); color: var(--ink); border-color: var(--paper); box-shadow: 4px 4px 0 var(--accent-soft); }
+  .v2-btn-light:hover { background: var(--accent-soft); box-shadow: 6px 6px 0 var(--accent-soft); }
+  .v2-btn-light:active { box-shadow: 1px 1px 0 var(--accent-soft); }
   .v2-btn-line { background: transparent; color: var(--ink); box-shadow: none; }
   .v2-btn-line:hover { background: var(--ink); color: var(--paper); transform: none; box-shadow: none; }
   .v2-btn-block { width: 100%; }
