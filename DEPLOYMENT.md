@@ -1,97 +1,68 @@
-# Автоматический деплой на Timeweb
+# Деплой сайта эвриум.рф
 
-Этот проект настроен для автоматического деплоя на хостинг Timeweb через GitHub Actions.
+Автодеплой по FTP из GitHub Actions **отключён** (31.08.2026): раннеры GitHub
+стабильно не достукиваются до FTP Timeweb (`ETIMEDOUT 5.23.50.27:21`, похоже,
+хостинг режет иностранные IP). Файлы на хостинг заливаются вручную.
 
-## Как это работает:
+## Что происходит автоматически
 
-### 1. Автоматический merge в main
-При каждом push в ветку `claude/**`:
-- Автоматически срабатывает workflow `.github/workflows/auto-merge.yml`
-- Ветка автоматически мержится в `main`
-- Не нужно создавать Pull Request вручную
+При push в ветку `claude/**` workflow `.github/workflows/auto-merge.yml`
+мёржит её в `main`. И всё — **push в GitHub не меняет сайт**.
 
-### 2. Автоматический деплой на Timeweb
-При каждом push в ветку `main`:
-- Автоматически срабатывает workflow `.github/workflows/deploy-timeweb.yml`
-- Все файлы сайта загружаются на сервер Timeweb через FTP
-- Сайт обновляется автоматически
+## Как выкатить изменения
 
-## Настройка GitHub Secrets
+### 1. Собрать сайт
 
-⚠️ **ВАЖНО:** Для работы деплоя нужно настроить секреты в GitHub!
-
-Перейдите в: **Settings** → **Secrets and variables** → **Actions**
-
-Добавьте три секрета:
-
-1. **FTP_SERVER** - адрес FTP сервера (например: `ftp.timeweb.ru`)
-2. **FTP_USERNAME** - ваш FTP логин
-3. **FTP_PASSWORD** - ваш FTP пароль
-
-📖 Подробная инструкция: [.github/SECRETS_SETUP.md](.github/SECRETS_SETUP.md)
-
-## Где взять FTP данные?
-
-1. Войдите в панель управления Timeweb
-2. **Сайты** → выберите ваш сайт → **FTP и SSH**
-3. Скопируйте сервер, логин и пароль
-
-## Структура деплоя
-
-Деплоится весь корень репозитория в `/public_html/` на сервере:
-```
-Репозиторий (/)  →  Timeweb (/public_html/)
-├── index.html   →  /public_html/index.html
-├── css/         →  /public_html/css/
-├── js/          →  /public_html/js/
-├── exercises/   →  /public_html/exercises/
-└── ...
+```bash
+cd chekhov-src
+npm run deploy      # astro build → dist → rsync в корень репозитория
 ```
 
-Исключаются:
-- `.git` и `.github`
-- `node_modules`
-- `README.md` и другие служебные файлы
+Это локальная операция: Astro-исходники лежат в `chekhov-src/`, готовые файлы —
+в корне репозитория. FTP тут не участвует.
 
-## Проверка работы
+### 2. Закоммитить и запушить
 
-После настройки секретов:
+```bash
+git add -A
+git commit -m "..."
+git push origin claude/<ветка>
+```
 
-1. ✅ Сделайте commit в ветку `claude/**`
-2. ✅ Push в GitHub
-3. ✅ Перейдите на вкладку **Actions** в GitHub
-4. ✅ Увидите два workflow:
-   - `Auto Merge to Main` - автоматический merge
-   - `Deploy to Timeweb` - деплой на хостинг
-5. ✅ Проверьте ваш сайт на Timeweb
+Ветка автоматически уедет в `main` — репозиторий остаётся источником правды.
 
-## Время деплоя
+### 3. Залить файлы на хостинг
 
-- Auto-merge: ~30 секунд
-- Deploy: ~1-2 минуты (зависит от размера файлов и скорости FTP)
+С dev-VPS (78.17.28.40) порт 21 Timeweb доступен — проверено. Заливаем только
+изменённые последним коммитом файлы:
 
-## Устранение проблем
+```bash
+set -a; . /home/dev/.agent-secrets/timeweb.env; set +a   # TMW_PSW
+for f in $(git show --name-only --pretty=format: HEAD | grep -v '^chekhov-src/'); do
+  [ -f "$f" ] || continue     # удалённые локально файлы пропускаем
+  curl -sS --ftp-create-dirs -T "$f" \
+    "ftp://cw95865.tmweb.ru/PALOMATIKA/public_html/$f" -u "cw95865:$TMW_PSW" \
+    && echo "ok  $f" || echo "FAIL $f"
+done
+```
 
-### Ошибка FTP подключения
-- Проверьте правильность FTP данных в секретах
-- Убедитесь что FTP доступ включен в Timeweb
-- Проверьте что сервер указан без `ftp://` (только домен или IP)
+Альтернатива — FileZilla: хост `cw95865.tmweb.ru`, юзер `cw95865`,
+каталог `/PALOMATIKA/public_html/`.
 
-### Ошибка merge
-- Убедитесь что ветка `main` существует
-- Проверьте права доступа (Settings → Actions → General → Workflow permissions → Read and write)
+### 4. Проверить
 
-### Файлы не обновляются
-- Проверьте путь `server-dir: /public_html/` в deploy-timeweb.yml
-- У некоторых хостингов может быть другой путь (например `/www/`)
+```bash
+curl -sS -L https://эвриум.рф/<страница>/ | grep 'что искали'
+```
 
-## Мониторинг
+Если менялись стили или скрипты — у собранных ассетов новое имя с хешем
+(`_assets/Layout.<hash>.css`), его тоже нужно залить, иначе страница приедет
+без стилей.
 
-Все логи деплоя доступны в разделе **Actions** → выберите workflow → посмотрите логи
+## Если захочется вернуть автодеплой
 
----
-
-**Готово!** Теперь каждый коммит в ветку `claude/**` автоматически:
-1. Мержится в `main`
-2. Деплоится на Timeweb
-3. Обновляет ваш сайт
+Workflow `deploy-timeweb.yml` удалён, но лежит в истории git — восстанавливается
+из коммита, в котором удалён. Смысл в этом появится, только если FTP Timeweb
+станет доступен с раннеров GitHub (или деплой переедет на self-hosted runner
+на dev-VPS). Секреты `FTP_SERVER` / `FTP_USERNAME` / `FTP_PASSWORD` в настройках
+репозитория остались нетронутыми.

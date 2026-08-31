@@ -175,8 +175,7 @@ evrium/
 ├── 🚀 CI/CD & DEPLOYMENT
 │   ├── .github/
 │   │   └── workflows/
-│   │       ├── auto-merge.yml       # Auto-merge claude/** → main
-│   │       └── deploy-timeweb.yml   # FTP deploy to Timeweb hosting
+│   │       └── auto-merge.yml       # Auto-merge claude/** → main (no deploy)
 │   │
 │   └── DEPLOYMENT.md                # Deployment documentation
 │
@@ -270,12 +269,12 @@ claude/{feature}-{session-id}
 4. **Auto-Merge to Main**
    - GitHub Action automatically merges `claude/**` → `main`
    - Merge commit created with `--no-ff`
-   - Triggers deployment workflow
+   - **Does NOT deploy anything** — push only updates the repository
 
-5. **Auto-Deploy to Timeweb**
-   - FTP deployment to `/PALOMATIKA/public_html/`
-   - Excludes: `.git`, `.github`, `node_modules`, `.DS_Store`
-   - Deployment takes 1-2 minutes
+5. **Manual Deploy to Timeweb**
+   - Auto-deploy from GitHub Actions is disabled (runners can't reach Timeweb FTP)
+   - Upload changed files via FTP from the dev-VPS (78.17.28.40)
+   - Full instructions: [DEPLOYMENT.md](DEPLOYMENT.md)
 
 ### Git Best Practices
 
@@ -1049,27 +1048,16 @@ logAudit('template_created', 'template', $templateId, null, [
 
 ## ⚠️ CRITICAL WARNINGS
 
-### DO NOT MODIFY deploy-timeweb.yml
+### Push does not deploy the site
 
-**NEVER** change the `.github/workflows/deploy-timeweb.yml` file!
+`.github/workflows/deploy-timeweb.yml` was removed on 2026-08-31 and the `deploy`
+job was stripped from `auto-merge.yml`: GitHub runners consistently time out on
+Timeweb's FTP (`ETIMEDOUT 5.23.50.27:21`).
 
-Any modifications to this file (adding exclude patterns, changing versions, adding options) **WILL BREAK THE DEPLOYMENT**.
-
-The current working configuration is:
-```yaml
-uses: SamKirkland/FTP-Deploy-Action@4.0.0
-with:
-  server: ${{ secrets.FTP_SERVER }}
-  username: ${{ secrets.FTP_USERNAME }}
-  password: ${{ secrets.FTP_PASSWORD }}
-  server-dir: /PALOMATIKA/public_html/
-```
-
-If you need to exclude files from deployment:
-- Use `.gitignore` instead
-- Create folders manually on the server via FTP client
-- **DO NOT** add `exclude:`, `log-level:`, or change the action version
+A green Actions run means only that the branch was merged into `main`. The live
+site changes **only** after files are uploaded by hand — see [DEPLOYMENT.md](DEPLOYMENT.md).
+Never tell the user a change is live because the push succeeded.
 
 ---
 
-**End of CLAUDE.md** - Last updated: 2025-12-17
+**End of CLAUDE.md** - Last updated: 2026-08-31
