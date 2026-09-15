@@ -11,8 +11,7 @@ require_once __DIR__ . '/config/helpers.php';
 require_once __DIR__ . '/mobile/config/mobile_detect.php';
 redirectToMobileIfNeeded('audit.php');
 
-requireAuth();
-requireAdmin();
+requireSection('audit');
 $user = getCurrentUser();
 
 // Фильтры

@@ -22,12 +22,7 @@ if (!hash_equals(BOT_DIAG_KEY, $secretKey)) {
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
-    if (!isLoggedIn()) {
-        jsonError('Необходима авторизация', 401);
-    }
-    if (!isAdmin()) {
-        jsonError('Доступ запрещён', 403);
-    }
+    requireSectionApi('settings');
 }
 
 switch ($action) {

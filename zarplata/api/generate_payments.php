@@ -13,9 +13,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 // Проверяем авторизацию
 session_start();
-if (!isLoggedIn()) {
-    jsonError('Необходима авторизация', 401);
-}
+requireSectionApi('payments');
 
 // Только для администраторов
 if (!isAdmin()) {

@@ -11,8 +11,7 @@ require_once __DIR__ . '/config/helpers.php';
 require_once __DIR__ . '/mobile/config/mobile_detect.php';
 redirectToMobileIfNeeded('students.php');
 
-requireAuth();
-requireAdmin();
+requireSection('students');
 $user = getCurrentUser();
 
 // Получить всех преподавателей (с display_name если есть)

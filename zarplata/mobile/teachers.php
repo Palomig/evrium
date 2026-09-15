@@ -7,8 +7,7 @@ require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/auth.php';
 require_once __DIR__ . '/../config/helpers.php';
 
-requireAuth();
-requireAdmin();
+requireSection('teachers');
 
 $teachers = dbQuery("
     SELECT t.*, pf.name as formula_name

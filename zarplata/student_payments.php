@@ -13,8 +13,7 @@ require_once __DIR__ . '/config/helpers.php';
 require_once __DIR__ . '/mobile/config/mobile_detect.php';
 redirectToMobileIfNeeded('student_payments.php');
 
-requireAuth();
-requireAdmin();
+requireSection('student_payments');
 $user = getCurrentUser();
 
 // Текущий месяц

@@ -10,7 +10,7 @@ require_once __DIR__ . '/../config/helpers.php';
 // Подключаем функции бота
 require_once __DIR__ . '/../bot/config.php';
 
-requireAuth();
+requireSectionApi('settings');
 
 // Только для администраторов
 if (!isAdmin()) {

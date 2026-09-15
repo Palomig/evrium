@@ -18,6 +18,14 @@ if (isLoggedIn()) {
 }
 
 $error = null;
+if (!empty($_GET['tg_error'])) {
+    $error = (string)$_GET['tg_error'];
+}
+
+// Вход через Telegram: куда вернуть после виджета и username бота для кнопки
+$_SESSION['tg_return'] = '/zarplata/';
+$botUsername = getBotUsername();
+$tgAuthUrl = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'эвриум.рф') . '/zarplata/auth/telegram.php';
 
 // Обработка формы входа
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -53,6 +61,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="/zarplata/assets/css/material-dark.css">
 
     <style>
+        .tg-divider { display: flex; align-items: center; gap: 12px; margin: 4px 0 16px; color: var(--text-disabled, #6b7280); font-size: 12px; }
+        .tg-divider::before, .tg-divider::after { content: ""; flex: 1; height: 1px; background: var(--border, #2d2d44); }
+        .tg-login { display: flex; justify-content: center; min-height: 40px; margin-bottom: 16px; }
         .login-container {
             min-height: 100vh;
             display: flex;
@@ -244,11 +255,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                     </form>
 
+                    <?php if ($botUsername): ?>
+                    <div class="tg-divider"><span>или</span></div>
+                    <div class="tg-login">
+                        <script async src="https://telegram.org/js/telegram-widget.js?22"
+                                data-telegram-login="<?= e($botUsername) ?>"
+                                data-size="large" data-radius="8" data-lang="ru"
+                                data-auth-url="<?= e($tgAuthUrl) ?>"
+                                data-request-access="write"></script>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-disabled" style="font-size: 0.75rem;">
+                            Через Telegram входят преподаватели, подключённые к боту, и администраторы с привязанным аккаунтом
+                        </p>
+                    </div>
+                    <?php else: ?>
                     <div class="text-center">
                         <p class="text-disabled" style="font-size: 0.75rem;">
                             Для доступа к системе используйте учётные данные администратора
                         </p>
                     </div>
+                    <?php endif; ?>
                 </div>
             </div>
 

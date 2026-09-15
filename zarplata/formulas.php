@@ -11,8 +11,7 @@ require_once __DIR__ . '/config/helpers.php';
 require_once __DIR__ . '/mobile/config/mobile_detect.php';
 redirectToMobileIfNeeded('formulas.php');
 
-requireAuth();
-requireAdmin();
+requireSection('formulas');
 $user = getCurrentUser();
 
 // Получить все формулы

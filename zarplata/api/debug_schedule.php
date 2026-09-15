@@ -11,9 +11,7 @@ require_once __DIR__ . '/../config/helpers.php';
 header('Content-Type: application/json; charset=utf-8');
 
 session_start();
-if (!isLoggedIn()) {
-    jsonError('Необходима авторизация', 401);
-}
+requireSectionApi('settings');
 
 // Только для администраторов
 if (!isAdmin()) {
