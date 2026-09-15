@@ -6,7 +6,7 @@
   "scope": "/zarplata/mobile/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0c0f14",
+  "background_color": "#0b1017",
   "theme_color": "#14b8a6",
   "lang": "ru",
   "categories": ["business", "productivity"],

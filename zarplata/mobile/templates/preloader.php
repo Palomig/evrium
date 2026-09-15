@@ -38,7 +38,7 @@
         .pl-brand{position:absolute;top:calc(24px + env(safe-area-inset-top,0px));left:24px;display:flex;align-items:center;gap:10px;font-weight:700;font-size:13px;color:#cdd7de}
         .pl-brand-mark{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:#14b8a6;color:#fff;font-weight:800}
         .pl-orbit{position:absolute;width:250px;height:250px;left:50%;top:47%;transform:translate(-50%,-50%);border:1px dashed #41606c99;border-radius:50%;opacity:0;transition:opacity .35s ease}
-        .pl-hub{position:absolute;z-index:4;left:50%;top:47%;width:92px;height:92px;transform:translate(-50%,-50%) scale(.78);border-radius:27px;display:grid;place-items:center;background:linear-gradient(145deg,#20c5b8,#0d8f87);font-size:47px;font-weight:800;color:#fff;box-shadow:0 0 0 1px #58e0d166,0 16px 50px #0eb1a438;opacity:0;transition:opacity .3s,transform .55s cubic-bezier(.22,1.4,.36,1)}
+        .pl-hub{position:absolute;z-index:4;left:50%;top:50%;width:92px;height:92px;transform:translate(-50%,-50%) scale(1.45);border-radius:50%;display:grid;place-items:center;background:#14b8a6;font-size:47px;font-weight:800;color:#fff;box-shadow:0 0 0 1px #58e0d100,0 16px 50px #0eb1a400;transition:top .6s cubic-bezier(.22,1,.36,1),border-radius .6s ease,background .6s ease,box-shadow .6s ease,transform .6s cubic-bezier(.22,1.15,.36,1)}
         .pl-card{position:absolute;z-index:3;width:154px;padding:13px;border:1px solid #2a3946;border-radius:15px;background:#151d27ee;box-shadow:0 14px 34px #0009;opacity:0;filter:blur(5px);transition:opacity .32s,filter .32s,transform .55s cubic-bezier(.22,1,.36,1)}
         .pl-schedule{left:50%;top:16%;transform:translate(-50%,-20px) scale(.92)}
         .pl-students{left:18px;top:65%;transform:translate(-18px,12px) scale(.92)}
@@ -65,8 +65,9 @@
         .pl-steps{display:flex;justify-content:center;gap:7px;margin-top:14px}
         .pl-steps i{width:5px;height:5px;background:#41505e;border-radius:50%}
         .pl-steps i.active{background:#19b7aa;box-shadow:0 0 8px #18b7aa}
-        .pl.enter .pl-hub{opacity:1;transform:translate(-50%,-50%) scale(1)}
-        .pl.enter .pl-orbit,.pl.enter .pl-wire{opacity:1}
+        .pl.enter .pl-hub{top:47%;transform:translate(-50%,-50%) scale(1);border-radius:27px;background:linear-gradient(145deg,#20c5b8,#0d8f87);box-shadow:0 0 0 1px #58e0d166,0 16px 50px #0eb1a438}
+        .pl-brand,.pl-copy{opacity:0;transition:opacity .5s ease .15s}
+        .pl.enter .pl-brand,.pl.enter .pl-copy,.pl.enter .pl-orbit,.pl.enter .pl-wire{opacity:1}
         .pl.enter .pl-card{opacity:1;filter:none;transform:translate(0) scale(1)}
         .pl.enter .pl-schedule{transform:translateX(-50%) scale(1)}
         .pl.transfer .pl-pulse{opacity:1}
@@ -139,7 +140,7 @@
             setTimeout(finish, MAX_WAIT_MS - elapsed);
         }
 
-        setTimeout(function () { add('enter'); }, 120);
+        setTimeout(function () { add('enter'); }, 380);   // первый кадр = «Э» со сплэша, затем знак садится в хаб
         setTimeout(function () { add('transfer'); }, 1100);
         tryFinish();
     })();
