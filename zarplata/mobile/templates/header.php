@@ -54,6 +54,9 @@ if (!defined('SHOW_BOTTOM_NAV')) {
 </head>
 <body<?= SHOW_BOTTOM_NAV ? '' : ' class="no-bottom-nav"' ?>>
 
+    <!-- Preloader «Рабочий день складывается» (раз в день) -->
+    <?php require_once __DIR__ . '/preloader.php'; ?>
+
     <!-- Mobile Header -->
     <header class="mobile-header">
         <button class="hamburger-btn" aria-label="Menu">
