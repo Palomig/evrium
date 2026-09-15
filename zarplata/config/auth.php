@@ -125,14 +125,7 @@ function getCurrentTeacherId() {
  * admin/owner — да (если явно не выключено), teacher — только если включено.
  */
 function canSeeDashboard() {
-    if (!isLoggedIn()) {
-        return false;
-    }
-    $flag = $_SESSION['can_dashboard'] ?? null; // NULL = по роли
-    if ($flag !== null && $flag !== '') {
-        return (int)$flag === 1;
-    }
-    return isAdmin();
+    return can('dashboard');
 }
 
 /**
@@ -163,6 +156,161 @@ function ensureUsersRolesSchema() {
     $roleCol = dbQuery("SHOW COLUMNS FROM users LIKE 'role'", []);
     if (!empty($roleCol) && strpos($roleCol[0]['Type'] ?? '', 'teacher') === false) {
         dbExecute("ALTER TABLE users MODIFY COLUMN role ENUM('admin','owner','teacher') NOT NULL DEFAULT 'admin'", []);
+    }
+    ensureTelegramAuthSchema();
+}
+
+/**
+ * Миграция под вход через Telegram и доступы по разделам (одноразовая).
+ * users.telegram_id — кто может войти через виджет; users.permissions — JSON
+ * переопределений по разделам (NULL = по умолчанию для роли).
+ */
+function ensureTelegramAuthSchema() {
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+
+    $tgCol = dbQuery("SHOW COLUMNS FROM users LIKE 'telegram_id'", []);
+    if (empty($tgCol)) {
+        dbExecute("ALTER TABLE users ADD COLUMN telegram_id BIGINT NULL, ADD UNIQUE KEY uniq_users_telegram (telegram_id)", []);
+    }
+    $tgUserCol = dbQuery("SHOW COLUMNS FROM users LIKE 'telegram_username'", []);
+    if (empty($tgUserCol)) {
+        dbExecute("ALTER TABLE users ADD COLUMN telegram_username VARCHAR(64) NULL", []);
+    }
+    $permCol = dbQuery("SHOW COLUMNS FROM users LIKE 'permissions'", []);
+    if (empty($permCol)) {
+        dbExecute("ALTER TABLE users ADD COLUMN permissions TEXT NULL", []);
+    }
+
+    // Стас (@Palomig) — владелец: привязываем, пока ни у кого нет Telegram
+    $anyLinked = dbQueryOne("SELECT id FROM users WHERE telegram_id IS NOT NULL LIMIT 1", []);
+    if (!$anyLinked) {
+        $owner = dbQueryOne("SELECT id FROM users WHERE role = 'owner' AND active = 1 ORDER BY id LIMIT 1", []);
+        if ($owner) {
+            dbExecute("UPDATE users SET telegram_id = ?, telegram_username = ? WHERE id = ?", [245710727, 'Palomig', $owner['id']]);
+        }
+    }
+}
+
+// ============================================================
+//  Доступы по разделам
+// ============================================================
+
+/**
+ * Разделы панели, которые можно включать/выключать пользователю.
+ * Расписание, уроки, посещаемость, своя зарплата и смена пароля доступны всем.
+ * @return array key => подпись
+ */
+function zpSections() {
+    return [
+        'dashboard'        => 'Главная',
+        'students'         => 'Ученики',
+        'payments'         => 'Выплаты',
+        'student_payments' => 'Оплаты учеников',
+        'formulas'         => 'Формулы',
+        'reports'          => 'Отчёты',
+        'teachers'         => 'Преподаватели',
+        'audit'            => 'Аудит',
+        'settings'         => 'Настройки',
+    ];
+}
+
+/**
+ * Доступы по умолчанию для роли: owner — всё, admin — всё кроме настроек,
+ * teacher — ничего из административных разделов.
+ * @param string $role
+ * @return array key => bool
+ */
+function zpRoleDefaults($role) {
+    $all = array_fill_keys(array_keys(zpSections()), false);
+    if ($role === 'owner') {
+        return array_fill_keys(array_keys($all), true);
+    }
+    if ($role === 'admin') {
+        $all = array_fill_keys(array_keys($all), true);
+        $all['settings'] = false;
+    }
+    return $all;
+}
+
+/**
+ * Итоговые доступы пользователя: дефолты роли + переопределения из permissions
+ * (и старое can_dashboard, если JSON про дашборд молчит).
+ * @param array $user Строка users
+ * @return array key => bool
+ */
+function zpEffectivePermissions($user) {
+    $perms = zpRoleDefaults($user['role'] ?? 'teacher');
+    if (($user['role'] ?? '') === 'owner') {
+        return $perms; // владельца не ограничиваем
+    }
+    $overrides = [];
+    if (!empty($user['permissions'])) {
+        $decoded = json_decode($user['permissions'], true);
+        if (is_array($decoded)) {
+            $overrides = $decoded;
+        }
+    }
+    if (!array_key_exists('dashboard', $overrides) && isset($user['can_dashboard']) && $user['can_dashboard'] !== '' && $user['can_dashboard'] !== null) {
+        $overrides['dashboard'] = (int)$user['can_dashboard'] === 1;
+    }
+    foreach ($overrides as $key => $value) {
+        if (array_key_exists($key, $perms)) {
+            $perms[$key] = (bool)$value;
+        }
+    }
+    return $perms;
+}
+
+/**
+ * Может ли текущий пользователь открыть раздел. Читает users один раз за запрос,
+ * чтобы изменения доступов применялись без перелогина.
+ * @param string $section Ключ из zpSections()
+ * @return bool
+ */
+function can($section) {
+    static $cache = [];
+    if (!isLoggedIn()) {
+        return false;
+    }
+    $uid = (int)getCurrentUserId();
+    if (!isset($cache[$uid])) {
+        $user = dbQueryOne("SELECT role, permissions, can_dashboard FROM users WHERE id = ? AND active = 1", [$uid]);
+        $cache[$uid] = $user ? zpEffectivePermissions($user) : [];
+    }
+    return !empty($cache[$uid][$section]);
+}
+
+/**
+ * Требовать доступ к разделу на странице; без доступа — на расписание
+ * @param string $section
+ * @param string|null $redirect
+ */
+function requireSection($section, $redirect = null) {
+    requireAuth();
+    if (!can($section)) {
+        if ($redirect === null) {
+            $isMobile = strpos($_SERVER['SCRIPT_NAME'] ?? '', '/mobile/') !== false;
+            $redirect = $isMobile ? '/zarplata/mobile/schedule.php' : '/zarplata/planner.php';
+        }
+        header('Location: ' . $redirect . (strpos($redirect, '?') === false ? '?' : '&') . 'denied=' . urlencode($section));
+        exit;
+    }
+}
+
+/**
+ * Требовать доступ к разделу в JSON-API (401/403)
+ * @param string $section
+ */
+function requireSectionApi($section) {
+    if (!isLoggedIn()) {
+        jsonError('Требуется авторизация', 401);
+    }
+    if (!can($section)) {
+        jsonError('Нет доступа к разделу «' . (zpSections()[$section] ?? $section) . '»', 403);
     }
 }
 
@@ -203,6 +351,136 @@ function login($username, $password, $remember = false) {
     logAudit('user_login', 'user', $user['id'], null, null, 'Вход в систему');
 
     return true;
+}
+
+// ============================================================
+//  Вход через Telegram Login Widget
+// ============================================================
+
+/**
+ * Username бота для виджета: из settings.bot_username, иначе getMe по токену и кэш
+ * @return string без @, пусто если бота нет
+ */
+function getBotUsername() {
+    $row = dbQueryOne("SELECT setting_value FROM settings WHERE setting_key = 'bot_username'", []);
+    $name = ltrim(trim((string)($row['setting_value'] ?? '')), '@');
+    if ($name !== '') {
+        return $name;
+    }
+    $tokenRow = dbQueryOne("SELECT setting_value FROM settings WHERE setting_key = 'bot_token'", []);
+    $token = trim((string)($tokenRow['setting_value'] ?? ''));
+    if ($token === '') {
+        return '';
+    }
+    $ctx = stream_context_create(['http' => ['timeout' => 4]]);
+    $resp = @file_get_contents("https://api.telegram.org/bot{$token}/getMe", false, $ctx);
+    $json = $resp ? json_decode($resp, true) : null;
+    $name = (string)($json['result']['username'] ?? '');
+    if ($name !== '') {
+        dbExecute(
+            "INSERT INTO settings (setting_key, setting_value, description) VALUES ('bot_username', ?, 'Username бота (для входа через Telegram)')
+             ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)",
+            [$name]
+        );
+    }
+    return $name;
+}
+
+/**
+ * Проверить подпись данных Telegram Login Widget
+ * https://core.telegram.org/widgets/login#checking-authorization
+ * @param array $data Параметры запроса от виджета
+ * @return bool
+ */
+function verifyTelegramAuth(array $data) {
+    $tokenRow = dbQueryOne("SELECT setting_value FROM settings WHERE setting_key = 'bot_token'", []);
+    $token = trim((string)($tokenRow['setting_value'] ?? ''));
+    $hash = (string)($data['hash'] ?? '');
+    if ($token === '' || $hash === '' || empty($data['id']) || empty($data['auth_date'])) {
+        return false;
+    }
+    $pairs = [];
+    foreach ($data as $key => $value) {
+        if ($key === 'hash' || !in_array($key, ['id', 'first_name', 'last_name', 'username', 'photo_url', 'auth_date'], true)) {
+            continue;
+        }
+        $pairs[] = $key . '=' . $value;
+    }
+    sort($pairs, SORT_STRING);
+    $secret = hash('sha256', $token, true);
+    $calc = hash_hmac('sha256', implode("\n", $pairs), $secret);
+    if (!hash_equals($calc, $hash)) {
+        return false;
+    }
+    // Подпись живёт сутки
+    return (time() - (int)$data['auth_date']) < 86400;
+}
+
+/**
+ * Войти по данным виджета. Пускаем только известных: users.telegram_id или
+ * teachers.telegram_id (тогда создаём/находим аккаунт преподавателя).
+ * @param array $data Проверенные данные виджета
+ * @return array ['ok' => bool, 'error' => string|null]
+ */
+function loginWithTelegram(array $data) {
+    ensureUsersRolesSchema();
+    $tgId = (int)$data['id'];
+    $tgUsername = (string)($data['username'] ?? '');
+
+    $user = dbQueryOne("SELECT * FROM users WHERE telegram_id = ?", [$tgId]);
+
+    if (!$user) {
+        $teacher = dbQueryOne("SELECT * FROM teachers WHERE telegram_id = ? AND active = 1", [$tgId]);
+        if ($teacher) {
+            $user = dbQueryOne("SELECT * FROM users WHERE teacher_id = ? AND role = 'teacher' ORDER BY active DESC, id LIMIT 1", [$teacher['id']]);
+            if (!$user) {
+                $username = 'tg' . $tgId;
+                $name = $teacher['display_name'] ?: $teacher['name'];
+                $userId = createUser($username, bin2hex(random_bytes(16)), $name, 'teacher');
+                if (!$userId) {
+                    return ['ok' => false, 'error' => 'Не удалось создать аккаунт'];
+                }
+                dbExecute("UPDATE users SET teacher_id = ? WHERE id = ?", [$teacher['id'], $userId]);
+                $user = dbQueryOne("SELECT * FROM users WHERE id = ?", [$userId]);
+            }
+            dbExecute("UPDATE users SET telegram_id = ?, telegram_username = ? WHERE id = ?", [$tgId, $tgUsername ?: null, $user['id']]);
+            $user['telegram_id'] = $tgId;
+        }
+    }
+
+    if (!$user) {
+        logAudit('telegram_login_rejected', 'user', null, null, ['telegram_id' => $tgId, 'username' => $tgUsername], 'Неизвестный Telegram');
+        return ['ok' => false, 'error' => 'Этот Telegram не подключён к системе. Попросите администратора добавить вас.'];
+    }
+    if (!(int)$user['active']) {
+        return ['ok' => false, 'error' => 'Аккаунт отключён'];
+    }
+
+    if ($tgUsername !== '' && $tgUsername !== (string)($user['telegram_username'] ?? '')) {
+        dbExecute("UPDATE users SET telegram_username = ? WHERE id = ?", [$tgUsername, $user['id']]);
+    }
+
+    establishSession($user);
+    issueRememberToken($user['id']);
+    logAudit('user_login', 'user', $user['id'], null, ['via' => 'telegram'], 'Вход через Telegram');
+    return ['ok' => true, 'error' => null];
+}
+
+/**
+ * Привязать Telegram к текущему (уже вошедшему) пользователю
+ * @param array $data Проверенные данные виджета
+ * @return array ['ok' => bool, 'error' => string|null]
+ */
+function linkTelegramToCurrentUser(array $data) {
+    ensureUsersRolesSchema();
+    $tgId = (int)$data['id'];
+    $taken = dbQueryOne("SELECT id FROM users WHERE telegram_id = ? AND id <> ?", [$tgId, getCurrentUserId()]);
+    if ($taken) {
+        return ['ok' => false, 'error' => 'Этот Telegram уже привязан к другому аккаунту'];
+    }
+    dbExecute("UPDATE users SET telegram_id = ?, telegram_username = ? WHERE id = ?", [$tgId, ($data['username'] ?? '') ?: null, getCurrentUserId()]);
+    logAudit('telegram_linked', 'user', getCurrentUserId(), null, ['telegram_id' => $tgId], 'Привязан Telegram');
+    return ['ok' => true, 'error' => null];
 }
 
 /**

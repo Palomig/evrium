@@ -10,9 +10,7 @@ require_once __DIR__ . '/../config/helpers.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
-if (!isLoggedIn()) {
-    jsonError('Требуется авторизация', 401);
-}
+requireSectionApi('settings');
 if (!isAdmin()) {
     jsonError('Доступ запрещён', 403);
 }
@@ -41,17 +39,31 @@ switch ($action) {
 function handleListUsers() {
     $users = dbQuery(
         "SELECT u.id, u.username, u.name, u.role, u.active, u.teacher_id, u.can_dashboard,
-                COALESCE(t.display_name, t.name) AS teacher_name
+                u.telegram_id, u.telegram_username, u.permissions,
+                COALESCE(t.display_name, t.name) AS teacher_name, t.telegram_id AS teacher_telegram_id
          FROM users u
          LEFT JOIN teachers t ON u.teacher_id = t.id
          ORDER BY u.role, u.id",
         []
     );
+    foreach ($users as &$u) {
+        $u['effective'] = zpEffectivePermissions($u);
+        unset($u['permissions']);
+    }
+    unset($u);
     $teachers = dbQuery(
-        "SELECT id, COALESCE(display_name, name) AS name FROM teachers WHERE active = 1 ORDER BY id",
+        "SELECT id, COALESCE(display_name, name) AS name, telegram_id FROM teachers WHERE active = 1 ORDER BY id",
         []
     );
-    jsonSuccess(['users' => $users, 'teachers' => $teachers, 'self_id' => getCurrentUserId()]);
+    jsonSuccess([
+        'users' => $users,
+        'teachers' => $teachers,
+        'sections' => zpSections(),
+        'defaults' => ['admin' => zpRoleDefaults('admin'), 'teacher' => zpRoleDefaults('teacher')],
+        'self_id' => getCurrentUserId(),
+        'is_owner' => isOwner(),
+        'bot_username' => getBotUsername(),
+    ]);
 }
 
 function handleCreateUser() {
@@ -69,8 +81,15 @@ function handleCreateUser() {
     if ($name === '') {
         jsonError('Укажите имя', 400);
     }
-    if (mb_strlen($password) < 8) {
-        jsonError('Пароль не короче 8 символов', 400);
+    if ($password !== '' && mb_strlen($password) < 8) {
+        jsonError('Пароль не короче 8 символов (или оставьте пустым — вход только через Telegram)', 400);
+    }
+    $telegramId = (int)($data['telegram_id'] ?? 0) ?: null;
+    if ($telegramId) {
+        $taken = dbQueryOne("SELECT id FROM users WHERE telegram_id = ?", [$telegramId]);
+        if ($taken) {
+            jsonError('Этот Telegram уже привязан к другому пользователю', 400);
+        }
     }
     if ($role === 'teacher') {
         if (!$teacherId) {
@@ -84,13 +103,20 @@ function handleCreateUser() {
         $teacherId = null;
     }
 
-    $userId = createUser($username, $password, $name, $role);
+    if ($password === '' && !$telegramId && !$teacherId) {
+        jsonError('Без пароля нужен Telegram ID или привязка к преподавателю', 400);
+    }
+
+    $userId = createUser($username, $password !== '' ? $password : bin2hex(random_bytes(16)), $name, $role);
     if (!$userId) {
         jsonError('Логин уже занят', 400);
     }
 
     if ($teacherId) {
         dbExecute("UPDATE users SET teacher_id = ? WHERE id = ?", [$teacherId, $userId]);
+    }
+    if ($telegramId) {
+        dbExecute("UPDATE users SET telegram_id = ? WHERE id = ?", [$telegramId, $userId]);
     }
 
     jsonSuccess(['id' => $userId]);
@@ -148,6 +174,41 @@ function handleUpdateUser() {
     if (isset($data['role']) && in_array($data['role'], ['admin', 'teacher'], true)) {
         $updates[] = 'role = ?';
         $params[] = $data['role'];
+    }
+    if (array_key_exists('permissions', $data)) {
+        if ($target['role'] === 'owner') {
+            jsonError('Владелец имеет доступ ко всем разделам', 400);
+        }
+        // Храним только известные разделы; NULL = по умолчанию для роли
+        $clean = null;
+        if (is_array($data['permissions'])) {
+            $clean = [];
+            foreach (zpSections() as $key => $label) {
+                if (array_key_exists($key, $data['permissions'])) {
+                    $clean[$key] = (bool)$data['permissions'][$key];
+                }
+            }
+        }
+        $updates[] = 'permissions = ?';
+        $params[] = $clean === null ? null : json_encode($clean);
+        if ($clean !== null && array_key_exists('dashboard', $clean)) {
+            $updates[] = 'can_dashboard = ?';
+            $params[] = $clean['dashboard'] ? 1 : 0;
+        }
+    }
+    if (array_key_exists('telegram_id', $data)) {
+        $tgId = (int)$data['telegram_id'] ?: null;
+        if ($tgId) {
+            $taken = dbQueryOne("SELECT id FROM users WHERE telegram_id = ? AND id <> ?", [$tgId, $userId]);
+            if ($taken) {
+                jsonError('Этот Telegram уже привязан к другому пользователю', 400);
+            }
+        }
+        $updates[] = 'telegram_id = ?';
+        $params[] = $tgId;
+        if (!$tgId) {
+            $updates[] = 'telegram_username = NULL';
+        }
     }
 
     if (empty($updates)) {

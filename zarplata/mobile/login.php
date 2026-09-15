@@ -15,6 +15,14 @@ if (isLoggedIn()) {
 }
 
 $error = null;
+if (!empty($_GET['tg_error'])) {
+    $error = (string)$_GET['tg_error'];
+}
+
+// Вход через Telegram: вернуть в мобильную версию, username бота для кнопки
+$_SESSION['tg_return'] = '/zarplata/mobile/';
+$botUsername = getBotUsername();
+$tgAuthUrl = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'эвриум.рф') . '/zarplata/auth/telegram.php';
 
 // Обработка формы входа
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -293,6 +301,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .desktop-link a:active {
             color: var(--accent);
         }
+            .tg-divider { display: flex; align-items: center; gap: 12px; margin: 18px 0 14px; color: var(--text-muted); font-size: 12px; }
+        .tg-divider::before, .tg-divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+        .tg-login { display: flex; justify-content: center; min-height: 40px; }
+        .tg-hint { margin-top: 10px; text-align: center; color: var(--text-muted); font-size: 12px; }
     </style>
 </head>
 <body>
@@ -370,6 +382,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     Войти
                 </button>
             </form>
+
+            <?php if ($botUsername): ?>
+            <div class="tg-divider"><span>или</span></div>
+            <div class="tg-login">
+                <script async src="https://telegram.org/js/telegram-widget.js?22"
+                        data-telegram-login="<?= htmlspecialchars($botUsername) ?>"
+                        data-size="large" data-radius="10" data-lang="ru"
+                        data-auth-url="<?= htmlspecialchars($tgAuthUrl) ?>"
+                        data-request-access="write"></script>
+            </div>
+            <p class="tg-hint">Через Telegram входят преподаватели, подключённые к боту</p>
+            <?php endif; ?>
         </div>
 
         <div class="desktop-link">

@@ -11,8 +11,8 @@ require_once __DIR__ . '/config/helpers.php';
 require_once __DIR__ . '/mobile/config/mobile_detect.php';
 redirectToMobileIfNeeded('settings.php');
 
-requireAuth();
-requireAdmin();
+requireSection('settings');
+$_SESSION['tg_return'] = '/zarplata/settings.php'; // возврат после привязки Telegram
 $user = getCurrentUser();
 
 // Получить все настройки
@@ -731,7 +731,7 @@ require_once __DIR__ . '/templates/header.php';
 <!-- Пользователи панели -->
 <div class="card mt-4" style="margin-top: 24px;">
     <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <h3 style="margin: 0;">Пользователи панели</h3>
+        <h3 style="margin: 0;">Пользователи и доступы</h3>
         <button class="btn btn-primary" onclick="toggleUserForm()">
             <span class="material-icons" style="margin-right: 6px; font-size: 18px;">person_add</span>
             Добавить
@@ -739,9 +739,24 @@ require_once __DIR__ . '/templates/header.php';
     </div>
 
     <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px;">
-        Преподаватели видят только расписание (своя колонка), уроки, посещаемость и свою зарплату.
-        Галка «Дашборд» открывает пользователю главную страницу.
+        Расписание, уроки, посещаемость и своя зарплата открыты всем. Остальные разделы включаются галочками.
+        Владелец видит всё; у администратора по умолчанию всё, кроме настроек; у преподавателя — только своё.
+        Через Telegram входят пользователи с привязанным Telegram и преподаватели, подключённые к боту.
     </p>
+
+    <?php if (!empty($_GET['tg_linked'])): ?>
+    <div class="alert alert-success" style="margin-bottom: 16px;">Telegram привязан к вашему аккаунту</div>
+    <?php elseif (!empty($_GET['tg_error'])): ?>
+    <div class="alert alert-error" style="margin-bottom: 16px;"><?= e($_GET['tg_error']) ?></div>
+    <?php endif; ?>
+
+    <div id="tg-self-link" style="display: none; align-items: center; gap: 14px; flex-wrap: wrap; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px;">
+        <div style="font-size: 13px;">
+            <strong>Ваш Telegram не привязан.</strong>
+            <span style="color: var(--text-secondary);">Нажмите кнопку — и сможете входить без пароля.</span>
+        </div>
+        <div id="tg-self-widget"></div>
+    </div>
 
     <!-- Форма создания -->
     <div id="user-create-form" style="display: none; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px;">
@@ -766,10 +781,17 @@ require_once __DIR__ . '/templates/header.php';
                 <select id="nu-teacher"></select>
             </div>
             <div>
-                <label style="font-size: 12px;">Пароль (мин. 8)</label>
-                <input type="text" id="nu-password" autocomplete="off">
+                <label style="font-size: 12px;">Telegram ID (необязательно)</label>
+                <input type="text" id="nu-telegram" placeholder="245710727" inputmode="numeric" autocomplete="off">
+            </div>
+            <div>
+                <label style="font-size: 12px;">Пароль (мин. 8, можно пусто)</label>
+                <input type="text" id="nu-password" autocomplete="off" placeholder="только Telegram">
             </div>
         </div>
+        <p style="color: var(--text-muted); font-size: 12px; margin: 10px 0 0;">
+            Telegram ID можно узнать у бота @userinfobot. Преподавателю ID не нужен — возьмём из бота посещаемости.
+        </p>
         <div style="margin-top: 12px; display: flex; gap: 8px;">
             <button class="btn btn-primary" onclick="createPanelUser()">Создать</button>
             <button class="btn btn-secondary" onclick="toggleUserForm()">Отмена</button>
@@ -781,21 +803,32 @@ require_once __DIR__ . '/templates/header.php';
         <table style="width: 100%;">
             <thead>
                 <tr>
-                    <th>Логин</th>
-                    <th>Имя</th>
+                    <th>Пользователь</th>
                     <th>Роль</th>
-                    <th>Преподаватель</th>
-                    <th>Дашборд</th>
+                    <th>Telegram</th>
+                    <th>Доступы</th>
                     <th>Активен</th>
                     <th style="text-align: right;">Действия</th>
                 </tr>
             </thead>
             <tbody id="users-table-body">
-                <tr><td colspan="7" style="color: var(--text-muted);">Загрузка…</td></tr>
+                <tr><td colspan="6" style="color: var(--text-muted);">Загрузка…</td></tr>
             </tbody>
         </table>
     </div>
 </div>
+
+<style>
+    .perm-grid { display: flex; flex-wrap: wrap; gap: 4px 10px; max-width: 420px; }
+    .perm-grid label { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; white-space: nowrap; cursor: pointer; color: var(--text-secondary); }
+    .perm-grid label.on { color: var(--text-primary); }
+    .perm-grid input { width: auto; margin: 0; }
+    .perm-all { color: var(--accent, #14b8a6); font-size: 12px; }
+    .tg-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+    .tg-chip .x { cursor: pointer; color: var(--text-muted); font-size: 16px; line-height: 1; }
+    .tg-chip .x:hover { color: var(--status-rose, #f43f5e); }
+    .btn-mini { padding: 4px 9px; font-size: 12px; }
+</style>
 
 <script>
 let panelUsersData = null;
@@ -808,6 +841,35 @@ async function usersApi(action, payload) {
     return r.json();
 }
 
+function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function renderTelegramCell(u) {
+    const isSelf = parseInt(u.id) === parseInt(panelUsersData.self_id);
+    if (u.telegram_id) {
+        const label = u.telegram_username ? '@' + escapeHtml(u.telegram_username) : 'ID ' + u.telegram_id;
+        return `<span class="tg-chip" title="ID ${u.telegram_id}">${label}<span class="x" title="Отвязать" onclick="unlinkTelegram(${u.id}, '${escapeHtml(u.username)}')">×</span></span>`;
+    }
+    if (u.teacher_telegram_id) {
+        return `<span class="tg-chip" style="color: var(--text-secondary);" title="Возьмём из бота при первом входе">через бота</span>
+                <button class="btn btn-secondary btn-mini" onclick="setTelegramId(${u.id}, '${escapeHtml(u.username)}')">ID…</button>`;
+    }
+    return `<span style="color: var(--text-muted);">—</span>
+            ${isSelf ? '' : `<button class="btn btn-secondary btn-mini" onclick="setTelegramId(${u.id}, '${escapeHtml(u.username)}')">ID…</button>`}`;
+}
+
+function renderPermsCell(u) {
+    if (u.role === 'owner') {
+        return '<span class="perm-all">все разделы</span>';
+    }
+    const sections = panelUsersData.sections;
+    return '<div class="perm-grid">' + Object.keys(sections).map(key => {
+        const on = !!u.effective[key];
+        return `<label class="${on ? 'on' : ''}"><input type="checkbox" ${on ? 'checked' : ''} onchange="togglePerm(${u.id}, '${key}', this.checked)">${escapeHtml(sections[key])}</label>`;
+    }).join('') + '</div>';
+}
+
 async function loadPanelUsers() {
     const result = await usersApi('list');
     if (!result.success) return;
@@ -816,23 +878,49 @@ async function loadPanelUsers() {
     // Селект преподавателей в форме создания
     const tsel = document.getElementById('nu-teacher');
     tsel.innerHTML = panelUsersData.teachers
-        .map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        .map(t => `<option value="${t.id}">${escapeHtml(t.name)}${t.telegram_id ? ' · в боте' : ''}</option>`).join('');
+
+    // Виджет привязки собственного Telegram (только если ещё не привязан и бот известен)
+    const self = panelUsersData.users.find(u => parseInt(u.id) === parseInt(panelUsersData.self_id));
+    const linkBox = document.getElementById('tg-self-link');
+    if (self && !self.telegram_id && panelUsersData.bot_username) {
+        linkBox.style.display = 'flex';
+        const holder = document.getElementById('tg-self-widget');
+        if (!holder.childElementCount) {
+            const sc = document.createElement('script');
+            sc.async = true;
+            sc.src = 'https://telegram.org/js/telegram-widget.js?22';
+            sc.setAttribute('data-telegram-login', panelUsersData.bot_username);
+            sc.setAttribute('data-size', 'medium');
+            sc.setAttribute('data-radius', '8');
+            sc.setAttribute('data-lang', 'ru');
+            sc.setAttribute('data-auth-url', location.origin + '/zarplata/auth/telegram.php');
+            holder.appendChild(sc);
+        }
+    } else {
+        linkBox.style.display = 'none';
+    }
 
     const roleNames = { owner: 'Владелец', admin: 'Админ', teacher: 'Преподаватель' };
     const tbody = document.getElementById('users-table-body');
     tbody.innerHTML = panelUsersData.users.map(u => {
-        const dashChecked = u.can_dashboard === null
-            ? (u.role !== 'teacher') : !!parseInt(u.can_dashboard);
         const isSelf = parseInt(u.id) === parseInt(panelUsersData.self_id);
+        const canEditRole = u.role !== 'owner' && !isSelf;
+        const roleCell = canEditRole
+            ? `<select onchange="updatePanelUser(${u.id}, {role: this.value})" style="padding: 4px 6px; font-size: 12px; min-width: 140px;">
+                   <option value="teacher" ${u.role === 'teacher' ? 'selected' : ''}>Преподаватель</option>
+                   <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Админ</option>
+               </select>`
+            : (roleNames[u.role] || u.role);
         return `<tr style="${parseInt(u.active) ? '' : 'opacity: 0.45;'}">
-            <td><strong>${u.username}</strong>${isSelf ? ' <span style="color: var(--text-muted); font-size: 11px;">(вы)</span>' : ''}</td>
-            <td>${u.name || ''}</td>
-            <td>${roleNames[u.role] || u.role}</td>
-            <td>${u.teacher_name || '—'}</td>
-            <td><input type="checkbox" ${dashChecked ? 'checked' : ''} onchange="updatePanelUser(${u.id}, {can_dashboard: this.checked ? 1 : 0})"></td>
+            <td><strong>${escapeHtml(u.username)}</strong>${isSelf ? ' <span style="color: var(--text-muted); font-size: 11px;">(вы)</span>' : ''}
+                <div style="color: var(--text-secondary); font-size: 12px;">${escapeHtml(u.name || '')}${u.teacher_name ? ' · ' + escapeHtml(u.teacher_name) : ''}</div></td>
+            <td>${roleCell}</td>
+            <td>${renderTelegramCell(u)}</td>
+            <td>${renderPermsCell(u)}</td>
             <td><input type="checkbox" ${parseInt(u.active) ? 'checked' : ''} ${isSelf ? 'disabled' : ''} onchange="updatePanelUser(${u.id}, {active: this.checked ? 1 : 0})"></td>
             <td style="text-align: right;">
-                <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 12px;" onclick="resetPanelPassword(${u.id}, '${u.username}')">Сбросить пароль</button>
+                <button class="btn btn-secondary btn-mini" onclick="resetPanelPassword(${u.id}, '${escapeHtml(u.username)}')">Пароль</button>
             </td>
         </tr>`;
     }).join('');
@@ -849,6 +937,7 @@ async function createPanelUser() {
         name: document.getElementById('nu-name').value.trim(),
         role: document.getElementById('nu-role').value,
         teacher_id: parseInt(document.getElementById('nu-teacher').value) || null,
+        telegram_id: parseInt(document.getElementById('nu-telegram').value) || null,
         password: document.getElementById('nu-password').value
     };
     const result = await usersApi('create', payload);
@@ -856,9 +945,7 @@ async function createPanelUser() {
         alert(result.error || 'Ошибка');
         return;
     }
-    document.getElementById('nu-username').value = '';
-    document.getElementById('nu-name').value = '';
-    document.getElementById('nu-password').value = '';
+    ['nu-username', 'nu-name', 'nu-password', 'nu-telegram'].forEach(id => document.getElementById(id).value = '');
     toggleUserForm();
     loadPanelUsers();
 }
@@ -869,6 +956,28 @@ async function updatePanelUser(id, fields) {
         alert(result.error || 'Ошибка');
     }
     loadPanelUsers();
+}
+
+// Галочка раздела: отправляем полный набор текущих доступов пользователя
+function togglePerm(id, key, on) {
+    const u = panelUsersData.users.find(x => parseInt(x.id) === id);
+    if (!u) return;
+    const perms = Object.assign({}, u.effective);
+    perms[key] = on;
+    updatePanelUser(id, {permissions: perms});
+}
+
+function setTelegramId(id, username) {
+    const value = prompt(`Telegram ID для «${username}» (число, узнать у @userinfobot):`);
+    if (value === null) return;
+    const tgId = parseInt(value.trim());
+    if (!tgId) { alert('Нужно число'); return; }
+    updatePanelUser(id, {telegram_id: tgId});
+}
+
+function unlinkTelegram(id, username) {
+    if (!confirm(`Отвязать Telegram от «${username}»? Вход через Telegram для него перестанет работать.`)) return;
+    updatePanelUser(id, {telegram_id: null});
 }
 
 async function resetPanelPassword(id, username) {

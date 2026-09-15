@@ -19,9 +19,7 @@ if ($action === 'webhook') {
 }
 
 // Все остальные действия требуют авторизации
-if (!isLoggedIn()) {
-    jsonError('Требуется авторизация', 401);
-}
+requireSectionApi('student_payments');
 
 // Только для администраторов
 if (!isAdmin()) {

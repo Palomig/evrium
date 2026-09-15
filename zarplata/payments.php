@@ -13,8 +13,7 @@ require_once __DIR__ . '/config/student_helpers.php'; // ⭐ Новый helper �
 require_once __DIR__ . '/mobile/config/mobile_detect.php';
 redirectToMobileIfNeeded('payments.php');
 
-requireAuth();
-requireAdmin();
+requireSection('payments');
 $user = getCurrentUser();
 
 // Получить фильтр по преподавателю

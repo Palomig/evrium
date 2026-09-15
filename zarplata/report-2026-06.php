@@ -8,7 +8,7 @@
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/config/auth.php';
 
-requireAdmin();
+requireSection('reports');
 ?>
 <!DOCTYPE html>
 <html lang="ru">
