@@ -278,7 +278,13 @@ function can($section) {
     }
     $uid = (int)getCurrentUserId();
     if (!isset($cache[$uid])) {
-        $user = dbQueryOne("SELECT role, permissions, can_dashboard FROM users WHERE id = ? AND active = 1", [$uid]);
+        $sql = "SELECT role, permissions, can_dashboard FROM users WHERE id = ? AND active = 1";
+        $user = dbQueryOne($sql, [$uid]);
+        if (!$user) {
+            // Колонок ещё нет (старая сессия до миграции) — мигрируем и повторяем
+            ensureUsersRolesSchema();
+            $user = dbQueryOne($sql, [$uid]);
+        }
         $cache[$uid] = $user ? zpEffectivePermissions($user) : [];
     }
     return !empty($cache[$uid][$section]);
