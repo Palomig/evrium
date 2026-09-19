@@ -25,9 +25,11 @@ Week mode keeps time frozen on the left and days frozen at the top. Three days a
 
 Editing opens as a bottom sheet. The prototype demonstrates the interaction locally and never calls production APIs.
 
+Each student is an actionable card rather than a decorative text chip. Tapping it expands the parent contact in place and exposes call and edit actions. The student editor stores the parent's name and phone number locally in the prototype; attendance statuses remain outside this scope.
+
 ## Visual direction
 
-Operate-mode interface for repeated use in mixed indoor lighting: deep graphite surfaces, restrained teal and violet teacher accents, high-contrast text, compact but comfortable touch targets, and no decorative effects that compete with the schedule. Typography uses a workhorse sans stack and tabular figures for times.
+Operate-mode interface for repeated use in mixed indoor lighting: deep graphite surfaces, muted sage and slate-blue teacher accents, high-contrast text, compact but comfortable touch targets, and no decorative effects that compete with the schedule. Typography uses a workhorse sans stack and tabular figures for times.
 
 ## Responsive behavior
 
@@ -38,4 +40,3 @@ The phone layout is canonical. Wider screens center the app in a phone-like work
 - Structural tests verify both modes, teacher/day controls, week grid, edit sheet, settings sheet, and local-only behavior.
 - Browser checks cover 390×844 and 1440×1000.
 - Interaction checks cover mode changes, teacher/day changes, lesson editing, adding a lesson, and settings.
-

@@ -17,11 +17,11 @@
       --text: #f4f8f7;
       --muted: #9aaba7;
       --muted-2: #71817d;
-      --teal: #28d4bc;
-      --teal-soft: #173b36;
-      --teal-deep: #0e7165;
-      --violet: #a989ef;
-      --violet-soft: #302744;
+      --teal: #9db8a3;
+      --teal-soft: #25352e;
+      --teal-deep: #617d69;
+      --violet: #9eabc0;
+      --violet-soft: #29313d;
       --amber: #f2bb62;
       --danger: #ff7b78;
       --radius: 14px;
@@ -139,11 +139,23 @@
     .lesson-head { display: flex; align-items: center; padding: 13px 14px 9px; gap: 10px; }
     .lesson-title { font-size: 16px; line-height: 1.2; font-weight: 780; letter-spacing: -.018em; }
     .lesson-duration { margin-left: auto; color: var(--muted); font-size: 11px; }
-    .students { display: flex; flex-wrap: wrap; gap: 7px; padding: 0 14px 13px; }
-    .student { display: inline-flex; align-items: center; min-height: 31px; padding: 5px 9px; border-radius: 9px; background: #20332f; color: #dff8f4; font-size: 13px; font-weight: 630; }
-    body[data-teacher="ruslan"] .student { background: #332b44; color: #eee8fb; }
-    .student[data-temporary="true"] { color: #ffe3ad; border: 1px dashed rgba(242,187,98,.55); background: rgba(242,187,98,.08); }
-    .student[data-temporary="true"]::after { content: "до сб"; margin-left: 7px; color: var(--amber); font-size: 10px; text-transform: uppercase; }
+    .students { display: grid; gap: 7px; padding: 0 14px 13px; }
+    .student-card { position: relative; min-height: 40px; padding: 0 11px; border: 1px solid #344640; border-radius: 10px; background: #1b2b26; color: #e4eee7; cursor: pointer; }
+    body[data-teacher="ruslan"] .student-card { background: #29313d; border-color: #3d4859; color: #edf0f5; }
+    .student-summary { display: flex; align-items: center; min-height: 40px; gap: 9px; }
+    .student-avatar { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 8px; background: #31473b; color: #c9d8cd; font-size: 11px; font-weight: 800; }
+    body[data-teacher="ruslan"] .student-avatar { background: #3a4658; color: #d8deea; }
+    .student-name { font-size: 13px; font-weight: 720; }
+    .student-expand { margin-left: auto; color: var(--muted); transition: transform .18s ease; }
+    .student-card.expanded .student-expand { transform: rotate(180deg); }
+    .student-details { display: none; grid-template-columns: 1fr auto auto; align-items: center; gap: 7px; padding: 1px 0 10px 34px; }
+    .student-card.expanded .student-details { display: grid; }
+    .parent-contact b { display: block; color: #dce7df; font-size: 12px; }
+    .parent-contact span { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+    .contact-action { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid var(--line); border-radius: 9px; background: rgba(255,255,255,.025); color: #bac9c0; cursor: pointer; text-decoration: none; }
+    .contact-action svg { width: 17px; height: 17px; }
+    .student-card[data-temporary="true"] { border-style: dashed; border-color: rgba(242,187,98,.55); }
+    .student-card[data-temporary="true"] .student-name::after { content: "до сб"; margin-left: 7px; color: var(--amber); font-size: 9px; text-transform: uppercase; }
     .add-person { min-width: 31px; min-height: 31px; padding: 0; border: 1px dashed #3b514c; border-radius: 9px; background: transparent; color: var(--muted); cursor: pointer; }
     .gap-label { margin: -1px 0 10px 61px; color: var(--muted-2); font-size: 11px; }
     .empty-day { padding: 52px 28px; text-align: center; color: var(--muted); }
@@ -306,6 +318,16 @@
       <div class="sheet-actions"><button class="primary close-sheet" type="button" style="margin-left:auto">Готово</button></div>
     </div>
   </div>
+  <div class="overlay" id="studentSheet" role="dialog" aria-modal="true" aria-labelledby="studentSheetTitle">
+    <div class="sheet"><div class="grabber"></div><div class="sheet-head"><h2 id="studentSheetTitle">Карточка ученика</h2><button class="icon-button close-sheet" type="button" aria-label="Закрыть"><svg class="icon" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+      <div class="sheet-body">
+        <label class="field"><span>Ученик</span><input id="studentName" autocomplete="off"></label>
+        <label class="field"><span>Имя родителя</span><input id="parentName" autocomplete="off" placeholder="Например, Елена"></label>
+        <label class="field"><span>Телефон родителя</span><input id="parentPhone" type="tel" autocomplete="tel" placeholder="+7 999 000-00-00"></label>
+      </div>
+      <div class="sheet-actions"><button class="close-sheet" type="button" style="margin-left:auto">Отмена</button><button class="primary" id="saveStudent" type="button">Сохранить</button></div>
+    </div>
+  </div>
   <div class="toast" id="toast" role="status">Изменения сохранены в прототипе</div>
 
   <script>
@@ -332,11 +354,22 @@
         []
       ]
     };
-    let teacher = 'palomig', selectedDay = 1, editing = null, showMorning = false, lastTrigger = null;
+    const contacts = {
+      'Маша': {parent:'Елена',phone:'+7 916 245-18-03'}, 'Олег': {parent:'Ирина',phone:'+7 926 714-32-80'},
+      'Божена': {parent:'Анна',phone:'+7 985 330-41-27'}, 'Владислава': {parent:'Мария',phone:'+7 903 615-22-49'},
+      'Лиза': {parent:'Ольга',phone:'+7 916 404-71-12'}, 'Арина': {parent:'Наталья',phone:'+7 926 518-09-44'},
+      'Артём': {parent:'Сергей',phone:'+7 903 117-60-25'}, 'Тимофей': {parent:'Юлия',phone:'+7 985 264-38-51'}
+    };
+    let teacher = 'palomig', selectedDay = 1, editing = null, editingStudent = null, showMorning = false, lastTrigger = null;
     const qs = (s, root=document) => root.querySelector(s);
     const qsa = (s, root=document) => [...root.querySelectorAll(s)];
 
     function esc(value) { const node = document.createElement('span'); node.textContent = value; return node.innerHTML; }
+    function studentCard(name,index,temporary) {
+      const contact=contacts[name]||{parent:'Контакт не заполнен',phone:'Добавить номер'};
+      const tel=contact.phone.startsWith('+')?contact.phone.replace(/[^+\d]/g,''):'#';
+      return `<div class="student-card" role="button" tabindex="0" data-student-index="${index}"${temporary?' data-temporary="true"':''}><div class="student-summary"><span class="student-avatar">${esc(name.slice(0,1))}</span><span class="student-name">${esc(name)}</span><span class="student-expand">⌄</span></div><div class="student-details"><span class="parent-contact"><b>${esc(contact.parent)}</b><span>${esc(contact.phone)}</span></span><a class="contact-action" href="${tel==='#'?'javascript:void(0)':`tel:${tel}`}" aria-label="Позвонить родителю"><svg class="icon" viewBox="0 0 24 24"><path d="M7 3H4a1 1 0 0 0-1 1c0 9.4 7.6 17 17 17a1 1 0 0 0 1-1v-3l-4-1-1.3 2.2a15 15 0 0 1-9.9-9.9L8 7Z"/></svg></a><button class="contact-action edit-student" type="button" aria-label="Изменить контакт"><svg class="icon" viewBox="0 0 24 24"><path d="m4 20 4.2-1 10.5-10.5-3.2-3.2L5 15.8ZM14.5 6.5l3.2 3.2"/></svg></button></div></div>`;
+    }
     function renderDay() {
       const items = schedule[teacher][selectedDay];
       qs('#dayTitle').textContent = `${names[selectedDay]}, ${dates[selectedDay]} сентября`;
@@ -345,12 +378,17 @@
       qs('#dayLoad').textContent = items.length ? `${items[0].time}–${items.at(-1).time.replace(':00',':50')}` : 'Нет занятий';
       qs('#timeline').innerHTML = items.length ? items.map((item,i) => {
         const gap = i && parseInt(item.time)-parseInt(items[i-1].time)>1;
-        return `${gap?`<div class="gap-label">Свободное окно · ${parseInt(item.time)-parseInt(items[i-1].time)-1} ч</div>`:''}<div class="lesson-row${gap?' has-gap':''}"><span class="time">${item.time}</span><article class="lesson-card" tabindex="0" data-index="${i}"><div class="lesson-head"><span class="lesson-title">${esc(item.title)}</span><span class="lesson-duration">50 мин</span></div><div class="students">${item.students.map((s,j)=>`<span class="student"${item.temporary&&j===0?' data-temporary="true"':''}>${esc(s)}</span>`).join('')}<button class="add-person" type="button" aria-label="Добавить ученика">+</button></div></article></div>`;
+        return `${gap?`<div class="gap-label">Свободное окно · ${parseInt(item.time)-parseInt(items[i-1].time)-1} ч</div>`:''}<div class="lesson-row${gap?' has-gap':''}"><span class="time">${item.time}</span><article class="lesson-card" tabindex="0" data-index="${i}"><div class="lesson-head"><span class="lesson-title">${esc(item.title)}</span><span class="lesson-duration">50 мин</span></div><div class="students">${item.students.map((s,j)=>studentCard(s,j,item.temporary&&j===0)).join('')}<button class="add-person" type="button" aria-label="Добавить ученика">+ Добавить ученика</button></div></article></div>`;
       }).join('') : `<div class="empty-day"><svg class="icon" viewBox="0 0 24 24"><path d="M5 5h14v15H5zM8 3v4m8-4v4M5 10h14"/><path d="m9 15 2 2 4-4"/></svg><h3>Воскресенье свободно</h3><p>Можно добавить разовое занятие<br>кнопкой внизу экрана.</p></div>`;
       qsa('.lesson-card').forEach(card => {
-        card.addEventListener('click',()=>openEditor(Number(card.dataset.index)));
-        card.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();openEditor(Number(card.dataset.index));} });
+        card.addEventListener('click',e=>{ if(!e.target.closest('.student-card,.add-person')) openEditor(Number(card.dataset.index)); });
+        card.addEventListener('keydown',e=>{ if(!e.target.closest('.student-card,.add-person')&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openEditor(Number(card.dataset.index));} });
       });
+      qsa('.student-card').forEach(card=>{
+        card.addEventListener('click',e=>{e.stopPropagation(); if(e.target.closest('.edit-student')) return openStudentEditor(card); if(e.target.closest('.contact-action')) return; card.classList.toggle('expanded');});
+        card.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('.contact-action')){e.preventDefault();card.classList.toggle('expanded');}});
+      });
+      qsa('.add-person').forEach(button=>button.addEventListener('click',e=>{e.stopPropagation(); openStudentEditor(null,button.closest('.lesson-card'));}));
     }
     function renderWeek() {
       const hours = Array.from({length: showMorning?14:8},(_,i)=>(showMorning?8:14)+i);
@@ -383,6 +421,13 @@
       qs('#sheetTitle').textContent='Редактировать занятие'; qs('#editTime').value=item.time; qs('#editTitle').value=item.title; qs('#editStudents').value=item.students.join(', '); qs('#editTemporary').checked=!!item.temporary; qs('.delete').hidden=false; openSheet('lessonSheet');
     }
     function openNew(day=selectedDay,time='17:00') { editing={day,index:null}; selectedDay=day; qs('#sheetTitle').textContent='Новое занятие'; qs('#editTime').value=time; qs('#editTitle').value=''; qs('#editStudents').value=''; qs('#editTemporary').checked=false; qs('.delete').hidden=true; openSheet('lessonSheet'); }
+    function openStudentEditor(card,lessonCard=null) {
+      const lessonIndex=Number((card||lessonCard).closest('.lesson-card').dataset.index);
+      const studentIndex=card?Number(card.dataset.studentIndex):null;
+      const name=studentIndex===null?'':schedule[teacher][selectedDay][lessonIndex].students[studentIndex];
+      const contact=contacts[name]||{parent:'',phone:''}; editingStudent={lessonIndex,studentIndex,oldName:name};
+      qs('#studentName').value=name; qs('#parentName').value=contact.parent; qs('#parentPhone').value=contact.phone; openSheet('studentSheet');
+    }
     function openSheet(id){ lastTrigger=document.activeElement; qs('.app').inert=true; qs('#'+id).classList.add('open'); setTimeout(()=>qs('#'+id+' input, #'+id+' select, #'+id+' button')?.focus(),80); }
     function closeSheets(){ qsa('.overlay').forEach(x=>x.classList.remove('open')); qs('.app').inert=false; lastTrigger?.focus(); }
     function toast(){ const t=qs('#toast'); t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800); }
@@ -401,6 +446,14 @@
       const item={time:qs('#editTime').value,title:qs('#editTitle').value||'Без названия',students:qs('#editStudents').value.split(',').map(x=>x.trim()).filter(Boolean),temporary:qs('#editTemporary').checked};
       if(editing.index===null) schedule[teacher][editing.day].push(item); else schedule[teacher][editing.day][editing.index]=item;
       schedule[teacher][editing.day].sort((a,b)=>a.time.localeCompare(b.time)); renderDay(); renderWeek(); closeSheets(); toast();
+    });
+    qs('#saveStudent').addEventListener('click',()=>{
+      const name=qs('#studentName').value.trim(); if(!name)return;
+      const list=schedule[teacher][selectedDay][editingStudent.lessonIndex].students;
+      if(editingStudent.studentIndex===null) list.push(name); else list[editingStudent.studentIndex]=name;
+      if(editingStudent.oldName&&editingStudent.oldName!==name) delete contacts[editingStudent.oldName];
+      contacts[name]={parent:qs('#parentName').value.trim()||'Контакт не заполнен',phone:qs('#parentPhone').value.trim()||'Добавить номер'};
+      renderDay(); renderWeek(); closeSheets(); toast();
     });
     qs('.delete').addEventListener('click',()=>{if(editing?.index!==null){schedule[teacher][editing.day].splice(editing.index,1);renderDay();renderWeek();closeSheets();toast();}});
     document.addEventListener('keydown',e=>{

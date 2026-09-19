@@ -16,6 +16,11 @@ const checks = [
   ['week settings', 'id="settingsSheet"'],
   ['bottom navigation', 'class="bottom-nav"'],
   ['temporary student', 'data-temporary="true"'],
+  ['student cards', 'class="student-card"'],
+  ['parent details', 'class="student-details"'],
+  ['student editor', 'id="studentSheet"'],
+  ['parent name field', 'id="parentName"'],
+  ['parent phone field', 'id="parentPhone"'],
   ['no production requests', !/fetch\s*\(|XMLHttpRequest|\/zarplata\/api\//.test(html)],
 ];
 

@@ -39,7 +39,7 @@ switch ($action) {
             jsonError('Неверный токен', 400);
         }
         $result = completeDeviceLogin($pollToken);
-        $redirect = strpos($_SERVER['HTTP_REFERER'] ?? '', '/mobile/') !== false ? '/zarplata/mobile/' : '/zarplata/';
+        $redirect = strpos($_SERVER['HTTP_REFERER'] ?? '', '/mobile/') !== false ? '/zarplata/mobile/schedule.php' : '/zarplata/';
         jsonSuccess(['status' => $result['status'], 'error' => $result['error'], 'redirect' => $redirect]);
         break;
 
