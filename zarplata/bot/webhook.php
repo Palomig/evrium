@@ -119,8 +119,8 @@ function handleMessage($message) {
         }
 
         // 6 цифр — код привязки устройства с экрана входа
-        if (preg_match('/^\s*(\d{6})\s*$/', $text, $m)) {
-            handleDeviceCode($chatId, $telegramId, $username, $m[1]);
+        if (preg_match('/^\s*(\d{3})[\s\-]*(\d{3})\s*$/', $text, $m)) {
+            handleDeviceCode($chatId, $telegramId, $username, $m[1] . $m[2]);
             return;
         }
 
