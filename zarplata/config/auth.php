@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/device_auth.php';
 
 // Сколько хранить вход на устройстве (cookie сессии и токен «запомнить меня»)
 define('REMEMBER_LIFETIME', 60 * 60 * 24 * 30); // 30 дней
@@ -433,27 +434,7 @@ function loginWithTelegram(array $data) {
     $tgId = (int)$data['id'];
     $tgUsername = (string)($data['username'] ?? '');
 
-    $user = dbQueryOne("SELECT * FROM users WHERE telegram_id = ?", [$tgId]);
-
-    if (!$user) {
-        $teacher = dbQueryOne("SELECT * FROM teachers WHERE telegram_id = ? AND active = 1", [$tgId]);
-        if ($teacher) {
-            $user = dbQueryOne("SELECT * FROM users WHERE teacher_id = ? AND role = 'teacher' ORDER BY active DESC, id LIMIT 1", [$teacher['id']]);
-            if (!$user) {
-                $username = 'tg' . $tgId;
-                $name = $teacher['display_name'] ?: $teacher['name'];
-                $userId = createUser($username, bin2hex(random_bytes(16)), $name, 'teacher');
-                if (!$userId) {
-                    return ['ok' => false, 'error' => 'Не удалось создать аккаунт'];
-                }
-                dbExecute("UPDATE users SET teacher_id = ? WHERE id = ?", [$teacher['id'], $userId]);
-                $user = dbQueryOne("SELECT * FROM users WHERE id = ?", [$userId]);
-            }
-            dbExecute("UPDATE users SET telegram_id = ?, telegram_username = ? WHERE id = ?", [$tgId, $tgUsername ?: null, $user['id']]);
-            $user['telegram_id'] = $tgId;
-        }
-    }
-
+    $user = resolveTelegramUser($tgId, $tgUsername);
     if (!$user) {
         logAudit('telegram_login_rejected', 'user', null, null, ['telegram_id' => $tgId, 'username' => $tgUsername], 'Неизвестный Telegram');
         return ['ok' => false, 'error' => 'Этот Telegram не подключён к системе. Попросите администратора добавить вас.'];
@@ -462,14 +443,96 @@ function loginWithTelegram(array $data) {
         return ['ok' => false, 'error' => 'Аккаунт отключён'];
     }
 
-    if ($tgUsername !== '' && $tgUsername !== (string)($user['telegram_username'] ?? '')) {
-        dbExecute("UPDATE users SET telegram_username = ? WHERE id = ?", [$tgUsername, $user['id']]);
-    }
-
     establishSession($user);
     issueRememberToken($user['id']);
     logAudit('user_login', 'user', $user['id'], null, ['via' => 'telegram'], 'Вход через Telegram');
     return ['ok' => true, 'error' => null];
+}
+
+// ============================================================
+//  Привязка устройства через бота (см. config/device_auth.php)
+// ============================================================
+
+/**
+ * Приложение опрашивает статус кода. Когда бот подтвердил — входим и выдаём
+ * постоянный токен устройства.
+ * @param string $pollToken
+ * @return array ['status' => pending|done|expired|rejected|invalid, 'error' => ?string]
+ */
+function completeDeviceLogin($pollToken) {
+    ensureDeviceSchema();
+    $link = dbQueryOne("SELECT * FROM device_links WHERE poll_token = ?", [(string)$pollToken]);
+    if (!$link) {
+        return ['status' => 'invalid', 'error' => 'Код не найден'];
+    }
+    if ($link['status'] === 'rejected') {
+        return ['status' => 'rejected', 'error' => $link['reject_reason'] ?: 'Отклонено'];
+    }
+    if ($link['status'] === 'used') {
+        return ['status' => 'invalid', 'error' => 'Код уже использован'];
+    }
+    if ($link['status'] === 'pending') {
+        if (strtotime($link['expires_at']) < time()) {
+            return ['status' => 'expired', 'error' => 'Код устарел'];
+        }
+        return ['status' => 'pending', 'error' => null];
+    }
+
+    // confirmed
+    ensureUsersRolesSchema();
+    $user = dbQueryOne("SELECT * FROM users WHERE id = ? AND active = 1", [$link['user_id']]);
+    if (!$user) {
+        return ['status' => 'rejected', 'error' => 'Аккаунт отключён'];
+    }
+    dbExecute("UPDATE device_links SET status = 'used' WHERE id = ?", [$link['id']]);
+    establishSession($user);
+    issueDeviceToken($user['id'], $link['user_agent'] ?? ($_SERVER['HTTP_USER_AGENT'] ?? ''));
+    logAudit('user_login', 'user', $user['id'], null, ['via' => 'device', 'device' => deviceLabelFromUserAgent($link['user_agent'] ?? '')], 'Вход с привязанного устройства');
+    return ['status' => 'done', 'error' => null];
+}
+
+/**
+ * Постоянный токен устройства: как «запомнить меня», но kind = device,
+ * с подписью и сроком 400 дней, который продлевается при каждом визите.
+ * @param int $userId
+ * @param string $userAgent
+ */
+function issueDeviceToken($userId, $userAgent = '') {
+    ensureRememberSchema();
+    ensureDeviceSchema();
+
+    $selector  = bin2hex(random_bytes(16));
+    $validator = bin2hex(random_bytes(32));
+    $expiresAt = date('Y-m-d H:i:s', time() + DEVICE_TOKEN_LIFETIME);
+
+    try {
+        dbExecute(
+            "INSERT INTO remember_tokens (user_id, selector, validator_hash, expires_at, kind, label, user_agent, last_used_at)
+             VALUES (?, ?, ?, ?, 'device', ?, ?, NOW())",
+            [$userId, $selector, hash('sha256', $validator), $expiresAt, deviceLabelFromUserAgent($userAgent), mb_substr((string)$userAgent, 0, 255)]
+        );
+    } catch (Exception $e) {
+        error_log('issueDeviceToken failed: ' . $e->getMessage());
+        return;
+    }
+
+    setRememberCookie($selector . ':' . $validator, time() + DEVICE_TOKEN_LIFETIME);
+}
+
+/**
+ * Список устройств/сеансов пользователя для панели
+ * @param int $userId
+ * @return array
+ */
+function listUserDevices($userId) {
+    ensureRememberSchema();
+    ensureDeviceSchema();
+    return dbQuery(
+        "SELECT id, kind, label, created_at, last_used_at, expires_at
+         FROM remember_tokens WHERE user_id = ? AND expires_at > NOW()
+         ORDER BY kind = 'device' DESC, COALESCE(last_used_at, created_at) DESC",
+        [(int)$userId]
+    );
 }
 
 /**
@@ -619,11 +682,18 @@ function tryRememberLogin() {
         return;
     }
 
-    // Восстановить сессию и продлить срок жизни токена (скользящее окно)
+    // Восстановить сессию и продлить срок жизни токена (скользящее окно);
+    // привязанное устройство живёт до отзыва — продлеваем на максимум
     establishSession($user);
-    $newExpiry = date('Y-m-d H:i:s', time() + REMEMBER_LIFETIME);
-    dbExecute("UPDATE remember_tokens SET expires_at = ? WHERE id = ?", [$newExpiry, $row['id']]);
-    setRememberCookie($_COOKIE[REMEMBER_COOKIE], time() + REMEMBER_LIFETIME);
+    $isDevice = ($row['kind'] ?? 'remember') === 'device';
+    $lifetime = $isDevice ? DEVICE_TOKEN_LIFETIME : REMEMBER_LIFETIME;
+    $newExpiry = date('Y-m-d H:i:s', time() + $lifetime);
+    if (array_key_exists('last_used_at', $row)) {
+        dbExecute("UPDATE remember_tokens SET expires_at = ?, last_used_at = NOW() WHERE id = ?", [$newExpiry, $row['id']]);
+    } else {
+        dbExecute("UPDATE remember_tokens SET expires_at = ? WHERE id = ?", [$newExpiry, $row['id']]);
+    }
+    setRememberCookie($_COOKIE[REMEMBER_COOKIE], time() + $lifetime);
 }
 
 /**

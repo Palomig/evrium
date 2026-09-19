@@ -64,6 +64,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .tg-divider { display: flex; align-items: center; gap: 12px; margin: 4px 0 16px; color: var(--text-disabled, #6b7280); font-size: 12px; }
         .tg-divider::before, .tg-divider::after { content: ""; flex: 1; height: 1px; background: var(--border, #2d2d44); }
         .tg-login { display: flex; justify-content: center; min-height: 40px; margin-bottom: 16px; }
+        .dl-box { margin: 4px 0 16px; padding: 16px; border: 1px solid var(--border, #2d2d44); border-radius: 12px; text-align: center; }
+        .dl-code { font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: 32px; font-weight: 600; letter-spacing: 4px; color: var(--accent, #14b8a6); }
+        .dl-hint { margin: 8px 0 12px; color: var(--text-secondary, #9aa4b2); font-size: 13px; }
+        .dl-box .btn { text-decoration: none; }
+        .dl-status { margin-top: 12px; font-size: 13px; color: var(--text-secondary, #9aa4b2); min-height: 18px; }
+        .dl-status.wait::before { content: ''; display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 50%; border: 2px solid var(--accent, #14b8a6); border-top-color: transparent; animation: dlspin .8s linear infinite; vertical-align: -1px; }
+        .dl-status.ok { color: var(--accent, #14b8a6); }
+        .dl-status.err { color: #f43f5e; }
+        .dl-timer { margin-top: 6px; font-size: 12px; color: var(--text-disabled, #6b7280); }
+        @keyframes dlspin { to { transform: rotate(360deg); } }
         .login-container {
             min-height: 100vh;
             display: flex;
@@ -257,16 +267,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <?php if ($botUsername): ?>
                     <div class="tg-divider"><span>или</span></div>
-                    <div class="tg-login">
-                        <script async src="https://telegram.org/js/telegram-widget.js?22"
-                                data-telegram-login="<?= e($botUsername) ?>"
-                                data-size="large" data-radius="8" data-lang="ru"
-                                data-auth-url="<?= e($tgAuthUrl) ?>"
-                                data-request-access="write"></script>
+                    <button type="button" class="btn btn-secondary btn-large btn-block" id="dl-start" style="margin-bottom: 12px;">
+                        <span class="material-icons" style="margin-right: 8px; font-size: 20px;">devices</span>
+                        Привязать это устройство через Telegram
+                    </button>
+                    <div id="dl-box" class="dl-box" hidden>
+                        <div class="dl-code" id="dl-code">··· ···</div>
+                        <p class="dl-hint">Отправьте код боту или откройте его по кнопке</p>
+                        <a id="dl-link" class="btn btn-primary btn-block" href="#" target="_blank" rel="noopener">Открыть бота</a>
+                        <div class="dl-status wait" id="dl-status"></div>
+                        <div class="dl-timer" id="dl-timer"></div>
                     </div>
                     <div class="text-center">
                         <p class="text-disabled" style="font-size: 0.75rem;">
-                            Через Telegram входят преподаватели, подключённые к боту, и администраторы с привязанным аккаунтом
+                            Код подтверждают преподаватели, подключённые к боту, и администраторы с привязанным Telegram
                         </p>
                     </div>
                     <?php else: ?>
@@ -309,6 +323,71 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }, 400);
             }
         });
+    </script>
+
+    <script>
+    // Привязка устройства через бота: код → бот подтверждает → входим
+    (function () {
+        const box = document.getElementById('dl-box');
+        const startBtn = document.getElementById('dl-start');
+        if (!box || !startBtn) return;
+        const codeEl = document.getElementById('dl-code');
+        const linkEl = document.getElementById('dl-link');
+        const statusEl = document.getElementById('dl-status');
+        const timerEl = document.getElementById('dl-timer');
+        let pollToken = null, pollTimer = null, deadline = 0, tickTimer = null;
+
+        function setStatus(text, cls) { statusEl.textContent = text; statusEl.className = 'dl-status ' + (cls || ''); }
+        function stop() { clearInterval(pollTimer); clearInterval(tickTimer); pollTimer = tickTimer = null; }
+
+        async function start() {
+            startBtn.disabled = true;
+            setStatus('Получаем код…');
+            try {
+                const r = await fetch('/zarplata/api/device_link.php?action=start', { method: 'POST' });
+                const j = await r.json();
+                if (!j.success) { setStatus(j.error || 'Ошибка', 'err'); startBtn.disabled = false; return; }
+                pollToken = j.data.poll_token;
+                deadline = Date.now() + j.data.expires_in * 1000;
+                codeEl.textContent = j.data.code.slice(0, 3) + ' ' + j.data.code.slice(3);
+                linkEl.href = j.data.bot_link;
+                linkEl.textContent = 'Открыть @' + j.data.bot_username;
+                box.hidden = false;
+                startBtn.hidden = true;
+                setStatus('Ждём подтверждения в Telegram…', 'wait');
+                pollTimer = setInterval(poll, 2000);
+                tickTimer = setInterval(tick, 1000); tick();
+            } catch (e) {
+                setStatus('Нет связи с сервером', 'err'); startBtn.disabled = false;
+            }
+        }
+
+        function tick() {
+            const left = Math.max(0, Math.round((deadline - Date.now()) / 1000));
+            timerEl.textContent = 'Код действует ещё ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0');
+            if (left <= 0) { stop(); setStatus('Код устарел — запросите новый', 'err'); startBtn.hidden = false; startBtn.disabled = false; }
+        }
+
+        async function poll() {
+            try {
+                const r = await fetch('/zarplata/api/device_link.php?action=status', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ poll_token: pollToken })
+                });
+                const j = await r.json();
+                if (!j.success) return;
+                const st = j.data.status;
+                if (st === 'done') { stop(); setStatus('Устройство привязано, входим…', 'ok'); location.href = j.data.redirect; }
+                else if (st === 'rejected' || st === 'expired' || st === 'invalid') {
+                    stop(); setStatus(j.data.error || 'Отклонено', 'err'); startBtn.hidden = false; startBtn.disabled = false;
+                }
+            } catch (e) { /* сеть моргнула — следующий опрос */ }
+        }
+
+        startBtn.addEventListener('click', start);
+        // Открыли из бота по ссылке с ?device=1 — сразу показываем код
+        if (new URLSearchParams(location.search).get('device') === '1') start();
+    })();
     </script>
 </body>
 </html>

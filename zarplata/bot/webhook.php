@@ -118,6 +118,12 @@ function handleMessage($message) {
             return;
         }
 
+        // 6 цифр — код привязки устройства с экрана входа
+        if (preg_match('/^\s*(\d{6})\s*$/', $text, $m)) {
+            handleDeviceCode($chatId, $telegramId, $username, $m[1]);
+            return;
+        }
+
         // Обработка кнопок меню
         switch ($text) {
             case '📅 Сегодня':
@@ -151,6 +157,17 @@ function handleMessage($message) {
 }
 
 /**
+ * Код привязки устройства: подтверждаем по telegram_id и отвечаем пользователю
+ */
+function handleDeviceCode($chatId, $telegramId, $username, $code) {
+    require_once __DIR__ . '/../config/device_auth.php';
+    $result = confirmDeviceLink($code, $telegramId, $username);
+    $keyboard = function_exists('getMainMenuKeyboard') ? getMainMenuKeyboard() : null;
+    sendTelegramMessage($chatId, $result['message'], $keyboard);
+    error_log("[Telegram Bot] Device code $code from $telegramId: " . ($result['ok'] ? 'confirmed' : 'rejected'));
+}
+
+/**
  * Обработка команд
  */
 function handleCommand($chatId, $telegramId, $username, $text) {
@@ -162,6 +179,11 @@ function handleCommand($chatId, $telegramId, $username, $text) {
 
         switch ($command) {
             case '/start':
+                // /start dev123456 — deep link с экрана входа
+                if (!empty($parts[1]) && preg_match('/^dev(\d{6})$/', $parts[1], $m)) {
+                    handleDeviceCode($chatId, $telegramId, $username, $m[1]);
+                    break;
+                }
                 require_once __DIR__ . '/handlers/StartCommand.php';
                 handleStartCommand($chatId, $telegramId, $username);
                 break;
