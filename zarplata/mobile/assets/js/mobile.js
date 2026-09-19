@@ -323,11 +323,11 @@ document.addEventListener('DOMContentLoaded', () => {
     initMenu();
     initModals();
 
-    // Prevent overscroll on iOS
+    // Prevent overscroll on iOS — но не мешаем скроллу внутри меню и модалок
     document.body.addEventListener('touchmove', (e) => {
-        if (document.body.style.overflow === 'hidden') {
-            e.preventDefault();
-        }
+        if (document.body.style.overflow !== 'hidden') return;
+        if (e.target.closest('.slide-menu, .modal, [data-scrollable]')) return;
+        e.preventDefault();
     }, { passive: false });
 });
 

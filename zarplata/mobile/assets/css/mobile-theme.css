@@ -188,6 +188,9 @@ body.no-bottom-nav {
     display: flex;
     flex-direction: column;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-bottom: var(--safe-area-bottom);
 }
 
 .slide-menu.active {

@@ -33,7 +33,7 @@
     <?php endif; ?>
 
     <!-- Mobile JS -->
-    <script src="assets/js/mobile.js"></script>
+    <script src="assets/js/mobile.js?v=20260919"></script>
 
     <!-- Service Worker Registration -->
     <script>

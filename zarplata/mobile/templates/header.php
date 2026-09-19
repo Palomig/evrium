@@ -45,7 +45,7 @@ if (!defined('SHOW_BOTTOM_NAV')) {
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Mobile Theme CSS -->
-    <link rel="stylesheet" href="assets/css/mobile-theme.css">
+    <link rel="stylesheet" href="assets/css/mobile-theme.css?v=20260919">
 
     <!-- Page-specific CSS -->
     <?php if (defined('PAGE_CSS')): ?>
