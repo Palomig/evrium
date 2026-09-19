@@ -87,7 +87,7 @@ function fmtMoney(float $v): string {
     return number_format($v, 0, ',', ' ') . ' ₽';
 }
 
-define('PAGE_TITLE', 'Зарплата');
+define('PAGE_TITLE', isTeacherUser() ? 'Выплаты' : 'Зарплата');
 define('ACTIVE_PAGE', 'earnings');
 define('SHOW_BOTTOM_NAV', true);
 
