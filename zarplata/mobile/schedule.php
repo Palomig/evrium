@@ -650,14 +650,16 @@ body.schedule-design-2 .week-empty-slot {
 /* Видимые дни умещаются на экран: ширина колонки = остаток экрана / число дней
    (не уже 64px — при 6–7 днях появится горизонтальный скролл), масштаб ⚙ сверху */
 body.schedule-design-2 .week-scroll {
-    --week-day-col: calc(max(64px, (100vw - 48px - 4px) / 5) * var(--week-zoom));
+    --week-days: 5;
+    --week-fit-col: calc((100vw - var(--week-time-col) - 4px) / var(--week-days));
+    --week-day-col: max(var(--week-fit-col), 64px * var(--week-zoom), var(--week-fit-col) * var(--week-zoom));
 }
-body.schedule-design-2 .week-scroll[data-visible-days="1"] { --week-day-col: calc((100vw - 48px - 4px) * var(--week-zoom)); }
-body.schedule-design-2 .week-scroll[data-visible-days="2"] { --week-day-col: calc((100vw - 48px - 4px) / 2 * var(--week-zoom)); }
-body.schedule-design-2 .week-scroll[data-visible-days="3"] { --week-day-col: calc((100vw - 48px - 4px) / 3 * var(--week-zoom)); }
-body.schedule-design-2 .week-scroll[data-visible-days="4"] { --week-day-col: calc((100vw - 48px - 4px) / 4 * var(--week-zoom)); }
-body.schedule-design-2 .week-scroll[data-visible-days="6"] { --week-day-col: calc(max(64px, (100vw - 48px - 4px) / 6) * var(--week-zoom)); }
-body.schedule-design-2 .week-scroll[data-visible-days="7"] { --week-day-col: calc(max(64px, (100vw - 48px - 4px) / 7) * var(--week-zoom)); }
+body.schedule-design-2 .week-scroll[data-visible-days="1"] { --week-days: 1; }
+body.schedule-design-2 .week-scroll[data-visible-days="2"] { --week-days: 2; }
+body.schedule-design-2 .week-scroll[data-visible-days="3"] { --week-days: 3; }
+body.schedule-design-2 .week-scroll[data-visible-days="4"] { --week-days: 4; }
+body.schedule-design-2 .week-scroll[data-visible-days="6"] { --week-days: 6; }
+body.schedule-design-2 .week-scroll[data-visible-days="7"] { --week-days: 7; }
 
 body.schedule-design-2 .week-cell .lesson-card {
     padding: 0;
@@ -1220,8 +1222,8 @@ body.schedule-design-2 .week-empty-slot {
 
 <script>
 const DAY_SHORT = {1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 7: 'Вс'};
-const WEEK_ZOOM_MIN = 0.7;
-const WEEK_ZOOM_MAX = 1.45;
+const WEEK_ZOOM_MIN = 1;    // меньше не нужно: видимые дни умещаются на экран сами
+const WEEK_ZOOM_MAX = 2.2;
 const ALL_WEEK_DAYS = [1, 2, 3, 4, 5, 6, 7];
 
 // ===== Выбор преподавателя (один) =====
