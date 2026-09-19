@@ -742,6 +742,7 @@ require_once __DIR__ . '/templates/header.php';
         Расписание, уроки, посещаемость и своя зарплата открыты всем. Остальные разделы включаются галочками.
         Владелец видит всё; у администратора по умолчанию всё, кроме настроек; у преподавателя — только своё.
         Через Telegram входят пользователи с привязанным Telegram и преподаватели, подключённые к боту.
+        «Привязать это устройство» на экране входа: код подтверждается в боте, телефон запоминается до отзыва — список под именем пользователя.
     </p>
 
     <?php if (!empty($_GET['tg_linked'])): ?>
@@ -828,6 +829,11 @@ require_once __DIR__ . '/templates/header.php';
     .tg-chip .x { cursor: pointer; color: var(--text-muted); font-size: 16px; line-height: 1; }
     .tg-chip .x:hover { color: var(--status-rose, #f43f5e); }
     .btn-mini { padding: 4px 9px; font-size: 12px; }
+    .dev-list { display: flex; flex-direction: column; gap: 3px; margin-top: 6px; }
+    .dev-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-secondary); }
+    .dev-chip em { font-style: normal; color: var(--text-muted); }
+    .dev-chip .x { cursor: pointer; color: var(--text-muted); font-size: 15px; line-height: 1; }
+    .dev-chip .x:hover { color: var(--status-rose, #f43f5e); }
 </style>
 
 <script>
@@ -857,6 +863,25 @@ function renderTelegramCell(u) {
     }
     return `<span style="color: var(--text-muted);">—</span>
             ${isSelf ? '' : `<button class="btn btn-secondary btn-mini" onclick="setTelegramId(${u.id}, '${escapeHtml(u.username)}')">ID…</button>`}`;
+}
+
+function renderDevices(u) {
+    if (!u.devices || !u.devices.length) return '';
+    const fmt = d => d ? d.slice(8, 10) + '.' + d.slice(5, 7) : '';
+    return '<div class="dev-list">' + u.devices.map(d => {
+        const label = d.kind === 'device' ? (d.label || 'Устройство') : 'Сеанс «запомнить»';
+        const icon = d.kind === 'device' ? 'smartphone' : 'schedule';
+        return `<span class="dev-chip" title="привязано ${d.created_at || ''}, последний вход ${d.last_used_at || '—'}">
+            <span class="material-icons" style="font-size: 14px;">${icon}</span>${escapeHtml(label)} <em>${fmt(d.last_used_at || d.created_at)}</em>
+            <span class="x" title="Отозвать" onclick="revokeDevice(${d.id}, '${escapeHtml(label)}')">×</span></span>`;
+    }).join('') + '</div>';
+}
+
+async function revokeDevice(id, label) {
+    if (!confirm(`Отозвать «${label}»? На этом устройстве придётся входить заново.`)) return;
+    const result = await usersApi('revoke_device', {id: id});
+    if (!result.success) alert(result.error || 'Ошибка');
+    loadPanelUsers();
 }
 
 function renderPermsCell(u) {
@@ -914,7 +939,8 @@ async function loadPanelUsers() {
             : (roleNames[u.role] || u.role);
         return `<tr style="${parseInt(u.active) ? '' : 'opacity: 0.45;'}">
             <td><strong>${escapeHtml(u.username)}</strong>${isSelf ? ' <span style="color: var(--text-muted); font-size: 11px;">(вы)</span>' : ''}
-                <div style="color: var(--text-secondary); font-size: 12px;">${escapeHtml(u.name || '')}${u.teacher_name ? ' · ' + escapeHtml(u.teacher_name) : ''}</div></td>
+                <div style="color: var(--text-secondary); font-size: 12px;">${escapeHtml(u.name || '')}${u.teacher_name ? ' · ' + escapeHtml(u.teacher_name) : ''}</div>
+                ${renderDevices(u)}</td>
             <td>${roleCell}</td>
             <td>${renderTelegramCell(u)}</td>
             <td>${renderPermsCell(u)}</td>

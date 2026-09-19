@@ -32,6 +32,9 @@ switch ($action) {
     case 'reset_password':
         handleResetPassword();
         break;
+    case 'revoke_device':
+        handleRevokeDevice();
+        break;
     default:
         jsonError('Неизвестное действие', 400);
 }
@@ -48,6 +51,7 @@ function handleListUsers() {
     );
     foreach ($users as &$u) {
         $u['effective'] = zpEffectivePermissions($u);
+        $u['devices'] = listUserDevices($u['id']);
         unset($u['permissions']);
     }
     unset($u);
@@ -244,4 +248,25 @@ function handleResetPassword() {
 
     changePassword($userId, $password);
     jsonSuccess(['id' => $userId]);
+}
+
+/**
+ * Отозвать привязанное устройство (или сеанс «запомнить меня»)
+ */
+function handleRevokeDevice() {
+    $data = json_decode(file_get_contents('php://input'), true) ?: [];
+    $tokenId = (int)($data['id'] ?? 0);
+    if (!$tokenId) {
+        jsonError('Не указано устройство', 400);
+    }
+    $row = dbQueryOne("SELECT t.*, u.role FROM remember_tokens t JOIN users u ON u.id = t.user_id WHERE t.id = ?", [$tokenId]);
+    if (!$row) {
+        jsonError('Устройство не найдено', 404);
+    }
+    if ($row['role'] === 'owner' && !isOwner()) {
+        jsonError('Устройства владельца отзывает только владелец', 403);
+    }
+    dbExecute("DELETE FROM remember_tokens WHERE id = ?", [$tokenId]);
+    logAudit('device_revoked', 'user', (int)$row['user_id'], null, ['label' => $row['label'] ?? null, 'kind' => $row['kind'] ?? 'remember'], 'Отозвано устройство');
+    jsonSuccess(['id' => $tokenId]);
 }
