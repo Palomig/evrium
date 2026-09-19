@@ -670,24 +670,31 @@ body.schedule-design-2 .week-cell .lesson-card {
 
 body.schedule-design-2 .week-cell .lesson-card-header {
     justify-content: center;
-    padding: calc(6px * var(--week-zoom)) calc(6px * var(--week-zoom));
+    padding: calc(4px * var(--week-zoom)) calc(5px * var(--week-zoom));
     border-bottom: 1px solid rgba(0, 0, 0, 0.25);
 }
 
-body.schedule-design-2 .week-cell .lesson-card.bc1 .lesson-card-header { background: rgba(20, 184, 166, 0.32); }
-body.schedule-design-2 .week-cell .lesson-card.bc2 .lesson-card-header { background: rgba(168, 85, 247, 0.32); }
-body.schedule-design-2 .week-cell .lesson-card.bc3 .lesson-card-header { background: rgba(59, 130, 246, 0.32); }
-body.schedule-design-2 .week-cell .lesson-card.bc4 .lesson-card-header { background: rgba(249, 115, 22, 0.32); }
-body.schedule-design-2 .week-cell .lesson-card.bc5 .lesson-card-header { background: rgba(236, 72, 153, 0.32); }
-body.schedule-design-2 .week-cell .lesson-card.bc6 .lesson-card-header { background: rgba(234, 179, 8, 0.32); }
-body.schedule-design-2 .week-cell .lesson-card.bc7 .lesson-card-header { background: rgba(34, 197, 94, 0.32); }
-body.schedule-design-2 .week-cell .lesson-card.bc8 .lesson-card-header { background: rgba(239, 68, 68, 0.32); }
+/* Заголовок — приглушённая полоса: тёмный фон, тонкая цветная кромка сверху */
+body.schedule-design-2 .week-cell .lesson-card .lesson-card-header {
+    background: rgba(255, 255, 255, 0.035);
+    border-top: 2px solid rgba(255, 255, 255, 0.15);
+}
+body.schedule-design-2 .week-cell .lesson-card.bc1 .lesson-card-header { background: rgba(20, 184, 166, 0.10); border-top-color: rgba(20, 184, 166, 0.55); }
+body.schedule-design-2 .week-cell .lesson-card.bc2 .lesson-card-header { background: rgba(168, 85, 247, 0.10); border-top-color: rgba(168, 85, 247, 0.55); }
+body.schedule-design-2 .week-cell .lesson-card.bc3 .lesson-card-header { background: rgba(59, 130, 246, 0.10); border-top-color: rgba(59, 130, 246, 0.55); }
+body.schedule-design-2 .week-cell .lesson-card.bc4 .lesson-card-header { background: rgba(249, 115, 22, 0.10); border-top-color: rgba(249, 115, 22, 0.55); }
+body.schedule-design-2 .week-cell .lesson-card.bc5 .lesson-card-header { background: rgba(236, 72, 153, 0.10); border-top-color: rgba(236, 72, 153, 0.55); }
+body.schedule-design-2 .week-cell .lesson-card.bc6 .lesson-card-header { background: rgba(234, 179, 8, 0.10); border-top-color: rgba(234, 179, 8, 0.55); }
+body.schedule-design-2 .week-cell .lesson-card.bc7 .lesson-card-header { background: rgba(34, 197, 94, 0.10); border-top-color: rgba(34, 197, 94, 0.55); }
+body.schedule-design-2 .week-cell .lesson-card.bc8 .lesson-card-header { background: rgba(239, 68, 68, 0.10); border-top-color: rgba(239, 68, 68, 0.55); }
 
 body.schedule-design-2 .week-cell .lesson-title {
     width: 100%;
     text-align: center;
-    font-size: calc(12px * var(--week-zoom));
-    font-weight: 700;
+    font-size: calc(10px * var(--week-zoom));
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.01em;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
