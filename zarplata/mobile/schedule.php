@@ -310,12 +310,17 @@ require_once __DIR__ . '/templates/header.php';
 
 .schedule-day-mode.is-hidden { display: none; }
 
+/* Неделя: страница не скроллится, скроллится только таблица */
 body.schedule-week-mode {
     overscroll-behavior-y: none;
+    overflow: hidden;
+    height: 100dvh;
 }
 
 body.schedule-week-mode .mobile-content {
     overflow: hidden;
+    height: 100dvh;
+    min-height: 0;
 }
 
 /* Чипы дней */
@@ -642,9 +647,17 @@ body.schedule-design-2 .week-empty-slot {
 
 /* Неделя: карточка во всю ширину ячейки, как на десктопе —
    заголовок-полоса, ученики столбиком с цветной кромкой, «+» на всю ширину */
+/* Видимые дни умещаются на экран: ширина колонки = остаток экрана / число дней
+   (не уже 64px — при 6–7 днях появится горизонтальный скролл), масштаб ⚙ сверху */
 body.schedule-design-2 .week-scroll {
-    --week-day-col: calc(128px * var(--week-zoom));
+    --week-day-col: calc(max(64px, (100vw - 48px - 4px) / 5) * var(--week-zoom));
 }
+body.schedule-design-2 .week-scroll[data-visible-days="1"] { --week-day-col: calc((100vw - 48px - 4px) * var(--week-zoom)); }
+body.schedule-design-2 .week-scroll[data-visible-days="2"] { --week-day-col: calc((100vw - 48px - 4px) / 2 * var(--week-zoom)); }
+body.schedule-design-2 .week-scroll[data-visible-days="3"] { --week-day-col: calc((100vw - 48px - 4px) / 3 * var(--week-zoom)); }
+body.schedule-design-2 .week-scroll[data-visible-days="4"] { --week-day-col: calc((100vw - 48px - 4px) / 4 * var(--week-zoom)); }
+body.schedule-design-2 .week-scroll[data-visible-days="6"] { --week-day-col: calc(max(64px, (100vw - 48px - 4px) / 6) * var(--week-zoom)); }
+body.schedule-design-2 .week-scroll[data-visible-days="7"] { --week-day-col: calc(max(64px, (100vw - 48px - 4px) / 7) * var(--week-zoom)); }
 
 body.schedule-design-2 .week-cell .lesson-card {
     padding: 0;
@@ -681,17 +694,18 @@ body.schedule-design-2 .week-cell .lesson-title {
 body.schedule-design-2 .week-cell .lesson-students {
     display: grid;
     grid-template-columns: 1fr;
-    gap: calc(4px * var(--week-zoom));
-    padding: calc(5px * var(--week-zoom));
+    gap: calc(3px * var(--week-zoom));
+    padding: calc(4px * var(--week-zoom));
 }
 
 body.schedule-design-2 .week-cell .student-chip {
     width: 100%;
     box-sizing: border-box;
-    padding: calc(5px * var(--week-zoom)) calc(7px * var(--week-zoom));
+    padding: calc(4px * var(--week-zoom)) calc(4px * var(--week-zoom));
     border-radius: 4px;
     border-left-width: 3px;
-    font-size: calc(11px * var(--week-zoom));
+    font-size: calc(10px * var(--week-zoom));
+    letter-spacing: -0.01em;
     line-height: 1.25;
 }
 
