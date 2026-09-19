@@ -8,6 +8,8 @@ require_once __DIR__ . '/../config/auth.php';
 require_once __DIR__ . '/../config/helpers.php';
 
 requireSection('students');
+header('Location: schedule.php'); // раздела нет в мобильной версии
+exit;
 
 // Поиск
 $search = $_GET['search'] ?? '';

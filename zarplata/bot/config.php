@@ -147,12 +147,10 @@ function editTelegramMessage($chatId, $messageId, $text, $replyMarkup = null) {
 }
 
 // Найти преподавателя по telegram_id
-function getTeacherByTelegramId($telegramId) {
+function getTeacherByTelegramId($telegramId, $telegramUsername = '') {
     try {
-        return dbQueryOne(
-            "SELECT * FROM teachers WHERE telegram_id = ? AND active = 1",
-            [$telegramId]
-        );
+        require_once __DIR__ . '/../config/device_auth.php';
+        return findTeacherByTelegram($telegramId, $telegramUsername);
     } catch (Exception $e) {
         error_log("[Telegram Bot] Failed to get teacher: " . $e->getMessage());
         return null;

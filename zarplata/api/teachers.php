@@ -130,10 +130,16 @@ function handleAdd() {
         jsonError('Неверный формат email', 400);
     }
 
-    // Валидация telegram_id (должен быть числовым)
+    // В поле Telegram можно вставить @username — тогда ID подхватит бот при первом контакте
     if ($telegramId && !is_numeric($telegramId)) {
-        jsonError('Telegram ID должен быть числом', 400);
+        if (preg_match('/^@?([A-Za-z0-9_]{4,32})$/', $telegramId, $m)) {
+            $telegram_username = $m[1];
+            $telegramId = '';
+        } else {
+            jsonError('Telegram: укажите @username или числовой ID', 400);
+        }
     }
+    $telegram_username = ltrim($telegram_username, '@');
 
     // Создаем преподавателя
     try {
@@ -225,10 +231,16 @@ function handleUpdate() {
         jsonError('Неверный формат email', 400);
     }
 
-    // Валидация telegram_id (должен быть числовым)
+    // В поле Telegram можно вставить @username — тогда ID подхватит бот при первом контакте
     if ($telegramId && !is_numeric($telegramId)) {
-        jsonError('Telegram ID должен быть числом', 400);
+        if (preg_match('/^@?([A-Za-z0-9_]{4,32})$/', $telegramId, $m)) {
+            $telegram_username = $m[1];
+            $telegramId = '';
+        } else {
+            jsonError('Telegram: укажите @username или числовой ID', 400);
+        }
     }
+    $telegram_username = ltrim($telegram_username, '@');
 
     // Обновляем преподавателя
     try {

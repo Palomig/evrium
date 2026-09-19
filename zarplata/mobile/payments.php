@@ -9,6 +9,8 @@ require_once __DIR__ . '/../config/auth.php';
 require_once __DIR__ . '/../config/helpers.php';
 
 requireSection('payments');
+header('Location: schedule.php'); // раздела нет в мобильной версии
+exit;
 $user = getCurrentUser();
 
 // Определяем текущую неделю

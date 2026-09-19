@@ -96,8 +96,9 @@ require_once __DIR__ . '/templates/header.php';
                     <input type="email" name="email" id="teacherEmail" class="form-control">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Telegram ID</label>
-                    <input type="text" name="telegram_id" id="teacherTelegram" class="form-control">
+                    <label class="form-label">Telegram</label>
+                    <input type="text" name="telegram_id" id="teacherTelegram" class="form-control" placeholder="@username или ID">
+                    <small style="color: var(--text-muted); font-size: 12px;">Достаточно @username — ID бот запомнит, когда преподаватель ему напишет</small>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Формула оплаты</label>
@@ -130,7 +131,7 @@ function openTeacher(id) {
     document.getElementById('teacherDisplayName').value = t.display_name || '';
     document.getElementById('teacherPhone').value = t.phone || '';
     document.getElementById('teacherEmail').value = t.email || '';
-    document.getElementById('teacherTelegram').value = t.telegram_id || '';
+    document.getElementById('teacherTelegram').value = t.telegram_id || (t.telegram_username ? '@' + t.telegram_username : '');
     document.getElementById('teacherFormula').value = t.formula_id || '';
 
     document.getElementById('teacherModal').classList.add('active');

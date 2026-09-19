@@ -70,12 +70,26 @@ function ensureDeviceSchema() {
  */
 function resolveTelegramUser($tgId, $tgUsername = '') {
     $tgId = (int)$tgId;
+    $tgUsername = ltrim(trim((string)$tgUsername), '@');
     $user = dbQueryOne("SELECT * FROM users WHERE telegram_id = ?", [$tgId]);
     if ($user) {
         return $user;
     }
 
-    $teacher = dbQueryOne("SELECT * FROM teachers WHERE telegram_id = ? AND active = 1", [$tgId]);
+    // Админ указал только @username — ID подхватываем при первом контакте
+    if ($tgUsername !== '') {
+        $user = dbQueryOne(
+            "SELECT * FROM users WHERE telegram_id IS NULL AND LOWER(telegram_username) = LOWER(?) AND active = 1 LIMIT 1",
+            [$tgUsername]
+        );
+        if ($user) {
+            dbExecute("UPDATE users SET telegram_id = ? WHERE id = ?", [$tgId, $user['id']]);
+            $user['telegram_id'] = $tgId;
+            return $user;
+        }
+    }
+
+    $teacher = findTeacherByTelegram($tgId, $tgUsername);
     if (!$teacher) {
         return null;
     }
@@ -104,6 +118,35 @@ function resolveTelegramUser($tgId, $tgUsername = '') {
     );
     $user['telegram_id'] = $tgId;
     return $user;
+}
+
+/**
+ * Преподаватель по Telegram: по ID, иначе по @username (тогда ID записываем —
+ * админу достаточно указать юзернейм при добавлении).
+ * @param int $tgId
+ * @param string $tgUsername без @
+ * @return array|null
+ */
+function findTeacherByTelegram($tgId, $tgUsername = '') {
+    $tgId = (int)$tgId;
+    $tgUsername = ltrim(trim((string)$tgUsername), '@');
+    $teacher = dbQueryOne("SELECT * FROM teachers WHERE telegram_id = ? AND active = 1", [$tgId]);
+    if ($teacher) {
+        return $teacher;
+    }
+    if ($tgUsername === '') {
+        return null;
+    }
+    $teacher = dbQueryOne(
+        "SELECT * FROM teachers WHERE (telegram_id IS NULL OR telegram_id = 0)
+           AND LOWER(TRIM(LEADING '@' FROM telegram_username)) = LOWER(?) AND active = 1 LIMIT 1",
+        [$tgUsername]
+    );
+    if ($teacher) {
+        dbExecute("UPDATE teachers SET telegram_id = ?, telegram_username = ? WHERE id = ?", [$tgId, $tgUsername, $teacher['id']]);
+        $teacher['telegram_id'] = $tgId;
+    }
+    return $teacher;
 }
 
 /**
