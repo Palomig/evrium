@@ -186,12 +186,47 @@ function ensureTelegramAuthSchema() {
         dbExecute("ALTER TABLE users ADD COLUMN permissions TEXT NULL", []);
     }
 
-    // Стас (@Palomig) — владелец: привязываем, пока ни у кого нет Telegram
-    $anyLinked = dbQueryOne("SELECT id FROM users WHERE telegram_id IS NOT NULL LIMIT 1", []);
-    if (!$anyLinked) {
-        $owner = dbQueryOne("SELECT id FROM users WHERE role = 'owner' AND active = 1 ORDER BY id LIMIT 1", []);
-        if ($owner) {
-            dbExecute("UPDATE users SET telegram_id = ?, telegram_username = ? WHERE id = ?", [245710727, 'Palomig', $owner['id']]);
+    ensureOwnersSeed();
+}
+
+/**
+ * Владельцы панели по Telegram ID — Стас (@Palomig) и Руслан (@hiallglhf), права одинаковые.
+ * Аккаунт находится по telegram_id, иначе по преподавателю из бота, иначе создаётся;
+ * роль всегда поднимается до owner. Идемпотентно.
+ */
+function ensureOwnersSeed() {
+    $owners = [
+        ['telegram_id' => 245710727, 'username' => 'Palomig',   'name' => 'Станислав Олегович'],
+        ['telegram_id' => 704366908, 'username' => 'hiallglhf', 'name' => 'Руслан Романович'],
+    ];
+    foreach ($owners as $i => $o) {
+        $user = dbQueryOne("SELECT * FROM users WHERE telegram_id = ?", [$o['telegram_id']]);
+        if (!$user) {
+            $teacher = dbQueryOne("SELECT id, name, display_name FROM teachers WHERE telegram_id = ?", [$o['telegram_id']]);
+            if ($teacher) {
+                $user = dbQueryOne("SELECT * FROM users WHERE teacher_id = ? ORDER BY role = 'owner' DESC, active DESC, id LIMIT 1", [$teacher['id']]);
+            }
+            // Первый владелец без Telegram — исторический admin/owner (id 1)
+            if (!$user && $i === 0) {
+                $user = dbQueryOne("SELECT * FROM users WHERE role = 'owner' AND telegram_id IS NULL ORDER BY id LIMIT 1", []);
+            }
+            if (!$user) {
+                $userId = dbExecute(
+                    "INSERT INTO users (username, password_hash, name, role, active, teacher_id)
+                     VALUES (?, ?, ?, 'owner', 1, ?)",
+                    ['tg' . $o['telegram_id'], password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT), $o['name'], $teacher['id'] ?? null]
+                );
+                $user = $userId ? dbQueryOne("SELECT * FROM users WHERE id = ?", [$userId]) : null;
+            }
+        }
+        if (!$user) {
+            continue;
+        }
+        if ($user['role'] !== 'owner' || (int)$user['active'] !== 1 || (int)($user['telegram_id'] ?? 0) !== $o['telegram_id'] || empty($user['telegram_username'])) {
+            dbExecute(
+                "UPDATE users SET role = 'owner', active = 1, telegram_id = ?, telegram_username = ?, permissions = NULL WHERE id = ?",
+                [$o['telegram_id'], $o['username'], $user['id']]
+            );
         }
     }
 }

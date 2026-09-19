@@ -19,6 +19,10 @@ require_once __DIR__ . '/../config/helpers.php';
 require_once __DIR__ . '/../config/student_helpers.php';
 
 requireAuth();
+if (isTeacherUser()) { // у преподавателя только расписание, уроки и выплаты
+    header('Location: schedule.php');
+    exit;
+}
 
 $allowedViews = ['absent', 'present'];
 $view = $_GET['view'] ?? 'absent';
