@@ -300,8 +300,11 @@ function sendAttendanceQuery($teacher, $lesson, $studentCount, $studentNames, $s
         ]
     ];
 
-    // Отправляем сообщение
-    file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - [sendAttendanceQuery] Calling sendTelegramMessage...\n", FILE_APPEND);
+    // Посещаемость отмечается в приложении (PWA, экран «Уроки») — с 2026-09-19
+    // опрос в Telegram не шлём. Запись в audit_log выше остаётся: по ней
+    // дедуплицируется push «Урок начался».
+    file_put_contents($debugLogFile, date('Y-m-d H:i:s') . " - [sendAttendanceQuery] Telegram-опрос отключён, только push\n", FILE_APPEND);
+    return;
 
     try {
         $result = sendTelegramMessage($chatId, $message, $keyboard);
@@ -361,8 +364,8 @@ function sendPushToTeacher(int $teacherId, string $subject, string $time, int $s
     $push = new VapidPush($vapidPublic, $vapidPrivate, $vapidSubject ?: 'mailto:admin@evrium.ru');
 
     $payload = [
-        'title' => "Урок начался",
-        'body'  => "{$time} — {$subject}" . ($studentCount > 0 ? " ({$studentCount} уч.)" : ''),
+        'title' => "Урок начался — отметьте посещаемость",
+        'body'  => "{$time} — {$subject}" . ($studentCount > 0 ? " ({$studentCount} уч.)" : '') . " · в приложении, экран «Уроки»",
         'url'   => '/zarplata/mobile/lessons.php?date=' . $today,
         'icon'  => '/zarplata/mobile/assets/icons/icon-192x192.png',
         'badge' => '/zarplata/mobile/assets/icons/badge-192x192.png',

@@ -253,38 +253,24 @@ function handleCallbackQuery($callbackQuery) {
         error_log("[Telegram Bot] Callback action: $action");
 
         switch ($action) {
-            case 'attendance_all_present':
-                require_once __DIR__ . '/handlers/AttendanceHandler.php';
-                handleAllPresent($chatId, $messageId, $telegramId, $parts[1], $callbackQueryId);
-                break;
 
-            case 'attendance_some_absent':
-                require_once __DIR__ . '/handlers/AttendanceHandler.php';
-                handleSomeAbsent($chatId, $messageId, $telegramId, $parts[1], $callbackQueryId);
-                break;
 
-            case 'attendance_count':
-                require_once __DIR__ . '/handlers/AttendanceHandler.php';
-                handleAttendanceCount($chatId, $messageId, $telegramId, $parts[1], $parts[2], $callbackQueryId);
-                break;
 
             // ⭐ Новый формат callback из students.schedule
-            case 'att_all':
-                require_once __DIR__ . '/handlers/AttendanceHandler.php';
-                handleAttAllPresent($chatId, $messageId, $telegramId, $parts[1], $callbackQueryId);
-                break;
 
-            case 'att_absent':
-                require_once __DIR__ . '/handlers/AttendanceHandler.php';
-                handleAttSomeAbsent($chatId, $messageId, $telegramId, $parts[1], $callbackQueryId);
-                break;
 
-            case 'att_count':
-                require_once __DIR__ . '/handlers/AttendanceHandler.php';
-                handleAttCount($chatId, $messageId, $telegramId, $parts[1], $parts[2], $callbackQueryId);
-                break;
 
             // Обработка уведомлений о болеющих учениках
+            case 'attendance_all_present':
+            case 'attendance_some_absent':
+            case 'attendance_count':
+            case 'att_all':
+            case 'att_absent':
+            case 'att_count':
+                // Старые кнопки посещаемости: с 2026-09-19 отмечаем только в приложении
+                answerCallbackQuery($callbackQueryId, 'Посещаемость теперь отмечается в приложении, экран «Уроки»', true);
+                break;
+
             case 'sick_recovered':
                 handleSickRecovered($chatId, $messageId, $parts[1], $callbackQueryId);
                 break;
