@@ -45,7 +45,7 @@ async function loadFormulaData(formulaId) {
                 document.getElementById('min-payment').value = formula.min_payment || '';
                 document.getElementById('per-student').value = formula.per_student || '';
                 document.getElementById('threshold').value = formula.threshold || 1;
-            } else if (formula.type === 'fixed') {
+            } else if (formula.type === 'fixed' || formula.type === 'monthly_fixed') {
                 document.getElementById('fixed-amount').value = formula.fixed_amount || '';
             } else if (formula.type === 'expression') {
                 document.getElementById('expression').value = formula.expression || '';
@@ -84,9 +84,11 @@ function updateFormulaFields() {
         document.getElementById('threshold').required = true;
         document.getElementById('fixed-amount').required = false;
         document.getElementById('expression').required = false;
-    } else if (type === 'fixed') {
+    } else if (type === 'fixed' || type === 'monthly_fixed') {
         document.getElementById('fixed-fields').style.display = 'block';
         document.getElementById('fixed-amount').required = true;
+        document.getElementById('fixed-amount-label').textContent = type === 'monthly_fixed' ? 'Сумма за группу в месяц (₽) *' : 'Фиксированная сумма (₽) *';
+        document.getElementById('fixed-amount-hint').style.display = type === 'monthly_fixed' ? 'block' : 'none';
         document.getElementById('min-payment').required = false;
         document.getElementById('per-student').required = false;
         document.getElementById('threshold').required = false;
