@@ -101,7 +101,8 @@ function handleAdd() {
         jsonError('Название формулы обязательно', 400);
     }
 
-    if (!in_array($type, ['min_plus_per', 'fixed', 'expression'])) {
+    ensureFormulaTypesSchema();
+    if (!in_array($type, ['min_plus_per', 'fixed', 'expression', 'monthly_fixed'])) {
         jsonError('Неверный тип формулы', 400);
     }
 
@@ -128,7 +129,7 @@ function handleAdd() {
         if ($threshold < 1) {
             jsonError('Порог должен быть не меньше 1', 400);
         }
-    } elseif ($type === 'fixed') {
+    } elseif ($type === 'fixed' || $type === 'monthly_fixed') {
         $fixedAmount = filter_var($data['fixed_amount'] ?? 0, FILTER_VALIDATE_FLOAT);
 
         if ($fixedAmount <= 0) {
@@ -208,7 +209,8 @@ function handleUpdate() {
         jsonError('Название формулы обязательно', 400);
     }
 
-    if (!in_array($type, ['min_plus_per', 'fixed', 'expression'])) {
+    ensureFormulaTypesSchema();
+    if (!in_array($type, ['min_plus_per', 'fixed', 'expression', 'monthly_fixed'])) {
         jsonError('Неверный тип формулы', 400);
     }
 
@@ -235,7 +237,7 @@ function handleUpdate() {
         if ($threshold < 1) {
             jsonError('Порог должен быть не меньше 1', 400);
         }
-    } elseif ($type === 'fixed') {
+    } elseif ($type === 'fixed' || $type === 'monthly_fixed') {
         $fixedAmount = filter_var($data['fixed_amount'] ?? 0, FILTER_VALIDATE_FLOAT);
 
         if ($fixedAmount <= 0) {

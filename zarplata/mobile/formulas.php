@@ -19,6 +19,7 @@ require_once __DIR__ . '/templates/header.php';
 $typeLabels = [
     'min_plus_per' => 'База + за ученика',
     'fixed' => 'Фиксированная',
+    'monthly_fixed' => 'Фикс в месяц',
     'expression' => 'Выражение'
 ];
 ?>
@@ -74,7 +75,7 @@ $typeLabels = [
 /* Type selector */
 .type-selector {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 8px;
     margin-bottom: 16px;
 }
@@ -178,6 +179,11 @@ $typeLabels = [
                         <?= number_format($f['fixed_amount'], 0, '', ' ') ?> ₽
                     </div>
                     <div class="formula-desc">Фиксированная сумма</div>
+                <?php elseif ($f['type'] === 'monthly_fixed'): ?>
+                    <div class="formula-value">
+                        <?= number_format($f['fixed_amount'], 0, '', ' ') ?> ₽ / мес
+                    </div>
+                    <div class="formula-desc">За группу в месяц, от числа учеников не зависит</div>
                 <?php else: ?>
                     <div class="formula-value" style="font-size: 13px;">
                         <?= htmlspecialchars($f['expression']) ?>
@@ -227,6 +233,10 @@ $typeLabels = [
                             <div class="type-btn-label">Фиксированная</div>
                             <div class="type-btn-desc">1000 ₽</div>
                         </div>
+                        <div class="type-btn" data-type="monthly_fixed" onclick="selectType('monthly_fixed')">
+                            <div class="type-btn-label">Фикс в месяц</div>
+                            <div class="type-btn-desc">10 000 ₽ / группа</div>
+                        </div>
                         <div class="type-btn" data-type="expression" onclick="selectType('expression')">
                             <div class="type-btn-label">Выражение</div>
                             <div class="type-btn-desc">max(500, N×200)</div>
@@ -256,6 +266,15 @@ $typeLabels = [
                     <div class="form-group">
                         <label class="form-label">Фиксированная сумма (₽)</label>
                         <input type="number" name="fixed_amount" id="fixedAmount" class="form-control" value="1000" min="0">
+                    </div>
+                </div>
+
+                <!-- monthly_fixed fields -->
+                <div class="formula-fields" id="fields_monthly_fixed">
+                    <div class="form-group">
+                        <label class="form-label">Сумма за группу в месяц (₽)</label>
+                        <input type="number" name="fixed_amount_monthly" id="fixedAmountMonthly" class="form-control" value="10000" min="0">
+                        <small style="color: var(--text-muted); font-size: 12px;">Один урок в неделю = эта сумма в месяц, сколько бы учеников ни пришло. За урок начисляется доля: сумма ÷ число таких дней в месяце (4–5).</small>
                     </div>
                 </div>
 
@@ -329,6 +348,9 @@ function updatePreview() {
             value = min + Math.max(0, n - thresh + 1) * per;
         } else if (currentType === 'fixed') {
             value = parseInt(document.getElementById('fixedAmount').value) || 0;
+        } else if (currentType === 'monthly_fixed') {
+            // доля за урок при 4 занятиях в месяце; от числа учеников не зависит
+            value = Math.round((parseInt(document.getElementById('fixedAmountMonthly').value) || 0) / 4);
         } else {
             // expression - simplified evaluation
             try {
@@ -369,6 +391,8 @@ function openFormula(id) {
         document.getElementById('threshold').value = f.threshold || 2;
     } else if (f.type === 'fixed') {
         document.getElementById('fixedAmount').value = f.fixed_amount || 0;
+    } else if (f.type === 'monthly_fixed') {
+        document.getElementById('fixedAmountMonthly').value = f.fixed_amount || 0;
     } else {
         document.getElementById('expression').value = f.expression || '';
     }
@@ -404,6 +428,10 @@ function closeModal() {
 async function saveFormula() {
     const form = document.getElementById('formulaForm');
     const data = Object.fromEntries(new FormData(form));
+    if (data.type === 'monthly_fixed') {
+        data.fixed_amount = data.fixed_amount_monthly; // в API — то же поле fixed_amount
+    }
+    delete data.fixed_amount_monthly;
     const action = data.id ? 'update' : 'add';
 
     try {
@@ -458,7 +486,7 @@ async function deleteFormula() {
 }
 
 // Update preview on input change
-document.querySelectorAll('#minPayment, #perStudent, #threshold, #fixedAmount, #expression').forEach(el => {
+document.querySelectorAll('#minPayment, #perStudent, #threshold, #fixedAmount, #fixedAmountMonthly, #expression').forEach(el => {
     el.addEventListener('input', updatePreview);
 });
 

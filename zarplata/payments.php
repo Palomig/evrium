@@ -420,7 +420,7 @@ if ($teacherFilter > 0) {
         ];
 
         // Рассчитываем оплату за один урок
-        $lessonPayment = calculatePayment($formula, $expectedStudents);
+        $lessonPayment = calculatePayment($formula, $expectedStudents, firstWeekdayOfMonth($dayOfWeek, $currentMonth, $currentYear));
 
         // Умножаем на количество таких дней в месяце
         $lessonsInMonth = $dayOfWeekCounts[$dayOfWeek] ?? 0;

@@ -111,7 +111,7 @@ $formula = $formulaId
 
 $baseAmount = 0;
 if (!$isCancelled && $formula) {
-    $baseAmount = calculatePayment($formula, $actualStudents);
+    $baseAmount = calculatePayment($formula, $actualStudents, $lesson['lesson_date'] ?? null);
 }
 $extrasAmount = $extraGroup * EXTRA_GROUP_RATE + $extraIndividual * EXTRA_INDIVIDUAL_RATE;
 $totalAmount = $isCancelled ? 0 : ($baseAmount + $extrasAmount);

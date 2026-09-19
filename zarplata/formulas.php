@@ -77,11 +77,13 @@ require_once __DIR__ . '/templates/header.php';
                             $typeLabels = [
                                 'min_plus_per' => 'Минимум + Доплата',
                                 'fixed' => 'Фиксированная',
+                                'monthly_fixed' => 'Фикс за группу в месяц',
                                 'expression' => 'Пользовательская'
                             ];
                             $typeColors = [
                                 'min_plus_per' => 'info',
                                 'fixed' => 'success',
+                                'monthly_fixed' => 'success',
                                 'expression' => 'warning'
                             ];
                             ?>
@@ -96,6 +98,9 @@ require_once __DIR__ . '/templates/header.php';
                                 С <?= $formula['threshold'] ?>-го ученика
                             <?php elseif ($formula['type'] === 'fixed'): ?>
                                 <?= formatMoney($formula['fixed_amount']) ?>
+                            <?php elseif ($formula['type'] === 'monthly_fixed'): ?>
+                                <?= formatMoney($formula['fixed_amount']) ?> в месяц за группу<br>
+                                <small style="color: var(--text-medium-emphasis);">за урок: <?= formatMoney(round($formula['fixed_amount'] / 5)) ?>–<?= formatMoney(round($formula['fixed_amount'] / 4)) ?>, от числа учеников не зависит</small>
                             <?php elseif ($formula['type'] === 'expression'): ?>
                                 <code style="font-size: 0.8rem;"><?= e($formula['expression']) ?></code>
                             <?php endif; ?>
@@ -104,9 +109,15 @@ require_once __DIR__ . '/templates/header.php';
                             <?php
                             // Примеры расчёта для разного количества учеников
                             $examples = [];
-                            foreach ([1, 3, 5] as $count) {
-                                $amount = calculatePayment($formula, $count);
-                                $examples[] = "$count: " . formatMoney($amount);
+                            if ($formula['type'] === 'monthly_fixed') {
+                                $examples[] = 'Любое число учеников';
+                                $examples[] = 'месяц с 4 уроками: ' . formatMoney(round($formula['fixed_amount'] / 4)) . ' за урок';
+                                $examples[] = 'месяц с 5 уроками: ' . formatMoney(round($formula['fixed_amount'] / 5)) . ' за урок';
+                            } else {
+                                foreach ([1, 3, 5] as $count) {
+                                    $amount = calculatePayment($formula, $count);
+                                    $examples[] = "$count: " . formatMoney($amount);
+                                }
                             }
                             echo implode('<br>', $examples);
                             ?>
@@ -468,7 +479,8 @@ require_once __DIR__ . '/templates/header.php';
                     <select id="formula-type" name="type" required onchange="updateFormulaFields()">
                         <option value="">Выберите тип</option>
                         <option value="min_plus_per">Минимум + Доплата</option>
-                        <option value="fixed">Фиксированная сумма</option>
+                        <option value="fixed">Фиксированная сумма за урок</option>
+                        <option value="monthly_fixed">Фикс за группу в месяц</option>
                         <option value="expression">Пользовательская формула</option>
                     </select>
                 </div>
@@ -501,8 +513,12 @@ require_once __DIR__ . '/templates/header.php';
             <div id="fixed-fields" style="display: none;">
                 <div class="form-row">
                     <div class="form-group" style="flex: 1;">
-                        <label for="fixed-amount">Фиксированная сумма (₽) *</label>
+                        <label for="fixed-amount" id="fixed-amount-label">Фиксированная сумма (₽) *</label>
                         <input type="number" id="fixed-amount" name="fixed_amount" step="0.01" min="0">
+                        <small id="fixed-amount-hint" style="color: var(--text-medium-emphasis); display: none;">
+                            Сумма за месяц на одну группу (один урок в неделю), сколько бы учеников ни пришло.
+                            За каждый проведённый урок начисляется доля: сумма ÷ число таких дней в месяце (4 или 5).
+                        </small>
                     </div>
                 </div>
             </div>

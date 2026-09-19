@@ -278,12 +278,20 @@ function getFlash() {
  * @param int $studentCount Количество студентов
  * @return int Сумма оплаты
  */
-function calculatePayment($formula, $studentCount) {
+function calculatePayment($formula, $studentCount, $lessonDate = null) {
     if (!$formula || !$formula['active']) {
         return 0;
     }
 
     switch ($formula['type']) {
+        case 'monthly_fixed':
+            // Фикс за группу в месяц, от числа учеников не зависит.
+            // За урок начисляется доля: сумма / сколько раз этот день недели есть в месяце
+            $monthly = (int)$formula['fixed_amount'];
+            $ts = $lessonDate ? strtotime($lessonDate) : time();
+            $occurrences = countWeekdayInMonth((int)date('N', $ts), (int)date('n', $ts), (int)date('Y', $ts));
+            return $occurrences > 0 ? (int)round($monthly / $occurrences) : $monthly;
+
         case 'min_plus_per':
             $minPayment = (int)$formula['min_payment'];
             $perStudent = (int)$formula['per_student'];
@@ -316,6 +324,43 @@ function calculatePayment($formula, $studentCount) {
 
         default:
             return 0;
+    }
+}
+
+/**
+ * Сколько раз день недели (1=пн … 7=вс) встречается в месяце
+ */
+function countWeekdayInMonth($dayOfWeek, $month, $year) {
+    $count = 0;
+    $days = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+    for ($d = 1; $d <= $days; $d++) {
+        if ((int)date('N', mktime(0, 0, 0, $month, $d, $year)) === (int)$dayOfWeek) {
+            $count++;
+        }
+    }
+    return $count;
+}
+
+/**
+ * Дата первого такого дня недели в месяце (для оценок «сколько за месяц»)
+ */
+function firstWeekdayOfMonth($dayOfWeek, $month, $year) {
+    $days = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+    for ($d = 1; $d <= $days; $d++) {
+        if ((int)date('N', mktime(0, 0, 0, $month, $d, $year)) === (int)$dayOfWeek) {
+            return sprintf('%04d-%02d-%02d', $year, $month, $d);
+        }
+    }
+    return null;
+}
+
+/**
+ * Тип формулы monthly_fixed в enum (одноразовая авто-миграция)
+ */
+function ensureFormulaTypesSchema() {
+    $col = dbQuery("SHOW COLUMNS FROM payment_formulas LIKE 'type'", []);
+    if (!empty($col) && strpos($col[0]['Type'] ?? '', 'monthly_fixed') === false) {
+        dbExecute("ALTER TABLE payment_formulas MODIFY COLUMN type ENUM('min_plus_per','fixed','expression','monthly_fixed') NOT NULL", []);
     }
 }
 
