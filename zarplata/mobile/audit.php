@@ -6,6 +6,7 @@
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/auth.php';
 require_once __DIR__ . '/../config/helpers.php';
+require_once __DIR__ . '/../config/audit_labels.php';
 
 requireSection('audit');
 
@@ -22,15 +23,6 @@ define('ACTIVE_PAGE', 'audit');
 
 require_once __DIR__ . '/templates/header.php';
 
-$actionLabels = [
-    'template_created' => 'Создан шаблон',
-    'template_updated' => 'Обновлён шаблон',
-    'template_deleted' => 'Удалён шаблон',
-    'lesson_completed' => 'Урок завершён',
-    'payment_created' => 'Создана выплата',
-    'payment_updated' => 'Обновлена выплата',
-    'attendance_marked' => 'Отмечена посещаемость'
-];
 ?>
 
 <div class="page-container">
@@ -43,26 +35,22 @@ $actionLabels = [
         </div>
     <?php else: ?>
         <div class="card" style="padding: 0;">
-            <?php foreach ($logs as $log): ?>
-                <div class="list-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
-                    <div style="display: flex; justify-content: space-between; width: 100%; align-items: flex-start;">
-                        <div style="font-size: 14px; font-weight: 600;">
-                            <?= $actionLabels[$log['action_type']] ?? $log['action_type'] ?>
-                        </div>
-                        <div style="font-size: 12px; color: var(--text-muted);">
+            <?php foreach ($logs as $log): $d = auditDescribe($log); ?>
+                <div class="list-item" style="flex-direction: column; align-items: flex-start; gap: 3px;">
+                    <div style="display: flex; justify-content: space-between; width: 100%; align-items: flex-start; gap: 10px;">
+                        <div style="font-size: 14px; font-weight: 600;"><?= e($d['title']) ?></div>
+                        <div style="font-size: 12px; color: var(--text-muted); white-space: nowrap;">
                             <?= date('d.m H:i', strtotime($log['created_at'])) ?>
                         </div>
                     </div>
-                    <div style="font-size: 13px; color: var(--text-secondary);">
-                        <?= $log['entity_type'] ?> #<?= $log['entity_id'] ?>
-                        <?php if ($log['user_name']): ?>
-                            • <?= htmlspecialchars($log['user_name']) ?>
-                        <?php endif; ?>
-                    </div>
-                    <?php if ($log['notes']): ?>
-                        <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
-                            <?= htmlspecialchars($log['notes']) ?>
-                        </div>
+                    <?php if ($d['subject'] !== ''): ?>
+                        <div style="font-size: 13px; color: var(--text-primary);"><?= e($d['subject']) ?></div>
+                    <?php endif; ?>
+                    <?php if ($d['details'] !== ''): ?>
+                        <div style="font-size: 12px; color: var(--text-secondary);"><?= e($d['details']) ?></div>
+                    <?php endif; ?>
+                    <?php if ($d['who'] !== ''): ?>
+                        <div style="font-size: 12px; color: var(--text-muted);"><?= e($d['who']) ?></div>
                     <?php endif; ?>
                 </div>
             <?php endforeach; ?>
