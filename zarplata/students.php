@@ -383,6 +383,20 @@ require_once __DIR__ . '/templates/header.php';
                     </select>
                 </div>
 
+                <!-- Чей ученик -->
+                <div class="form-group">
+                    <label class="form-label">
+                        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">person</span>
+                        Чей ученик
+                    </label>
+                    <div class="tier-group teacher-group">
+                        <?php foreach ($teachers as $t): ?>
+                        <button type="button" class="btn-tier btn-teacher" data-teacher="<?= (int)$t['id'] ?>" onclick="selectStudentTeacher(this)"><?= e($t['display_name'] ?: $t['name']) ?></button>
+                        <?php endforeach; ?>
+                    </div>
+                    <input type="hidden" id="student-teacher" name="teacher_id" value="" required>
+                </div>
+
                 <!-- Тир (уровень ученика) -->
                 <div class="form-group">
                     <label class="form-label">
@@ -858,6 +872,8 @@ require_once __DIR__ . '/templates/header.php';
         min-width: 60px;
     }
 
+    .teacher-group .btn-teacher { min-width: 0; padding: 8px 18px; }
+
     .btn-tier:hover {
         border-color: #14b8a6;
         background: rgba(255, 255, 255, 0.08);
@@ -1184,6 +1200,6 @@ require_once __DIR__ . '/templates/header.php';
     // Данные преподавателей для выбора в расписании
     const teachersData = <?= json_encode($teachers) ?>;
 </script>
-<script src="/zarplata/assets/js/students.js"></script>
+<script src="/zarplata/assets/js/students.js?v=20260919"></script>
 
 <?php require_once __DIR__ . '/templates/footer.php'; ?>

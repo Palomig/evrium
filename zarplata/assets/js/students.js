@@ -13,6 +13,7 @@ function openStudentModal() {
     document.getElementById('student-form').reset();
     document.getElementById('student-id').value = '';
     currentStudentId = null;
+    setStudentTeacher('');
 
     // Сброс расписания
     schedule = {};
@@ -63,6 +64,22 @@ function selectLessonType(button) {
 }
 
 // Выбрать тир
+// Чей ученик: сегмент с преподавателями
+function selectStudentTeacher(button) {
+    button.parentElement.querySelectorAll('.btn-teacher').forEach(btn => btn.classList.remove('active'));
+    button.classList.add('active');
+    document.getElementById('student-teacher').value = button.dataset.teacher;
+}
+
+function setStudentTeacher(teacherId) {
+    const input = document.getElementById('student-teacher');
+    if (!input) return;
+    input.value = teacherId || '';
+    document.querySelectorAll('.btn-teacher').forEach(btn => {
+        btn.classList.toggle('active', String(btn.dataset.teacher) === String(teacherId));
+    });
+}
+
 function selectTier(button) {
     // Убрать active у всех кнопок тира
     button.parentElement.querySelectorAll('.btn-tier').forEach(btn => {
@@ -288,9 +305,13 @@ async function saveStudent(event) {
     event.preventDefault();
 
     const formData = new FormData(event.target);
+    if (!parseInt(formData.get('teacher_id'))) {
+        alert('Выберите, чей это ученик');
+        return;
+    }
     const data = {
         name: formData.get('name'),
-        // teacher_id больше не в форме, извлекается из расписания на бэкенде
+        teacher_id: parseInt(formData.get('teacher_id')) || null,
         class: formData.get('class') || null,
         tier: formData.get('tier'),
         lesson_type: formData.get('lesson_type'),
@@ -358,7 +379,7 @@ async function editStudent(id) {
             // Заполнить форму
             document.getElementById('student-id').value = student.id;
             document.getElementById('student-name').value = student.name || '';
-            // Примечание: поле student-teacher удалено, преподаватель выбирается для каждого урока
+            setStudentTeacher(student.teacher_id);
             document.getElementById('student-class').value = student.class || '';
             document.getElementById('student-parent-name').value = student.parent_name || '';
             document.getElementById('student-telegram').value = student.student_telegram || '';
