@@ -208,6 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                     <?php endif; ?>
 
+                    <div id="pw-form" <?= $error && empty($_GET['tg_error']) ? '' : 'hidden' ?>>
                     <form method="POST" action="/zarplata/login.php" autocomplete="off">
                         <div class="form-group">
                             <label class="form-label" for="username">
@@ -264,9 +265,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </button>
                         </div>
                     </form>
+                    </div>
 
                     <?php if ($botUsername): ?>
-                    <div class="tg-divider"><span>или</span></div>
                     <button type="button" class="btn btn-secondary btn-large btn-block" id="dl-start" style="margin-bottom: 12px;">
                         <span class="material-icons" style="margin-right: 8px; font-size: 20px;">devices</span>
                         Привязать это устройство через Telegram
@@ -281,6 +282,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="text-center">
                         <p class="text-disabled" style="font-size: 0.75rem;">
                             Код подтверждают преподаватели, подключённые к боту, и администраторы с привязанным Telegram
+                        </p>
+                        <p style="font-size: 0.75rem; margin-top: 8px;">
+                            <a href="#" id="pw-toggle" style="color: var(--text-secondary, #9aa4b2);">Войти по паролю</a>
                         </p>
                     </div>
                     <?php else: ?>
@@ -386,7 +390,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         startBtn.addEventListener('click', start);
         // Открыли из бота по ссылке с ?device=1 — сразу показываем код
-        if (new URLSearchParams(location.search).get('device') === '1') start();
+        const pwForm = document.getElementById('pw-form'), pwToggle = document.getElementById('pw-toggle');
+        if (pwToggle) pwToggle.addEventListener('click', e => { e.preventDefault(); pwForm.hidden = !pwForm.hidden; });
+        if (pwForm.hidden) start(); // по умолчанию — сразу код
     })();
     </script>
 </body>
