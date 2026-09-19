@@ -5,7 +5,7 @@
 
 function handleStartCommand($chatId, $telegramId, $username) {
     // Проверяем, привязан ли уже этот Telegram ID
-    $teacher = getTeacherByTelegramId($telegramId);
+    $teacher = getTeacherByTelegramId($telegramId, $username);
 
     // Получаем клавиатуру меню
     $keyboard = function_exists('getMainMenuKeyboard') ? getMainMenuKeyboard() : null;

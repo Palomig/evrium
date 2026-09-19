@@ -220,11 +220,10 @@ require_once __DIR__ . '/templates/header.php';
                         class="form-control"
                         id="teacher-telegram-id"
                         name="telegram_id"
-                        placeholder="245710727"
-                        pattern="[0-9]+"
+                        placeholder="необязательно"
                     >
                     <small style="color: var(--text-medium-emphasis); display: block; margin-top: 8px;">
-                        Преподаватель получит этот ID после команды /start в боте
+                        Можно не указывать: достаточно username ниже — ID бот запомнит, когда преподаватель напишет ему /start
                     </small>
                 </div>
 
