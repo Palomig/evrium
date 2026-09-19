@@ -13,7 +13,8 @@ require_once __DIR__ . '/../config/student_helpers.php';
 
 requireAuth();
 $user = getCurrentUser();
-$teacherFilter = isTeacherUser() ? (int)getCurrentTeacherId() : 0;
+// Каждый видит только свои уроки — по преподавателю, к которому привязана учётка
+$teacherFilter = (int)($user['teacher_id'] ?? 0);
 
 $today = date('Y-m-d');
 $date  = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date'] ?? '') ? $_GET['date'] : $today;
