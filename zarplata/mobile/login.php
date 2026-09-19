@@ -318,6 +318,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && false) { // вход по паро�
         .dl-timer { margin-top: 6px; font-size: 12px; color: var(--text-muted); }
         @keyframes dlspin { to { transform: rotate(360deg); } }
     </style>
+    <!-- Обязательная установка PWA: в браузере на телефоне приложение не работает -->
+    <script>
+    (function () {
+        var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+        var mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (mobile && !standalone) {
+            location.replace('/zarplata/mobile/install.php');
+        }
+    })();
+    </script>
 </head>
 <body>
     <div class="login-container">

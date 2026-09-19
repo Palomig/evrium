@@ -456,7 +456,7 @@ require_once __DIR__ . '/../config/db.php';
             </button>
 
             <p class="alt-link">
-                Или <a href="login.php">войти через браузер</a>
+                Через браузер приложение не работает: после установки откройте «Зарплата» с главного экрана — там появится код для входа через Telegram
             </p>
 
             <!-- Instructions -->
@@ -540,9 +540,9 @@ require_once __DIR__ . '/../config/db.php';
     const statusText = document.getElementById('statusText');
     const instructions = document.getElementById('instructions');
 
-    // Check if already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-        showInstalledState();
+    // Открыто из установленного приложения — сразу в него
+    if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true) {
+        location.replace('index.php');
     }
 
     // Listen for install prompt
@@ -584,12 +584,10 @@ require_once __DIR__ . '/../config/db.php';
         statusBadge.style.display = 'inline-flex';
         statusText.textContent = 'Приложение установлено';
         installBtn.classList.add('installed');
-        installBtnText.textContent = 'Открыть приложение';
+        installBtnText.textContent = 'Откройте «Зарплата» с главного экрана';
         instructions.style.display = 'none';
-
-        installBtn.onclick = () => {
-            window.location.href = 'index.php';
-        };
+        // Из браузера запустить установленное приложение нельзя — только с главного экрана
+        installBtn.onclick = null;
     }
 
     // Browser tabs
