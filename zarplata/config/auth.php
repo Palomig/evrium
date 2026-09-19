@@ -222,6 +222,14 @@ function ensureOwnersSeed() {
         if (!$user) {
             continue;
         }
+        // Учётка владельца привязана к его карточке преподавателя — иначе «свои уроки» не отфильтровать
+        if (empty($user['teacher_id'])) {
+            $own = dbQueryOne("SELECT id FROM teachers WHERE telegram_id = ? ORDER BY active DESC, id LIMIT 1", [$o['telegram_id']]);
+            if ($own) {
+                dbExecute("UPDATE users SET teacher_id = ? WHERE id = ?", [$own['id'], $user['id']]);
+                $user['teacher_id'] = $own['id'];
+            }
+        }
         // Безликое имя («Администратор», логин) — заменяем на настоящее, чтобы в аудите было видно, кто именно
         $generic = in_array(mb_strtolower(trim((string)$user['name'])), ['администратор', 'admin', 'administrator', mb_strtolower($user['username'])], true)
             || strpos((string)$user['name'], 'tg') === 0;
