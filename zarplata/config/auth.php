@@ -196,8 +196,8 @@ function ensureTelegramAuthSchema() {
  */
 function ensureOwnersSeed() {
     $owners = [
-        ['telegram_id' => 245710727, 'username' => 'Palomig',   'name' => 'Станислав Олегович'],
-        ['telegram_id' => 704366908, 'username' => 'hiallglhf', 'name' => 'Руслан Романович'],
+        ['telegram_id' => 245710727, 'username' => 'Palomig',   'name' => 'Стас'],
+        ['telegram_id' => 704366908, 'username' => 'hiallglhf', 'name' => 'Руслан'],
     ];
     foreach ($owners as $i => $o) {
         $user = dbQueryOne("SELECT * FROM users WHERE telegram_id = ?", [$o['telegram_id']]);
@@ -222,10 +222,13 @@ function ensureOwnersSeed() {
         if (!$user) {
             continue;
         }
-        if ($user['role'] !== 'owner' || (int)$user['active'] !== 1 || (int)($user['telegram_id'] ?? 0) !== $o['telegram_id'] || empty($user['telegram_username'])) {
+        // Безликое имя («Администратор», логин) — заменяем на настоящее, чтобы в аудите было видно, кто именно
+        $generic = in_array(mb_strtolower(trim((string)$user['name'])), ['администратор', 'admin', 'administrator', mb_strtolower($user['username'])], true)
+            || strpos((string)$user['name'], 'tg') === 0;
+        if ($user['role'] !== 'owner' || (int)$user['active'] !== 1 || (int)($user['telegram_id'] ?? 0) !== $o['telegram_id'] || empty($user['telegram_username']) || $generic) {
             dbExecute(
-                "UPDATE users SET role = 'owner', active = 1, telegram_id = ?, telegram_username = ?, permissions = NULL WHERE id = ?",
-                [$o['telegram_id'], $o['username'], $user['id']]
+                "UPDATE users SET role = 'owner', active = 1, telegram_id = ?, telegram_username = ?, permissions = NULL, name = ? WHERE id = ?",
+                [$o['telegram_id'], $o['username'], $generic ? $o['name'] : $user['name'], $user['id']]
             );
         }
     }
