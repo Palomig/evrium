@@ -50,7 +50,9 @@ sleep(1);
 
 // Шаг 3: Устанавливаем webhook заново
 echo "\n=== Step 3: Setting webhook ===\n";
-$webhookUrl = 'https://эвриум.рф/zarplata/bot/webhook.php';
+// Timeweb не принимает соединения с серверов Telegram — вебхук идёт через ретранслятор
+// на dev-VPS (palomig.ru → эвриум.рф/zarplata/bot/webhook.php), см. vhost palomig-le-ssl.conf
+$webhookUrl = 'https://palomig.ru/evrium-bot/webhook';
 $url = "https://api.telegram.org/bot{$token}/setWebhook";
 
 $postData = json_encode([

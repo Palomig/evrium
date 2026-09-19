@@ -81,7 +81,9 @@ function handleSetupWebhook() {
     }
 
     // URL webhook
-    $webhookUrl = 'https://эвриум.рф/zarplata/bot/webhook.php';
+    // Timeweb не принимает соединения с серверов Telegram — вебхук идёт через ретранслятор
+// на dev-VPS (palomig.ru → эвриум.рф/zarplata/bot/webhook.php), см. vhost palomig-le-ssl.conf
+$webhookUrl = 'https://palomig.ru/evrium-bot/webhook';
 
     // Настраиваем webhook
     $url = "https://api.telegram.org/bot{$token}/setWebhook";
