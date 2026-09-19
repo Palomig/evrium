@@ -640,6 +640,76 @@ body.schedule-design-2 .week-empty-slot {
     background: #0c1117;
 }
 
+/* Неделя: карточка во всю ширину ячейки, как на десктопе —
+   заголовок-полоса, ученики столбиком с цветной кромкой, «+» на всю ширину */
+body.schedule-design-2 .week-scroll {
+    --week-day-col: calc(128px * var(--week-zoom));
+}
+
+body.schedule-design-2 .week-cell .lesson-card {
+    padding: 0;
+    overflow: hidden;
+    border-radius: 6px;
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+body.schedule-design-2 .week-cell .lesson-card-header {
+    justify-content: center;
+    padding: calc(6px * var(--week-zoom)) calc(6px * var(--week-zoom));
+    border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+}
+
+body.schedule-design-2 .week-cell .lesson-card.bc1 .lesson-card-header { background: rgba(20, 184, 166, 0.32); }
+body.schedule-design-2 .week-cell .lesson-card.bc2 .lesson-card-header { background: rgba(168, 85, 247, 0.32); }
+body.schedule-design-2 .week-cell .lesson-card.bc3 .lesson-card-header { background: rgba(59, 130, 246, 0.32); }
+body.schedule-design-2 .week-cell .lesson-card.bc4 .lesson-card-header { background: rgba(249, 115, 22, 0.32); }
+body.schedule-design-2 .week-cell .lesson-card.bc5 .lesson-card-header { background: rgba(236, 72, 153, 0.32); }
+body.schedule-design-2 .week-cell .lesson-card.bc6 .lesson-card-header { background: rgba(234, 179, 8, 0.32); }
+body.schedule-design-2 .week-cell .lesson-card.bc7 .lesson-card-header { background: rgba(34, 197, 94, 0.32); }
+body.schedule-design-2 .week-cell .lesson-card.bc8 .lesson-card-header { background: rgba(239, 68, 68, 0.32); }
+
+body.schedule-design-2 .week-cell .lesson-title {
+    width: 100%;
+    text-align: center;
+    font-size: calc(12px * var(--week-zoom));
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+body.schedule-design-2 .week-cell .lesson-students {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: calc(4px * var(--week-zoom));
+    padding: calc(5px * var(--week-zoom));
+}
+
+body.schedule-design-2 .week-cell .student-chip {
+    width: 100%;
+    box-sizing: border-box;
+    padding: calc(5px * var(--week-zoom)) calc(7px * var(--week-zoom));
+    border-radius: 4px;
+    border-left-width: 3px;
+    font-size: calc(11px * var(--week-zoom));
+    line-height: 1.25;
+}
+
+body.schedule-design-2 .week-cell .add-student-chip {
+    width: 100%;
+    box-sizing: border-box;
+    padding: calc(4px * var(--week-zoom));
+    border-radius: 4px;
+    font-size: calc(12px * var(--week-zoom));
+    line-height: 1;
+}
+
+body.schedule-design-2 .week-empty-slot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .settings-section-title {
     margin: 0 0 8px;
     color: var(--text-secondary);
