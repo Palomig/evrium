@@ -28,6 +28,16 @@ if (!defined('SHOW_BOTTOM_NAV')) {
 
     <title><?= htmlspecialchars(PAGE_TITLE) ?> — Эвриум</title>
 
+    <!-- Обязательная установка PWA: в браузере на телефоне приложение не работает -->
+    <script>
+    (function () {
+        var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+        var mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (mobile && !standalone) {
+            location.replace('/zarplata/mobile/install.php');
+        }
+    })();
+    </script>
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
 
