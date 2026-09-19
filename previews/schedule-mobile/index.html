@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101716">
+  <title>Эвриум · Расписание — прототип</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b100f;
+      --surface: #121918;
+      --surface-2: #182220;
+      --surface-3: #202d2a;
+      --line: #293633;
+      --line-soft: #1e2927;
+      --text: #f4f8f7;
+      --muted: #9aaba7;
+      --muted-2: #71817d;
+      --teal: #28d4bc;
+      --teal-soft: #173b36;
+      --teal-deep: #0e7165;
+      --violet: #a989ef;
+      --violet-soft: #302744;
+      --amber: #f2bb62;
+      --danger: #ff7b78;
+      --radius: 14px;
+      --shadow: 0 18px 48px rgba(0, 0, 0, .28);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * { box-sizing: border-box; }
+    html { background: var(--bg); }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      background:
+        radial-gradient(circle at 74% -10%, rgba(40, 212, 188, .09), transparent 34%),
+        var(--bg);
+      color: var(--text);
+      font-family: "Aptos", "Segoe UI", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, input:focus-visible, select:focus-visible {
+      outline: 3px solid rgba(40, 212, 188, .42);
+      outline-offset: 2px;
+    }
+    .icon { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+    .app { min-height: 100dvh; padding-bottom: calc(86px + var(--safe-bottom)); }
+
+    .app-bar {
+      position: sticky; top: 0; z-index: 20;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 66px; padding: 0 17px;
+      background: rgba(11, 16, 15, .94);
+      border-bottom: 1px solid rgba(255,255,255,.055);
+      backdrop-filter: blur(16px);
+    }
+    .brand { display: flex; align-items: center; gap: 11px; }
+    .brand-mark {
+      display: grid; place-items: center; width: 34px; height: 34px;
+      background: var(--teal); color: #052d28; border-radius: 11px;
+      font-size: 18px; font-weight: 850; letter-spacing: -.04em;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, .24);
+    }
+    .title-wrap h1 { margin: 0; font-size: 19px; line-height: 1.1; letter-spacing: -.025em; }
+    .title-wrap p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+    .icon-button {
+      display: grid; place-items: center; width: 42px; height: 42px;
+      padding: 0; border: 0; border-radius: 12px; background: transparent;
+      color: var(--muted); cursor: pointer;
+    }
+    .icon-button:active { background: var(--surface-2); color: var(--text); }
+
+    main { width: min(100%, 1100px); margin: 0 auto; }
+    .control-deck { padding: 14px 16px 12px; }
+    .control-row { display: flex; align-items: center; gap: 10px; }
+    .teacher-control { position: relative; flex: 1; min-width: 0; }
+    .teacher-selector {
+      width: 100%;
+      display: flex; align-items: center; gap: 9px;
+      height: 44px; padding: 0 12px;
+      border: 1px solid var(--line); border-radius: 13px;
+      background: var(--surface); color: var(--text); cursor: pointer;
+    }
+    .teacher-selector .teacher-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 720; }
+    .teacher-selector .chevron { margin-left: auto; color: var(--muted); }
+    .teacher-dot { width: 9px; height: 9px; flex: 0 0 auto; border-radius: 50%; background: var(--teal); }
+    body[data-teacher="ruslan"] .teacher-dot { background: var(--violet); }
+    .teacher-menu {
+      position: absolute; z-index: 40; top: 48px; left: 0; right: 0;
+      display: none; padding: 6px; background: #1b2523; border: 1px solid var(--line);
+      border-radius: 13px; box-shadow: var(--shadow);
+    }
+    .teacher-menu.open { display: block; }
+    .teacher-option { display: flex; align-items: center; gap: 10px; width: 100%; height: 43px; border: 0; border-radius: 9px; padding: 0 10px; background: transparent; cursor: pointer; text-align: left; }
+    .teacher-option:hover, .teacher-option[aria-selected="true"] { background: var(--surface-3); }
+    .teacher-option .ruslan { background: var(--violet); }
+
+    .mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 3px; margin-top: 12px; background: var(--surface); border: 1px solid var(--line-soft); border-radius: 13px; }
+    .mode-button { height: 39px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); font-weight: 740; cursor: pointer; }
+    .mode-button.active { color: var(--text); background: var(--surface-3); box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+
+    .day-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; padding: 2px 16px 15px; overflow: hidden; }
+    .day-button { min-width: 0; height: 58px; padding: 6px 2px; border: 1px solid transparent; border-radius: 13px; background: transparent; cursor: pointer; }
+    .day-button .dow { display: block; color: var(--muted); font-size: 11px; font-weight: 670; text-transform: uppercase; }
+    .day-button .date { display: grid; place-items: center; width: 29px; height: 29px; margin: 4px auto 0; border-radius: 10px; font-size: 15px; font-weight: 780; }
+    .day-button.today:not(.active) .date { color: var(--teal); border: 1px solid var(--teal-deep); }
+    .day-button.active { background: var(--teal-soft); border-color: rgba(40,212,188,.18); }
+    .day-button.active .dow { color: #a4eae0; }
+    .day-button.active .date { background: var(--teal); color: #042c27; }
+    body[data-teacher="ruslan"] .day-button.active { background: var(--violet-soft); border-color: rgba(169,137,239,.2); }
+    body[data-teacher="ruslan"] .day-button.active .dow { color: #d2c2f6; }
+    body[data-teacher="ruslan"] .day-button.active .date { background: var(--violet); color: #211732; }
+
+    .day-summary { display: flex; align-items: end; justify-content: space-between; padding: 2px 18px 15px; }
+    .day-summary h2 { margin: 0; font-size: 22px; letter-spacing: -.035em; }
+    .day-summary p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+    .day-load { color: var(--teal); font-size: 13px; font-weight: 700; }
+    body[data-teacher="ruslan"] .day-load { color: var(--violet); }
+
+    .timeline { position: relative; padding: 0 16px 20px; }
+    .timeline::before { content: ""; position: absolute; left: 47px; top: 22px; bottom: 26px; width: 1px; background: var(--line); }
+    .lesson-row { position: relative; display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: start; margin-bottom: 12px; }
+    .lesson-row.has-gap { margin-top: 25px; }
+    .time { position: relative; z-index: 1; padding-top: 18px; padding-right: 12px; background: var(--bg); color: #b9c6c3; font-size: 13px; font-variant-numeric: tabular-nums; font-weight: 680; }
+    .time::after { content: ""; position: absolute; top: 23px; right: -4px; width: 7px; height: 7px; background: var(--teal); border: 3px solid var(--bg); border-radius: 50%; }
+    body[data-teacher="ruslan"] .time::after { background: var(--violet); }
+    .lesson-card {
+      position: relative; overflow: hidden; min-height: 104px; margin-left: 13px;
+      border: 1px solid #2a3d39; border-radius: var(--radius); background: #14211f;
+      box-shadow: 0 10px 26px rgba(0,0,0,.13); cursor: pointer; text-align: left;
+    }
+    .lesson-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 1px; background: var(--teal); }
+    body[data-teacher="ruslan"] .lesson-card { background: #1e1a29; border-color: #3a304b; }
+    body[data-teacher="ruslan"] .lesson-card::before { background: var(--violet); }
+    .lesson-head { display: flex; align-items: center; padding: 13px 14px 9px; gap: 10px; }
+    .lesson-title { font-size: 16px; line-height: 1.2; font-weight: 780; letter-spacing: -.018em; }
+    .lesson-duration { margin-left: auto; color: var(--muted); font-size: 11px; }
+    .students { display: flex; flex-wrap: wrap; gap: 7px; padding: 0 14px 13px; }
+    .student { display: inline-flex; align-items: center; min-height: 31px; padding: 5px 9px; border-radius: 9px; background: #20332f; color: #dff8f4; font-size: 13px; font-weight: 630; }
+    body[data-teacher="ruslan"] .student { background: #332b44; color: #eee8fb; }
+    .student[data-temporary="true"] { color: #ffe3ad; border: 1px dashed rgba(242,187,98,.55); background: rgba(242,187,98,.08); }
+    .student[data-temporary="true"]::after { content: "до сб"; margin-left: 7px; color: var(--amber); font-size: 10px; text-transform: uppercase; }
+    .add-person { min-width: 31px; min-height: 31px; padding: 0; border: 1px dashed #3b514c; border-radius: 9px; background: transparent; color: var(--muted); cursor: pointer; }
+    .gap-label { margin: -1px 0 10px 61px; color: var(--muted-2); font-size: 11px; }
+    .empty-day { padding: 52px 28px; text-align: center; color: var(--muted); }
+    .empty-day svg { width: 42px; height: 42px; margin-bottom: 12px; color: var(--muted-2); }
+    .empty-day h3 { margin: 0 0 5px; color: var(--text); font-size: 17px; }
+    .empty-day p { margin: 0; line-height: 1.45; font-size: 13px; }
+
+    .week-view[hidden], .day-view[hidden] { display: none; }
+    .week-meta { display: flex; align-items: center; justify-content: space-between; padding: 4px 16px 12px; }
+    .week-meta h2 { margin: 0; font-size: 18px; letter-spacing: -.025em; }
+    .week-meta p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+    .week-scroll { overflow: auto; height: calc(100dvh - 258px); border-top: 1px solid var(--line-soft); overscroll-behavior: contain; scrollbar-width: thin; }
+    .week-grid { display: grid; grid-template-columns: 48px repeat(7, minmax(112px, 1fr)); min-width: 832px; background: var(--line-soft); gap: 1px; }
+    .week-corner, .week-day, .week-time, .week-cell { background: var(--bg); }
+    .week-corner, .week-day { position: sticky; top: 0; z-index: 5; height: 47px; }
+    .week-corner { left: 0; z-index: 7; }
+    .week-day { display: grid; place-items: center; background: #101716; font-size: 12px; font-weight: 750; }
+    .week-day strong { color: var(--teal); margin-left: 3px; }
+    body[data-teacher="ruslan"] .week-day strong { color: var(--violet); }
+    .week-time { position: sticky; left: 0; z-index: 3; min-height: 77px; padding: 11px 8px 0 0; text-align: right; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+    .week-cell { min-height: 77px; padding: 5px; }
+    .mini-lesson { width: 100%; min-height: 67px; padding: 8px; border: 1px solid #2a3d39; border-radius: 9px; background: #162622; cursor: pointer; text-align: left; }
+    body[data-teacher="ruslan"] .mini-lesson { background: #241e31; border-color: #403653; }
+    .mini-lesson b { display: block; margin-bottom: 5px; font-size: 11px; line-height: 1.2; }
+    .mini-lesson span { display: block; overflow: hidden; color: #bcd2cd; font-size: 10px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+    .week-empty { width: 100%; height: 67px; border: 0; border-radius: 9px; background: transparent; color: transparent; cursor: pointer; }
+    .week-empty:hover, .week-empty:focus-visible { background: var(--surface); color: var(--muted); }
+
+    .fab { position: fixed; z-index: 18; right: 18px; bottom: calc(82px + var(--safe-bottom)); display: grid; place-items: center; width: 54px; height: 54px; padding: 0; border: 0; border-radius: 17px; background: var(--teal); color: #052d28; box-shadow: 0 12px 28px rgba(0,0,0,.4); cursor: pointer; }
+    body[data-teacher="ruslan"] .fab { background: var(--violet); color: #251938; box-shadow: 0 12px 28px rgba(0,0,0,.4); }
+    .fab:active { transform: scale(.96); }
+
+    .bottom-nav { position: fixed; z-index: 17; bottom: 0; left: 0; right: 0; display: grid; grid-template-columns: repeat(4,1fr); min-height: calc(67px + var(--safe-bottom)); padding: 7px 8px var(--safe-bottom); background: rgba(15,22,21,.97); border-top: 1px solid var(--line); backdrop-filter: blur(16px); }
+    .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 0; background: transparent; color: var(--muted-2); font-size: 10px; cursor: pointer; }
+    .nav-item.active { color: var(--teal); }
+    .nav-item svg { width: 20px; height: 20px; }
+
+    .overlay { position: fixed; z-index: 80; inset: 0; display: none; align-items: end; justify-content: center; padding-top: 40px; background: rgba(2,6,5,.7); backdrop-filter: blur(5px); }
+    .overlay.open { display: flex; }
+    .sheet { width: min(100%, 520px); max-height: 88dvh; overflow: auto; padding-bottom: var(--safe-bottom); border: 1px solid var(--line); border-bottom: 0; border-radius: 22px 22px 0 0; background: #151e1c; box-shadow: 0 -20px 60px rgba(0,0,0,.35); animation: sheet-in .24s cubic-bezier(.16,1,.3,1); }
+    @keyframes sheet-in { from { transform: translateY(28px); opacity: .6; } }
+    .grabber { width: 38px; height: 4px; margin: 9px auto 3px; border-radius: 4px; background: #45534f; }
+    .sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 13px 18px; border-bottom: 1px solid var(--line-soft); }
+    .sheet-head h2 { margin: 0; font-size: 18px; }
+    .sheet-body { padding: 17px 18px; }
+    .field { display: block; margin-bottom: 15px; }
+    .field span { display: block; margin-bottom: 7px; color: var(--muted); font-size: 12px; font-weight: 650; }
+    .field input, .field select { width: 100%; height: 47px; padding: 0 13px; border: 1px solid var(--line); border-radius: 11px; background: #0e1514; color: var(--text); font-size: 16px; }
+    .toggle-row { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
+    .toggle-row input { width: 20px; height: 20px; accent-color: var(--teal); }
+    .toggle-row b { display: block; font-size: 14px; }
+    .toggle-row small { display: block; margin-top: 2px; color: var(--muted); }
+    .sheet-actions { display: flex; gap: 9px; padding: 12px 18px 18px; }
+    .sheet-actions button { height: 45px; padding: 0 17px; border-radius: 11px; border: 1px solid var(--line); background: transparent; cursor: pointer; font-weight: 720; }
+    .sheet-actions .delete { margin-right: auto; color: var(--danger); border-color: rgba(255,123,120,.3); }
+    .sheet-actions .primary { border-color: transparent; background: var(--teal); color: #052d28; }
+    .day-settings { display: grid; grid-template-columns: repeat(7,1fr); gap: 5px; margin-top: 8px; }
+    .day-settings button { height: 38px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: var(--muted); cursor: pointer; }
+    .day-settings button.active { border-color: var(--teal-deep); background: var(--teal-soft); color: #c4f7ef; }
+    .toast { position: fixed; z-index: 100; left: 50%; bottom: calc(84px + var(--safe-bottom)); transform: translate(-50%,20px); opacity: 0; pointer-events: none; padding: 11px 15px; border-radius: 11px; background: #263330; color: var(--text); box-shadow: var(--shadow); font-size: 13px; transition: .22s ease; white-space: nowrap; }
+    .toast.show { opacity: 1; transform: translate(-50%,0); }
+
+    @media (min-width: 760px) {
+      .app-bar { padding-inline: max(24px, calc((100% - 1100px)/2)); }
+      .control-deck { display: grid; grid-template-columns: minmax(260px, .65fr) minmax(340px, .8fr); gap: 16px; align-items: end; padding-top: 22px; }
+      .mode-switch { margin-top: 0; }
+      .day-strip { max-width: 760px; }
+      .day-view { max-width: 720px; }
+      .lesson-card { min-height: 98px; }
+      .week-scroll { height: calc(100dvh - 204px); border: 1px solid var(--line-soft); border-radius: 14px 14px 0 0; margin: 0 16px; }
+      .week-grid { min-width: 100%; grid-template-columns: 54px repeat(7,minmax(105px,1fr)); }
+      .bottom-nav { left: 50%; right: auto; width: min(520px,100%); transform: translateX(-50%); border: 1px solid var(--line); border-bottom: 0; border-radius: 18px 18px 0 0; }
+      .fab { right: max(24px, calc((100vw - 1100px)/2 + 22px)); }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; } }
+  </style>
+</head>
+<body data-teacher="palomig">
+  <div class="app">
+    <header class="app-bar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">Э</div>
+        <div class="title-wrap"><h1>Расписание</h1><p>16–22 сентября</p></div>
+      </div>
+      <button class="icon-button" type="button" aria-label="Настройки недельного вида" id="openSettings">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8.5 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.1 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H2v-4h.4A1.7 1.7 0 0 0 4.1 8a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 8.5 3.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V2h4v.09A1.7 1.7 0 0 0 15 3.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 8c.13.38.35.72.65.98.3.26.68.4 1.08.41H22v4h-.87c-.4 0-.78.15-1.08.41-.3.26-.52.6-.65.98Z"/></svg>
+      </button>
+    </header>
+
+    <main>
+      <section class="control-deck" aria-label="Фильтры расписания">
+        <div class="control-row">
+          <div class="teacher-control">
+            <button class="teacher-selector" type="button" id="teacherSelector" aria-haspopup="listbox" aria-controls="teacherMenu" aria-expanded="false">
+              <span class="teacher-dot"></span><span class="teacher-name">Паломиг</span><span class="chevron">⌄</span>
+            </button>
+            <div class="teacher-menu" id="teacherMenu" role="listbox" aria-label="Преподаватель">
+              <button class="teacher-option" type="button" role="option" data-teacher="palomig" aria-selected="true"><span class="teacher-dot"></span>Паломиг</button>
+              <button class="teacher-option" type="button" role="option" data-teacher="ruslan" aria-selected="false"><span class="teacher-dot ruslan"></span>Руслан</button>
+            </div>
+          </div>
+          <button class="icon-button" type="button" aria-label="История изменений">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>
+          </button>
+        </div>
+        <div class="mode-switch" role="tablist" aria-label="Режим расписания">
+          <button class="mode-button active" type="button" role="tab" data-mode="day" aria-selected="true">День</button>
+          <button class="mode-button" type="button" role="tab" data-mode="week" aria-selected="false">Неделя</button>
+        </div>
+      </section>
+
+      <section class="day-view" id="dayView">
+        <div class="day-strip" role="tablist" aria-label="День недели">
+          <button class="day-button" type="button" data-day="0"><span class="dow">Пн</span><span class="date">16</span></button>
+          <button class="day-button today active" type="button" data-day="1"><span class="dow">Вт</span><span class="date">17</span></button>
+          <button class="day-button" type="button" data-day="2"><span class="dow">Ср</span><span class="date">18</span></button>
+          <button class="day-button" type="button" data-day="3"><span class="dow">Чт</span><span class="date">19</span></button>
+          <button class="day-button" type="button" data-day="4"><span class="dow">Пт</span><span class="date">20</span></button>
+          <button class="day-button" type="button" data-day="5"><span class="dow">Сб</span><span class="date">21</span></button>
+          <button class="day-button" type="button" data-day="6"><span class="dow">Вс</span><span class="date">22</span></button>
+        </div>
+        <div class="day-summary"><div><h2 id="dayTitle">Вторник, 17 сентября</h2><p id="daySummary">3 занятия · 6 учеников</p></div><span class="day-load" id="dayLoad">16:00–20:00</span></div>
+        <div class="timeline" id="timeline"></div>
+      </section>
+
+      <section class="week-view" id="weekView" hidden>
+        <div class="week-meta"><div><h2>Вся неделя</h2><p>Листайте дни по горизонтали</p></div><button class="icon-button" type="button" aria-label="Настроить неделю" id="openSettingsInline"><svg class="icon" viewBox="0 0 24 24"><path d="M4 7h16M7 3v4m10-4v4M5 5h14a2 2 0 0 1 2 2v12H3V7a2 2 0 0 1 2-2Zm2 6h3m4 0h3m-10 4h3m4 0h3"/></svg></button></div>
+        <div class="week-scroll"><div class="week-grid" id="weekGrid"></div></div>
+      </section>
+    </main>
+
+    <button class="fab" id="addLesson" type="button" aria-label="Добавить занятие"><svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+    <nav class="bottom-nav" aria-label="Основная навигация">
+      <button class="nav-item" type="button"><svg class="icon" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20H4Z"/><path d="M9 20v-6h6v6"/></svg><span>Главная</span></button>
+      <button class="nav-item active" type="button"><svg class="icon" viewBox="0 0 24 24"><path d="M5 5h14v15H5zM8 3v4m8-4v4M5 10h14"/></svg><span>Расписание</span></button>
+      <button class="nav-item" type="button"><svg class="icon" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a5 5 0 0 1 10 0v2M16 4a3 3 0 0 1 0 6m1 4a5 5 0 0 1 4 4v2"/></svg><span>Ученики</span></button>
+      <button class="nav-item" type="button"><svg class="icon" viewBox="0 0 24 24"><path d="M4 7h16v11H4zM8 11h8M8 15h4"/></svg><span>Оплата</span></button>
+    </nav>
+  </div>
+
+  <div class="overlay" id="lessonSheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet"><div class="grabber"></div><div class="sheet-head"><h2 id="sheetTitle">Редактировать занятие</h2><button class="icon-button close-sheet" type="button" aria-label="Закрыть"><svg class="icon" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+      <div class="sheet-body">
+        <label class="field"><span>Время</span><select id="editTime"></select></label>
+        <label class="field"><span>Класс и предмет</span><input id="editTitle" value="9 Мат." autocomplete="off"></label>
+        <label class="field"><span>Ученики</span><input id="editStudents" value="Арина, Артём" autocomplete="off"></label>
+        <label class="toggle-row"><input type="checkbox" id="editTemporary"><span><b>Временное изменение</b><small>Удалится после ближайшего занятия</small></span></label>
+      </div>
+      <div class="sheet-actions"><button class="delete" type="button">Удалить</button><button class="close-sheet" type="button">Отмена</button><button class="primary" id="saveLesson" type="button">Сохранить</button></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="settingsSheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="sheet"><div class="grabber"></div><div class="sheet-head"><h2 id="settingsTitle">Вид недели</h2><button class="icon-button close-sheet" type="button" aria-label="Закрыть"><svg class="icon" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+      <div class="sheet-body">
+        <label class="toggle-row"><input type="checkbox" id="morningToggle"><span><b>Показывать утро</b><small>Добавить часы с 08:00 до 13:00</small></span></label>
+        <div style="margin-top:18px;color:var(--muted);font-size:12px;font-weight:650">Дни недели</div>
+        <div class="day-settings"><button class="active">Пн</button><button class="active">Вт</button><button class="active">Ср</button><button class="active">Чт</button><button class="active">Пт</button><button class="active">Сб</button><button>Вс</button></div>
+      </div>
+      <div class="sheet-actions"><button class="primary close-sheet" type="button" style="margin-left:auto">Готово</button></div>
+    </div>
+  </div>
+  <div class="toast" id="toast" role="status">Изменения сохранены в прототипе</div>
+
+  <script>
+    const names = ['Понедельник','Вторник','Среда','Четверг','Пятница','Суббота','Воскресенье'];
+    const short = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+    const dates = [16,17,18,19,20,21,22];
+    const schedule = {
+      palomig: [
+        [{time:'15:00',title:'5 класс · математика',students:['Настя','Тимофей']},{time:'17:00',title:'8 класс · математика',students:['Артемий','Вадим','Милана']},{time:'19:00',title:'4 класс · математика',students:['Тимофей']}],
+        [{time:'16:00',title:'6–7 класс · математика',students:['Маша']},{time:'18:00',title:'6 класс · математика',students:['Олег','Божена','Владислава']},{time:'20:00',title:'Индивидуально',students:['Лиза'],temporary:true}],
+        [{time:'16:00',title:'9 класс · математика',students:['Арина','Артём','Ваня','Фёдор']},{time:'18:00',title:'8 класс · математика',students:['Максим']},{time:'20:00',title:'6 класс · математика',students:['Вика','Лиза','Маша']}],
+        [{time:'15:00',title:'8 класс · математика',students:['Тимофей']},{time:'17:00',title:'8 класс · математика',students:['Вадим','Ульяна','Артемий']},{time:'19:00',title:'9 класс · математика',students:['Максим','Маша']}],
+        [{time:'15:00',title:'5 класс · математика',students:['Настя','Вика']},{time:'16:00',title:'9 класс · математика',students:['Арина','Артём','Ваня']},{time:'18:00',title:'9 класс · математика',students:['Прохор','Максим']}],
+        [{time:'12:00',title:'3 класс · математика',students:['Маша']},{time:'15:00',title:'7 класс · математика',students:['Саша']},{time:'16:00',title:'8 класс · математика',students:['Тимофей']}],
+        []
+      ],
+      ruslan: [
+        [{time:'16:00',title:'Физика · 9 класс',students:['Кирилл','Саня']},{time:'18:00',title:'Физика · 8 класс',students:['Ангелина']}],
+        [{time:'15:00',title:'Физика · 7 класс',students:['Тимофей']},{time:'17:00',title:'Подготовка к ОГЭ',students:['Вадим','Ульяна']}],
+        [{time:'16:00',title:'Физика · 9 класс',students:['Артём','Фёдор']},{time:'19:00',title:'Индивидуально',students:['Илья']}],
+        [{time:'17:00',title:'Физика · 8 класс',students:['Лиза','Милана']}],
+        [{time:'16:00',title:'Подготовка к ОГЭ',students:['Ангелина','Ваня']},{time:'18:00',title:'Физика · 9 класс',students:['Максим']}],
+        [{time:'14:00',title:'Физика · 7 класс',students:['Саша']}],
+        []
+      ]
+    };
+    let teacher = 'palomig', selectedDay = 1, editing = null, showMorning = false, lastTrigger = null;
+    const qs = (s, root=document) => root.querySelector(s);
+    const qsa = (s, root=document) => [...root.querySelectorAll(s)];
+
+    function esc(value) { const node = document.createElement('span'); node.textContent = value; return node.innerHTML; }
+    function renderDay() {
+      const items = schedule[teacher][selectedDay];
+      qs('#dayTitle').textContent = `${names[selectedDay]}, ${dates[selectedDay]} сентября`;
+      const count = items.reduce((n,x)=>n+x.students.length,0);
+      qs('#daySummary').textContent = items.length ? `${items.length} ${items.length===1?'занятие':'занятия'} · ${count} учеников` : 'Свободный день';
+      qs('#dayLoad').textContent = items.length ? `${items[0].time}–${items.at(-1).time.replace(':00',':50')}` : 'Нет занятий';
+      qs('#timeline').innerHTML = items.length ? items.map((item,i) => {
+        const gap = i && parseInt(item.time)-parseInt(items[i-1].time)>1;
+        return `${gap?`<div class="gap-label">Свободное окно · ${parseInt(item.time)-parseInt(items[i-1].time)-1} ч</div>`:''}<div class="lesson-row${gap?' has-gap':''}"><span class="time">${item.time}</span><article class="lesson-card" tabindex="0" data-index="${i}"><div class="lesson-head"><span class="lesson-title">${esc(item.title)}</span><span class="lesson-duration">50 мин</span></div><div class="students">${item.students.map((s,j)=>`<span class="student"${item.temporary&&j===0?' data-temporary="true"':''}>${esc(s)}</span>`).join('')}<button class="add-person" type="button" aria-label="Добавить ученика">+</button></div></article></div>`;
+      }).join('') : `<div class="empty-day"><svg class="icon" viewBox="0 0 24 24"><path d="M5 5h14v15H5zM8 3v4m8-4v4M5 10h14"/><path d="m9 15 2 2 4-4"/></svg><h3>Воскресенье свободно</h3><p>Можно добавить разовое занятие<br>кнопкой внизу экрана.</p></div>`;
+      qsa('.lesson-card').forEach(card => {
+        card.addEventListener('click',()=>openEditor(Number(card.dataset.index)));
+        card.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();openEditor(Number(card.dataset.index));} });
+      });
+    }
+    function renderWeek() {
+      const hours = Array.from({length: showMorning?14:8},(_,i)=>(showMorning?8:14)+i);
+      let out = `<div class="week-corner"></div>${short.map((d,i)=>`<div class="week-day">${d}${i===1?'<strong>17</strong>':''}</div>`).join('')}`;
+      hours.forEach(hour => {
+        out += `<div class="week-time">${String(hour).padStart(2,'0')}:00</div>`;
+        schedule[teacher].forEach((day,di) => {
+          const item = day.find(x=>parseInt(x.time)===hour);
+          out += `<div class="week-cell">${item?`<button class="mini-lesson" type="button" data-day="${di}" data-index="${day.indexOf(item)}"><b>${esc(item.title.replace(' · математика',''))}</b><span>${esc(item.students.join(', ')||'Без учеников')}</span></button>`:`<button class="week-empty" type="button" data-day="${di}" data-time="${hour}:00" aria-label="Добавить занятие ${short[di]} в ${hour}:00">+</button>`}</div>`;
+        });
+      });
+      qs('#weekGrid').innerHTML = out;
+      qsa('.mini-lesson').forEach(el=>el.addEventListener('click',()=>{ selectedDay=Number(el.dataset.day); openEditor(Number(el.dataset.index)); }));
+      qsa('.week-empty').forEach(el=>el.addEventListener('click',()=>openNew(Number(el.dataset.day),el.dataset.time)));
+    }
+    function setMode(mode) {
+      qsa('.mode-button').forEach(b=>{ const on=b.dataset.mode===mode; b.classList.toggle('active',on); b.setAttribute('aria-selected',on); });
+      qs('#dayView').hidden=mode!=='day'; qs('#weekView').hidden=mode!=='week';
+      if(mode==='week') renderWeek();
+    }
+    function selectTeacher(next) {
+      teacher=next; document.body.dataset.teacher=next;
+      qs('.teacher-name').textContent=next==='palomig'?'Паломиг':'Руслан';
+      qsa('.teacher-option').forEach(o=>o.setAttribute('aria-selected',o.dataset.teacher===next));
+      closeTeacher(); renderDay(); renderWeek();
+    }
+    function closeTeacher(){ qs('#teacherMenu').classList.remove('open'); qs('#teacherSelector').setAttribute('aria-expanded','false'); }
+    function openEditor(index) {
+      editing={day:selectedDay,index}; const item=schedule[teacher][selectedDay][index];
+      qs('#sheetTitle').textContent='Редактировать занятие'; qs('#editTime').value=item.time; qs('#editTitle').value=item.title; qs('#editStudents').value=item.students.join(', '); qs('#editTemporary').checked=!!item.temporary; qs('.delete').hidden=false; openSheet('lessonSheet');
+    }
+    function openNew(day=selectedDay,time='17:00') { editing={day,index:null}; selectedDay=day; qs('#sheetTitle').textContent='Новое занятие'; qs('#editTime').value=time; qs('#editTitle').value=''; qs('#editStudents').value=''; qs('#editTemporary').checked=false; qs('.delete').hidden=true; openSheet('lessonSheet'); }
+    function openSheet(id){ lastTrigger=document.activeElement; qs('.app').inert=true; qs('#'+id).classList.add('open'); setTimeout(()=>qs('#'+id+' input, #'+id+' select, #'+id+' button')?.focus(),80); }
+    function closeSheets(){ qsa('.overlay').forEach(x=>x.classList.remove('open')); qs('.app').inert=false; lastTrigger?.focus(); }
+    function toast(){ const t=qs('#toast'); t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800); }
+    for(let h=8;h<=21;h++) qs('#editTime').insertAdjacentHTML('beforeend',`<option>${String(h).padStart(2,'0')}:00</option>`);
+    qsa('.mode-button').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+    qsa('.day-button').forEach(b=>b.addEventListener('click',()=>{selectedDay=Number(b.dataset.day); qsa('.day-button').forEach(x=>x.classList.toggle('active',x===b)); renderDay();}));
+    qs('#teacherSelector').addEventListener('click',()=>{ const m=qs('#teacherMenu'); m.classList.toggle('open'); qs('#teacherSelector').setAttribute('aria-expanded',m.classList.contains('open')); if(m.classList.contains('open')) qs('.teacher-option[aria-selected="true"]').focus(); });
+    qsa('.teacher-option').forEach(o=>o.addEventListener('click',e=>{e.stopPropagation();selectTeacher(o.dataset.teacher);}));
+    ['openSettings','openSettingsInline'].forEach(id=>qs('#'+id).addEventListener('click',()=>openSheet('settingsSheet')));
+    qs('#addLesson').addEventListener('click',()=>openNew());
+    qsa('.close-sheet').forEach(b=>b.addEventListener('click',closeSheets));
+    qsa('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)closeSheets();}));
+    qs('#morningToggle').addEventListener('change',e=>{showMorning=e.target.checked;renderWeek();});
+    qsa('.day-settings button').forEach(b=>b.addEventListener('click',()=>b.classList.toggle('active')));
+    qs('#saveLesson').addEventListener('click',()=>{
+      const item={time:qs('#editTime').value,title:qs('#editTitle').value||'Без названия',students:qs('#editStudents').value.split(',').map(x=>x.trim()).filter(Boolean),temporary:qs('#editTemporary').checked};
+      if(editing.index===null) schedule[teacher][editing.day].push(item); else schedule[teacher][editing.day][editing.index]=item;
+      schedule[teacher][editing.day].sort((a,b)=>a.time.localeCompare(b.time)); renderDay(); renderWeek(); closeSheets(); toast();
+    });
+    qs('.delete').addEventListener('click',()=>{if(editing?.index!==null){schedule[teacher][editing.day].splice(editing.index,1);renderDay();renderWeek();closeSheets();toast();}});
+    document.addEventListener('keydown',e=>{
+      if(e.key==='Escape'){closeSheets();closeTeacher();}
+      const open=qs('.overlay.open');
+      if(e.key==='Tab'&&open){const items=qsa('button:not([hidden]),input,select',open);const first=items[0],last=items.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}
+    });
+    renderDay(); renderWeek();
+    if (new URLSearchParams(location.search).get('mode') === 'week') setMode('week');
+  </script>
+</body>
+</html>
